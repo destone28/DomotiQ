@@ -213,6 +213,8 @@ class Mcu:
         found: list[int] = []
         for block in range(4):
             mask = int(await self._call("scan", channel, block))
+            if mask < 0:
+                raise McuError("scan timed out")
             found += [block * 32 + i for i in range(32) if mask & (1 << i)]
         return found
 

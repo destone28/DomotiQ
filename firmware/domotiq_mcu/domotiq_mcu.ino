@@ -1,0 +1,855 @@
+// SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
+// SPDX-License-Identifier: MIT
+/*
+ * DomotiQ — microcontroller firmware (STM32U585 of the Arduino UNO Q)
+ *
+ * The Qwiic connector of the UNO Q is wired to I2C4 of the STM32U585
+ * (`Wire1` here): every Modulino belongs to this sketch. Linux talks to it
+ * through arduino-router with the Bridge library: it calls the methods below
+ * and receives the notifications this sketch sends.
+ *
+ * Linux decides, the MCU executes. Linux says "effect X in room Y" and the
+ * sketch draws it at 25 frames per second; the serial link to Linux carries
+ * 256 bytes per message at 115200 baud, far too little for animation frames.
+ *
+ * ── Bus layout ──────────────────────────────────────────────────────────────
+ *   UNO Q ── Hub (TCA9548A, 0x70..0x77) ── Latch Relay (0x02, main bus)
+ *   Hub ch0 Pixels garage     ch1 Pixels bedroom   ch2 Pixels kitchen
+ *       ch3 Pixels living     ch4 Thermo bathroom  ch5 Pixels bathroom
+ *       ch6 Thermo sideboard → Buttons (0x3E) → Distance (0x29)
+ *   Every Pixels sits at the factory address 0x36 on its own channel.
+ *
+ * ── No Modulino library ────────────────────────────────────────────────────
+ * On the UNO Q core, Arduino_Modulino reports modules as present without
+ * touching the bus, returns true from every write and retries forever in
+ * the distance sensor driver. Every transaction here is written by hand,
+ * bounded in time, and a module counts as present only after it answered.
+ *
+ * ── Threads ─────────────────────────────────────────────────────────────────
+ * `io_thread` owns the bus from power-up: it switches the latching relay
+ * off, breathes the lights while Linux boots, and then runs lights,
+ * buttons and sensors. Bridge handlers run on the Bridge thread and only
+ * write the shared state under `state_lock` (never call the Bridge from a
+ * handler: it deadlocks). Notifications go through a queue and are sent
+ * from loop().
+ *
+ * Arduino generates prototypes above the first function of a .ino file,
+ * so all types and globals are declared first.
+ */
+
+#include <Arduino_RouterBridge.h>
+#include <Wire.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/i2c.h>
+#include <zephyr/kernel.h>
+
+// ============================================================ constants
+static const int PROTOCOL = 1;
+
+static const uint8_t ADDR_PIXELS = 0x36;
+static const uint8_t ADDR_THERMO = 0x44;
+static const uint8_t ADDR_BUTTONS = 0x3E;
+static const uint8_t ADDR_TOF = 0x29;
+static const uint8_t ADDR_RELAY_A = 0x02;   // factory address
+static const uint8_t ADDR_RELAY_B = 0x10;   // if moved with AddressChanger
+static const uint8_t HUB_FIRST = 0x70, HUB_LAST = 0x77;
+
+static const uint8_t N_LIGHTS = 5;
+static const uint8_t N_LED = 8;
+// light index (as Linux numbers them) -> hub channel
+static const uint8_t LIGHT_CH[N_LIGHTS] = {0, 1, 2, 3, 5};
+static const uint8_t CH_THERMO[2] = {6, 4};      // 0 sideboard (thermostat), 1 bathroom
+static const uint8_t CH_TOTEM = 6;               // buttons and distance
+
+// module bits, in the order of domotiq.mcu.MODULES
+enum {
+  M_HUB = 0, M_RELAY, M_PX_GARAGE, M_PX_BEDROOM, M_PX_KITCHEN, M_PX_LIVING,
+  M_THERMO_BATH, M_PX_BATH, M_THERMO_STAT, M_BUTTONS, M_DISTANCE
+};
+static const uint8_t LIGHT_BIT[N_LIGHTS] = {M_PX_GARAGE, M_PX_BEDROOM, M_PX_KITCHEN, M_PX_LIVING, M_PX_BATH};
+static const uint8_t THERMO_BIT[2] = {M_THERMO_STAT, M_THERMO_BATH};
+
+enum { FX_OFF = 0, FX_SOLID, FX_BREATHE, FX_BLINK, FX_WAVE, FX_RAINBOW, FX_SPARKLE, FX_FIRE,
+       FX_ALARM, FX_COOL, FX_WARM, FX_BOOT = 100 };
+
+static const uint32_t FRAME_MS = 40;             // 25 frames per second
+static const uint32_t BUTTON_MS = 10;
+static const uint32_t TOF_MS = 50;
+static const uint32_t THERMO_PERIOD_MS = 2000;
+static const uint32_t THERMO_WAIT_MS = 40;
+static const uint32_t PROBE_MS = 5000;
+static const uint32_t LINUX_SILENT_MS = 30000;
+static const float MA_PER_CHANNEL = 11.0f;       // LC8822 at full 5-bit brightness
+
+// ============================================================ shared state
+struct LightCmd {
+  uint8_t effect = FX_BOOT;
+  uint8_t r = 255, g = 150, b = 60;
+  uint8_t bri = 30;          // 0-100 relative to max_bri
+  uint8_t speed = 50;
+  uint32_t duration = 0;     // ms, 0 = until changed
+  uint32_t started = 0;
+};
+
+struct PartyCmd {
+  bool pending = false;
+  uint32_t bpm10 = 1240, seed = 1, duration = 0, delay = 0;
+};
+
+struct Event {
+  uint8_t kind;              // 1 btn, 2 dist, 3 thermo, 4 mods
+  int32_t a, b, c;
+};
+
+static K_MUTEX_DEFINE(state_lock);
+static K_MUTEX_DEFINE(bus_lock);
+K_MSGQ_DEFINE(events, sizeof(Event), 32, 4);
+
+static LightCmd req_light[N_LIGHTS];
+static bool req_light_dirty[N_LIGHTS];
+static PartyCmd req_party;
+static int8_t req_relay = 0;               // 0 off at boot, 1 on, -1 nothing pending
+static uint8_t req_leds = 0, req_blink = 0;
+static bool req_leds_dirty = true;
+static uint8_t max_bri = 30;               // 0-100
+static uint16_t budget_ma = 450;
+static volatile uint32_t last_linux_ms = 0;
+static volatile bool linux_seen = false;
+static volatile bool bridge_ready = false;
+
+static volatile uint32_t modules_mask = 0;
+static volatile int relay_state = -1;
+static uint8_t hub_addr = 0;
+static uint8_t relay_addr = 0;
+static int8_t hub_channel = -1;
+
+// io thread private state
+static LightCmd cur_light[N_LIGHTS];
+static uint8_t frame[N_LIGHTS][N_LED][3];
+static uint8_t sent_frame[N_LIGHTS][N_LED][4];
+static bool sent_valid[N_LIGHTS];
+static bool party_on = false;
+static uint32_t party_start = 0, party_end = 0, party_bpm10 = 1240, party_seed = 1;
+static uint8_t btn_raw[3], btn_stable[3], btn_count[3];
+static int32_t tof_last = -1;
+static uint32_t tof_last_sent = 0;
+static bool tof_started = false;
+static int thermo_phase[2] = {0, 0};
+static uint32_t thermo_at[2] = {0, 0};
+
+static uint32_t fx_seed = 0x2545F491u;
+static uint32_t fx_rand() {
+  fx_seed ^= fx_seed << 13; fx_seed ^= fx_seed >> 17; fx_seed ^= fx_seed << 5;
+  return fx_seed;
+}
+
+// scan requests from Linux, executed by the io thread (the only bus owner)
+static K_SEM_DEFINE(scan_done, 0, 1);
+static volatile int scan_channel = -1, scan_block = -1;
+static volatile uint32_t scan_result = 0;
+
+static K_THREAD_STACK_DEFINE(io_stack, 4096);
+static struct k_thread io_thread_data;
+
+// VL53L4CD registers (16-bit addresses)
+static const uint16_t R_ID = 0x010F;               // 0xEBAA
+static const uint16_t R_FW_STATUS = 0x00E5;         // 0x03 = booted
+static const uint16_t R_GPIO_MUX = 0x0030;
+static const uint16_t R_GPIO_STATUS = 0x0031;
+static const uint16_t R_VHV_BOUND = 0x0008;
+static const uint16_t R_RANGE_A = 0x005E;
+static const uint16_t R_RANGE_B = 0x0061;
+static const uint16_t R_INTERMEASUREMENT = 0x006C;
+static const uint16_t R_CLEAR_INT = 0x0086;
+static const uint16_t R_START = 0x0087;
+static const uint16_t R_RANGE_STATUS = 0x0089;
+static const uint16_t R_SPADS = 0x008C;
+static const uint16_t R_DISTANCE = 0x0096;
+// Default configuration of registers 0x2D..0x87, from the VL53L4CD
+// ultra-lite driver by STMicroelectronics (BSD-3-Clause).
+static const uint8_t TOF_CONFIG[] = {
+  0x12, 0x00, 0x00, 0x11, 0x02, 0x00, 0x02, 0x08, 0x00, 0x08, 0x10, 0x01, 0x01,
+  0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20,
+  0x0b, 0x00, 0x00, 0x02, 0x14, 0x21, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00,
+  0xc8, 0x00, 0x00, 0x38, 0xff, 0x01, 0x00, 0x08, 0x00, 0x00, 0x01, 0xcc, 0x07,
+  0x01, 0xf1, 0x05, 0x00, 0xa0, 0x00, 0x80, 0x08, 0x38, 0x00, 0x00, 0x00, 0x00,
+  0x0f, 0x89, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x07, 0x05, 0x06,
+  0x06, 0x00, 0x00, 0x02, 0xc7, 0xff, 0x9b, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00
+};
+
+// ============================================================ bus helpers
+static void bus_recover() {
+  const struct device *bus = DEVICE_DT_GET(DT_NODELABEL(i2c4));
+  if (device_is_ready(bus)) i2c_recover_bus(bus);
+}
+
+static bool bus_write(uint8_t addr, const uint8_t *data, uint8_t len) {
+  k_mutex_lock(&bus_lock, K_FOREVER);
+  Wire1.beginTransmission(addr);
+  for (uint8_t i = 0; i < len; i++) Wire1.write(data[i]);
+  bool ok = Wire1.endTransmission() == 0;
+  k_mutex_unlock(&bus_lock);
+  return ok;
+}
+
+static bool bus_read(uint8_t addr, uint8_t *out, uint8_t len) {
+  k_mutex_lock(&bus_lock, K_FOREVER);
+  bool ok = (int)Wire1.requestFrom((int)addr, (int)len) == (int)len;
+  if (ok) for (uint8_t i = 0; i < len; i++) out[i] = (uint8_t)Wire1.read();
+  k_mutex_unlock(&bus_lock);
+  return ok;
+}
+
+static bool bus_probe(uint8_t addr) {
+  k_mutex_lock(&bus_lock, K_FOREVER);
+  Wire1.beginTransmission(addr);
+  bool ok = Wire1.endTransmission() == 0;
+  k_mutex_unlock(&bus_lock);
+  return ok;
+}
+
+// Open one hub channel (or none with ch < 0). Only one channel is ever
+// open: every channel has its own pull-ups, and all eight together would
+// load the bus beyond what the pins can sink.
+static bool hub_select(int8_t ch) {
+  if (!hub_addr) return ch < 0;
+  if (ch == hub_channel) return true;
+  uint8_t mask = ch < 0 ? 0 : (uint8_t)(1 << ch);
+  bool ok = bus_write(hub_addr, &mask, 1);
+  hub_channel = ok ? ch : -1;
+  return ok;
+}
+
+static void set_module(uint8_t bit, bool present) {
+  uint32_t before = modules_mask;
+  uint32_t after = present ? (before | (1u << bit)) : (before & ~(1u << bit));
+  if (after != before) {
+    modules_mask = after;
+    Event ev = {4, (int32_t)after, 0, 0};
+    k_msgq_put(&events, &ev, K_NO_WAIT);
+  }
+}
+
+// ============================================================ relay
+static bool relay_command(bool on) {
+  if (!relay_addr) return false;
+  hub_select(-1);
+  uint8_t cmd[3] = {(uint8_t)(on ? 1 : 0), 0, 0};
+  bool ok = bus_write(relay_addr, cmd, 3);
+  if (ok) {
+    relay_state = on ? 1 : 0;
+    k_msleep(120);            // the module pulses the coil for 50 ms and blocks meanwhile
+  }
+  return ok;
+}
+
+static void relay_find() {
+  hub_select(-1);
+  relay_addr = 0;
+  if (bus_probe(ADDR_RELAY_A)) relay_addr = ADDR_RELAY_A;
+  else if (bus_probe(ADDR_RELAY_B)) relay_addr = ADDR_RELAY_B;
+  set_module(M_RELAY, relay_addr != 0);
+}
+
+static void hub_find() {
+  hub_addr = 0;
+  hub_channel = -1;
+  for (uint8_t a = HUB_FIRST; a <= HUB_LAST; a++) {
+    if (bus_probe(a)) {
+      uint8_t zero = 0;
+      if (bus_write(a, &zero, 1)) { hub_addr = a; break; }
+    }
+  }
+  set_module(M_HUB, hub_addr != 0);
+}
+
+// ============================================================ pixels
+static inline uint8_t scale8(uint8_t v, uint16_t s) { return (uint8_t)(((uint16_t)v * s) >> 8); }
+
+static void hue_to_rgb(uint8_t h, uint8_t *r, uint8_t *g, uint8_t *b) {
+  uint8_t region = h / 43, rem = (uint8_t)((h - region * 43) * 6);
+  uint8_t q = 255 - rem, t = rem;
+  switch (region) {
+    case 0: *r = 255; *g = t; *b = 0; break;
+    case 1: *r = q; *g = 255; *b = 0; break;
+    case 2: *r = 0; *g = 255; *b = t; break;
+    case 3: *r = 0; *g = q; *b = 255; break;
+    case 4: *r = t; *g = 0; *b = 255; break;
+    default: *r = 255; *g = 0; *b = q; break;
+  }
+}
+
+static uint8_t tri(uint32_t t, uint32_t period) {  // 0..255..0 triangle wave
+  uint32_t p = t % period;
+  uint32_t half = period / 2;
+  return (uint8_t)(p < half ? (p * 255) / half : ((period - p) * 255) / half);
+}
+
+static uint32_t rng(uint32_t *s) {                 // xorshift, for repeatable party shows
+  uint32_t x = *s;
+  x ^= x << 13; x ^= x >> 17; x ^= x << 5;
+  *s = x ? x : 0x9E3779B9u;
+  return *s;
+}
+
+static void render_light(uint8_t li, uint32_t now) {
+  const LightCmd &c = cur_light[li];
+  uint32_t t = now - c.started;
+  uint8_t (*px)[3] = frame[li];
+  uint16_t speed = c.speed ? c.speed : 50;
+  for (uint8_t i = 0; i < N_LED; i++) { px[i][0] = c.r; px[i][1] = c.g; px[i][2] = c.b; }
+  switch (c.effect) {
+    case FX_OFF:
+      memset(px, 0, N_LED * 3);
+      break;
+    case FX_SOLID:
+      break;
+    case FX_BOOT:
+    case FX_BREATHE: {
+      uint32_t period = c.effect == FX_BOOT ? 3200 : 5200 - speed * 36;   // 1.6 .. 5.2 s
+      uint16_t k = 60 + (tri(t, period) * 196) / 255;
+      for (uint8_t i = 0; i < N_LED; i++) for (uint8_t j = 0; j < 3; j++) px[i][j] = scale8(px[i][j], k);
+      break;
+    }
+    case FX_BLINK:
+    case FX_ALARM: {
+      // never faster than 3 flashes per second, for people sensitive to flashing light
+      uint32_t period = c.effect == FX_ALARM ? 500 : (1400 - speed * 10 < 340 ? 340 : 1400 - speed * 10);
+      if ((t % period) >= period / 2) memset(px, 0, N_LED * 3);
+      break;
+    }
+    case FX_WAVE:
+    case FX_COOL: {
+      uint32_t period = 2600 - speed * 18;
+      for (uint8_t i = 0; i < N_LED; i++) {
+        uint16_t k = 50 + (tri(t + i * (period / N_LED), period) * 206) / 255;
+        for (uint8_t j = 0; j < 3; j++) px[i][j] = scale8(px[i][j], k);
+      }
+      break;
+    }
+    case FX_RAINBOW: {
+      uint8_t base = (uint8_t)((t * (speed + 10)) / 400);
+      for (uint8_t i = 0; i < N_LED; i++) hue_to_rgb((uint8_t)(base + i * 32), &px[i][0], &px[i][1], &px[i][2]);
+      break;
+    }
+    case FX_SPARKLE:
+      for (uint8_t i = 0; i < N_LED; i++) {
+        uint16_t k = (fx_rand() % 100) < 12 ? 255 : 70;
+        for (uint8_t j = 0; j < 3; j++) px[i][j] = scale8(px[i][j], k);
+      }
+      break;
+    case FX_FIRE:
+      for (uint8_t i = 0; i < N_LED; i++) {
+        uint8_t flicker = 120 + (fx_rand() % 136);
+        px[i][0] = scale8(255, flicker);
+        px[i][1] = scale8(70 + (fx_rand() % 60), flicker);
+        px[i][2] = 0;
+      }
+      break;
+    case FX_WARM: {
+      uint16_t k = 150 + (tri(t, 4000) * 105) / 255;
+      for (uint8_t i = 0; i < N_LED; i++) for (uint8_t j = 0; j < 3; j++) px[i][j] = scale8(px[i][j], k);
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+// The party show: patterns change every four beats, flashes only on beats
+// (at 124 BPM that is about 2 per second, below the 3 per second limit).
+static void render_party(uint32_t now) {
+  uint32_t beat_ms = 600000u / (party_bpm10 ? party_bpm10 : 1240);
+  uint32_t t = now - party_start;
+  uint32_t beat = t / beat_ms;
+  uint32_t in_beat = t % beat_ms;
+  uint32_t bar = beat / 4;
+  uint32_t seed = party_seed ^ (bar * 2654435761u);
+  uint32_t pattern = rng(&seed) % 5;
+  uint8_t hue = (uint8_t)(rng(&seed));
+  bool finale = party_end - now < 2000;
+  for (uint8_t li = 0; li < N_LIGHTS; li++) {
+    for (uint8_t i = 0; i < N_LED; i++) {
+      uint8_t r, g, b;
+      if (finale) {
+        hue_to_rgb((uint8_t)(fx_rand()), &r, &g, &b);
+        uint16_t k = (fx_rand() % 100) < 30 ? 255 : 40;
+        r = scale8(r, k); g = scale8(g, k); b = scale8(b, k);
+      } else if (pattern == 0) {             // chase around the house
+        uint8_t pos = (uint8_t)((t / (beat_ms / 8)) % (N_LIGHTS * N_LED));
+        bool lit = (li * N_LED + i) % 8 == pos % 8;
+        hue_to_rgb((uint8_t)(hue + li * 40), &r, &g, &b);
+        if (!lit) { r /= 6; g /= 6; b /= 6; }
+      } else if (pattern == 1) {             // beat flash, one colour per room
+        hue_to_rgb((uint8_t)(hue + li * 51), &r, &g, &b);
+        uint16_t k = in_beat < beat_ms / 3 ? 255 : 50;
+        r = scale8(r, k); g = scale8(g, k); b = scale8(b, k);
+      } else if (pattern == 2) {             // rainbow wheel
+        hue_to_rgb((uint8_t)(hue + (t / 6) + i * 32 + li * 20), &r, &g, &b);
+      } else if (pattern == 3) {             // alternate rooms on every beat
+        hue_to_rgb(hue, &r, &g, &b);
+        if (((beat + li) & 1) == 0) { r /= 8; g /= 8; b /= 8; }
+      } else {                               // pulse
+        hue_to_rgb((uint8_t)(hue + beat * 16), &r, &g, &b);
+        uint16_t k = 255 - (in_beat * 200) / beat_ms;
+        r = scale8(r, k); g = scale8(g, k); b = scale8(b, k);
+      }
+      frame[li][i][0] = r; frame[li][i][1] = g; frame[li][i][2] = b;
+    }
+  }
+}
+
+// Write the frames, within the power budget, only where they changed.
+static void flush_lights() {
+  uint8_t bri5 = (uint8_t)(((uint16_t)max_bri * 31 + 50) / 100);
+  // per light brightness requested by Linux, combined with the cap
+  uint8_t b5[N_LIGHTS];
+  float ma = 0;
+  for (uint8_t li = 0; li < N_LIGHTS; li++) {
+    uint8_t rel = party_on ? 100 : cur_light[li].bri;
+    b5[li] = (uint8_t)(((uint16_t)bri5 * rel + 50) / 100);
+    if (b5[li] == 0 && rel > 0 && bri5 > 0) b5[li] = 1;
+    float sum = 0;
+    for (uint8_t i = 0; i < N_LED; i++) sum += frame[li][i][0] + frame[li][i][1] + frame[li][i][2];
+    ma += sum / 255.0f * MA_PER_CHANNEL * b5[li] / 31.0f;
+  }
+  uint16_t k = 256;
+  if (ma > budget_ma && ma > 0) k = (uint16_t)(256.0f * budget_ma / ma);
+  for (uint8_t li = 0; li < N_LIGHTS; li++) {
+    if (!(modules_mask & (1u << LIGHT_BIT[li]))) continue;
+    uint8_t out[N_LED * 4];
+    for (uint8_t i = 0; i < N_LED; i++) {
+      out[i * 4 + 0] = 0xE0 | (b5[li] & 0x1F);
+      out[i * 4 + 1] = scale8(frame[li][i][2], k);   // blue
+      out[i * 4 + 2] = scale8(frame[li][i][1], k);   // green
+      out[i * 4 + 3] = scale8(frame[li][i][0], k);   // red
+    }
+    if (sent_valid[li] && memcmp(out, sent_frame[li], sizeof(out)) == 0) continue;
+    if (hub_select(LIGHT_CH[li]) && bus_write(ADDR_PIXELS, out, sizeof(out))) {
+      memcpy(sent_frame[li], out, sizeof(out));
+      sent_valid[li] = true;
+    } else {
+      sent_valid[li] = false;
+      set_module(LIGHT_BIT[li], false);
+    }
+  }
+}
+
+static void probe_lights() {
+  for (uint8_t li = 0; li < N_LIGHTS; li++) {
+    bool present = hub_select(LIGHT_CH[li]) && bus_probe(ADDR_PIXELS);
+    if (present && !(modules_mask & (1u << LIGHT_BIT[li]))) sent_valid[li] = false;
+    set_module(LIGHT_BIT[li], present);
+  }
+}
+
+// ============================================================ buttons
+static void poll_buttons() {
+  if (!(modules_mask & (1u << M_BUTTONS))) return;
+  uint8_t d[4];
+  if (!hub_select(CH_TOTEM) || !bus_read(ADDR_BUTTONS, d, 4)) { set_module(M_BUTTONS, false); return; }
+  for (uint8_t i = 0; i < 3; i++) {
+    uint8_t v = d[1 + i] ? 1 : 0;
+    if (v == btn_raw[i]) {
+      if (btn_count[i] < 2) btn_count[i]++;
+    } else {
+      btn_raw[i] = v;
+      btn_count[i] = 0;
+    }
+    if (btn_count[i] == 2 && btn_stable[i] != v) {   // two equal readings in a row
+      btn_stable[i] = v;
+      Event ev = {1, i, v, 0};
+      k_msgq_put(&events, &ev, K_NO_WAIT);
+    }
+  }
+}
+
+static uint32_t led_last = 0;
+static bool led_phase = false;
+
+static void write_leds(uint32_t now) {
+  if (!(modules_mask & (1u << M_BUTTONS))) return;
+  uint8_t mask, blink;
+  bool dirty;
+  k_mutex_lock(&state_lock, K_FOREVER);
+  mask = req_leds; blink = req_blink; dirty = req_leds_dirty; req_leds_dirty = false;
+  k_mutex_unlock(&state_lock);
+  if (blink && now - led_last >= 250) { led_last = now; led_phase = !led_phase; dirty = true; }
+  if (!dirty) return;
+  uint8_t out[3];
+  for (uint8_t i = 0; i < 3; i++) {
+    bool on = (mask >> i) & 1;
+    if ((blink >> i) & 1) on = led_phase;
+    out[i] = on ? 1 : 0;              // only 0 or 1: other bytes are commands to the module
+  }
+  if (hub_select(CH_TOTEM)) bus_write(ADDR_BUTTONS, out, 3);
+}
+
+// ============================================================ distance (VL53L4CD)
+static bool tof_read(uint16_t reg, uint8_t *out, uint8_t len) {
+  uint8_t a[2] = {(uint8_t)(reg >> 8), (uint8_t)(reg & 0xFF)};
+  k_mutex_lock(&bus_lock, K_FOREVER);
+  Wire1.beginTransmission(ADDR_TOF);
+  Wire1.write(a[0]); Wire1.write(a[1]);
+  bool ok = Wire1.endTransmission() == 0 && (int)Wire1.requestFrom((int)ADDR_TOF, (int)len) == (int)len;
+  if (ok) for (uint8_t i = 0; i < len; i++) out[i] = (uint8_t)Wire1.read();
+  k_mutex_unlock(&bus_lock);
+  return ok;
+}
+static bool tof_r8(uint16_t reg, uint8_t *v) { return tof_read(reg, v, 1); }
+static bool tof_r16(uint16_t reg, uint16_t *v) {
+  uint8_t b[2];
+  if (!tof_read(reg, b, 2)) return false;
+  *v = ((uint16_t)b[0] << 8) | b[1];
+  return true;
+}
+static bool tof_write(uint16_t reg, const uint8_t *d, uint8_t len) {
+  uint8_t buf[6];
+  buf[0] = (uint8_t)(reg >> 8); buf[1] = (uint8_t)(reg & 0xFF);
+  for (uint8_t i = 0; i < len && i < 4; i++) buf[2 + i] = d[i];
+  return bus_write(ADDR_TOF, buf, 2 + len);
+}
+static bool tof_w8(uint16_t reg, uint8_t v) { return tof_write(reg, &v, 1); }
+static bool tof_w16(uint16_t reg, uint16_t v) { uint8_t b[2] = {(uint8_t)(v >> 8), (uint8_t)v}; return tof_write(reg, b, 2); }
+static bool tof_w32(uint16_t reg, uint32_t v) {
+  uint8_t b[4] = {(uint8_t)(v >> 24), (uint8_t)(v >> 16), (uint8_t)(v >> 8), (uint8_t)v};
+  return tof_write(reg, b, 4);
+}
+
+static bool tof_ready(bool *ready) {
+  uint8_t t;
+  if (!tof_r8(R_GPIO_MUX, &t)) return false;
+  uint8_t polarity = ((t & 0x10) >> 4) == 1 ? 0 : 1;
+  if (!tof_r8(R_GPIO_STATUS, &t)) return false;
+  *ready = (t & 0x01) == polarity;
+  return true;
+}
+
+static bool tof_wait_ready(uint16_t max_ms) {
+  for (uint16_t i = 0; i < max_ms; i++) {
+    bool r = false;
+    if (!tof_ready(&r)) return false;
+    if (r) return true;
+    k_msleep(1);
+  }
+  return false;
+}
+
+static bool tof_start() {
+  uint8_t t;
+  uint16_t v16;
+  for (uint16_t i = 0; ; i++) {                 // boot of the chip: at most 200 ms
+    if (!tof_r8(R_FW_STATUS, &t)) return false;
+    if (t == 0x03) break;
+    if (i >= 200) return false;
+    k_msleep(1);
+  }
+  for (uint8_t i = 0; i < sizeof(TOF_CONFIG); i++)
+    if (!tof_w8((uint16_t)(0x2D + i), TOF_CONFIG[i])) return false;
+  if (!tof_w8(R_START, 0x40) || !tof_wait_ready(1000)) return false;   // VHV calibration
+  if (!tof_w8(R_CLEAR_INT, 0x01) || !tof_w8(R_START, 0x00)) return false;
+  if (!tof_w8(R_VHV_BOUND, 0x09) || !tof_w8(0x000B, 0x00) || !tof_w16(0x0024, 0x0500)) return false;
+  if (!tof_r16(0x0006, &v16) || v16 == 0) return false;               // oscillator frequency
+  uint32_t macro = (uint32_t)(((uint32_t)2304 * ((uint32_t)0x40000000 / (uint32_t)v16)) >> 6);
+  if (!tof_w32(R_INTERMEASUREMENT, 0)) return false;                   // continuous ranging
+  uint32_t budget = (50U * 1000U - 2500U) << 12;                         // 50 ms timing budget
+  for (uint8_t q = 0; q < 2; q++) {
+    uint32_t tmp = macro * (q == 0 ? 16U : 12U);
+    uint32_t lo = ((budget + ((tmp >> 6) >> 1)) / (tmp >> 6)) - 1U;
+    uint16_t hi = 0;
+    while ((lo & 0xFFFFFF00U) > 0U) { lo >>= 1; hi++; }
+    if (!tof_w16(q == 0 ? R_RANGE_A : R_RANGE_B, (uint16_t)((hi << 8) + (uint16_t)(lo & 0xFFU)))) return false;
+  }
+  if (!tof_w8(R_START, 0x21) || !tof_wait_ready(1000)) return false;
+  return tof_w8(R_CLEAR_INT, 0x01);
+}
+
+// -1 nothing in front, -2 sensor lost, -3 no new measurement
+static int32_t tof_measure() {
+  bool ready = false;
+  if (!tof_ready(&ready)) return -2;
+  if (!ready) return -3;
+  uint8_t status;
+  uint16_t spads, mm;
+  k_mutex_lock(&bus_lock, K_FOREVER);   // keep the four transactions of one measurement together
+  tof_w8(R_CLEAR_INT, 0x01);
+  bool ok = tof_r8(R_RANGE_STATUS, &status) && tof_r16(R_SPADS, &spads) && tof_r16(R_DISTANCE, &mm);
+  k_mutex_unlock(&bus_lock);
+  if (!ok) return -2;
+  if ((status & 0x1F) != 0x09 || spads == 0 || mm == 0) return -1;   // 0 mm means "nothing"
+  return (int32_t)mm;
+}
+
+static void poll_tof(uint32_t now) {
+  if (!(modules_mask & (1u << M_DISTANCE))) return;
+  if (!hub_select(CH_TOTEM)) return;
+  if (!tof_started) {
+    uint16_t id = 0;
+    tof_started = tof_r16(R_ID, &id) && id == 0xEBAA && tof_start();
+    if (!tof_started) { set_module(M_DISTANCE, false); return; }
+  }
+  int32_t m = tof_measure();
+  if (m == -2) { tof_started = false; set_module(M_DISTANCE, false); return; }
+  if (m == -3) return;
+  bool changed = (m < 0) != (tof_last < 0) || (m >= 0 && abs(m - tof_last) > 10);
+  if (changed && now - tof_last_sent >= 100) {
+    tof_last = m;
+    tof_last_sent = now;
+    Event ev = {2, m, 0, 0};
+    k_msgq_put(&events, &ev, K_NO_WAIT);
+  }
+}
+
+// ============================================================ thermo (HS3003)
+static void poll_thermo(uint8_t n, uint32_t now) {
+  if (!(modules_mask & (1u << THERMO_BIT[n]))) return;
+  if (thermo_phase[n] == 0) {
+    if (now - thermo_at[n] < THERMO_PERIOD_MS) return;
+    // measurement request: the address alone, or with one zero byte
+    if (hub_select(CH_THERMO[n]) && (bus_write(ADDR_THERMO, nullptr, 0) || bus_write(ADDR_THERMO, (const uint8_t *)"\0", 1))) {
+      thermo_phase[n] = 1;
+      thermo_at[n] = now;
+    } else {
+      set_module(THERMO_BIT[n], false);
+      thermo_at[n] = now;
+    }
+  } else if (now - thermo_at[n] >= THERMO_WAIT_MS) {
+    uint8_t d[4];
+    thermo_phase[n] = 0;
+    thermo_at[n] = now;
+    if (!hub_select(CH_THERMO[n]) || !bus_read(ADDR_THERMO, d, 4)) { set_module(THERMO_BIT[n], false); return; }
+    if ((d[0] >> 6) != 0) return;                   // stale data: wait for the next one
+    uint16_t rh_raw = ((uint16_t)(d[0] & 0x3F) << 8) | d[1];
+    uint16_t t_raw = (((uint16_t)d[2] << 8) | d[3]) >> 2;
+    int32_t rh = (int32_t)((uint32_t)rh_raw * 10000U / 16383U);          // % x100
+    int32_t tc = (int32_t)((uint32_t)t_raw * 16500U / 16383U) - 4000;     // °C x100
+    Event ev = {3, n, tc, rh};
+    k_msgq_put(&events, &ev, K_NO_WAIT);
+  }
+}
+
+static void probe_totem_and_thermo() {
+  for (uint8_t n = 0; n < 2; n++) set_module(THERMO_BIT[n], hub_select(CH_THERMO[n]) && bus_probe(ADDR_THERMO));
+  if (hub_select(CH_TOTEM)) {
+    bool had = modules_mask & (1u << M_BUTTONS);
+    set_module(M_BUTTONS, bus_probe(ADDR_BUTTONS));
+    if (!had && (modules_mask & (1u << M_BUTTONS))) req_leds_dirty = true;
+    bool tof = bus_probe(ADDR_TOF);
+    if (!tof) tof_started = false;
+    set_module(M_DISTANCE, tof);
+  }
+}
+
+// ============================================================ io thread
+static void do_scan();
+static void io_thread(void *, void *, void *) {
+  uint32_t next_frame = 0, next_button = 0, next_tof = 0, next_probe = 0;
+  bool first = true;
+  for (;;) {
+    uint32_t now = k_uptime_get_32();
+
+    if (first || now >= next_probe) {
+      next_probe = now + PROBE_MS;
+      if (first || !hub_addr) hub_find();
+      if (first || !relay_addr) relay_find();
+      probe_lights();
+      probe_totem_and_thermo();
+      first = false;
+    }
+
+    // relay requests (the boot request switches it off)
+    int8_t rr;
+    k_mutex_lock(&state_lock, K_FOREVER);
+    rr = req_relay; req_relay = -1;
+    k_mutex_unlock(&state_lock);
+    if (rr >= 0 && !relay_command(rr == 1)) {
+      k_mutex_lock(&state_lock, K_FOREVER);
+      if (req_relay < 0) req_relay = rr;     // try again on the next pass
+      k_mutex_unlock(&state_lock);
+    }
+
+    // Linux silent for too long: fan off, lights back to the waiting breath
+    if (linux_seen && now - last_linux_ms > LINUX_SILENT_MS) {
+      linux_seen = false;
+      relay_command(false);
+      for (uint8_t li = 0; li < N_LIGHTS; li++) { cur_light[li] = LightCmd(); cur_light[li].started = now; }
+      party_on = false;
+    }
+
+    if (scan_channel >= 0) do_scan();
+
+    if (now >= next_button) {
+      next_button = now + BUTTON_MS;
+      poll_buttons();
+      write_leds(now);
+    }
+    if (now >= next_tof) {
+      next_tof = now + TOF_MS;
+      poll_tof(now);
+    }
+    poll_thermo(0, now);
+    poll_thermo(1, now);
+
+    if (now >= next_frame) {
+      next_frame = now + FRAME_MS;
+      PartyCmd p;
+      k_mutex_lock(&state_lock, K_FOREVER);
+      for (uint8_t li = 0; li < N_LIGHTS; li++) {
+        if (req_light_dirty[li]) {
+          cur_light[li] = req_light[li];
+          cur_light[li].started = now;
+          req_light_dirty[li] = false;
+        }
+      }
+      p = req_party;
+      req_party.pending = false;
+      k_mutex_unlock(&state_lock);
+      if (p.pending) {
+        party_bpm10 = p.bpm10;
+        party_seed = p.seed ? p.seed : 1;
+        party_start = now + p.delay;
+        party_end = party_start + p.duration;
+        party_on = true;
+      }
+      if (party_on && now >= party_end) party_on = false;
+      for (uint8_t li = 0; li < N_LIGHTS; li++) {
+        LightCmd &c = cur_light[li];
+        if (c.duration && now - c.started >= c.duration) { c.effect = FX_OFF; c.duration = 0; }
+      }
+      if (party_on && now >= party_start) render_party(now);
+      else for (uint8_t li = 0; li < N_LIGHTS; li++) render_light(li, now);
+      flush_lights();
+    }
+    k_msleep(2);
+  }
+}
+
+// ============================================================ Bridge handlers
+// They only touch the shared state: never the bus (except scan, under the
+// bus lock) and never the Bridge itself.
+static void seen_linux() { last_linux_ms = k_uptime_get_32(); linux_seen = true; }
+
+int version() { seen_linux(); return PROTOCOL; }
+
+int ping() { seen_linux(); return (int)(k_uptime_get_32() & 0x7FFFFFFF); }
+
+bool light(int index, int effect, int r, int g, int b, int bri, int speed, int duration_ms) {
+  seen_linux();
+  if (index < 0 || index >= N_LIGHTS) return false;
+  k_mutex_lock(&state_lock, K_FOREVER);
+  LightCmd &c = req_light[index];
+  c.effect = (uint8_t)effect; c.r = (uint8_t)r; c.g = (uint8_t)g; c.b = (uint8_t)b;
+  c.bri = (uint8_t)constrain(bri, 0, 100); c.speed = (uint8_t)constrain(speed, 0, 100);
+  c.duration = duration_ms > 0 ? (uint32_t)duration_ms : 0;
+  req_light_dirty[index] = true;
+  k_mutex_unlock(&state_lock);
+  return true;
+}
+
+bool party(int bpm10, int seed, int duration_ms, int delay_ms) {
+  seen_linux();
+  k_mutex_lock(&state_lock, K_FOREVER);
+  req_party.pending = true;
+  req_party.bpm10 = (uint32_t)constrain(bpm10, 600, 2000);
+  req_party.seed = (uint32_t)seed;
+  req_party.duration = (uint32_t)constrain(duration_ms, 1000, 120000);
+  req_party.delay = (uint32_t)constrain(delay_ms, 0, 2000);
+  k_mutex_unlock(&state_lock);
+  return true;
+}
+
+int relay(int on) {
+  seen_linux();
+  k_mutex_lock(&state_lock, K_FOREVER);
+  req_relay = on ? 1 : 0;
+  k_mutex_unlock(&state_lock);
+  return on ? 1 : 0;
+}
+
+int relay_now() { seen_linux(); return relay_state; }
+
+bool leds(int mask, int blink) {
+  seen_linux();
+  k_mutex_lock(&state_lock, K_FOREVER);
+  req_leds = (uint8_t)(mask & 7); req_blink = (uint8_t)(blink & 7); req_leds_dirty = true;
+  k_mutex_unlock(&state_lock);
+  return true;
+}
+
+bool limits(int max_brightness, int budget) {
+  seen_linux();
+  k_mutex_lock(&state_lock, K_FOREVER);
+  max_bri = (uint8_t)constrain(max_brightness, 0, 100);
+  budget_ma = (uint16_t)constrain(budget, 50, 1500);
+  for (uint8_t li = 0; li < N_LIGHTS; li++) sent_valid[li] = false;
+  k_mutex_unlock(&state_lock);
+  return true;
+}
+
+int modules() { seen_linux(); return (int)modules_mask; }
+
+// Which addresses answer on a hub channel (8 = main bus), 32 per block.
+// The io thread does it, because it is the only owner of the bus.
+int scan(int channel, int block) {
+  seen_linux();
+  if (block < 0 || block > 3) return 0;
+  k_sem_reset(&scan_done);
+  scan_block = block;
+  scan_channel = channel;
+  if (k_sem_take(&scan_done, K_MSEC(800)) != 0) return -1;
+  return (int)scan_result;
+}
+
+static void do_scan() {
+  int channel = scan_channel, block = scan_block;
+  if (channel < 0 || block < 0) return;
+  scan_channel = -1;
+  uint32_t found = 0;
+  hub_select(channel < 8 ? (int8_t)channel : -1);
+  for (uint8_t i = 0; i < 32; i++) {
+    uint8_t a = (uint8_t)(block * 32 + i);
+    if (a < 0x01 || a > 0x77) continue;
+    if (bus_probe(a)) found |= (1u << i);
+  }
+  scan_result = found;
+  k_sem_give(&scan_done);
+}
+
+// ============================================================ setup / loop
+void setup() {
+  bus_recover();
+  Wire1.begin();
+  Wire1.setClock(100000);            // Modulino run at 100 kHz; the UNO Q default is 400 kHz
+  for (uint8_t li = 0; li < N_LIGHTS; li++) { cur_light[li].started = 0; req_light_dirty[li] = false; }
+  req_relay = 0;                     // the latching relay may still be closed from before a power cut
+  k_thread_create(&io_thread_data, io_stack, K_THREAD_STACK_SIZEOF(io_stack),
+                  io_thread, NULL, NULL, NULL, 7, 0, K_NO_WAIT);
+
+  Bridge.begin();                    // waits until arduino-router opens the serial line
+  Bridge.provide("version", version);
+  Bridge.provide("ping", ping);
+  Bridge.provide("light", light);
+  Bridge.provide("party", party);
+  Bridge.provide("relay", relay);
+  Bridge.provide("relay_state", relay_now);
+  Bridge.provide("leds", leds);
+  Bridge.provide("limits", limits);
+  Bridge.provide("modules", modules);
+  Bridge.provide("scan", scan);
+  bridge_ready = true;
+  Event ev = {4, (int32_t)modules_mask, 0, 0};
+  k_msgq_put(&events, &ev, K_NO_WAIT);
+}
+
+void loop() {
+  Event ev;
+  while (k_msgq_get(&events, &ev, K_NO_WAIT) == 0) {
+    switch (ev.kind) {
+      case 1: Bridge.notify("btn", (int)ev.a, (int)ev.b); break;
+      case 2: Bridge.notify("dist", (int)ev.a); break;
+      case 3: Bridge.notify("thermo", (int)ev.a, (int)ev.b, (int)ev.c); break;
+      case 4: Bridge.notify("mods", (int)ev.a); break;
+    }
+  }
+  delay(5);
+}

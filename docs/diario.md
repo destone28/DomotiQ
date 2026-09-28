@@ -38,3 +38,12 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
 - Accesso dal PC con una chiave dedicata (`~/.ssh/id_ed25519_domotiq`, alias `casa1` in `~/.ssh/config`).
 - **`arduino-app-cli system update` va lanciato come utente `arduino`**, non con `sudo`: rifiuta di girare come root e chiama `sudo apt-get` da sé. Lanciato dentro una sessione `adb shell`, si interrompe se la sessione si chiude: meglio `systemd-run --uid=arduino`.
 - **L'aggiornamento si fermava** con "alsa-ucm-conf : Depends: libasound2t64 (>= 1.2.15)". L'immagine preferisce da trixie-backports (priorità 900) i profili audio, il kernel, i firmware e mesa, ma non la libreria ALSA. La nuova versione dei profili richiede la libreria di backports. Rimedio: installare da backports anche `libasound2t64`, `libasound2-data`, `libatopology2t64`, poi ripetere l'aggiornamento. Da fare anche sulla casa 2, e lo script d'installazione lo gestisce.
+
+**Firmware della MCU (29/9, notte).**
+- L'aggiornamento di sistema ha portato arduino-app-cli 0.13.0, arduino-cli 1.5.1, il kernel 7.0 e il core `arduino:zephyr` **1.0.0** (non più 0.52.0 come in Amelie). Invece di tornare indietro si usa la 1.0.0: è ciò che il sistema reinstallerebbe comunque a ogni aggiornamento.
+- Il core 1.0.0 ha tre modi di avvio dello sketch: *Wait for Linux* (predefinito), *Immediate*, *Wait for App*. Si usa **Immediate**: il Latch Relay resta chiuso senza corrente, e dopo un blackout la ventola del barbecue ripartirebbe per i circa 40 secondi del boot di Linux. Con Immediate lo sketch la spegne subito.
+- Caricamento dalla scheda: `remoteocd upload -f flash_sketch.cfg <loader Zephyr>.elf <sketch>.elf-zsk.bin`. Lo script OpenOCD riscrive il loader solo se è diverso, poi lo sketch a 0x8100000. Nessuna password.
+- Prima compilazione riuscita: 116 KB di flash (14 %), 54 KB di RAM (20 %). Prova del Bridge da Linux con un client MessagePack sul socket del router: `$/register`, `version` = 1, `ping`, `light` (8 argomenti), `relay` rispondono; `modules` = 0 perché non c'è ancora nessun Modulino collegato.
+- Il socket `/run/arduino-router.sock` ha permessi 0666: qualsiasi processo della scheda può parlare con la MCU.
+- La scansione I2C chiesta da Linux la esegue il thread di I/O, unico padrone del bus: dal thread del Bridge avrebbe potuto cambiare il canale dell'Hub a metà di un'altra transazione.
+- Sulla scheda mancavano `rsync` e il modulo Python `msgpack`: installati da apt.
