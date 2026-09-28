@@ -1,0 +1,67 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it -->
+<!-- SPDX-License-Identifier: MIT -->
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DomotiQ – tabellone</title>
+<link rel="stylesheet" href="/static/css/app.css">
+<style>
+  body { padding: 0; }
+  .board { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; padding: 14px; height: 100vh; }
+  .side { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+  .live img { width: 100%; border-radius: 14px; }
+  #events { overflow: auto; flex: 1; }
+  .said { font-size: 22px; font-weight: 600; min-height: 1.5em; }
+  @media (max-width: 800px) { .board { grid-template-columns: 1fr; height: auto; } }
+</style>
+</head>
+<body>
+<div class="board">
+  <div class="plan-wrap" id="plan"></div>
+  <div class="side">
+    <div class="live"><img src="/api/stream?fps=4" alt=""></div>
+    <div class="card said" id="said">🔊</div>
+    <div class="card" id="events"><ul class="list" id="list"></ul></div>
+  </div>
+</div>
+<script type="module">
+import { Plan } from "/static/js/plan.js";
+import { setLang } from "/static/js/i18n.js";
+setLang(navigator.language.startsWith("it") ? "it" : "en");
+let state = null, plan = null;
+const list = document.getElementById("list");
+function addLine(text) {
+  const li = document.createElement("li");
+  li.innerHTML = `<span class="grow"><span class="title"></span><span class="sub mono">${new Date().toLocaleTimeString()}</span></span>`;
+  li.querySelector(".title").textContent = text;
+  list.prepend(li);
+  while (list.children.length > 30) list.lastChild.remove();
+}
+function connect() {
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onmessage = (m) => {
+    const msg = JSON.parse(m.data);
+    if (msg.type === "hello") {
+      state = msg.data;
+      document.getElementById("plan").innerHTML = "";
+      plan = new Plan(document.getElementById("plan"), state, {});
+      return;
+    }
+    if (!state) return;
+    const map = { tracks: "tracks", lights: "lights", counts: "counts", alerts: "alerts" };
+    if (map[msg.type]) state[map[msg.type]] = msg.data;
+    if (msg.type === "sensors") Object.assign(state, msg.data);
+    if (msg.type === "house") Object.assign(state, { party: msg.data.party, grill: msg.data.grill });
+    if (msg.type === "identities") state.identities = msg.data;
+    if (msg.type === "say") { document.getElementById("said").textContent = "🔊 " + msg.data.text; addLine("“" + msg.data.text + "”"); }
+    if (msg.type === "notify") addLine((msg.data.text.it || msg.data.text.en || ""));
+    plan && plan.update(state);
+  };
+  ws.onclose = () => setTimeout(connect, 2000);
+}
+connect();
+</script>
+</body>
+</html>

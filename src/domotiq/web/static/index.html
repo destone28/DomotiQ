@@ -1,0 +1,49 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it -->
+<!-- SPDX-License-Identifier: MIT -->
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#00878f">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>DomotiQ</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+<header class="top">
+  <button class="brand" data-go="home" aria-label="DomotiQ">
+    <img src="/static/icons/icon.svg" alt="" width="28" height="28">
+    <span class="brand-name">DomotiQ</span>
+    <span class="house-name" id="house-name"></span>
+  </button>
+  <div class="top-right">
+    <span class="dots" id="status-dots" title=""></span>
+    <button class="chip" id="lang-toggle" aria-label="Lingua / Language">IT</button>
+  </div>
+</header>
+
+<div id="banners"></div>
+
+<main id="screen" tabindex="-1"></main>
+
+<div id="subtitle" class="subtitle" hidden></div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+<div id="modal" class="modal" hidden><div class="modal-card" role="dialog" aria-modal="true"></div></div>
+
+<nav class="bottom">
+  <button data-go="home"><svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z"/></svg><span data-t="nav.home"></span></button>
+  <button data-go="live"><svg viewBox="0 0 24 24"><path d="M4 7h11v10H4zM15 10l5-3v10l-5-3z"/></svg><span data-t="nav.live"></span></button>
+  <button data-go="commands"><svg viewBox="0 0 24 24"><path d="M12 2l2.5 6.5L21 9l-5 4.5L17.5 21 12 17l-5.5 4L8 13.5 3 9l6.5-.5z"/></svg><span data-t="nav.commands"></span></button>
+  <button data-go="events"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg><span data-t="nav.events"></span></button>
+  <button data-go="more"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg><span data-t="nav.more"></span></button>
+</nav>
+
+<script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

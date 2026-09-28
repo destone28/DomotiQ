@@ -56,7 +56,7 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna qu
 | Componente | Licenza | Uso |
 |---|---|---|
 | Open Sans | SIL OFL 1.1 | testo |
-| Roboto Mono | Apache-2.0 | numeri e codice |
+| Roboto Mono | SIL OFL 1.1 | numeri e codice |
 
 ## Sviluppo (non installati sulla scheda)
 | Strumento | Licenza | Uso |

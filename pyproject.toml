@@ -1,0 +1,41 @@
+[project]
+name = "domotiq"
+version = "0.1.0"
+description = "A 1:20 smart home diorama that runs on a single Arduino UNO Q, fully offline"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Emilio Destratis" }]
+
+# Exact versions tested on the UNO Q are pinned in requirements.txt,
+# which is what scripts/install.sh installs on the board.
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "numpy>=2.0",
+    "opencv-python-headless>=4.10",
+    "msgpack>=1.0",
+    "segno>=1.6",
+]
+
+[project.optional-dependencies]
+voice = ["vosk>=0.3.45"]
+vision = ["onnxruntime>=1.20"]
+dev = ["pytest>=8.0", "httpx>=0.27", "pillow>=10.0"]
+
+[project.scripts]
+domotiq = "domotiq.app:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+domotiq = ["web/static/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it · CC-BY-4.0 -->
+  <rect width="64" height="64" rx="14" fill="#00878f"/>
+  <path d="M13 31 32 15l19 16v19H13z" fill="none" stroke="#ffffff" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="32" cy="38" r="6.5" fill="none" stroke="#f28c28" stroke-width="4"/>
+  <path d="M35.5 41.5l6.5 6.5" stroke="#f28c28" stroke-width="4" stroke-linecap="round"/>
+</svg>

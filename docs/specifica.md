@@ -444,7 +444,7 @@ Se dopo 2 minuti dall'avvio l'ora è ancora sconosciuta, la casa lo dice una vol
 
 ### 15.1 Tecnica
 - HTML, CSS e JavaScript moderni, moduli ES, nessuna compilazione, nessuna libreria esterna. Tutto servito dalla scheda.
-- Caratteri **Open Sans** e **Roboto Mono**, quelli dei siti Arduino, inclusi come file woff2 (licenze OFL e Apache-2.0).
+- Caratteri **Open Sans** e **Roboto Mono**, quelli dei siti Arduino, inclusi come file woff2 (licenza OFL-1.1).
 - Tempo reale via WebSocket (`/ws`): all'apertura lo stato completo, poi solo i cambiamenti. Diretta MJPEG su `/api/stream`.
 - Foto: `<input type="file" accept="image/*" capture="environment">`, ridotte nel telefono a 1024 px prima dell'invio. Funziona senza HTTPS.
 - Nessun service worker (serve HTTPS); manifest e icona per "Aggiungi a Home".
@@ -658,7 +658,7 @@ Commit in inglese, piccoli e frequenti, direttamente su `main`; tag `v0.1`…`v1
 | Piper (piper1-gpl) | GPL-3.0, programma separato | sintesi vocale |
 | Voci serena (IT), ljspeech (EN) | CC BY 4.0; pubblico dominio | sintesi vocale |
 | segno | BSD-3 | QR del cartello |
-| Open Sans; Roboto Mono | OFL-1.1; Apache-2.0 | caratteri |
+| Open Sans; Roboto Mono | OFL-1.1 | caratteri |
 | arduino:zephyr; Arduino_RouterBridge | Apache-2.0; MPL-2.0 | firmware |
 
 L'elenco definitivo, con le versioni, sta in `docs/strumenti-e-licenze.md` e nelle attribuzioni della guida.
