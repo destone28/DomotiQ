@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Downloaded by scripts/install.sh
+models/*
+!models/.gitkeep
+llama.cpp/
+
+# Runtime data written by the device
+var/
+*.log
+
+# Firmware build output
+firmware/**/build/
+
+# System
+.DS_Store
+.idea/
+.vscode/
