@@ -25,7 +25,7 @@ Uploading from the board itself uses the local OpenOCD and needs no password. Te
 | Hub channel | Module | Address |
 |---|---|---|
 | main bus | Modulino Hub (TCA9548A) | 0x70–0x77, searched at boot |
-| main bus | Modulino Latch Relay | 0x02 (factory), or 0x10 |
+| main bus | Modulino Latch Relay | 0x02 or 0x15 (factory, depending on the batch), or 0x10 |
 | 0 | Pixels, garage | 0x36 |
 | 1 | Pixels, bedroom | 0x36 |
 | 2 | Pixels, kitchen | 0x36 |

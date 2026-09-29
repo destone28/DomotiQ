@@ -28,7 +28,7 @@
 <rect x="460" y="400" width="180" height="58" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="550.0" y="426.0" text-anchor="middle" class="b">Modulino Hub</text><text x="550.0" y="444.0" text-anchor="middle" class="s">TCA9548A · 0x70</text>
 <path d="M550 458 L550 520" stroke="#00878f" stroke-width="2" fill="none"/>
 <text x="560" y="495" class="s" fill="#00878f" text-anchor="start">bus principale</text>
-<rect x="460" y="520" width="180" height="58" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="550.0" y="546.0" text-anchor="middle" class="b">Modulino Latch Relay</text><text x="550.0" y="564.0" text-anchor="middle" class="s">0x02</text>
+<rect x="460" y="520" width="180" height="58" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="550.0" y="546.0" text-anchor="middle" class="b">Modulino Latch Relay</text><text x="550.0" y="564.0" text-anchor="middle" class="s">0x02 / 0x15</text>
 <path d="M550 578 L550 630" stroke="#c0392b" stroke-width="2" fill="none"/>
 <text x="560" y="610" class="s" fill="#c0392b" text-anchor="start">contatto NA</text>
 <rect x="450" y="630" width="200" height="48" rx="10" fill="#ffffff" stroke="#c0392b" stroke-width="2"/><text x="550.0" y="659.0" text-anchor="middle" class="b">Ventola 5 V (barbecue)</text>

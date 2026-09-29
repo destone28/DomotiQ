@@ -13,7 +13,7 @@
  * 256 bytes per message at 115200 baud, far too little for animation frames.
  *
  * ── Bus layout ──────────────────────────────────────────────────────────────
- *   UNO Q ── Hub (TCA9548A, 0x70..0x77) ── Latch Relay (0x02, main bus)
+ *   UNO Q ── Hub (TCA9548A, 0x70..0x77) ── Latch Relay (0x02, 0x15 or 0x10, main bus)
  *   Hub ch0 Pixels garage     ch1 Pixels bedroom   ch2 Pixels kitchen
  *       ch3 Pixels living     ch4 Thermo bathroom  ch5 Pixels bathroom
  *       ch6 Thermo sideboard → Buttons (0x3E) → Distance (0x29)
@@ -50,8 +50,10 @@ static const uint8_t ADDR_PIXELS = 0x36;
 static const uint8_t ADDR_THERMO = 0x44;
 static const uint8_t ADDR_BUTTONS = 0x3E;
 static const uint8_t ADDR_TOF = 0x29;
-static const uint8_t ADDR_RELAY_A = 0x02;   // factory address
-static const uint8_t ADDR_RELAY_B = 0x10;   // if moved with AddressChanger
+// The Latch Relay answers at 0x02 in the Modulino library (0x04 in 8-bit form), at 0x15 in the
+// datasheet of September 2026 (0x2A in 8-bit form), at 0x10 if moved with AddressChanger:
+// the firmware looks at all three.
+static const uint8_t ADDR_RELAY[] = {0x02, 0x15, 0x10};
 static const uint8_t HUB_FIRST = 0x70, HUB_LAST = 0x77;
 
 static const uint8_t N_LIGHTS = 5;
@@ -246,8 +248,8 @@ static bool relay_command(bool on) {
 static void relay_find() {
   hub_select(-1);
   relay_addr = 0;
-  if (bus_probe(ADDR_RELAY_A)) relay_addr = ADDR_RELAY_A;
-  else if (bus_probe(ADDR_RELAY_B)) relay_addr = ADDR_RELAY_B;
+  for (uint8_t i = 0; i < sizeof(ADDR_RELAY) && !relay_addr; i++)
+    if (bus_probe(ADDR_RELAY[i])) relay_addr = ADDR_RELAY[i];
   set_module(M_RELAY, relay_addr != 0);
 }
 

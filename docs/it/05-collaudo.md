@@ -28,7 +28,7 @@ Apri **Altro → Diagnostica**.
 
 - La scheda **Modulino** mostra un pallino verde e `v1`, la versione del protocollo del firmware. Un pallino rosso vuol dire che Linux non riesce a parlare con il microcontrollore.
 - Sotto, ogni modulo ha un pallino verde o rosso: Hub, Latch Relay, i cinque Pixels (garage, camera, cucina, soggiorno, bagno), i due Thermo (bagno, credenza), Buttons e Distance.
-- **Scansione I2C** elenca gli indirizzi che rispondono su ogni canale dell'Hub. Oltre all'Hub (0x70–0x77) e al Latch Relay (0x02 o 0x10), che stanno sul bus principale e rispondono su tutti i canali, ci si aspetta:
+- **Scansione I2C** elenca gli indirizzi che rispondono su ogni canale dell'Hub. Oltre all'Hub (0x70–0x77) e al Latch Relay (0x02, 0x15 o 0x10), che stanno sul bus principale e rispondono su tutti i canali, ci si aspetta:
 
   | Canale | Atteso |
   |---|---|

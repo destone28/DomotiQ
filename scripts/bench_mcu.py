@@ -29,7 +29,7 @@ from domotiq.mcu import MODULES, Mcu, McuError, RouterClient  # noqa: E402
 HUB_CHANNELS = {0: "Pixels garage", 1: "Pixels camera", 2: "Pixels cucina", 3: "Pixels soggiorno",
                 4: "Thermo bagno", 5: "Pixels bagno", 6: "Thermo credenza, Buttons, Distance", 7: "libero"}
 KNOWN = {0x36: "Pixels", 0x44: "Thermo", 0x3E: "Buttons", 0x29: "Distance", 0x02: "Latch Relay",
-         0x10: "Latch Relay (moved)"}
+         0x15: "Latch Relay", 0x10: "Latch Relay (moved)"}
 SOLID, OFF = 1, 0
 
 

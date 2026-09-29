@@ -28,7 +28,7 @@ Open **More → Diagnostics**.
 
 - The **Modulino** card shows a green dot and `v1`, the protocol version of the firmware. A red dot means Linux cannot talk to the microcontroller.
 - Below it, every module has a green or red dot: Hub, Latch Relay, the five Pixels (garage, bedroom, kitchen, living room, bathroom), the two Thermo (bathroom, sideboard), Buttons and Distance.
-- **I2C scan** lists the addresses that answer on each Hub channel. Expected, besides the Hub (0x70–0x77) and the Latch Relay (0x02 or 0x10), which sit on the main bus and answer on every channel:
+- **I2C scan** lists the addresses that answer on each Hub channel. Expected, besides the Hub (0x70–0x77) and the Latch Relay (0x02, 0x15 or 0x10), which sit on the main bus and answer on every channel:
 
   | Channel | Expected |
   |---|---|

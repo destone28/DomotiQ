@@ -50,7 +50,7 @@ Il bus principale va dalla UNO Q al **Modulino Hub** e prosegue fino al **Latch 
 | Canale dell'Hub | Modulo | Dove | Indirizzo (7 bit) |
 |---|---|---|---|
 | bus principale | Modulino Hub (TCA9548A) | sulla sua placca (`33_Placca_Hub`) | 0x70 (cercato tra 0x70 e 0x77) |
-| bus principale | Latch Relay | sulla sua placca (`33_Placca_Relay`) | 0x02 (di fabbrica) o 0x10 |
+| bus principale | Latch Relay | sulla sua placca (`33_Placca_Relay`) | 0x02 o 0x15 (di fabbrica, secondo il lotto) o 0x10 |
 | 0 | Pixels | garage, sulla parete posteriore | 0x36 |
 | 1 | Pixels | camera, sulla parete verso il garage | 0x36 |
 | 2 | Pixels | cucina, sulla parete verso il soggiorno | 0x36 |
@@ -64,7 +64,7 @@ Note:
 
 - **Stessi indirizzi, canali diversi.** I cinque Pixels rispondono tutti a 0x36 e i due Thermo a 0x44. Non è un problema: il firmware apre un solo canale dell'Hub alla volta.
 - **L'indirizzo dell'Hub.** L'Hub risponde a 0x70; la pagina del negozio dice 0x71. All'avvio il firmware cerca in tutto l'intervallo 0x70–0x77, quindi vanno bene tutti e due.
-- **L'indirizzo del Latch Relay.** Arriva a 0x02. Se sul bus crea problemi, si può spostare a 0x10 con il Modulino AddressChanger; il firmware guarda entrambi gli indirizzi, quindi non cambia nient'altro.
+- **L'indirizzo del Latch Relay.** La libreria Modulino gli dà 0x02, il datasheet aggiornato a settembre 2026 dà 0x15 (0x04 e 0x2A nella forma a 8 bit che usano i documenti), quindi dipende dal lotto. Si può anche spostare a 0x10 con il Modulino AddressChanger. Il firmware guarda tutti e tre gli indirizzi, quindi non cambia nient'altro; la **Scansione I2C** mostra quale usa il tuo.
 - **Il canale 6 è una catena.** Parte dal Thermo della credenza in soggiorno e prosegue fino al modulo Buttons e al sensore Distance dentro il totem, appena fuori dalla facciata del soggiorno. C'è un solo modulo Buttons, quindi non serve cambiare nessun indirizzo.
 - **L'ordine dei canali.** I numeri delle luci nel firmware seguono i canali dell'Hub: 0 garage, 1 camera, 2 cucina, 3 soggiorno, 4 bagno (il Pixels del bagno sta sul canale 5 perché il canale 4 ospita il Thermo del bagno).
 - **Collegare un modulo dopo.** Il firmware cerca i moduli mancanti ogni 5 secondi, quindi un modulo collegato mentre la casa è accesa compare da solo. Un modulo conta come presente solo dopo aver risposto sul bus.

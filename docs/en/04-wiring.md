@@ -50,7 +50,7 @@ The main bus goes from the UNO Q to the **Modulino Hub** and on to the **Latch R
 | Hub channel | Module | Where | Address (7 bit) |
 |---|---|---|---|
 | main bus | Modulino Hub (TCA9548A) | on its plate (`33_Placca_Hub`) | 0x70 (searched between 0x70 and 0x77) |
-| main bus | Latch Relay | on its plate (`33_Placca_Relay`) | 0x02 (factory) or 0x10 |
+| main bus | Latch Relay | on its plate (`33_Placca_Relay`) | 0x02 or 0x15 (factory, depending on the batch) or 0x10 |
 | 0 | Pixels | garage, on the back wall | 0x36 |
 | 1 | Pixels | bedroom, on the wall towards the garage | 0x36 |
 | 2 | Pixels | kitchen, on the wall towards the living room | 0x36 |
@@ -64,7 +64,7 @@ Notes:
 
 - **Same addresses, different channels.** The five Pixels all answer at 0x36 and the two Thermo at 0x44. That is fine: the firmware opens only one Hub channel at a time.
 - **The Hub address.** The Hub answers at 0x70; the shop page says 0x71. The firmware searches the whole range 0x70–0x77 at boot, so either works.
-- **The Latch Relay address.** It comes at 0x02. If it causes trouble on the bus it can be moved to 0x10 with the Modulino AddressChanger; the firmware looks at both addresses, so nothing else changes.
+- **The Latch Relay address.** The Modulino library gives it 0x02, the datasheet updated in September 2026 gives 0x15 (0x04 and 0x2A in the 8-bit form the documents use), so it depends on the batch. It can also be moved to 0x10 with the Modulino AddressChanger. The firmware looks at all three addresses, so nothing else changes; **I2C scan** shows which one yours uses.
 - **Channel 6 is a chain.** It starts at the Thermo of the sideboard in the living room and continues to the Buttons and the Distance sensor inside the totem, just outside the front of the living room. There is only one Buttons module, so no address needs changing.
 - **Order of the channels.** The light numbers in the firmware follow the Hub channels: 0 garage, 1 bedroom, 2 kitchen, 3 living room, 4 bathroom (the bathroom Pixels is on channel 5 because channel 4 holds the bathroom Thermo).
 - **Plugging in later.** The firmware looks for missing modules every 5 seconds, so a module connected while the house runs shows up by itself. A module counts as present only after it has answered on the bus.
