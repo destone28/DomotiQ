@@ -151,6 +151,11 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 
 **Soluzione.** Calibra ([capitolo 5](05-collaudo.md#9-calibrazione-della-webcam)).
 
+### Avviso *La webcam vede tutta la casa diversa*
+**Causa.** Per più di cinque secondi oltre un terzo della casa appare diverso dalla casa vuota: la luce della sala è cambiata molto, qualcosa copre la webcam, oppure la webcam è stata urtata.
+
+**Soluzione.** Controlla la webcam e la sua inquadratura; poi, con la casa vuota, **Altro → Calibrazione → Regola di nuovo la luce** (oppure **Salva la casa vuota**). L'avviso sparisce da solo quando l'immagine torna normale.
+
 ### Compaiono oggetti fantasma, o quelli veri non vengono visti, dopo che la luce del padiglione è cambiata
 **Causa.** L'esposizione bloccata e il riferimento della casa vuota non corrispondono più alla luce del padiglione.
 

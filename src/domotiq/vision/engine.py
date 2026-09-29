@@ -62,6 +62,7 @@ class Engine:
         self._last_ref_update = 0.0
         self._moved = {"checked": 0.0, "shift": 0.0, "count": 0}
         self._background: dict[str, np.ndarray] = {}
+        self._flooded_since = 0.0
         # before the calibration the house does not know where the bathroom is: it assumes the
         # camera is mounted as in the model, with a wide margin
         self._nominal_privacy = Privacy(layout, Calibration.synthetic(*ANALYSIS, layout.camera), margin_mm=45.0)
@@ -179,6 +180,13 @@ class Engine:
             self.tracks, self.observations = [], []
             return []
         obs, fg, _lab = self.segmenter.process(small, now)
+        # most of the house different from the empty one: the hall light changed a lot, or the
+        # camera was covered or knocked; people never cover that much
+        share = float(np.count_nonzero(fg)) / max(float(np.count_nonzero(self.segmenter.mask)), 1.0)
+        if share > 0.35:
+            self._flooded_since = self._flooded_since or now
+        else:
+            self._flooded_since = 0.0
         self.observations = obs
         self.tracks = self.tracker.update(obs, now)
         # the hall light drifts slowly: follow it on the free floor, when nothing moves
@@ -265,6 +273,7 @@ class Engine:
             "tracks": len(self.tracks),
             "hands": len(self.tracker.hands) if self.tracker else 0,
             "moved": self.moved,
+            "flooded": bool(self._flooded_since and self.frame_at - self._flooded_since > 5.0),
             "shift_px": self._moved["shift"],
             "gains": self.segmenter.gains if self.segmenter else {},
             "recording": bool(self._record),

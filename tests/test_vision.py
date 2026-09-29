@@ -254,3 +254,13 @@ def test_engine_commands_and_dataset(engine, renderer, tmp_path):
     st = engine.status()
     assert st["calibrated"] and st["reference"] and not st["moved"]
     assert engine.set_corners([[0, 0], [0.1, 0], [0.1, 0.1], [0, 0.1]])["ok"] is False
+
+
+def test_whole_house_changed_is_reported(engine, renderer):
+    run(engine, renderer, [([], {})] * 3)
+    assert not engine.status()["flooded"]
+    # the hall light turns strongly blue and nobody measured it again
+    engine.segmenter.gain_period = 1e9
+    frames = [([], {"brightness": 0.45, "cast": (1.6, 0.8, 0.6)})] * 70
+    run(engine, renderer, frames, t0=10)
+    assert engine.status()["flooded"]

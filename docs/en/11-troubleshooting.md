@@ -151,6 +151,11 @@ The installer (which needs internet) reloads the firmware when needed; without i
 
 **Fix.** Calibrate ([chapter 5](05-testing.md#9-camera-calibration)).
 
+### Banner *The webcam sees the whole house changed*
+**Cause.** For more than five seconds, more than a third of the house looks different from the empty house: the hall light changed a lot, something covers the camera, or the camera was knocked.
+
+**Fix.** Check the camera and its view; then, with the house empty, **More → Calibration → Adjust to the light again** (or **Save the empty house**). The banner goes away by itself when the view is normal again.
+
 ### Ghost objects appear, or real ones are missed, after the hall light changed
 **Cause.** The locked exposure and the empty-house reference no longer fit the light of the hall.
 

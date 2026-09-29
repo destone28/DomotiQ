@@ -267,11 +267,18 @@ async def periodic(ctx: Context) -> None:
                 if ctx.audio is not None:
                     ctx.house.status["audio"] = ctx.audio.ok
                 ctx.house.status["camera"] = ctx.vision.available
-                if ctx.vision.available and ctx.vision.status().get("moved"):
+                vst = ctx.vision.status() if ctx.vision.available else {}
+                if vst.get("moved"):
                     ctx.house.set_alert("camera-moved", name={"it": "La webcam si è spostata: rifare la calibrazione",
                                                               "en": "The webcam has moved: calibrate again"})
                 else:
                     ctx.house.clear_alert("camera-moved")
+                if vst.get("flooded"):
+                    ctx.house.set_alert("camera-flooded", name={
+                        "it": "La webcam vede tutta la casa diversa: luce della sala cambiata? Rifare «Regola di nuovo la luce»",
+                        "en": "The webcam sees the whole house changed: did the hall light change? Use “Adjust to the light again”"})
+                else:
+                    ctx.house.clear_alert("camera-flooded")
                 ctx.bus.publish("status", **ctx.house.status)
             if not clock_warned and not ctx.clock.known and now - ctx.started > 120:
                 clock_warned = True
