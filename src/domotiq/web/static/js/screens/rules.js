@@ -8,8 +8,8 @@ import { t, tr } from "../i18n.js";
 // field kinds: room, rooms+all, who, identity, num, text2 (it/en), color, effect, time, sensor,
 // quantity, state:<list>, button, scene, op, sound, level, verbosity, bool
 const TRIGGERS = {
-  enter_room: [["room", "room"], ["who", "who"]],
-  exit_room: [["room", "room"], ["who", "who"]],
+  enter_room: [["room", "room+"], ["who", "who"]],
+  exit_room: [["room", "room+"], ["who", "who"]],
   dwell: [["room", "room"], ["seconds", "num", 5], ["repeat_s", "num", 0], ["who", "who"]],
   count_above: [["room", "room"], ["value", "num", 1], ["grace_s", "num", 2], ["repeat_s", "num", 0], ["who", "who"]],
   count_below: [["room", "room"], ["value", "num", 1], ["grace_s", "num", 0], ["who", "who"]],
@@ -56,7 +56,7 @@ function defaults(schema) {
   const o = {};
   for (const [key, kind, def] of schema) {
     if (def !== undefined) o[key] = def;
-    else if (kind === "room") o[key] = "living";
+    else if (kind === "room" || kind === "room+") o[key] = "living";
     else if (kind === "rooms") o[key] = "all";
     else if (kind === "sensor") o[key] = "thermostat";
     else if (kind === "quantity") o[key] = "t";
@@ -91,6 +91,8 @@ function action(rule, a) {
 
 function roomLabel(id) {
   if (id === "all") return t("common.all_rooms");
+  if (id === "indoor") return t("common.indoor_rooms");
+  if (id === "any") return t("common.any_room");
   const r = store.state.layout.rooms.find(x => x.id === id);
   return r ? tr(r.name) : id;
 }
@@ -141,9 +143,11 @@ function field(key, kind, value) {
   const lbl = t("f." + ({ repeat_s: "repeat", grace_s: "grace", distance_cm: "distance", duration_s: "duration", at: "at" }[key] || key));
   const opt = (v, label, sel) => `<option value="${esc(v)}" ${sel ? "selected" : ""}>${esc(label)}</option>`;
   let input;
-  if (kind === "room" || kind === "rooms") {
+  if (kind === "room" || kind === "rooms" || kind === "room+") {
     const rooms = s.layout.rooms.map(r => opt(r.id, tr(r.name), value === r.id));
-    input = `<select data-k="${key}">${kind === "rooms" ? opt("all", t("common.all_rooms"), value === "all") : ""}${rooms.join("")}</select>`;
+    const extra = kind === "rooms" ? opt("all", t("common.all_rooms"), value === "all")
+      : kind === "room+" ? opt("indoor", t("common.indoor_rooms"), value === "indoor") + opt("any", t("common.any_room"), value === "any") : "";
+    input = `<select data-k="${key}">${extra}${rooms.join("")}</select>`;
   } else if (kind === "who") {
     const w = value || {};
     const cats = ["any", "person", "animal", "dog", "cat", "car", "object"];
@@ -159,7 +163,7 @@ function field(key, kind, value) {
     const v = value || {};
     return `<label class="field"><span>${t("f.text_it")}</span><input type="text" data-k="${key}.it" value="${esc(v.it || "")}"></label>
       <label class="field"><span>${t("f.text_en")}</span><input type="text" data-k="${key}.en" value="${esc(v.en || "")}"></label>
-      <p class="muted small">{name} {room} {count} {temp} {rh} {time}</p>`;
+      <p class="muted small">{name} {room} {room_in} {count} {temp} {rh} {time}</p>`;
   } else if (kind === "color") {
     input = `<input type="color" data-k="${key}" value="${esc(value || "#ffffff")}">`;
   } else if (kind === "effect") {

@@ -79,7 +79,7 @@ PATTERNS: list[tuple[str, list[str]]] = [
     ("party", [r"\b(festa|party|balliamo|ballare|musica|let s dance|dance)\b"]),
     ("grill", [r"\b(barbecue|grigliata|griglia|grill|bbq)\b"]),
     ("scene", [r"\bscenari[oa]\b", r"\bmodalita\b", r"\bscene\b", r"\bmode\b", r"\bcinema\b", r"\brelax\b",
-               r"\bbuonanotte\b", r"\bgood night\b"]),
+               r"\bbuonanotte\b", r"\bgood night\b", r"\bbuongiorno\b", r"\bgood morning\b"]),
     ("lights_off", [r"\b(spegni|spengi|turn off|switch off|lights off)\b"]),
     ("lights_on", [r"\b(accendi|illumina|turn on|switch on|lights on|light up)\b", r"\bluce\b.*\b(rossa|verde|blu|gialla|viola|rosa|bianca|azzurra|arancione)\b",
                    r"\b(make|paint|colour|color)\b.*\b(red|green|blue|yellow|purple|pink|white|orange|cyan)\b"]),
@@ -203,7 +203,13 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
             if intent == "count":
                 args["what"] = "animals" if re.search(r"\b(animali|animals|pets|cani|gatti|dogs|cats)\b", t) else "persons"
         elif intent == "scene":
-            scene = find_scene(t) or ("night" if re.search(r"buonanotte|good night|notte|night", t) else None)
+            if re.search(r"buonanotte|good night", t):
+                args["greeting"] = "night"
+            elif re.search(r"buongiorno|good morning", t):
+                args["greeting"] = "morning"
+            scene = find_scene(t) or {"night": "night", "morning": "normal"}.get(args.get("greeting", ""))
+            if not scene and re.search(r"\bnotte\b|\bnight\b", t):
+                scene = "night"
             if not scene:
                 continue
             args["scene"] = scene

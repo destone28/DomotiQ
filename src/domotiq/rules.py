@@ -204,15 +204,23 @@ class RuleEngine:
             except Exception:  # noqa: BLE001
                 log.exception("rule %s failed on %s", rule["id"], ev.type)
 
+    def _room_ok(self, wanted: str | None, room: str | None) -> bool:
+        """A room of the rule: one room, "any" room, or "indoor" (every room inside the house)."""
+        if wanted in (None, "any"):
+            return True
+        if wanted == "indoor":
+            return room in self.house.layout.indoor_rooms()
+        return wanted == room
+
     def _match(self, rule: dict[str, Any], ev: Event, now: float) -> None:
         w = rule["when"]
         t = w["type"]
         d = ev.data
         if t == "enter_room" and ev.type == "room_enter":
-            if w.get("room") in (None, "any", d.get("room")) and _who_ok(w.get("who"), d):
+            if self._room_ok(w.get("room"), d.get("room")) and _who_ok(w.get("who"), d):
                 self.fire(rule, dict(d), now)
         elif t == "exit_room" and ev.type == "room_exit":
-            if w.get("room") in (None, "any", d.get("room")) and _who_ok(w.get("who"), d):
+            if self._room_ok(w.get("room"), d.get("room")) and _who_ok(w.get("who"), d):
                 self.fire(rule, dict(d), now)
         elif t == "dwell":
             key = f"{rule['id']}|{d.get('track')}"

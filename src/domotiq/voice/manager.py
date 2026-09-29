@@ -268,7 +268,12 @@ class Voice:
             await act.lights_off(a.get("room", "all"))
             await self.reply("Spento.", "Off.")
         elif name == "scene":
-            await act.scene(a.get("scene", "normal"))
+            greeting = a.get("greeting")
+            await act.scene(a.get("scene", "normal"), announce=not greeting)
+            if greeting == "night":
+                await self.reply("Buonanotte! Spengo tutto, sogni d'oro.", "Good night! Lights off, sweet dreams.")
+            elif greeting == "morning":
+                await self.reply("Buongiorno! Una bella giornata ci aspetta.", "Good morning! A lovely day ahead.")
         elif name == "party":
             if not await act.party():
                 await self.reply("Un attimo di pausa, poi rifacciamo festa!", "Give me a moment, then we party again!")

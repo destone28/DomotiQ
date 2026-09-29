@@ -130,6 +130,22 @@ def default_rules() -> list[dict[str, Any]]:
             ],
         },
         {
+            "id": "r-away-intruder",
+            "name": {"it": "Intruso con la casa in modalità Via", "en": "Intruder while Away"},
+            "priority": 90, "cooldown_s": 20,
+            "when": {"type": "enter_room", "room": "indoor", "who": {"category": "person"}},
+            "if": [{"type": "scene_is", "scene": "away"}],
+            "then": [
+                {"type": "light", "room": "all", "effect": "alarm", "color": "#ff2010", "brightness": 80,
+                 "duration_s": 10},
+                {"type": "sound", "name": "alarm"},
+                {"type": "say", "text": {"it": "Intruso in casa! {name} è {room_in}.",
+                                         "en": "Intruder in the house! {name} is {room_in}."}},
+                {"type": "notify", "level": "alarm",
+                 "text": {"it": "Intruso: {name}, {room}", "en": "Intruder: {name}, {room}"}},
+            ],
+        },
+        {
             "id": "r-crowded-party",
             "name": {"it": "Festa in soggiorno", "en": "Living room party"},
             "enabled": False, "priority": 50, "cooldown_s": 120,

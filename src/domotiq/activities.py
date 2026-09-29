@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any
 from .lights import FLASH, LightRequest, RULE
 from .model import CATEGORY_NAMES
 from .scenes import SCENES, scene_name
+from .voice.answers import room as room_phrase
 
 if TYPE_CHECKING:
     from .app import Context
@@ -55,6 +56,7 @@ class Actions:
         values = {
             "name": name or {"it": "qualcuno", "en": "someone"}[lang],
             "room": self.ctx.layout.room_label(ctx.get("room") or "", lang) if ctx.get("room") else "",
+            "room_in": room_phrase(self.ctx, ctx.get("room"), lang) if ctx.get("room") else "",
             "count": ctx.get("count", ""),
             "temp": f"{ctx['temp']:.1f}" if isinstance(ctx.get("temp"), (int, float)) else "",
             "rh": f"{ctx['rh']:.0f}" if isinstance(ctx.get("rh"), (int, float)) else "",

@@ -211,3 +211,14 @@ def test_placeholders(env):
     a = Actions(Ctx())
     assert a.fill({"it": "{name} è in {room}"}, {"name": "Marco", "room": "kitchen"}, "it") == "Marco è in Cucina"
     assert a.fill({"en": "{count} people"}, {"count": 2}, "en") == "2 people"
+
+
+def test_intruder_rule_only_while_away(env):
+    from domotiq.default_rules import default_rules
+    env.rules.replace_all(default_rules())
+    env.house.update_tracks([T("t1", 300, 100, category="person")], 1000.0)
+    assert "say" not in env.executor.kinds()
+    env.house.update_tracks([], 1001.0)
+    env.house.set_scene("away")
+    env.house.update_tracks([T("t2", 80, 100, category="person")], 1002.0)
+    assert any(c[0] == "say" and "Intruso" in c[1] for c in env.executor.calls)
