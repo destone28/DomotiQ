@@ -165,4 +165,17 @@ House 2 gets the host name `casa2`, the network `DomotiQ-Casa2` on channel 11 an
 
 The two houses are independent. The camera calibration belongs to each house and is never copied (a backup does not even contain it), and characters are registered on each house. Rules and settings can be copied with a backup from the staff settings of house 1 (see [chapter 6](06-web-app.md#settings)); a backup never carries the network, the house name, the PIN or the camera settings. A restore from the web app replaces rules, characters and settings together, so restore the backup on house 2 before registering its characters.
 
+## Before the house leaves the lab
+
+1. From every PC that must keep access, run `bash scripts/add-pc.sh casaN` once (it copies a key to the board).
+2. On the board, allow only keys for SSH:
+
+   ```bash
+   cd ~/domotiq && bash scripts/lockdown.sh
+   ```
+
+   It lists the keys that will still get in and refuses to run if there are none; `bash scripts/lockdown.sh --undo` allows passwords again. `sudo` keeps asking for the password of the user `arduino`, except for the few commands the web app needs (restart, reboot, power off, hotspot).
+3. Switch the hotspot on at every boot (`bash scripts/hotspot.sh boot`, then reboot) and print the sign from `/sign`.
+4. Write the Wi-Fi password and the staff PIN on the stand's copy of the [quick guide](quick-guide-staff.md), never in the repository.
+
 Next: [print and assemble](03-print-and-assemble.md).

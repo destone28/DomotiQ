@@ -165,4 +165,17 @@ La casa 2 riceve il nome host `casa2`, la rete `DomotiQ-Casa2` sul canale 11 e l
 
 Le due case sono indipendenti. La calibrazione della webcam appartiene a ciascuna casa e non si copia mai (un backup nemmeno la contiene), e i personaggi si registrano casa per casa. Regole e impostazioni si possono copiare con un backup preso dalle impostazioni dello staff della casa 1 (vedi il [capitolo 6](06-webapp.md#impostazioni)); un backup non porta mai con sé la rete, il nome della casa, il PIN o le impostazioni della webcam. Un ripristino dalla webapp sostituisce insieme regole, personaggi e impostazioni, quindi ripristina il backup sulla casa 2 prima di registrarne i personaggi.
 
+## Prima che la casa lasci il laboratorio
+
+1. Da ogni PC che deve mantenere l'accesso, lancia una volta `bash scripts/add-pc.sh casaN` (copia una chiave sulla scheda).
+2. Sulla scheda, lascia entrare in SSH solo con la chiave:
+
+   ```bash
+   cd ~/domotiq && bash scripts/lockdown.sh
+   ```
+
+   Elenca le chiavi che potranno ancora entrare e si rifiuta di proseguire se non ce n'è nessuna; `bash scripts/lockdown.sh --undo` riammette le password. `sudo` continua a chiedere la password dell'utente `arduino`, tranne per i pochi comandi che servono alla webapp (riavvio del servizio, riavvio, spegnimento, hotspot).
+3. Fai partire l'hotspot a ogni avvio (`bash scripts/hotspot.sh boot`, poi riavvia) e stampa il cartello da `/sign`.
+4. Scrivi la password del Wi-Fi e il PIN dello staff sulla copia della [guida rapida](guida-rapida-staff.md) che resta allo stand, mai nel repository.
+
 Avanti: [stampa e montaggio](03-stampa-e-montaggio.md).
