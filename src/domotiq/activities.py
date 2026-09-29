@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from .lights import FLASH, LightRequest, RULE
 from .model import CATEGORY_NAMES
-from .scenes import SCENES, scene_name
+from .scenes import scene_name
 from .voice.answers import room as room_phrase
 
 if TYPE_CHECKING:

@@ -224,15 +224,13 @@ async def on_mcu_notify(ctx: Context, name: str, params: list[Any]) -> None:
 async def periodic(ctx: Context) -> None:
     last_check = 0.0
     last_purge = 0.0
-    last_sim = -1.0
     clock_warned = False
     while True:
         now = time.time()
         try:
             if ctx.sim.enabled:
-                if ctx.sim.changed_at != last_sim or True:
-                    last_sim = ctx.sim.changed_at
-                    ctx.house.update_tracks(ctx.sim.tracks(), now)
+                # every tick, even with nothing moved: dwell and count timers need the time to pass
+                ctx.house.update_tracks(ctx.sim.tracks(), now)
             elif ctx.vision.available:
                 ctx.house.update_tracks(ctx.vision.tracks(), now)
             ctx.house.tick(now)
