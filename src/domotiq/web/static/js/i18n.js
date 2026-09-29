@@ -74,7 +74,7 @@ const T = {
     "f.value": "Valore", "f.grace": "Conferma dopo (s)", "f.at": "Ore", "f.sensor": "Sensore", "f.quantity": "Misura",
     "f.state": "Stato", "f.button": "Tasto", "f.distance": "Distanza (cm)", "f.scene": "Scenario", "f.op": "Confronto",
     "f.from": "Dalle", "f.to": "Alle", "f.on": "Acceso", "f.text_it": "Testo in italiano", "f.text_en": "Testo in inglese",
-    "f.level": "Tipo", "f.color": "Colore", "f.effect": "Effetto", "f.brightness": "Luminosità", "f.duration": "Durata (s, vuoto = finché serve)",
+    "f.level": "Tipo", "f.color": "Colore", "f.effect": "Effetto", "f.brightness": "Luminosità", "f.duration": "Durata (s; vuota = 30 s, o finché dura l'allarme)",
     "f.name": "Suono", "f.verbosity": "Parla anche in modalità", "f.except": "Tranne",
     "cat.any": "chiunque", "cat.person": "persona", "cat.dog": "cane", "cat.cat": "gatto", "cat.animal": "animale",
     "cat.car": "auto", "cat.object": "oggetto",
@@ -121,7 +121,7 @@ const T = {
     "about.title": "Informazioni",
     "ask.title": "La casa chiede",
     "time.set": "Ora della casa impostata da questo telefono",
-    "reg.from_voice": "Registrazione dal citofono in corso",
+    "reg.from_voice": "Registrazione a voce da completare", "reg.choose": "Scegli",
   },
   en: {
     "nav.home": "House", "nav.live": "Live", "nav.commands": "Controls", "nav.events": "Events", "nav.more": "More",
@@ -194,7 +194,7 @@ const T = {
     "f.value": "Value", "f.grace": "Confirm after (s)", "f.at": "Time", "f.sensor": "Sensor", "f.quantity": "Measure",
     "f.state": "State", "f.button": "Button", "f.distance": "Distance (cm)", "f.scene": "Scene", "f.op": "Comparison",
     "f.from": "From", "f.to": "To", "f.on": "On", "f.text_it": "Italian text", "f.text_en": "English text",
-    "f.level": "Kind", "f.color": "Colour", "f.effect": "Effect", "f.brightness": "Brightness", "f.duration": "Duration (s, empty = as long as needed)",
+    "f.level": "Kind", "f.color": "Colour", "f.effect": "Effect", "f.brightness": "Brightness", "f.duration": "Duration (s; empty = 30 s, or as long as the alarm lasts)",
     "f.name": "Sound", "f.verbosity": "Speak also in mode", "f.except": "Except",
     "cat.any": "anyone", "cat.person": "person", "cat.dog": "dog", "cat.cat": "cat", "cat.animal": "animal",
     "cat.car": "car", "cat.object": "object",
@@ -241,7 +241,7 @@ const T = {
     "about.title": "About",
     "ask.title": "The house asks",
     "time.set": "House time set from this phone",
-    "reg.from_voice": "Registration from the doorbell in progress",
+    "reg.from_voice": "Voice registration to complete", "reg.choose": "Choose",
   },
 };
 

@@ -34,6 +34,9 @@ TARGET_FPS = 10.0
 
 # ==================================================================== child
 def child_main(conn, cfg: dict[str, Any]) -> None:
+    import signal
+    # the house stops this process itself; Ctrl+C in a terminal reaches the whole group
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     logging.basicConfig(level=cfg.get("log_level", logging.INFO),
                         format="%(levelname)s vision: %(message)s")
     import cv2  # noqa: F401  (imported here: the parent does not need it)
@@ -262,10 +265,12 @@ class VisionProcess(VisionLink):
             except (EOFError, OSError):
                 if self._stopping:
                     return
-                log.warning("vision process stopped, starting it again")
                 self._camera = False
                 self._tracks = []
                 time.sleep(2.0)
+                if self._stopping:
+                    return
+                log.warning("vision process stopped, starting it again")
                 try:
                     self._proc.join(timeout=1)
                 except Exception:  # noqa: BLE001

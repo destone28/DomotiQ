@@ -21,15 +21,15 @@ MARGIN_MM = 12.0
 
 
 class Privacy:
-    def __init__(self, layout: Layout, calib: Calibration) -> None:
+    def __init__(self, layout: Layout, calib: Calibration, margin_mm: float = MARGIN_MM) -> None:
         self.size = (calib.width, calib.height)
         polys = []
         for room in layout.rooms.values():
             if not room.private:
                 continue
             r = room.rect
-            pts = np.array([[r.x0 - MARGIN_MM, r.y0 - MARGIN_MM], [r.x1 + MARGIN_MM, r.y0 - MARGIN_MM],
-                            [r.x1 + MARGIN_MM, r.y1 + MARGIN_MM], [r.x0 - MARGIN_MM, r.y1 + MARGIN_MM]])
+            m = margin_mm
+            pts = np.array([[r.x0 - m, r.y0 - m], [r.x1 + m, r.y0 - m], [r.x1 + m, r.y1 + m], [r.x0 - m, r.y1 + m]])
             img = np.vstack([calib.image_of(pts, 0.0), calib.image_of(pts, WALL_TOP_MM + 10)])
             polys.append(cv2.convexHull(img.astype(np.float32)).reshape(-1, 2))
         self.mask = np.zeros((calib.height, calib.width), np.uint8)
@@ -54,7 +54,7 @@ class Privacy:
     def apply(self, img: np.ndarray) -> np.ndarray:
         found = self._for(img.shape[1], img.shape[0])
         if found is None:
-            return img
+            return img.copy()                # always a copy: callers draw on it
         mask, (x0, y0, x1, y1) = found
         out = img.copy()
         roi = out[y0:y1, x0:x1]

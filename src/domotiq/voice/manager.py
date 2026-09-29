@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any
@@ -58,6 +59,7 @@ class Voice:
         self.mic = Microphone(device)
         self.llm = None if ctx.args.no_llm else LanguageModel()
         self.llm_ok = False
+        self._jokes = random.randrange(100)
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stt")
         self.busy = asyncio.Lock()
         self._talk_stop: asyncio.Event | None = None
@@ -105,9 +107,14 @@ class Voice:
                 await loop.run_in_executor(self.pool, self.listener.model, self.lang)
             except Exception as e:  # noqa: BLE001
                 log.warning("speech model not loaded: %s", e)
+        warmed = False
         while True:
             if self.llm is not None:
-                self.llm_ok = await asyncio.get_running_loop().run_in_executor(None, self.llm.health)
+                loop = asyncio.get_running_loop()
+                self.llm_ok = await loop.run_in_executor(None, self.llm.health)
+                if self.llm_ok and not warmed:
+                    warmed = True
+                    await loop.run_in_executor(None, self.llm.warm)
             await asyncio.sleep(30)
 
     def status(self) -> dict[str, Any]:
@@ -258,10 +265,17 @@ class Voice:
             ok = ctx.clock.set_hm(int(a["hour"]), int(a["minute"]), "voice")
             ctx.bus.publish("clock", **ctx.clock.to_dict())
             if ok:
-                await self.reply(f"D'accordo, sono le {a['hour']} e {a['minute']:02d}.",
-                                 f"All right, it's {a['hour']}:{a['minute']:02d}.")
+                it = f"sono le {a['hour']}" + (f" e {a['minute']}" if a["minute"] else "")
+                if a["hour"] == 1:
+                    it = "è l'una" + (f" e {a['minute']}" if a["minute"] else "")
+                await self.reply(f"D'accordo, {it}.", f"All right, it's {a['hour']}:{a['minute']:02d}.")
         elif name == "lights_on":
             room = a.get("room", "all")
+            if room != "all" and ctx.layout.light_of_room(room) is None:
+                where_it, where_en = answers.room(ctx, room, "it"), answers.room(ctx, room, "en")
+                await self.reply(f"{where_it[0].upper()}{where_it[1:]} non ci sono luci.",
+                                 f"There are no lights {where_en}.")
+                return
             await act.light(room, a.get("color", "warm"))
             await self.reply("Fatto.", "Done.")
         elif name == "lights_off":
@@ -305,6 +319,9 @@ class Voice:
             await self.reply("Così va meglio?", "Is this better?")
         elif name == "register":
             await self.register_by_voice()
+        elif name == "joke":
+            self._jokes += 1
+            await self.say(answers.joke(lang, self._jokes))
         elif name in ("yes", "no", "cancel"):
             await self.reply("D'accordo.", "OK.")
         else:
@@ -373,16 +390,26 @@ class Voice:
 
     async def _register_named(self, name: str, origin: str, room: str | None = None) -> None:
         ctx = self.ctx
-        try:
-            ctx.registration.start(name, origin=origin, room=room)
-        except NameTaken:
+        if ctx.identities.by_name(name):
             await self.reply(f"C'è già qualcuno che si chiama {name}: aggiungi un soprannome dalla webapp.",
                              f"Someone is already called {name}: add a nickname from the web app.")
             return
         if origin == "intercom":
+            # whoever comes in through the front door in the next minute is the new one
+            self.expect_entrance = {"new": name, "until": time.time() + 60}
             await self.reply(f"Piacere, {name}! Entra dalla porta.", f"Nice to meet you, {name}! Come in through the door.")
-        else:
-            await self.reply(f"Va bene: cerco {name}.", f"OK: I'm looking for {name}.")
+            return
+        try:
+            s = ctx.registration.start(name, origin=origin, room=room, auto=True)
+        except NameTaken:
+            return
+        where_it = answers.room(ctx, room, "it") if room else "in casa"
+        where_en = answers.room(ctx, room, "en") if room else "in the house"
+        if s.status == "choose":
+            await self.reply(f"Vedo più di un personaggio nuovo {where_it}: scegli {name} dalla webapp.",
+                             f"I see more than one newcomer {where_en}: pick {name} in the web app.")
+        elif s.status == "waiting":
+            await self.reply(f"Va bene: mettilo {where_it}, lo aspetto.", f"OK: put it {where_en}, I'm waiting.")
 
     async def register_by_voice(self) -> None:
         await self.reply("Come si chiama?", "What's the name?")
@@ -426,6 +453,16 @@ class Voice:
             return
         track = self.ctx.house.tracks.get(ev.get("track"))
         if not track:
+            return
+        if "new" in exp:
+            # a new character announced at the intercom: the first stranger through the door
+            if track.identity or ev.get("room") != "living":
+                return
+            self.expect_entrance = None
+            try:
+                self.ctx.registration.start(exp["new"], origin="intercom", room="living", track=track.id, auto=True)
+            except (NameTaken, ValueError):
+                pass
             return
         if track.identity and track.identity != exp["identity"] and not track.uncertain:
             seen = self.ctx.identities.name_of(track.identity)

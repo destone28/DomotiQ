@@ -318,6 +318,11 @@ async def serve(ctx: Context) -> None:
     await asyncio.wait([server_task, asyncio.create_task(stop.wait())],
                        return_when=asyncio.FIRST_COMPLETED)
     server.should_exit = True
+    try:
+        # let uvicorn close its connections and its lifespan by itself
+        await asyncio.wait_for(server_task, timeout=5.0)
+    except (asyncio.TimeoutError, asyncio.CancelledError):
+        pass
     for t in tasks:
         t.cancel()
     await _shutdown(ctx)

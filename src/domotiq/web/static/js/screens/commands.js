@@ -43,7 +43,7 @@ export function mount(root) {
         <button class="btn ghost" id="auto">${t("cmd.light_auto")}</button>
       </div>
       <label class="row spread" style="margin-top:12px"><span>${t("cmd.follow")}</span>
-        <span class="switch"><input type="checkbox" id="follow" checked><span></span></span></label>
+        <span class="switch"><input type="checkbox" id="follow" ${store.state.follow !== false ? "checked" : ""}><span></span></span></label>
     </div>
     <h2>${t("cmd.voice")}</h2>
     <div class="card">

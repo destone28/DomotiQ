@@ -47,9 +47,11 @@ export function mount(root, params) {
     root.querySelectorAll("[data-id]").forEach(b => { b.onclick = () => editIdentity(b.dataset.id); });
   };
 
-  const startWizard = (track) => { wizard = new Wizard(root, track, () => { wizard = null; renderList(); }); };
+  const startWizard = (track, session) => { wizard = new Wizard(root, track, () => { wizard = null; renderList(); }, session); };
 
-  if (params && params.add) startWizard(params.track); else renderList();
+  const pending = params && params.reg && (store.state.registrations || []).find(r => r.id === params.reg);
+  if (pending) startWizard(null, pending);
+  else if (params && params.add) startWizard(params.track); else renderList();
   return {
     update(type) {
       if (wizard) wizard.update(type);
@@ -59,14 +61,14 @@ export function mount(root, params) {
 }
 
 class Wizard {
-  constructor(root, track, done) {
+  constructor(root, track, done, session) {
     this.root = root;
     this.track = track;
     this.done = done;
-    this.session = null;
+    this.session = session || null;
     this.photo = null;
     this.plan = null;
-    this.step1();
+    if (this.session) this.show(); else this.step1();       // a registration started at the intercom or by voice
   }
 
   step1() {

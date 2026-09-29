@@ -222,3 +222,16 @@ def test_intruder_rule_only_while_away(env):
     env.house.set_scene("away")
     env.house.update_tracks([T("t2", 80, 100, category="person")], 1002.0)
     assert any(c[0] == "say" and "Intruso" in c[1] for c in env.executor.calls)
+
+
+def test_alarm_of_a_one_off_event_ends_by_itself(env):
+    rule = {"id": "r-x", "name": {"it": "x", "en": "x"}, "alert": True,
+            "when": {"type": "enter_room", "room": "kitchen"},
+            "then": [{"type": "light", "room": "kitchen", "effect": "alarm", "color": "#ff0000"}]}
+    env.rules.upsert(rule)
+    env.house.update_tracks([T("t1", 80, 100, category="person")], 1000.0)
+    assert env.house.alerts
+    env.rules.tick(1010.0)
+    assert env.house.alerts
+    env.rules.tick(1031.0)
+    assert not env.house.alerts

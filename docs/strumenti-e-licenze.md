@@ -27,7 +27,8 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna qu
 ## Python sulla scheda
 | Pacchetto | Licenza | Uso |
 |---|---|---|
-| FastAPI, Starlette, Pydantic | MIT | server web |
+| FastAPI, Pydantic | MIT | server web |
+| Starlette | BSD-3-Clause | server web |
 | Uvicorn | BSD-3-Clause | server HTTP |
 | NumPy | BSD-3-Clause | calcolo, sintesi audio |
 | OpenCV (headless) | Apache-2.0 | visione |

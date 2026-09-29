@@ -198,6 +198,31 @@ def not_understood(lang: str) -> str:
             else "I didn't get that. Try asking: where is Marco? Or: let's party!")
 
 
+JOKES = {
+    "it": [
+        "Sai perché la casa è sempre calma? Perché ha un ottimo termostato emotivo.",
+        "Cosa dice una lampadina all'altra? Stasera mi sento particolarmente accesa!",
+        "Perché il garage è sempre felice? Perché ogni sera qualcuno torna a casa.",
+        "Il mio barbecue ha chiesto un aumento: dice che lavora sempre sotto pressione e a fuoco vivo.",
+        "Perché il locale tecnico è vietato? Perché lì dentro le luci fanno le prove del party.",
+        "Sai qual è lo sport preferito delle case intelligenti? Il salto... di stanza in stanza!",
+    ],
+    "en": [
+        "Why is this house always calm? It has an excellent emotional thermostat.",
+        "What did one light bulb say to the other? I'm feeling really bright tonight!",
+        "Why is the garage always happy? Because every evening someone comes home.",
+        "My barbecue asked for a raise: it says it always works under pressure and on a high flame.",
+        "Why is the utility room off limits? That's where the lights rehearse for the party.",
+        "What's a smart house's favourite sport? Room hopping!",
+    ],
+}
+
+
+def joke(lang: str, n: int) -> str:
+    lines = JOKES.get(lang, JOKES["en"])
+    return lines[n % len(lines)]
+
+
 def off_topic(lang: str) -> str:
     return ("Sono la casa: posso dirti chi c'è e dove, che temperatura fa, e posso accendere luci, "
             "fare festa o grigliare." if lang == "it"

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 from pathlib import Path
 
@@ -30,6 +31,7 @@ class Listener:
         self.dir = Path(models_dir) / "vosk"
         self._models: dict[str, object] = {}
         self._vocab: dict[str, set[str]] = {}
+        self._known: dict[tuple[str, str], bool] = {}
         self._lock = threading.Lock()
         self.ok = False
         try:
@@ -66,9 +68,43 @@ class Listener:
 
     def known(self, phrase: str, lang: str) -> bool:
         vocab = self.vocabulary(lang)
-        if not vocab:
-            return True             # cannot tell: assume yes
-        return all(w in vocab for w in phrase.lower().split())
+        words = phrase.lower().split()
+        if vocab:
+            return all(w in vocab for w in words)
+        return all(self._known_by_grammar(w, lang) for w in words)
+
+    def _known_by_grammar(self, word: str, lang: str) -> bool:
+        """The small models have no word list: Vosk warns about the words of a grammar it lacks.
+
+        The warning is written by the C++ library on the standard error, so
+        that is captured for the instant the grammar is built.
+        """
+        key = (lang, word)
+        if key in self._known:
+            return self._known[key]
+        if lang not in self._models:
+            return True             # loading a model takes seconds: only the ones in use are asked
+        import vosk
+        model = self._models[lang]
+        with self._lock:
+            r, w = os.pipe()
+            saved = os.dup(2)
+            try:
+                os.dup2(w, 2)
+                vosk.KaldiRecognizer(model, RATE, json.dumps([word, "[unk]"]))
+            finally:
+                os.dup2(saved, 2)
+                os.close(saved)
+                os.close(w)
+            os.set_blocking(r, False)
+            try:
+                out = os.read(r, 65536).decode(errors="ignore")
+            except BlockingIOError:
+                out = ""
+            os.close(r)
+        ok = "missing in vocabulary" not in out.lower() and "ignoring word" not in out.lower()
+        self._known[key] = ok
+        return ok
 
     def session(self, lang: str, grammar: list[str] | None = None) -> "Session":
         return Session(self, lang, grammar)

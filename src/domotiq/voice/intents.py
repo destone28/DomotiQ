@@ -66,7 +66,9 @@ EN_NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "s
 PATTERNS: list[tuple[str, list[str]]] = [
     ("cancel", [r"\b(annulla|lascia stare|niente|cancel|never mind|stop)\b"]),
     ("set_time", [r"\bsono le\b", r"\be l una\b", r"\bit s \d", r"\bset the (time|clock)\b",
-                  r"\bimposta l ora\b", r"\bl ora e\b", r"\bthe time is\b"]),
+                  r"\bimposta l ora\b", r"\bl ora e\b", r"\bthe time is\b", r"\bo clock\b",
+                  r"\bit (s|is) (half|quarter|\w+( \w+)? (minutes )?(past|to))\b", r"\bit (s|is) \w+( \w+)? (am|pm)\b",
+                  r"\bit (s|is) (one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|noon|midnight)\b"]),
     ("time_now", [r"\bche or[ae]\b", r"\bche ora e\b", r"\bwhat time\b", r"\bwhat s the time\b"]),
     ("register", [r"\b(aggiungi|registra|nuovo|nuova) (un |una )?(personaggio|persona|oggetto|animale)\b",
                   r"\b(add|register) (a |an |new )*(character|person|object|pet)\b", r"\bnew character\b"]),
@@ -93,6 +95,7 @@ PATTERNS: list[tuple[str, list[str]]] = [
     ("temperature", [r"\btemperatura\b", r"\bgradi\b", r"\bcaldo\b", r"\bfreddo\b", r"\btemperature\b",
                      r"\bhow (hot|warm|cold)\b", r"\bdegrees\b"]),
     ("humidity", [r"\bumidita\b", r"\bumido\b", r"\bhumidity\b", r"\bhumid\b", r"\bdoccia\b", r"\bshower\b"]),
+    ("joke", [r"\bbarzellett\w*\b", r"\bfammi ridere\b", r"\bjoke\b", r"\bmake me laugh\b", r"\bqualcosa di divertente\b"]),
     ("house_summary", [r"\bcom e la casa\b", r"\bcosa succede\b", r"\bsituazione\b", r"\bstato della casa\b",
                        r"\bhow is the house\b", r"\bwhat s happening\b", r"\bwhat is happening\b", r"\bstatus\b",
                        r"\braccont\w*\b", r"\bdescri\w*\b", r"\btell me about\b"]),
@@ -139,40 +142,109 @@ def find_name(text: str, names: Iterable[str], cutoff: float = 0.78) -> str | No
     return best if score >= cutoff else None
 
 
+def _it_numbers() -> dict[str, int]:
+    units = ["zero", "uno", "due", "tre", "quattro", "cinque", "sei", "sette", "otto", "nove", "dieci", "undici",
+             "dodici", "tredici", "quattordici", "quindici", "sedici", "diciassette", "diciotto", "diciannove"]
+    out = {w: i for i, w in enumerate(units)}
+    for tens, word in ((20, "venti"), (30, "trenta"), (40, "quaranta"), (50, "cinquanta")):
+        out[word] = tens
+        for u in range(1, 10):
+            stem = word[:-1] if u in (1, 8) else word          # ventuno, ventotto
+            out[stem + units[u]] = tens + u
+    out.update({"una": 1, "mezzanotte": 0, "mezzogiorno": 12})
+    return out
+
+
+IT_NUM = _it_numbers()
+EN_UNITS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven",
+            "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
+EN_TENS = {"twenty": 20, "thirty": 30, "forty": 40, "fifty": 50}
+
+
+def _numbers(words: list[str]) -> list[int | str]:
+    """Words with the numbers turned into integers ("twenty five" -> 25, "venticinque" -> 25)."""
+    out: list[int | str] = []
+    i = 0
+    while i < len(words):
+        w = words[i]
+        if w.isdigit():
+            out.append(int(w))
+        elif w in IT_NUM:
+            out.append(IT_NUM[w])
+        elif w in EN_TENS:
+            val = EN_TENS[w]
+            if i + 1 < len(words) and words[i + 1] in EN_UNITS[1:10]:
+                val += EN_UNITS.index(words[i + 1])
+                i += 1
+            out.append(val)
+        elif w in EN_UNITS:
+            out.append(EN_UNITS.index(w))
+        elif w in ("noon", "midday"):
+            out.append(12)
+        elif w == "midnight":
+            out.append(0)
+        else:
+            out.append(w)
+        i += 1
+    return out
+
+
 def parse_time(text: str) -> tuple[int, int] | None:
-    t = f" {text} "
+    """A time of day said in Italian or English: "sono le tre e venticinque", "it's half past three"."""
+    t = normalize(text)
     m = re.search(r"\b(\d{1,2})[: ](\d{2})\b", t)
+    hour = minute = None
     if m:
-        h, mi = int(m.group(1)), int(m.group(2))
-        return (h, mi) if h < 24 and mi < 60 else None
-    words = {**IT_NUMBERS, **EN_NUMBERS}
-    hour = None
-    m = re.search(r"\b(?:sono le|e l|it s|at|alle)\s+(\w+)", t)
-    if m:
-        tok = m.group(1)
-        hour = int(tok) if tok.isdigit() else words.get(tok)
-    if hour is None:
-        m = re.search(r"\b(\d{1,2})\b", t)
-        hour = int(m.group(1)) if m else None
-    if hour is None or hour > 23:
-        return None
-    minute = 0
-    if re.search(r"\be mezz[ao]\b|\bhalf past\b|\bthirty\b|\be trenta\b", t):
-        minute = 30
-    elif re.search(r"\be un quarto\b|\bquarter past\b|\be quindici\b", t):
-        minute = 15
-    elif re.search(r"\bmeno un quarto\b|\bquarter to\b", t):
-        hour, minute = (hour - 1) % 24, 45
+        hour, minute = int(m.group(1)), int(m.group(2))
     else:
-        m = re.search(r"\be (\w+)(?: minuti)?\s*$", text)
-        if m:
-            tok = m.group(1)
-            val = int(tok) if tok.isdigit() else words.get(tok)
-            if val is not None and val < 60:
-                minute = val
-    if "pomeriggio" in t or "sera" in t or " pm " in t:
-        if hour < 12:
-            hour += 12
+        w = _numbers(t.split())
+        nums = [(k, v) for k, v in enumerate(w) if isinstance(v, int)]
+        text_w = [x if isinstance(x, str) else "numx" for x in w]
+        joined = " ".join(text_w)
+
+        def after(k):
+            return next((v for j, v in nums if j > k), None)
+
+        # English: half past three, quarter to five, twenty past six, ten to seven
+        m2 = re.search(r"\b(half|quarter|numx)( minutes?)? (past|to) numx\b", joined)
+        if m2:
+            k_rel = len(joined[:m2.start()].split())
+            first = w[k_rel]
+            mins = 30 if first == "half" else 15 if first == "quarter" else first
+            h = after(k_rel + (0 if isinstance(first, str) else 0))
+            if isinstance(first, int):
+                h = next((v for j, v in nums if j > k_rel), None)
+            if h is not None and isinstance(mins, int):
+                if m2.group(3) == "past":
+                    hour, minute = h, mins
+                else:
+                    hour, minute = (h - 1) % 24, 60 - mins
+        if hour is None and nums:
+            k0, hour = nums[0]
+            rest = text_w[k0 + 1:]
+            later = [v for j, v in nums if j > k0]
+            if "mezza" in rest or "mezzo" in rest:
+                minute = 30
+            elif re.search(r"\btre quarti\b", t):
+                minute = 45
+            elif "meno" in rest:
+                i_meno = k0 + 1 + rest.index("meno")
+                if "quarto" in text_w[i_meno:]:
+                    minute = 45
+                else:
+                    m_less = next((v for j, v in nums if j > i_meno), None)
+                    minute = 60 - m_less if m_less else 0
+                hour = (hour - 1) % 24
+            elif "quarto" in rest:
+                minute = 15
+            elif later:
+                minute = later[0]
+            else:
+                minute = 0
+    if hour is None or minute is None or hour > 23 or minute > 59:
+        return None
+    if re.search(r"\b(pm|pomeriggio|sera|stasera|evening|afternoon)\b", t) and hour < 12:
+        hour += 12
     return hour, minute
 
 

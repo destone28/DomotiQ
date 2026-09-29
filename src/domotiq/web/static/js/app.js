@@ -127,10 +127,12 @@ function handle(msg) {
     case "status": s.status = msg.data; renderStatus(); break;
     case "sim": s.sim = msg.data; break;
     case "clock": s.clock = msg.data; break;
+    case "follow": s.follow = msg.data.on; break;
     case "registration": {
       const list = (s.registrations || []).filter(r => r.id !== msg.data.id);
       if (["waiting", "choose", "confirm"].includes(msg.data.status)) list.push(msg.data);
       s.registrations = list;
+      renderBanners();
       break;
     }
     case "notify": toast(tr(msg.data.text), msg.data.level); break;
@@ -230,11 +232,18 @@ export function renderBanners() {
   for (const a of s.alerts || []) {
     html += `<div class="banner alarm"><span>⚠️</span><span class="grow">${esc(tr(a.name))}${a.who ? " — " + esc(a.who) : ""}${a.room ? " · " + esc(roomName(a.room)) : ""}</span></div>`;
   }
+  for (const r of s.registrations || []) {
+    if (r.origin !== "web" && r.status === "choose") {
+      html += `<div class="banner ask"><span class="grow">${esc(t("reg.from_voice"))}: ${esc(r.name)}</span>` +
+        `<button data-reg="${esc(r.id)}">${esc(t("reg.choose"))}</button></div>`;
+    }
+  }
   for (const c of s.confirmations || []) {
     html += `<div class="banner ask" data-cid="${c.id}"><span class="grow">${esc(tr(c.question))}</span>` +
       c.options.map((o, i) => `<button data-i="${i}">${esc(tr(o.label))}</button>`).join("") + `</div>`;
   }
   el.innerHTML = html;
+  el.querySelectorAll("button[data-reg]").forEach(b => { b.onclick = () => go("identities", { reg: b.dataset.reg }); });
   el.querySelectorAll(".banner[data-cid] button").forEach(b => {
     b.onclick = async () => {
       const cid = b.closest(".banner").dataset.cid;

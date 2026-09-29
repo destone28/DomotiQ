@@ -62,6 +62,9 @@ class Engine:
         self._last_ref_update = 0.0
         self._moved = {"checked": 0.0, "shift": 0.0, "count": 0}
         self._background: dict[str, np.ndarray] = {}
+        # before the calibration the house does not know where the bathroom is: it assumes the
+        # camera is mounted as in the model, with a wide margin
+        self._nominal_privacy = Privacy(layout, Calibration.synthetic(*ANALYSIS, layout.camera), margin_mm=45.0)
         self.load()
 
     # ------------------------------------------------------------ calibration and reference
@@ -272,9 +275,7 @@ class Engine:
     def image(self, overlay: bool = False, calibration: bool = False, width: int = 640) -> np.ndarray | None:
         if self.frame is None:
             return None
-        img = self.frame.copy()
-        if self.privacy:
-            img = self.privacy.apply(img)
+        img = (self.privacy or self._nominal_privacy).apply(self.frame)
         if calibration and self.calib:
             self._draw_layout(img)
         if overlay and self.calib:
@@ -342,12 +343,13 @@ class Engine:
             if f is not self.frame:
                 self.feed(f)
             stamp = time.strftime("%Y%m%d-%H%M%S") + f"-{int(time.time() * 1000) % 1000:03d}"
-            img = self.privacy.apply(f) if self.privacy else f
+            img = (self.privacy or self._nominal_privacy).apply(f)
             cv2.imwrite(str(self.dataset_dir / f"{stamp}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 92])
             labels = self._labels()
             (self.dataset_dir / f"{stamp}.json").write_text(json.dumps(labels))
             saved += 1
-        return {"ok": saved > 0, "message": f"{saved} immagini salvate", "count": saved}
+        return {"ok": saved > 0, "message": f"{saved} immagini salvate", "message_en": f"{saved} images saved",
+                "count": saved}
 
     def _labels(self) -> list[dict[str, Any]]:
         """Automatic labels: the boxes of the blobs, with the category of their track."""
@@ -418,9 +420,10 @@ class Engine:
             self.calib.save(d / "calibration.json")
         if self.segmenter and self.segmenter.reference_bgr is not None:
             ref = np.clip(self.segmenter.reference_bgr, 0, 255).astype(np.uint8)
-            cv2.imwrite(str(d / "reference.jpg"), self.privacy.apply(ref) if self.privacy else ref,
+            cv2.imwrite(str(d / "reference.jpg"), (self.privacy or self._nominal_privacy).apply(ref),
                         [cv2.IMWRITE_JPEG_QUALITY, 90])
-        return {"ok": True, "message": f"Registro {int(seconds)} s in {name}", "name": name}
+        return {"ok": True, "message": f"Registro {int(seconds)} s in {name}",
+                "message_en": f"Recording {int(seconds)} s into {name}", "name": name}
 
     def _record_frame(self, small: np.ndarray, now: float) -> None:
         rec = self._record
@@ -429,7 +432,7 @@ class Engine:
             self._record = None
             return
         rec["n"] += 1
-        img = self.privacy.apply(small) if self.privacy else small
+        img = (self.privacy or self._nominal_privacy).apply(small)
         cv2.imwrite(str(rec["dir"] / f"{rec['n']:05d}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 85])
         rec["log"].write(json.dumps({
             "t": round(now, 3), "frame": rec["n"],

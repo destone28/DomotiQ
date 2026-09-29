@@ -42,6 +42,7 @@ class Session:
     device: str | None = None
     nickname: str | None = None
     message: str | None = None
+    auto: bool = False                   # voice and intercom: confirmed as soon as the figurine is found
     created: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict[str, Any]:
@@ -75,7 +76,8 @@ class Registration:
     # ------------------------------------------------------------ flow
     def start(self, name: str, *, origin: str = "web", photo: str | None = None,
               room: str | None = None, category: str | None = None,
-              device: str | None = None, nickname: str | None = None) -> Session:
+              device: str | None = None, nickname: str | None = None,
+              track: str | None = None, auto: bool = False) -> Session:
         name = clean_name(name)
         if not name:
             raise ValueError("empty name")
@@ -92,8 +94,13 @@ class Registration:
                 s.category_guess = s.category_guess or guess[0]
                 s.label_guess = guess[1]
                 s.label_name = {"it": label_name(guess[1], "it"), "en": label_name(guess[1], "en")}
+        s.auto = auto
+        s.warnings = self._vocabulary_warnings(name)
         self.sessions[s.id] = s
-        self._advance(s)
+        if track and track in self._unknown():
+            self._take(s, track)
+        else:
+            self._advance(s)
         return s
 
     def _advance(self, s: Session) -> None:
@@ -121,9 +128,32 @@ class Registration:
         s.candidates = []
         s.category_guess = s.category_guess or self.ctx.vision.category_guess(track_id) or \
             (track.category if track.category in CATEGORIES and track.category != "object" else None) or PERSON
-        s.warnings = [] if track.virtual else self.ctx.vision.quality(track_id)
+        s.warnings = [w for w in s.warnings if w.get("kind") == "vocabulary"] + \
+            ([] if track.virtual else self.ctx.vision.quality(track_id))
         s.status = "confirm"
         self._publish(s)
+        if s.auto:
+            # the name was already confirmed by voice; the category can be changed later in the web app
+            self.confirm(s.id)
+
+    def _vocabulary_warnings(self, name: str) -> list[dict[str, str]]:
+        """A name the speech recognizer does not know can be registered, but not called by voice."""
+        voice = self.ctx.voice
+        listener = getattr(voice, "listener", None) if voice is not None else None
+        if listener is None or not getattr(listener, "ok", False):
+            return []
+        out = []
+        if not listener.known(name, "it"):
+            out.append({"kind": "vocabulary", "it": f"Il riconoscimento vocale italiano non conosce «{name}»: "
+                        "a voce potrei non capirlo. Scegli un nome più comune, o va bene così per la webapp.",
+                        "en": f"The Italian speech recognizer does not know “{name}”: I may not understand it by "
+                        "voice. Pick a more common name, or keep it for the web app."})
+        if not listener.known(name, "en"):
+            out.append({"kind": "vocabulary", "it": f"Il riconoscimento vocale inglese non conosce «{name}»: dopo "
+                        "la registrazione puoi scrivere come si pronuncia in inglese nella scheda del personaggio.",
+                        "en": f"The English speech recognizer does not know “{name}”: after registering, write "
+                        "how it sounds in English in the character's card."})
+        return out
 
     def pick(self, sid: str, track_id: str) -> Session:
         s = self.sessions[sid]

@@ -65,7 +65,7 @@ class Hub:
                   "confirm", "confirm_closed", "notify", "say", "identities_changed", "rules_changed",
                   "scene", "party", "grill", "registration", "status", "language", "verbosity",
                   "volume", "car", "visitor", "distance", "rule_fired", "climate", "shower",
-                  "modules", "listening", "heard", "clock", "sim"):
+                  "modules", "listening", "heard", "clock", "sim", "follow"):
             ctx.bus.subscribe(t, self.on_event)
 
     def send(self, msg: dict[str, Any]) -> None:
@@ -118,6 +118,8 @@ class Hub:
             self.send({"type": "sim", "data": self.ctx.sim.to_dict()})
         elif t == "clock":
             self.send({"type": "clock", "data": self.ctx.clock.to_dict()})
+        elif t == "follow":
+            self.send({"type": "follow", "data": {"on": ev.get("on")}})
 
     def _flush_tracks(self) -> None:
         self._tracks_pending = False
@@ -148,6 +150,7 @@ def full_state(ctx: "Context") -> dict[str, Any]:
         "registrations": ctx.registration.list() if ctx.registration else [],
         "brief": _brief(ctx),
         "camera": ctx.vision.available,
+        "follow": ctx.settings.get("lights.follow", True),
     })
     return s
 
@@ -427,6 +430,8 @@ def create_app(ctx: "Context") -> FastAPI:
             ok = True
         elif name == "follow":
             ctx.settings.set("lights.follow", bool(body.get("on", True)))
+            ctx.house.tick(time.time())
+            ctx.bus.publish("follow", on=ctx.settings.get("lights.follow", True))
             ok = True
         elif name == "say":
             staff(request)

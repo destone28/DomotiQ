@@ -64,7 +64,12 @@ export function mount(root) {
   $("#logs").onclick = async () => {
     try {
       const res = await fetch("/api/staff/logs", { headers: { "X-Staff": localStorage.getItem("domotiq.staff") || "" } });
-      out(await res.text());
+      const text = await res.text();
+      out(text);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+      a.download = `domotiq-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.log`;
+      a.click();
     } catch (e) { toast(e.message, "alarm"); }
   };
   load();

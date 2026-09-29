@@ -88,17 +88,31 @@ class Speaker:
             samples = await asyncio.get_running_loop().run_in_executor(None, self._synth, text, lang)
             self.ok = True
         except (OSError, ValueError, wave.Error) as e:
+            if self.ok or self.errors == 0:
+                log.warning("speech synthesis failed: %s", e)      # once, not at every sentence
             self.ok = False
             self.errors += 1
-            log.warning("speech synthesis failed: %s", e)
             return None
         self.cache[key] = samples
         while len(self.cache) > self.cache_size:
             self.cache.popitem(last=False)
         return samples
 
-    async def warm(self, sentences: dict[str, list[str]]) -> None:
-        """Synthesize the frequent sentences ahead of time."""
+    async def warm(self, sentences: dict[str, list[str]], wait_s: float = 120.0) -> None:
+        """Synthesize the frequent sentences ahead of time, once the Piper service answers.
+
+        At boot the two services start together and Piper needs a few seconds
+        to load its voice: the first sentence is retried until it works.
+        """
+        first_lang = next(iter(sentences), "it")
+        first = (sentences.get(first_lang) or ["Ciao"])[0]
+        loop = asyncio.get_running_loop()
+        end = loop.time() + wait_s
+        while await self.synth(first, first_lang) is None:
+            if loop.time() > end:
+                return
+            await asyncio.sleep(3.0)
+        log.info("speech synthesis ready")
         for lang, lines in sentences.items():
             for line in lines:
                 await self.synth(line, lang)

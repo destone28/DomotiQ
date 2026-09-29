@@ -37,6 +37,11 @@ ACTIONS = ("light", "light_off", "sound", "say", "relay", "notify", "scene", "pa
            "grill", "wait")
 
 
+# triggers that end by themselves (leaving the room, the count going back): their alarms last until then
+HELD = ("dwell", "count_above", "count_below")
+ALERT_HOLD_S = 30.0
+
+
 class Executor(Protocol):
     """What rules can make the house do, besides lights."""
 
@@ -134,6 +139,7 @@ class RuleEngine:
         self.timers: dict[str, Timer] = {}
         self.latched: dict[str, bool] = {}
         self.alert_keys: dict[str, str] = {}      # timer key -> alert key
+        self.alert_until: dict[str, float] = {}   # alerts of one-off events end by themselves
         self._minute = ""
         self._tasks: set[asyncio.Task] = set()
         for t in ("room_enter", "room_exit", "track_disappear", "count_changed", "identity_appear",
@@ -297,6 +303,10 @@ class RuleEngine:
     # ================================================================ time
     def tick(self, now: float | None = None) -> None:
         now = now or time.time()
+        for key, until in list(self.alert_until.items()):
+            if until <= now:
+                self.alert_until.pop(key, None)
+                self._release(key)
         for key, timer in list(self.timers.items()):
             if timer.fire_at > now:
                 continue
@@ -386,6 +396,9 @@ class RuleEngine:
         if rule["alert"]:
             akey = f"{rule['id']}:{ctx.get('track') or ctx.get('room') or 'x'}"
             self.alert_keys[key] = akey
+            if rule["when"]["type"] not in HELD:
+                # nothing will say when a one-off event is over: the alarm lasts as long as its lights
+                self.alert_until[key] = now + ALERT_HOLD_S
             self.house.set_alert(akey, rule=rule["id"], name=rule["name"], room=ctx.get("room"),
                                  who=ctx.get("name") or None)
         self.bus.publish("rule_fired", rule=rule["id"], name=rule["name"], ctx=_plain(ctx))

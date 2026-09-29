@@ -102,3 +102,18 @@ def test_answers(env):
     assert answers.who_in(ctx, "kitchen", "it") == "In cucina ci sono Marco e un cane."
     assert answers.count(ctx, None, "persons", "it") == "In casa c'è 1 persona."
     assert answers.count(ctx, "bathroom", "persons", "en") == "There are 0 people in the bathroom."
+
+
+def test_spoken_times_in_both_languages():
+    from domotiq.voice.intents import parse
+    cases = {
+        "it's half past three": (3, 30), "it is quarter to five": (4, 45), "it's twenty past six": (6, 20),
+        "it's ten to seven pm": (18, 50), "it's twenty five past eleven": (11, 25), "it's five twenty": (5, 20),
+        "sono le tre e venticinque": (3, 25), "sono le otto meno venti": (7, 40), "sono le tre e tre quarti": (3, 45),
+        "sono le sette e mezza di sera": (19, 30), "è l'una e dieci": (1, 10), "sono le 15 e 30": (15, 30),
+    }
+    for text, (h, m) in cases.items():
+        i = parse(text, [])
+        assert i is not None and i.name == "set_time", text
+        assert (i.args["hour"], i.args["minute"]) == (h, m), text
+    assert parse("what time is it", []).name == "time_now"
