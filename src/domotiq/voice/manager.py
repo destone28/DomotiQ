@@ -28,6 +28,7 @@ import numpy as np
 from ..audio.mic import MIC_RATE, Microphone
 from ..identities import NameTaken
 from ..model import CATEGORY_NAMES
+from ..scenes import scene_name
 from . import answers
 from .intents import Intent, find_name, find_room, normalize, parse
 from .llm import LanguageModel
@@ -41,6 +42,10 @@ log = logging.getLogger(__name__)
 
 YES = {"it": ["si", "sì", "certo", "esatto", "giusto", "va bene"], "en": ["yes", "yeah", "right", "correct", "sure"]}
 NO = {"it": ["no", "sbagliato"], "en": ["no", "wrong", "nope"]}
+# what the language model may propose that changes the house (asked first unless it is sure)
+ACTIONS = ("lights_on", "lights_off", "scene", "party", "grill", "grill_stop", "language", "volume", "register")
+SURE = 0.9
+
 FREQUENT = {
     "it": ["Chi è?", "Scusa, non ho capito. Chi sei?", "Vediamo...", "Non ho capito.", "Si balla!",
            "Festa finita!", "Accendo il barbecue!", "Italiano", "Come si chiama?", "In che stanza l'hai messo?"],
@@ -239,11 +244,45 @@ class Voice:
             filler = asyncio.create_task(self.say("Vediamo..." if lang == "it" else "Let me see..."))
             intent = await self.llm.understand(text, names)
             await filler
+            # the small model may misunderstand: questions are answered at once (at worst the right
+            # answer to another question), actions are asked first unless it was quite sure
+            if intent is not None and intent.name in ACTIONS and intent.confidence < SURE:
+                it, en = self._describe(intent)
+                if not await self._yes_no(it, en):
+                    await self.reply("D'accordo, niente.", "All right, nothing then.")
+                    return
         if intent is None:
             await self.say(answers.not_understood(lang))
             return
         log.info("intent %s %s (%s)", intent.name, intent.args, intent.source)
         await self.execute(intent)
+
+    def _describe(self, intent: Intent) -> tuple[str, str]:
+        """The action as a yes/no question, in both languages."""
+        a, ctx = intent.args, self.ctx
+        room = a.get("room")
+        where_it = answers.room(ctx, room, "it") if room else "in tutta la casa"
+        where_en = answers.room(ctx, room, "en") if room else "in the whole house"
+        n = intent.name
+        if n == "lights_on":
+            return f"Accendo la luce {where_it}?", f"Shall I turn on the light {where_en}?"
+        if n == "lights_off":
+            return f"Spengo la luce {where_it}?", f"Shall I turn off the light {where_en}?"
+        if n == "scene":
+            sc = a.get("scene", "normal")
+            return f"Metto lo scenario {scene_name(sc, 'it')}?", f"Shall I switch to the {scene_name(sc, 'en')} scene?"
+        if n == "party":
+            return "Facciamo festa?", "Shall we party?"
+        if n == "grill":
+            return "Accendo il barbecue?", "Shall I light the barbecue?"
+        if n == "grill_stop":
+            return "Spengo il barbecue?", "Shall I turn off the barbecue?"
+        if n == "language":
+            return ("Passo all'inglese?", "Shall I speak English?") if a.get("language") == "en" \
+                else ("Passo all'italiano?", "Shall I speak Italian?")
+        if n == "volume":
+            return ("Alzo il volume?", "Louder?") if a.get("direction") == "up" else ("Abbasso il volume?", "Quieter?")
+        return "Vuoi registrare un personaggio nuovo?", "Do you want to add a new character?"
 
     async def execute(self, intent: Intent) -> None:
         ctx, lang, a = self.ctx, self.lang, intent.args

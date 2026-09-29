@@ -20,11 +20,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import re
 import urllib.request
 from typing import Iterable
 
-from .intents import Intent, find_name
+from .intents import Intent, find_name, find_room
 
 log = logging.getLogger(__name__)
 
@@ -42,52 +43,66 @@ FORMS = {
 }
 INTENTS = list(FORMS)
 
-SYSTEM = """You understand what visitors say to a model smart home and answer with one command.
+SYSTEM = """You control a model smart home. Turn what the visitor says into one command of the house.
 Rooms: kitchen, living (living room, soggiorno, salotto), bedroom (camera da letto), bathroom (bagno), utility (locale tecnico), garage, garden (giardino), driveway (vialetto), house (the whole house).
-Commands:
-where_is NAME - where a character is
-who_in ROOM - who is in a room
-count ROOM - how many people are there
-temperature ROOM / humidity ROOM
-time_now - what time it is
-lights_on ROOM COLOR / lights_off ROOM
-scene normal|cinema|relax|night|away
-party / grill / grill_stop / car_where
-house_summary - what is happening in the house
-help - what the house can do
-language it|en / volume up|down
-who_are_you / register - a new character wants to join
-joke - the visitor wants a joke
-other - anything else: weather, news, sport, general knowledge, chit-chat, other places
-Sentences may be in Italian or English and may contain recognition errors.
-Examples:
-dov'è finito Marco => where_is Marco
-chi c'è in cucina adesso => who_in kitchen
-could you tell me who is hanging out in the kitchen => who_in kitchen
-c'è qualcuno in casa => who_in house
-quante persone ci sono in soggiorno => count living
-fa freddo qui dentro => temperature house
-com'è l'umidità del bagno => humidity bathroom
-che ore sono => time_now
-metti una luce viola in camera => lights_on bedroom purple
-vorrei un po' di atmosfera romantica => scene relax
-spegni tutto che vado a dormire => scene night
-usciamo tutti di casa => scene away
-facciamo festa => party
-accendi il barbecue => grill
-where did I park the car => car_where
-cosa sta succedendo in casa => house_summary
-what can you do => help
-parla inglese => language en
-alza la voce => volume up
-chi sei tu => who_are_you
-voglio aggiungere un personaggio nuovo => register
-raccontami una barzelletta => joke
-che tempo fa domani a Milano => other
-chi ha vinto la partita => other
-what is the capital of France => other
-quanto fa due più due => other
-ciao come stai => other"""
+Commands: where_is NAME, who_in ROOM, count ROOM, temperature ROOM, humidity ROOM, time_now, lights_on ROOM COLOR, lights_off ROOM, scene normal|cinema|relax|night|away, party, grill, grill_stop, car_where, house_summary, help, language it|en, volume up|down, who_are_you, register, joke, other.
+Use other for anything that is not about this house: weather, news, sport, general knowledge, chit-chat.
+Sentences may be in Italian or English and may contain recognition errors."""
+
+# examples given as a conversation: a small model follows them much better than a description.
+# They are mixed in a fixed order (a small model tends to repeat the last answers it saw) and
+# never change, so llama-server keeps them in its cache.
+_EXAMPLES = [
+    ("dov'è finito Marco", "where_is Marco"), ("where is Leo", "where_is Leo"),
+    ("chi c'è in cucina adesso", "who_in kitchen"), ("is anybody in the bedroom", "who_in bedroom"),
+    ("quante persone ci sono in soggiorno", "count living"), ("how many people are in the garden", "count garden"),
+    ("fa freddo qui dentro", "temperature house"), ("how hot is it in the kitchen", "temperature kitchen"),
+    ("com'è l'umidità del bagno", "humidity bathroom"), ("is the bathroom humid", "humidity bathroom"),
+    ("che ore sono", "time_now"), ("tell me the time", "time_now"),
+    ("metti una luce viola in camera", "lights_on bedroom purple"), ("make the garden green", "lights_on garden green"),
+    ("spegni la luce in cucina", "lights_off kitchen"), ("turn off the garage lights", "lights_off garage"),
+    ("vorrei un po' di atmosfera romantica", "scene relax"), ("guardiamo un film", "scene cinema"),
+    ("spegni tutto che vado a dormire", "scene night"), ("we are all going out", "scene away"),
+    ("facciamo festa", "party"), ("put on some music and dance", "party"),
+    ("light the barbecue", "grill"), ("accendi la griglia", "grill"),
+    ("spegni il barbecue", "grill_stop"),
+    ("where did I park the car", "car_where"), ("la macchina è in garage?", "car_where"),
+    ("cosa sta succedendo in casa", "house_summary"), ("give me a report of the house", "house_summary"),
+    ("what can you do", "help"), ("come funzioni", "help"),
+    ("parla inglese", "language en"), ("speak italian", "language it"),
+    ("alza la voce", "volume up"), ("quieter please", "volume down"),
+    ("chi sei tu", "who_are_you"), ("voglio aggiungere un personaggio nuovo", "register"),
+    ("raccontami una barzelletta", "joke"), ("make me laugh", "joke"),
+    ("che tempo fa domani a Milano", "other"), ("chi ha vinto la partita ieri", "other"),
+    ("what is the capital of France", "other"), ("ciao come stai", "other"), ("quanto fa sette per otto", "other"),
+]
+
+
+def _mixed(examples: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    import random
+    out = list(examples)
+    random.Random(3).shuffle(out)
+    while out[-1][1] == "other":
+        out.insert(0, out.pop())
+    return out
+
+
+EXAMPLES = _mixed(_EXAMPLES)
+EXAMPLE_NAMES = "Marco, Sofia, Leo"
+MIN_CONFIDENCE = 0.35      # below this the first word of the command was a guess
+
+
+def _user(names: str, sentence: str) -> str:
+    return f"Names: {names}. Sentence: {sentence}"
+
+
+def messages(sentence: str, names: list[str]) -> list[dict[str, str]]:
+    out = [{"role": "system", "content": SYSTEM}]
+    for said, command in EXAMPLES:
+        out.append({"role": "user", "content": _user(EXAMPLE_NAMES, said)})
+        out.append({"role": "assistant", "content": command})
+    out.append({"role": "user", "content": _user(", ".join(names) if names else "none", sentence)})
+    return out
 
 
 def grammar(names: list[str]) -> str:
@@ -155,28 +170,33 @@ class LanguageModel:
             self.ok = False
         return self.ok
 
-    def _ask(self, sentence: str, names: list[str]) -> str:
-        known = ", ".join(names) if names else "none"
+    def _ask(self, sentence: str, names: list[str], timeout: float | None = None) -> tuple[str, float]:
+        """The command, and how sure the model was of its first word (0..1)."""
         body = {
-            "messages": [
-                {"role": "system", "content": SYSTEM},
-                {"role": "user", "content": f"Known names: {known}\n{sentence} =>"},
-            ],
+            "messages": messages(sentence, names),
             "temperature": 0,
             "max_tokens": 12,
             "cache_prompt": True,
             "grammar": grammar(names),
+            "logprobs": True,
+            "top_logprobs": 1,
         }
         req = urllib.request.Request(self.url + "/v1/chat/completions", data=json.dumps(body).encode(),
                                      headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=self.timeout) as r:
+        with urllib.request.urlopen(req, timeout=timeout or self.timeout) as r:
             out = json.loads(r.read())
-        return out["choices"][0]["message"]["content"]
+        choice = out["choices"][0]
+        content = (choice.get("logprobs") or {}).get("content") or []
+        confidence = math.exp(content[0]["logprob"]) if content and "logprob" in content[0] else 1.0
+        return choice["message"]["content"], confidence
 
     def warm(self) -> None:
-        """Read the instructions once, so they are in the cache before the first visitor speaks."""
+        """Read the instructions once, so they are in the cache before the first visitor speaks.
+
+        On the board this takes a couple of minutes, once after each start.
+        """
         try:
-            self._ask("ciao", [])
+            self._ask("ciao", [], timeout=600)
         except (OSError, ValueError, KeyError):
             pass
 
@@ -184,7 +204,7 @@ class LanguageModel:
         names = list(names)
         sentence = re.sub(r"\s+", " ", sentence).strip()
         try:
-            text = await asyncio.get_running_loop().run_in_executor(None, self._ask, sentence, names)
+            text, confidence = await asyncio.get_running_loop().run_in_executor(None, self._ask, sentence, names)
             self.ok = True
         except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
             log.info("language model not available: %s", e)
@@ -193,4 +213,20 @@ class LanguageModel:
         intent = parse_command(text, names)
         if intent is None:
             log.info("language model answered something else: %r", text)
+            return None
+        log.info("language model: %r (%.2f)", text, confidence)
+        if confidence < MIN_CONFIDENCE and intent.name != "other":
+            # a guess: better to say it was not understood than to do the wrong thing
+            return Intent("other", {"guess": intent.name}, confidence, "llm")
+        # a registered name said with no room is almost always "where is"
+        if intent.name in ("who_in", "count", "other", "where_is") and not find_room(_plain(sentence)):
+            name = find_name(_plain(sentence), names, 0.85)
+            if name:
+                return Intent("where_is", {"name": name}, confidence, "llm")
+        intent.confidence = confidence
         return intent
+
+
+def _plain(text: str) -> str:
+    from .intents import normalize
+    return normalize(text)

@@ -62,6 +62,9 @@ EN_NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "s
               "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
               "fifteen": 15, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "noon": 12, "midnight": 0}
 
+# answers that are whole sentences on their own
+SHORT_ONLY = ("cancel", "yes", "no")
+
 # (intent, patterns); the first match wins, so order matters
 PATTERNS: list[tuple[str, list[str]]] = [
     ("cancel", [r"\b(annulla|lascia stare|niente|cancel|never mind|stop)\b"]),
@@ -76,32 +79,44 @@ PATTERNS: list[tuple[str, list[str]]] = [
                   r"\bin (english|italian)\b", r"\b(english|inglese) please\b"]),
     ("verbosity", [r"\b(stai zitta|silenzio|zitta|be quiet|shut up|silent|quiet mode)\b",
                    r"\b(parla di piu|chiacchierona|talk more|chatty)\b", r"\b(parla normale|normal mode)\b"]),
-    ("volume", [r"\b(alza|abbassa) (il |la )?(volume|musica)\b", r"\bvolume (su|giu|up|down)\b", r"\bpiu (forte|piano)\b",
+    ("volume", [r"\bnon ti sento\b", r"\bi can t hear you\b", r"\b(alza|abbassa) (il |la )?(volume|musica)\b", r"\bvolume (su|giu|up|down)\b", r"\bpiu (forte|piano)\b",
                 r"\b(louder|quieter|softer)\b", r"\b(turn|volume) (it )?(up|down)\b"]),
-    ("party", [r"\b(festa|party|balliamo|ballare|musica|let s dance|dance)\b"]),
-    ("grill", [r"\b(barbecue|grigliata|griglia|grill|bbq)\b"]),
+    ("party", [r"\b(festa|party|balliamo|ballare|musica|let s dance|dance)\b", r"\b(festeggia|celebr)\w*\b"]),
+    ("grill", [r"\b(barbecue|grigliata|griglia|grill|bbq|grigliare|salsicce|braciole|sausages)\b"]),
     ("scene", [r"\bscenari[oa]\b", r"\bmodalita\b", r"\bscene\b", r"\bmode\b", r"\bcinema\b", r"\brelax\b",
-               r"\bbuonanotte\b", r"\bgood night\b", r"\bbuongiorno\b", r"\bgood morning\b"]),
-    ("lights_off", [r"\b(spegni|spengi|turn off|switch off|lights off)\b"]),
+               r"\bbuonanotte\b", r"\bgood night\b", r"\bbuongiorno\b", r"\bgood morning\b",
+               r"\bvado a (dormire|letto)\b", r"\bandiamo a (dormire|letto)\b", r"\b(going|go) to (bed|sleep)\b",
+               r"\b(usciamo|esco|esciamo|stiamo uscendo)\b", r"\b(we re|we are|i m|i am) (leaving|going out)\b",
+               r"\bguardiamo un film\b", r"\bwatch a (film|movie)\b", r"\b(romantic|romantica|atmosfera)\b",
+               r"\bserie tv\b", r"\bla tv\b", r"\bwatch tv\b", r"\brilassiam\w*\b", r"\brelax\w*\b"]),
+    ("lights_off", [r"\b(spegni|spengi|turn off|switch off|lights off)\b", r"\bswitch (\w+ )?off\b", r"\bbuio\b",
+                    r"\bturn (\w+ )?off\b", r"\btoo bright\b", r"\btroppa luce\b", r"\btogli la luce\b"]),
     ("lights_on", [r"\b(accendi|illumina|turn on|switch on|lights on|light up)\b", r"\bluce\b.*\b(rossa|verde|blu|gialla|viola|rosa|bianca|azzurra|arancione)\b",
                    r"\b(make|paint|colour|color)\b.*\b(red|green|blue|yellow|purple|pink|white|orange|cyan)\b"]),
     ("car_where", [r"\b(dov e|dove e|dove si trova|where is|where s) (l |la |the )?(auto|macchina|car|automobile)\b",
                    r"\b(auto|macchina|car)\b.*\b(garage|dove|where)\b"]),
     ("where_is", [r"\bdov e\b", r"\bdove e\b", r"\bdove si trova\b", r"\bdove sta\b", r"\bwhere is\b",
-                  r"\bwhere s\b", r"\bwhere are\b", r"\bfind\b", r"\bcerca\b", r"\bin che stanza\b"]),
+                  r"\bwhere s\b", r"\bwhere are\b", r"\bfind\b", r"\bcerca\b", r"\bin che stanza\b",
+                  r"\bdove (si e |e )?(cacciat|finit|andat)\w*\b", r"\bwhere did \w+ go\b", r"\bwhere has \w+ gone\b"]),
     ("who_in", [r"\bchi c e\b", r"\bchi e in\b", r"\bchi sta\b", r"\bwho is in\b", r"\bwho s in\b",
-                r"\bwho is there\b", r"\banyone in\b", r"\bc e qualcuno\b", r"\bis anyone\b"]),
-    ("count", [r"\bquant[ie]\b", r"\bhow many\b", r"\bnumero di persone\b"]),
+                r"\bwho is there\b", r"\banyone in\b", r"\bc e qualcuno\b", r"\bis anyone\b",
+                r"\bc e gente\b", r"\bis (there )?anybody\b", r"\bwho is (hanging|staying|sitting)\b"]),
+    ("count", [r"\bquant[ie]\b", r"\bhow many\b", r"\bnumero di persone\b", r"\b(crowded|affollat\w*)\b",
+               r"\bsiamo in tanti\b"]),
     ("temperature", [r"\btemperatura\b", r"\bgradi\b", r"\bcaldo\b", r"\bfreddo\b", r"\btemperature\b",
+                     r"\bsi gela\b", r"\bgela\b", r"\bfreezing\b",
                      r"\bhow (hot|warm|cold)\b", r"\bdegrees\b"]),
-    ("humidity", [r"\bumidita\b", r"\bumido\b", r"\bhumidity\b", r"\bhumid\b", r"\bdoccia\b", r"\bshower\b"]),
+    ("humidity", [r"\bumidita\b", r"\bumido\b", r"\bhumidity\b", r"\bhumid\b", r"\bdoccia\b", r"\bshower\b",
+                  r"\bvapore\b", r"\bsteam\w*\b"]),
     ("joke", [r"\bbarzellett\w*\b", r"\bfammi ridere\b", r"\bjoke\b", r"\bmake me laugh\b", r"\bqualcosa di divertente\b"]),
     ("house_summary", [r"\bcom e la casa\b", r"\bcosa succede\b", r"\bsituazione\b", r"\bstato della casa\b",
                        r"\bhow is the house\b", r"\bwhat s happening\b", r"\bwhat is happening\b", r"\bstatus\b",
                        r"\braccont\w*\b", r"\bdescri\w*\b", r"\btell me about\b"]),
     ("who_are_you", [r"\bchi sei\b", r"\bcome ti chiami\b", r"\bwho are you\b", r"\bwhat s your name\b",
                      r"\bwhat is your name\b"]),
-    ("help", [r"\bcosa sai fare\b", r"\baiuto\b", r"\bche cosa puoi\b", r"\bwhat can you do\b", r"\bhelp\b"]),
+    ("help", [r"\bcosa sai fare\b", r"\baiuto\b", r"\bche cosa puoi\b", r"\bwhat can you do\b", r"\bhelp\b",
+              r"\bcome funzioni\b", r"\bhow do you work\b", r"\bwhat do you know how to do\b", r"\bcosa puoi fare\b",
+              r"\bwhat are you able to do\b", r"\bcosa sei capace\b"]),
     ("yes", [r"^(si|sì|certo|esatto|giusto|ok|okay|va bene|yes|yeah|yep|right|correct|sure)( .*)?$"]),
     ("no", [r"^(no|sbagliato|non e (lui|lei|giusto)|nope|wrong|not (him|her|right))( .*)?$"]),
 ]
@@ -253,7 +268,10 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
     if not t:
         return None
     names = list(names)
+    short = len(t.split()) <= 3
     for intent, patterns in PATTERNS:
+        if intent in SHORT_ONLY and not short:
+            continue                 # "si gela in camera" is not a yes, "the barbecue can stop now" is not a cancel
         if not any(re.search(p, t) for p in patterns):
             continue
         args: dict[str, Any] = {}
@@ -280,8 +298,13 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
             elif re.search(r"buongiorno|good morning", t):
                 args["greeting"] = "morning"
             scene = find_scene(t) or {"night": "night", "morning": "normal"}.get(args.get("greeting", ""))
-            if not scene and re.search(r"\bnotte\b|\bnight\b", t):
-                scene = "night"
+            if not scene:
+                for pattern, sid in ((r"\bnotte\b|\bnight\b|dormire|letto|bed|sleep", "night"),
+                                     (r"uscia|esco|escia|uscendo|leaving|going out", "away"),
+                                     (r"film|movie|\btv\b", "cinema"), (r"romantic|atmosfera|rilass|relax", "relax")):
+                    if re.search(pattern, t):
+                        scene = sid
+                        break
             if not scene:
                 continue
             args["scene"] = scene
