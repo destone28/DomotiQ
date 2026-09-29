@@ -251,7 +251,8 @@ async def periodic(ctx: Context) -> None:
                 if ok and not was:
                     await _mcu_ready(ctx)
                 client = ctx.mcu.client
-                if ok or not isinstance(client, RouterClient) or not client.connected.is_set():
+                if ok or ctx.mcu.version is not None or not isinstance(client, RouterClient) \
+                        or not client.connected.is_set():
                     silent_since = None
                 elif silent_since is None:
                     silent_since = now

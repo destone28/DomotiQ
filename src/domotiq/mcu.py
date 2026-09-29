@@ -178,6 +178,7 @@ class Mcu:
 
     async def check(self) -> bool:
         try:
+            self.version = None
             self.version = int(await self._call("version"))
             if self.version != PROTOCOL:
                 log.warning("the MCU speaks protocol %s, expected %s: reload the firmware",
@@ -190,6 +191,7 @@ class Mcu:
             self.last_ping = time.time()
         except (McuError, asyncio.TimeoutError, ValueError, TypeError):
             self.ok = False
+            self.version = None         # no answer at all (a wrong protocol keeps its number)
         return self.ok
 
     async def reset(self) -> bool:
