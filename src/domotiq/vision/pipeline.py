@@ -316,11 +316,11 @@ class Segmenter:
             ev = np.sort(np.linalg.eigvalsh(cov))
             elong = float(np.sqrt(ev[1] / max(ev[0], 1e-6)))
             area_mm2 = float(area) * self.mm2_per_px
-            border = x <= 1 or y <= 1 or x + w >= self.w - 1 or y + h >= self.h - 1
+            border = bool(x <= 1 or y <= 1 or x + w >= self.w - 1 or y + h >= self.h - 1)
             on_rim = blob & self.rim[y:y + h, x:x + w]
             rim_px = int(on_rim.sum())
             at_gate = rim_px > 0 and int((on_rim & self.gate[y:y + h, x:x + w]).sum()) > 0.8 * rim_px
-            hand = (rim_px >= 6 or border) and area_mm2 > 1500 and not at_gate
+            hand = bool((rim_px >= 6 or border) and area_mm2 > 1500 and not at_gate)
             sub = lab[y:y + h, x:x + w][blob]
             ref = self.reference[y:y + h, x:x + w][blob]
             # keep the pixels that differ most from the floor: the edges of a blob mix both

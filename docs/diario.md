@@ -69,3 +69,11 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
 **Spazio su casa1.** La partizione di sistema ha 2 GB liberi su 9,8; `/home/arduino` è una partizione a parte con 15 GB. Docker contiene 2,3 GB di immagini di App Lab che la casa non usa.
 
 **Installazione su casa1.** Il primo tentativo di compilare llama.cpp non era partito: l'immagine non ha né compilatore né cmake. Li installa `install.sh` (pacchetti `build-essential` e `cmake`).
+
+**Webapp e funzioni in più (29/9, notte).**
+- Test delle API web con il client di prova di FastAPI su una casa simulata: pagine, stato, regole con registro delle modifiche, registrazione di un personaggio virtuale (uno o due candidati), PIN dello staff con blocco dopo cinque errori, comandi, conferme, WebSocket.
+- Uno script apre la casa in simulazione con qualche personaggio e fotografa ogni schermata con Chrome senza finestra, a misura di telefono, in italiano e in inglese: servono alle guide. La lingua si legge al caricamento della pagina, quindi dopo averla impostata la pagina va ricaricata.
+- Dal riepilogo delle regole mancava quale regola spegne le luci di un'altra ("Termostato: normale" spegne quelle di "caldo" e "freddo"): ora lo dice, e l'editor permette di sceglierla.
+- Dalle funzioni "se avanza tempo": buongiorno e buonanotte a voce (con scenario e saluto), allarme intruso quando la casa è in modalità Via (una regola di partenza, con la nuova stanza speciale "tutte le stanze della casa"), luce di cortesia nello scenario Notte (le luci seguono le persone, arancioni e al 12 %).
+- La correzione della luce ora usa una tabella di OpenCV per i guadagni dei pixel e tratta a parte solo le soglie delle porte: da 38 a 30 ms per fotogramma al PC.
+- La webcam spostata diventa un avviso per tutti e compare in diagnostica.
