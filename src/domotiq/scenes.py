@@ -26,7 +26,10 @@ SCENES: dict[str, dict[str, Any]] = {
     },
     "night": {
         "name": {"it": "Notte", "en": "Night"},
-        "follow": False,
+        # a courtesy light: whoever gets up at night finds a dim warm light in the room
+        "follow": True,
+        "follow_color": "#ff7a30",
+        "follow_brightness": 12,
         "rooms": {},
     },
     "away": {

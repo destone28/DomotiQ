@@ -145,11 +145,18 @@ class Segmenter:
         self.gate = gates > 0
         # which light each pixel is under: the room of the surface it shows, mixed across doorways
         self.label, self.label_b, self.blend, self.region_names = scene.room_labels()
-        self.blend3 = self.blend[..., None]
+        # the gains of each pixel come from a lookup table; only doorways mix two regions
+        self._label3 = cv2.merge([self.label.astype(np.uint8)] * 3)
+        mixed = np.flatnonzero(self.blend.ravel() > 0)
+        self._mixed = (mixed, self.label.ravel()[mixed], self.label_b.ravel()[mixed],
+                       self.blend.ravel()[mixed][:, None].astype(np.float32))
         # where each light is measured: the free floor of the room, away from furniture and walls
         free = (self.mask > 0) & (scene.z < 0.5) & (self.blend == 0)
         free = cv2.erode(free.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
-        self.samples = [np.flatnonzero(free & (self.label == i)) for i in range(len(self.region_names))]
+        self.samples = []
+        for i in range(len(self.region_names)):
+            idx = np.flatnonzero(free & (self.label == i))
+            self.samples.append(idx[:: max(1, len(idx) // 4000)])     # a few thousand points are plenty
         self.mm2_per_px = float(np.mean([cal.mm_per_px(x, y) for x, y in ((100, 100), (325, 145), (550, 300))])) ** 2
 
     # ------------------------------------------------------------ reference
@@ -206,8 +213,6 @@ class Segmenter:
                 else:
                     self._crowded.pop(i, None)
                 idx = free
-            if len(idx) > 3000:
-                idx = idx[:: len(idx) // 3000]
             if len(idx) < 50:
                 continue
             c, r = flat[idx], ref[idx]
@@ -250,12 +255,18 @@ class Segmenter:
     def corrected(self, frame_bgr: np.ndarray, update: bool = True, now: float = 0.0) -> np.ndarray:
         cur = frame_bgr.astype(np.float32)
         gains = self._gains(cur, update, now)
-        g = gains[self.label] * (1.0 - self.blend3) + gains[self.label_b] * self.blend3
-        out = cur / g
+        lut = np.ones((256, 1, 3), np.float32)
+        lut[: len(gains), 0, :] = gains
+        g = cv2.LUT(self._label3, lut)
+        idx, la, lb, t = self._mixed
+        if len(idx):
+            g.reshape(-1, 3)[idx] = gains[la] * (1.0 - t) + gains[lb] * t
+        out = cv2.divide(cur, g)
         # a saturated channel carries no information: take the reference where it would saturate too
-        sat = (cur >= 250) & (self.reference_bgr * g >= 235)
-        out[sat] = self.reference_bgr[sat]
-        return np.clip(out, 0, 255)
+        sat = (frame_bgr >= 250) & (self.reference_bgr * g >= 235)
+        if sat.any():
+            out[sat] = self.reference_bgr[sat]
+        return np.minimum(out, 255.0, out=out)
 
     # ------------------------------------------------------------ segmentation
     def foreground(self, frame_bgr: np.ndarray, now: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
