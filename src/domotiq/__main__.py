@@ -2,4 +2,6 @@
 # SPDX-License-Identifier: MIT
 from .app import main
 
-main()
+# the guard matters: the vision process is started with "spawn", which imports the main module again
+if __name__ == "__main__":
+    main()
