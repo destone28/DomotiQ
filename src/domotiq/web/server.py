@@ -543,7 +543,8 @@ def create_app(ctx: "Context") -> FastAPI:
 
     @app.put("/api/staff/settings", dependencies=[Depends(staff)])
     async def settings_put(body: dict, w: Who = Depends(who)):
-        body = {k: v for k, v in body.items() if k != "staff"}
+        # the PIN and the network have their own endpoints, which also apply them
+        body = {k: v for k, v in body.items() if k not in ("staff", "network")}
         before = ctx.settings.public()
         ctx.settings.update(body)
         audit(w, "settings", None, "update", before, ctx.settings.public())
@@ -565,6 +566,25 @@ def create_app(ctx: "Context") -> FastAPI:
             raise HTTPException(400, str(e)) from e
         audit(w, "settings", "pin", "update")
         return {"ok": True}
+
+    @app.post("/api/staff/network", dependencies=[Depends(staff)])
+    async def network(body: dict, w: Who = Depends(who)):
+        from .. import network as net
+        password = str(body.get("password", ""))
+        if not net.valid_password(password):
+            raise HTTPException(400, "the Wi-Fi password must be 8 to 63 characters, letters, digits and symbols")
+        exists, active = await net.hotspot_state()
+        applied = False
+        if exists:
+            applied, error = await net.set_hotspot_password(password)
+            if not applied:
+                raise HTTPException(500, f"the hotspot did not accept the password: {error}")
+        ctx.settings.set("network.password", password)
+        audit(w, "settings", "network", "update")
+        if applied and active:
+            # after the answer: the phones on the hotspot drop and join again with the new password
+            asyncio.get_running_loop().call_later(2.0, lambda: asyncio.ensure_future(net.restart_hotspot()))
+        return {"ok": True, "applied": applied, "restarting": applied and active}
 
     @app.post("/api/staff/time", dependencies=[Depends(staff)])
     async def staff_time(body: dict):

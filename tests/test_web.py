@@ -129,3 +129,35 @@ def test_websocket_hello(web):
         assert hello["type"] == "hello" and "tracks" in hello["data"]
         ws.send_text("ping")
         assert ws.receive_json()["type"] in ("pong", "status", "sim", "tracks")
+
+
+def test_staff_changes_the_wifi_password_and_pin(web, tmp_path):
+    ctx, c = web
+    h = {"X-Staff": c.post("/api/staff/login", json={"pin": "0000"}).json()["token"]}
+    assert c.post("/api/staff/network", json={"password": "short"}, headers=h).status_code == 400
+    assert c.post("/api/staff/network", json={"password": "x" * 64}, headers=h).status_code == 400
+    r = c.post("/api/staff/network", json={"password": "casa-nuova-2026"}, headers=h).json()
+    assert r["ok"] and not r["restarting"]          # no hotspot on a test machine: saved only
+    assert ctx.settings.get("network.password") == "casa-nuova-2026"
+    # the generic settings endpoint cannot change the network behind the hotspot's back
+    c.put("/api/staff/settings", json={"network": {"password": "sneaky-pass"}}, headers=h)
+    assert ctx.settings.get("network.password") == "casa-nuova-2026"
+    assert c.post("/api/staff/network", json={"password": "casa-nuova-2026"}).status_code == 401
+    # PIN: from the web app, then the old one no longer works
+    assert c.post("/api/staff/pin", json={"pin": "12"}, headers=h).status_code == 400
+    assert c.post("/api/staff/pin", json={"pin": "4821"}, headers=h).json()["ok"]
+    assert c.post("/api/staff/login", json={"pin": "0000"}).status_code == 403
+    assert c.post("/api/staff/login", json={"pin": "4821"}).status_code == 200
+
+
+def test_admin_command_line(tmp_path):
+    from domotiq.admin import main
+    from domotiq.settings import Paths, Settings
+    var = str(tmp_path / "var")
+    assert main(["--var", var, "pin", "12"]) == 2
+    assert main(["--var", var, "pin", "7777"]) == 0
+    assert main(["--var", var, "wifi", "short"]) == 2
+    assert main(["--var", var, "wifi", "una-password-lunga"]) == 0
+    s = Settings(Paths(var))
+    assert s.check_pin("7777") and not s.check_pin("0000")
+    assert s.get("network.password") == "una-password-lunga"

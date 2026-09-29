@@ -178,4 +178,14 @@ Le due case sono indipendenti. La calibrazione della webcam appartiene a ciascun
 3. Fai partire l'hotspot a ogni avvio (`bash scripts/hotspot.sh boot`, poi riavvia) e stampa il cartello da `/sign`.
 4. Scrivi la password del Wi-Fi e il PIN dello staff sulla copia della [guida rapida](guida-rapida-staff.md) che resta allo stand, mai nel repository.
 
+Tutti e due si possono cambiare in qualsiasi momento da **Altro → Impostazioni** nella webapp (staff), oppure sulla scheda:
+
+```bash
+cd ~/domotiq
+venv/bin/python -m domotiq.admin pin 4821
+venv/bin/python -m domotiq.admin wifi "una-password-nuova"
+```
+
+Il comando riavvia la casa perché legga i valori nuovi; una password del Wi-Fi nuova riavvia anche l'hotspot, se è acceso.
+
 Avanti: [stampa e montaggio](03-stampa-e-montaggio.md).

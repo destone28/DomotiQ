@@ -47,7 +47,7 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 
 - **Calibrazione**: togli statuine e auto → tocca i 4 angoli della base (davanti a sinistra, davanti a destra, dietro a destra, dietro a sinistra; davanti = vialetto) → **Usa questi angoli** → controlla che le pareti disegnate coincidano con quelle vere → **Regola di nuovo la luce**. Calibra prima di aprire la casa ai visitatori: fino ad allora la sfocatura può solo indovinare dove si trova il bagno.
 - **Diagnostica**: moduli, scansione I2C, **Prova audio**, **Prova microfono (3 s)**, registri.
-- **Impostazioni**: luminosità e durate, PIN, **Usa l'ora di questo telefono**, backup, cestino, riavvio dell'app, riavvio e spegnimento della scheda.
+- **Impostazioni**: luminosità e durate, PIN, password del Wi-Fi, **Usa l'ora di questo telefono**, backup, cestino, riavvio dell'app, riavvio e spegnimento della scheda.
 - **Comandi → Fai dire alla casa**; **Simulazione** accesa e spenta.
 
 Guida completa: `docs/it/` nel repository.

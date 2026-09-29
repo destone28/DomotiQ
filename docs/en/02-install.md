@@ -178,4 +178,14 @@ The two houses are independent. The camera calibration belongs to each house and
 3. Switch the hotspot on at every boot (`bash scripts/hotspot.sh boot`, then reboot) and print the sign from `/sign`.
 4. Write the Wi-Fi password and the staff PIN on the stand's copy of the [quick guide](quick-guide-staff.md), never in the repository.
 
+Both can be changed at any time from **More → Settings** in the web app (staff), or on the board:
+
+```bash
+cd ~/domotiq
+venv/bin/python -m domotiq.admin pin 4821
+venv/bin/python -m domotiq.admin wifi "a-new-password"
+```
+
+The command restarts the house so it reads the new values; a new Wi-Fi password also restarts the hotspot if it is on.
+
 Next: [print and assemble](03-print-and-assemble.md).

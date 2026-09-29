@@ -61,7 +61,8 @@ async def main(args: argparse.Namespace) -> int:
     print("\n[2] Hub channels (7-bit addresses)")
     try:
         main_bus = await mcu.scan(255)
-        print(f"    main bus: {', '.join(f'0x{a:02x} {KNOWN.get(a, "")}'.strip() for a in main_bus) or 'nothing'}")
+        names = ", ".join(f"0x{a:02x} {KNOWN.get(a, '')}".strip() for a in main_bus) or "nothing"
+        print(f"    main bus: {names}")
     except McuError as e:
         print(f"    main bus: {e}")
     for ch, what in HUB_CHANNELS.items():

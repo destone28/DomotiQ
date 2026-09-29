@@ -43,6 +43,12 @@ export function mount(root) {
         <p class="muted small" style="margin-top:12px">${new Date().toLocaleString()}</p>
         <button class="btn block" id="time">${t("set.time_now")}</button>
       </div>
+      <div class="card"><h3 style="margin-top:0">${t("set.wifi")}</h3>
+        <p class="muted small">${t("set.wifi_ssid")}: <b>${esc(s.network.ssid || "—")}</b></p>
+        <label class="field"><span>${t("set.wifi_password")}</span><input type="text" id="wifi" minlength="8" maxlength="63" autocomplete="off" spellcheck="false" value="${esc(s.network.password || "")}"></label>
+        <p class="muted small">${t("set.wifi_hint")}</p>
+        <button class="btn block" id="wifi-save">${t("common.save")}</button>
+      </div>
       <div class="card"><h3 style="margin-top:0">${t("set.backup")}</h3>
         <button class="btn block" id="dl">⬇️ ${t("set.download")}</button>
         <label class="field"><span>${t("set.restore")}</span><input type="file" id="restore" accept=".zip,application/zip"></label>
@@ -72,6 +78,15 @@ export function mount(root) {
     $("#pin-save").onclick = async () => {
       try { await api("POST", "/api/staff/pin", { pin: $("#pin").value }); toast(t("set.pin_changed"), "success"); $("#pin").value = ""; }
       catch (e) { toast(e.message, "alarm"); }
+    };
+    $("#wifi-save").onclick = async () => {
+      const password = $("#wifi").value;
+      if (password.length < 8 || password.length > 63) { toast(t("set.wifi_bad"), "warning"); return; }
+      if (!(await ask(t("set.wifi_confirm")))) return;
+      try {
+        const r = await api("POST", "/api/staff/network", { password });
+        toast(r.restarting ? t("set.wifi_restarting") : t("common.saved"), "success", 8000);
+      } catch (e) { toast(e.message, "alarm"); }
     };
     $("#time").onclick = async () => {
       try { await api("POST", "/api/staff/time", { epoch: Date.now() / 1000 }); toast(t("time.set"), "success"); } catch (e) { toast(e.message, "alarm"); }

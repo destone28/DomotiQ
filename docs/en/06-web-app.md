@@ -127,6 +127,7 @@ Virtual characters dragged on the plan instead of real figurines, virtual sensor
 - **House**: the name of the house in Italian and English; **Buttons mounted upside down**, for a totem assembled the other way round.
 - **Lights · Party · Barbecue · Climate**: *Maximum brightness (%)*, *Pixels current limit (mA)*, *Brightness of the follow-me lights*, *Off after (s)*, *Colour of the follow-me lights*, party *Duration (s)* (10–60), *Fan duration (s)* (5–120), *Hot: rise over the baseline (°C)*, *Shower: humidity rise (%)*. Then **Save**. Brightness and current limit go to the microcontroller at once.
 - **PIN · Time**: *New PIN (4-8 digits)*; **Use this phone's time** to set the clock of the house.
+- **Wi-Fi of the house**: the network name and *Wi-Fi password* (8 to 63 characters). **Save** writes it into the hotspot; if the hotspot is on, it restarts after a couple of seconds and every phone, the staff phone included, must join again with the new password. The printable sign updates by itself: print it again.
 - **Backup**: **Download the backup** (a zip with rules, characters with their photos, and settings; never the network, the house name, the PIN or the camera calibration), **Restore from a backup** (replaces rules, characters and settings), **Default rules** (replaces all rules with the ones the house started with).
 - **Bin**: rules and characters deleted in the last 24 hours, each with **Restore**.
 - **System**: **Restart the app**, **Reboot the board**, **Power off the board**, each after *Are you sure?*.

@@ -47,7 +47,7 @@ Scan QR 1 on the sign (Wi-Fi), then QR 2 (the house). If the phone asks: *Stay c
 
 - **Calibration**: take figurines and car out → tap the 4 corners of the base (front left, front right, back right, back left; front = driveway) → **Use these corners** → check that the drawn walls sit on the real ones → **Adjust to the light again**. Calibrate before opening the house to visitors: until then the blur only guesses where the bathroom is.
 - **Diagnostics**: modules, I2C scan, **Audio test**, **Microphone test (3 s)**, logs.
-- **Settings**: brightness and durations, PIN, **Use this phone's time**, backup, bin, restart, reboot, power off.
+- **Settings**: brightness and durations, PIN, Wi-Fi password, **Use this phone's time**, backup, bin, restart, reboot, power off.
 - **Controls → Make the house say**; **Simulation** on and off.
 
 Full guide: `docs/en/` in the repository.
