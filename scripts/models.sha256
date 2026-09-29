@@ -1,0 +1,8 @@
+3f1493311db17fec0e95cdf3c92f82b5006159b7743e057a749187469dfa7cf0  it_IT-serena-medium.onnx
+0c5ecb9a9f574f1363993df8f641dd3ed433cd940045e137809e25651057c550  it_IT-serena-medium.onnx.json
+6f52a751e2349abe7a76735eb09dc1875298c77ea2342ffd2fef79ff81b87f22  en_US-ljspeech-medium.onnx
+141d612cc0a95ed7efc1ca936b845c2364967f2e9217c5dbfcf69fc4d6c65860  en_US-ljspeech-medium.onnx.json
+9ec65e75861d1c6c2e457cccd932705340dcdf233f5b239f00733b4de0bf3267  vosk-model-small-it-0.22.zip
+30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498  vosk-model-small-en-us-0.15.zip
+74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db  qwen2.5-0.5b-instruct-q4_k_m.gguf
+c789161ed43c8269fcd4e67c67eeeb4e80c622da2eb296a20bc6007bd18a0b7d  yolox_nano.onnx

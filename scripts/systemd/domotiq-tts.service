@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
+# SPDX-License-Identifier: MIT
+# Piper (piper1-gpl, GPL-3.0) as a separate program, in its own environment,
+# listening only on the loopback interface.
+[Unit]
+Description=DomotiQ speech synthesis (Piper)
+After=network.target
+
+[Service]
+Type=simple
+User=arduino
+Group=arduino
+WorkingDirectory=/home/arduino/domotiq
+ExecStart=/home/arduino/domotiq/piper-venv/bin/python -m piper.http_server --host 127.0.0.1 --port 5010 -m it_IT-serena-medium --data-dir /home/arduino/domotiq/models/piper
+Restart=always
+RestartSec=3
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

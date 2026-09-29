@@ -1,0 +1,5 @@
+# Development only: pip install -r requirements-dev.txt
+-r requirements.txt
+pytest
+httpx
+pillow
