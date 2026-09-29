@@ -37,9 +37,14 @@ class HouseClock:
             return False
 
     def set(self, epoch: float, source: str) -> bool:
-        """Set the system clock. Needs CAP_SYS_TIME (granted by the service)."""
+        """Set the system clock. Needs CAP_SYS_TIME (granted by the service).
+
+        A phone sets it only while the house does not know the time: a visitor's
+        phone with a wrong clock must not move the clock of a house that knows
+        it. Corrections come from the staff or by voice.
+        """
         drift = abs(epoch - time.time())
-        if source == "phone" and self.known and drift < 60:
+        if source == "phone" and self.known:
             return False
         if self.can_set and drift > 2:
             try:

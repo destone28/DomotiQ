@@ -432,7 +432,7 @@ Luce accesa quando entra l'auto o una persona. "Auto parcheggiata" dopo 3 s ferm
 ## 14. Ora
 La scheda non ha batteria per l'orologio. In ordine:
 1. NTP quando la scheda ha internet (sviluppo);
-2. il primo telefono che apre la webapp dopo l'avvio invia la sua ora;
+2. il primo telefono che apre la webapp dopo l'avvio invia la sua ora (solo finché la casa non la conosce: un telefono con l'orologio sbagliato non deve spostarla a tutti);
 3. a voce: "Sono le 15 e 30";
 4. lo staff la corregge nelle impostazioni.
 

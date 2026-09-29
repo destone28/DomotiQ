@@ -90,7 +90,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### Tutte le luci respirano debolmente e non reagiscono
 **Causa.** Il microcontrollore sta aspettando Linux: la scheda si sta ancora avviando, oppure l'applicazione tace da 30 secondi (si è fermata o si è bloccata). In questo stato il relè è spento.
 
-**Soluzione.** Aspetta che l'avvio finisca; altrimenti controlla `systemctl status domotiq`. Le luci tornano al primo comando.
+**Soluzione.** Aspetta che l'avvio finisca. Un'applicazione che cade riparte dopo 2 secondi; una bloccata viene riavviata da systemd dopo 2 minuti. Quando torna a parlare con il microcontrollore, la casa gli rimanda luci e LED da sola. Se dopo 3 minuti respirano ancora, controlla `systemctl status domotiq`.
 
 ### Un modulo è rosso in *Diagnostica*
 **Causa.** Un cavo Qwiic allentato, il modulo sul canale sbagliato dell'Hub, oppure un modulo che non risponde.

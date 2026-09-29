@@ -712,6 +712,12 @@ static void io_thread(void *, void *, void *) {
     if (first || now >= next_probe) {
       next_probe = now + PROBE_MS;
       if (bus_stuck || bus_lines() != 3) bus_unstick();
+      // A module that lost power for a moment comes back dark, and a probe
+      // may not have seen it missing: every frame and the LEDs go out again.
+      k_mutex_lock(&state_lock, K_FOREVER);
+      for (uint8_t li = 0; li < N_LIGHTS; li++) sent_valid[li] = false;
+      req_leds_dirty = true;
+      k_mutex_unlock(&state_lock);
       if (first || !hub_addr) hub_find();
       if (first || !relay_addr) relay_find();
       probe_lights();

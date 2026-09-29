@@ -90,7 +90,7 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### All lights breathe dimly and do not react
 **Cause.** The microcontroller is waiting for Linux: the board is still booting, or the application has been silent for 30 seconds (it stopped or crashed). In this state the relay is off.
 
-**Fix.** Wait for the boot to finish; otherwise check `systemctl status domotiq`. Lights come back at the first command.
+**Fix.** Wait for the boot to finish. An application that crashes starts again after 2 seconds; one that hangs is restarted by systemd after 2 minutes. When it talks to the microcontroller again, the house sends it lights and LEDs by itself. If they still breathe after 3 minutes, check `systemctl status domotiq`.
 
 ### A module is red in *Diagnostics*
 **Cause.** A loose Qwiic cable, the module on the wrong Hub channel, or a module that does not answer.

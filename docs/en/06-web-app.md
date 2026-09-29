@@ -32,7 +32,7 @@ Everyone can change the rules and the characters on purpose: this is a house for
 - **Subtitles**: everything the house says appears as a subtitle at the bottom of every phone, even when the house is set to *Silent*.
 - **Notifications**: short messages pop up at the bottom (a character registered, the barbecue is ready, a rule's notification). Alarm notifications also vibrate the phone, where the browser allows it.
 - **Connection lost**: if the phone loses the house, a banner says *Lost the connection with the house: retrying…* and the web app reconnects by itself.
-- **Clock**: when the house does not know the time, or its clock is more than a minute off, the first phone that opens the web app sets it (*House time set from this phone*).
+- **Clock**: when the house does not know the time, the first phone that opens the web app sets it (*House time set from this phone*). Once it knows it, visitors' phones no longer touch it (one with a wrong clock would move it for everybody): the staff corrects it with **Use this phone's time**, or it can be said by voice.
 - **Nickname**: the first time you change a rule or register a character, the web app asks *What's your name? (optional, shown in the log)*. You can change it in **More → Your nickname**. Each phone also has an automatic identifier.
 
 ## House

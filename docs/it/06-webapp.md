@@ -32,7 +32,7 @@ Tutti possono cambiare le regole e i personaggi, ed è voluto: questa è una cas
 - **Sottotitoli**: tutto quello che la casa dice compare come sottotitolo in fondo a ogni telefono, anche quando la casa è impostata su *Silenziosa*.
 - **Notifiche**: brevi messaggi compaiono in basso (un personaggio registrato, la grigliata pronta, la notifica di una regola). Le notifiche di allarme fanno anche vibrare il telefono, dove il browser lo permette.
 - **Connessione persa**: se il telefono perde la casa, una fascia dice *Connessione con la casa persa: riprovo…* e la webapp si ricollega da sola.
-- **Orologio**: quando la casa non conosce l'ora, o il suo orologio sbaglia di più di un minuto, il primo telefono che apre la webapp la imposta (*Ora della casa impostata da questo telefono*).
+- **Orologio**: quando la casa non conosce l'ora, il primo telefono che apre la webapp la imposta (*Ora della casa impostata da questo telefono*). Quando la conosce, i telefoni dei visitatori non la toccano più (uno con l'orologio sbagliato la sposterebbe per tutti): la corregge lo staff con **Usa l'ora di questo telefono**, oppure la si dice a voce.
 - **Soprannome**: la prima volta che modifichi una regola o registri un personaggio, la webapp chiede *Come ti chiami? (facoltativo, compare nel registro)*. Puoi cambiarlo in **Altro → Il tuo soprannome**. Ogni telefono ha anche un identificativo automatico.
 
 ## Casa

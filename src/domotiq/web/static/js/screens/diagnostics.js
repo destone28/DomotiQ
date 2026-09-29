@@ -59,7 +59,7 @@ export function mount(root) {
   $("#scan").onclick = async () => {
     try {
       const r = await api("POST", "/api/staff/diagnostics/scan");
-      out(Object.entries(r).map(([ch, a]) => `ch${ch}: ${Array.isArray(a) ? a.map(x => "0x" + x.toString(16)).join(" ") || "—" : a}`).join("\n"));
+      out(Object.entries(r).map(([ch, a]) => `${ch === "main" ? t("diag.main_bus") : "ch" + ch}: ${Array.isArray(a) ? a.map(x => "0x" + x.toString(16)).join(" ") || "—" : a}`).join("\n"));
     } catch (e) { toast(e.message, "alarm"); }
   };
   $("#sound").onclick = () => api("POST", "/api/staff/diagnostics/sound").catch(e => toast(e.message, "alarm"));

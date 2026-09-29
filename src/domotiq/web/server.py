@@ -679,12 +679,18 @@ def create_app(ctx: "Context") -> FastAPI:
 
     @app.post("/api/staff/diagnostics/scan", dependencies=[Depends(staff)])
     async def scan():
-        out = {}
+        # the main bus (Hub, Latch Relay) answers on every channel too: each channel lists what is behind it
+        out: dict[str, Any] = {}
+        try:
+            main = await ctx.mcu.scan(255)
+            out["main"] = main
+        except Exception as e:  # noqa: BLE001
+            main, out["main"] = [], str(e)
         for ch in range(8):
             try:
-                out[ch] = await ctx.mcu.scan(ch)
+                out[str(ch)] = [a for a in await ctx.mcu.scan(ch) if a not in main and not 0x70 <= a <= 0x77]
             except Exception as e:  # noqa: BLE001
-                out[ch] = str(e)
+                out[str(ch)] = str(e)
         return out
 
     @app.post("/api/staff/diagnostics/sound", dependencies=[Depends(staff)])

@@ -17,6 +17,7 @@ import asyncio
 import logging
 import os
 import signal
+import socket
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -220,15 +221,40 @@ async def on_mcu_notify(ctx: Context, name: str, params: list[Any]) -> None:
         ctx.bus.publish("modules", modules=ctx.mcu.modules)
 
 
+MCU_SILENT_S = 20.0      # the sketch gives Linux up after 30 s without a call
+WATCHDOG_EVERY_S = 10.0  # WatchdogSec in domotiq.service is 120 s
+
+
+def systemd_notify(message: bytes) -> None:
+    """Tell systemd the house is alive. A house stuck without crashing (a deadlock, a
+    call that never returns) would otherwise stay stuck until someone restarts it; with
+    WatchdogSec in the service, systemd restarts it as it does after a crash."""
+    addr = os.environ.get("NOTIFY_SOCKET")
+    if not addr:
+        return
+    if addr.startswith("@"):
+        addr = "\0" + addr[1:]
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as s:
+            s.connect(addr)
+            s.send(message)
+    except OSError:
+        pass
+
+
 # ==================================================================== loops
 async def periodic(ctx: Context) -> None:
-    last_check = 0.0
-    last_purge = 0.0
+    # Intervals on the monotonic clock: the house clock can be set from a phone or by voice, and
+    # a jump back would stop the checks of the microcontroller (which then falls back to the
+    # waiting breath after 30 s of silence).
+    last_check = last_purge = last_alive = float("-inf")
+    last_ok = time.monotonic()
     silent_since: float | None = None     # the router answers but the sketch does not
     resets: list[float] = []
     clock_warned = False
     while True:
         now = time.time()
+        mono = time.monotonic()
         try:
             if ctx.sim.enabled:
                 # every tick, even with nothing moved: dwell and count timers need the time to pass
@@ -242,10 +268,11 @@ async def periodic(ctx: Context) -> None:
                 ctx.registration.poll()
             if not (ctx.sim.enabled and ctx.sim.mute):
                 await ctx.lights.refresh()
-            if now - last_check > 5:
-                last_check = now
+            if mono - last_check > 5:
+                last_check = mono
                 was = ctx.mcu.ok
                 ok = await ctx.mcu.check()
+                gap, last_ok = mono - last_ok, mono if ok else last_ok
                 ctx.house.status["mcu"] = ok
                 ctx.house.status["modules"] = ctx.mcu.modules
                 i2c = ctx.mcu.i2c if ok else None
@@ -256,17 +283,21 @@ async def periodic(ctx: Context) -> None:
                         "en": f"The Modulino bus is stuck ({low} held low): check the Qwiic cables"})
                 else:
                     ctx.house.clear_alert("i2c-held-low")
-                if ok and not was:
+                if ok and (not was or gap > MCU_SILENT_S):
+                    # a new connection, or nothing reached the sketch for so long that it may have
+                    # switched the fan off and gone back to the waiting breath: send everything again
+                    log.info("microcontroller %s: sending lights, LEDs and limits again",
+                             "connected" if not was else f"not called for {gap:.0f} s")
                     await _mcu_ready(ctx)
                 client = ctx.mcu.client
                 if ok or ctx.mcu.version is not None or not isinstance(client, RouterClient) \
                         or not client.connected.is_set():
                     silent_since = None
                 elif silent_since is None:
-                    silent_since = now
-                elif now - silent_since > 8 and len(resets) < 3 and (not resets or now - resets[-1] > 60):
+                    silent_since = mono
+                elif mono - silent_since > 8 and len(resets) < 3 and (not resets or mono - resets[-1] > 60):
                     # typically after a reboot of Linux: restart the sketch now that the router listens
-                    resets.append(now)
+                    resets.append(mono)
                     silent_since = None
                     log.warning("the microcontroller does not answer: resetting it (attempt %d)", len(resets))
                     await ctx.mcu.reset()
@@ -292,11 +323,14 @@ async def periodic(ctx: Context) -> None:
                 clock_warned = True
                 await ctx.actions.say({"it": "Non so che ore sono: premi Parla e dimmelo.",
                                        "en": "I don't know what time it is: press Talk and tell me."})
-            if now - last_purge > 3600:
-                last_purge = now
+            if mono - last_purge > 3600:
+                last_purge = mono
                 ctx.store.purge(now)
         except Exception:  # noqa: BLE001 - the loop must never die
             log.exception("periodic step failed")
+        if mono - last_alive >= WATCHDOG_EVERY_S:
+            last_alive = mono
+            systemd_notify(b"WATCHDOG=1")
         await asyncio.sleep(0.2)
 
 

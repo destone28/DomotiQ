@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import time
 import asyncio
 
 from domotiq.climate import Shower, Thermostat
@@ -268,3 +269,12 @@ Simple mixer control 'Auto Gain Control',0
     assert mixer_commands(us205, 80) == [["Speaker,0", "playback", "100%", "unmute"],
                                          ["Mic,0", "playback", "0%", "mute"],
                                          ["Mic,0", "capture", "80%", "cap"]]
+
+
+def test_phone_sets_the_clock_only_when_unknown():
+    from domotiq.clock import HouseClock
+    c = HouseClock(can_set=False)
+    c.source = "unknown"
+    assert c.set(time.time() + 3600, "phone") and c.source == "phone"
+    assert not c.set(time.time() - 3600, "phone")          # a second phone with another time: ignored
+    assert c.set(time.time() + 120, "staff") and c.source == "staff"
