@@ -21,6 +21,15 @@ CASES = [
     ("how many people are in the bathroom", "count", {"room": "bathroom"}),
     ("che temperatura c'è", "temperature", {}),
     ("quanta umidità c'è in bagno", "humidity", {"room": "bathroom"}),
+    ("quanti gradi ci sono in bagno", "temperature", {"room": "bathroom"}),
+    ("la cucina è vuota?", "who_in", {"room": "kitchen"}),
+    ("is the living room empty", "who_in", {"room": "living"}),
+    ("la casa è vuota?", "who_in", {}),
+    ("il garage è vuoto?", "car_where", {}),
+    ("quante persone ci sono nella stanza vuota", "count", {}),
+    ("fa freddo nella stanza vuota", "temperature", {}),
+    ("how many degrees is it in the kitchen", "temperature", {"room": "kitchen"}),
+    ("quante persone ci sono in cucina", "count", {"room": "kitchen"}),
     ("accendi la luce in cucina", "lights_on", {"room": "kitchen"}),
     ("luce rossa in camera", "lights_on", {"room": "bedroom", "color": "red"}),
     ("turn off the lights in the garage", "lights_off", {"room": "garage"}),
@@ -62,6 +71,8 @@ def test_parse(text, intent, args):
 
 def test_nonsense_is_not_understood():
     assert parse("il cielo è blu stamattina", NAMES) is None
+    assert parse("ho la pancia vuota", NAMES) is None
+    assert parse("il frigo è vuoto", NAMES) is None
     assert parse("", NAMES) is None
 
 

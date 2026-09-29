@@ -31,6 +31,7 @@ DEFAULTS: dict[str, Any] = {
         "voice_gain": 100,
         "music_gain": 80,
         "effects_gain": 80,
+        "mic_gain": 100,             # capture level of the sound card, %
     },
     "lights": {
         "max_brightness": 30,        # cap applied by the firmware, 0-100

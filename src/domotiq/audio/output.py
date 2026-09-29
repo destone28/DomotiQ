@@ -37,17 +37,64 @@ LEAD_S = 0.12                      # how far ahead of the clock the mixer may wr
 F_SETPIPE_SZ = 1031
 
 
-def find_card() -> str | None:
-    """The USB sound card, as an ALSA device name (the board has its own HDMI audio too)."""
+def find_card(root: Path = Path("/proc/asound")) -> str | None:
+    """The USB sound card, as an ALSA device name.
+
+    The board has its own audio too, and the webcam is a USB sound card as
+    well, with a microphone and nothing to play on: the card must have a
+    playback device. Their numbers can swap from one boot to the next.
+    """
     try:
-        cards = Path("/proc/asound/cards").read_text()
+        cards = (root / "cards").read_text()
     except OSError:
         return None
     for m in re.finditer(r"^\s*(\d+)\s+\[(\S+)\s*\]:\s+(\S+)\s+-\s+(.*)$", cards, re.M):
-        _, card_id, driver, _name = m.groups()
-        if driver == "USB-Audio":
+        index, card_id, driver, _name = m.groups()
+        if driver == "USB-Audio" and (root / f"card{index}" / "pcm0p").exists():
             return f"plughw:CARD={card_id},DEV=0"
     return None
+
+
+def mixer_commands(contents: str, mic_gain: int = 100) -> list[list[str]]:
+    """amixer arguments that set the hardware levels of the card, from `amixer scontents`.
+
+    Every playback volume goes to 100 %: the house sets the volume in
+    software and the knob of the speakers stays at maximum, so the level
+    the card remembers (38 %, -23 dB on the US205) must not get in the way.
+    The microphone is captured at `mic_gain` % and never played back on the
+    speakers, where it would howl.
+    """
+    out: list[list[str]] = []
+    for block in re.split(r"^Simple mixer control ", contents, flags=re.M)[1:]:
+        m = re.match(r"'([^']+)',(\d+)", block)
+        caps = re.search(r"Capabilities:(.*)", block)
+        if not m or not caps:
+            continue
+        name, caps_list = f"{m.group(1)},{m.group(2)}", caps.group(1).split()
+        mic = "mic" in m.group(1).lower()
+        if "pvolume" in caps_list or "pswitch" in caps_list:
+            if mic:
+                out.append([name, "playback", "0%", "mute"] if "pvolume" in caps_list else [name, "playback", "mute"])
+            elif "pvolume" in caps_list:
+                out.append([name, "playback", "100%", "unmute"])
+        if mic and "cvolume" in caps_list:
+            out.append([name, "capture", f"{max(0, min(100, int(mic_gain)))}%", "cap"])
+    return out
+
+
+def set_hardware_levels(device: str, mic_gain: int = 100) -> bool:
+    m = re.search(r"CARD=([^,]+)", device)
+    if not m:
+        return False
+    card = m.group(1)
+    try:
+        contents = subprocess.run(["amixer", "-c", card, "scontents"], capture_output=True, text=True,
+                                  timeout=5).stdout
+        for args in mixer_commands(contents, mic_gain):
+            subprocess.run(["amixer", "-q", "-c", card, "sset", *args], capture_output=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return True
 
 
 class _Item:
@@ -204,6 +251,8 @@ class Audio:
     def _open(self) -> bool:
         if self.dry:
             return True
+        if not set_hardware_levels(self.device, int(self.settings.get("voice.mic_gain", 100))):
+            log.warning("could not set the levels of %s", self.device)
         try:
             self._proc = subprocess.Popen(
                 ["aplay", "-q", "-D", self.device, "-t", "raw", "-f", "S16_LE",

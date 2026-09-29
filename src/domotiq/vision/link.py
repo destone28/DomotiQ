@@ -19,8 +19,11 @@ class VisionLink:
     def tracks(self) -> list[Track]:
         return []
 
-    def jpeg(self, overlay: bool = False) -> bytes | None:
-        """The latest frame for the live view, already privacy-filtered (names drawn on it if asked)."""
+    def jpeg(self, overlay: bool = False, since: float = 0.0) -> bytes | None:
+        """The latest frame for the live view, already privacy-filtered (names drawn on it if asked).
+
+        With `since`, only a frame made after that moment, or None.
+        """
         return None
 
     def unknown_tracks(self) -> list[Track]:

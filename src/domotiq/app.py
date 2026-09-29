@@ -250,7 +250,7 @@ async def periodic(ctx: Context) -> None:
                 ctx.house.status["modules"] = ctx.mcu.modules
                 i2c = ctx.mcu.i2c if ok else None
                 if i2c and i2c["held_low"] and not (i2c["scl"] and i2c["sda"]):
-                    low = "SCL" if not i2c["scl"] else "SDA"
+                    low = "SCL/SDA" if not (i2c["scl"] or i2c["sda"]) else "SCL" if not i2c["scl"] else "SDA"
                     ctx.house.set_alert("i2c-held-low", name={
                         "it": f"Il bus dei Modulino è bloccato ({low} a massa): controlla i cavi Qwiic",
                         "en": f"The Modulino bus is stuck ({low} held low): check the Qwiic cables"})

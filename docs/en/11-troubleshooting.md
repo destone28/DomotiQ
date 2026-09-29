@@ -196,7 +196,7 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### The *Audio* dot is red, or the house is silent
 **Cause.** The USB sound card is missing or not found, the volume is at 0, the house is set to *Silent*, or the speech synthesis service is down.
 
-**Fix.** Check `aplay -l` for a USB audio card, **Controls → Volume** and **Talkativeness**, and `systemctl status domotiq-tts`. The house uses the first USB audio card; to force another device, add `Environment=DOMOTIQ_AUDIO=plughw:CARD=<name>,DEV=0` with `sudo systemctl edit domotiq` and restart it. If the card disappears while running, the house opens it again by itself. Without any sound card, the house still writes what it would say as subtitles.
+**Fix.** Check `aplay -l` for a USB audio card, **Controls → Volume** and **Talkativeness**, and `systemctl status domotiq-tts`. The house uses the first USB audio card that can play; to force another device, add `Environment=DOMOTIQ_AUDIO=plughw:CARD=<name>,DEV=0` with `sudo systemctl edit domotiq` and restart it. If the card disappears while running, the house opens it again by itself. Without any sound card, the house still writes what it would say as subtitles.
 
 ### The first English sentence is slow
 **Cause.** The English voice is loaded at its first use.

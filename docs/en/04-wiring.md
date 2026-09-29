@@ -99,7 +99,7 @@ In normal use the fan runs for 20 seconds per barbecue (a staff setting, 5 to 12
 
 ## Audio
 
-- **Sound card.** The UGREEN US205 plugs into the Revodok. The house finds it by itself as the first USB audio card; the UNO Q's own HDMI audio is ignored.
+- **Sound card.** The UGREEN US205 plugs into the Revodok. The house finds it by itself as the first USB audio card that can play: the C270 is a USB audio card too, but with a microphone only, and the UNO Q's own HDMI audio is ignored. Every time it opens the card, the house sets its output to 0 dB, turns off the microphone monitor on the speakers and sets the microphone gain (`voice.mic_gain`, 100 %): the volume is decided by the house in software, with the speakers' knob at maximum.
 - **Speakers.** Their 3.5 mm jack goes into the headphone output of the US205; they take power from USB. Turn their knob to the maximum and leave it there: the house sets the volume (default 70 out of 100) and it can be changed from the web app or by voice.
 - **Microphone.** The Neewer lavalier (3.5 mm TRS) goes into the microphone input of the US205, and sits in the cap of the totem. It records at 16 kHz mono, only while the house is listening; the audio stays in memory and is never saved.
 

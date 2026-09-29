@@ -49,7 +49,12 @@ def memory() -> dict[str, float]:
 
 
 def wifi_clients() -> int | None:
+    """Phones on the hotspot; None when the board is not the access point (on another
+    network the only "station" is that network's router)."""
     try:
+        info = subprocess.run(["iw", "dev", "wlan0", "info"], capture_output=True, text=True, timeout=3).stdout
+        if "type AP" not in info:
+            return None
         out = subprocess.run(["iw", "dev", "wlan0", "station", "dump"], capture_output=True,
                              text=True, timeout=3).stdout
         return out.count("Station ")

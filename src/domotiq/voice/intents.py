@@ -101,13 +101,16 @@ PATTERNS: list[tuple[str, list[str]]] = [
     ("who_in", [r"\bchi c e\b", r"\bchi e in\b", r"\bchi sta\b", r"\bwho is in\b", r"\bwho s in\b",
                 r"\bwho is there\b", r"\banyone in\b", r"\bc e qualcuno\b", r"\bis anyone\b",
                 r"\bc e gente\b", r"\bis (there )?anybody\b", r"\bwho is (hanging|staying|sitting)\b"]),
-    ("count", [r"\bquant[ie]\b", r"\bhow many\b", r"\bnumero di persone\b", r"\b(crowded|affollat\w*)\b",
+    # "quanti gradi ci sono in bagno" asks for the temperature, not for a head count
+    ("count", [r"\bquant[ie]\b(?!.*\b(gradi|umidita)\b)", r"\bhow many\b(?!.*\bdegrees\b)", r"\bnumero di persone\b", r"\b(crowded|affollat\w*)\b",
                r"\bsiamo in tanti\b"]),
     ("temperature", [r"\btemperatura\b", r"\bgradi\b", r"\bcaldo\b", r"\bfreddo\b", r"\btemperature\b",
                      r"\bsi gela\b", r"\bgela\b", r"\bfreezing\b",
                      r"\bhow (hot|warm|cold)\b", r"\bdegrees\b"]),
     ("humidity", [r"\bumidita\b", r"\bumido\b", r"\bhumidity\b", r"\bhumid\b", r"\bdoccia\b", r"\bshower\b",
                   r"\bvapore\b", r"\bsteam\w*\b"]),
+    # "la cucina è vuota?": only about a room or the house ("il frigo è vuoto" is not a question for us)
+    ("empty_room", [r"\bvuot[oa]\b", r"\bempty\b"]),
     ("joke", [r"\bbarzellett\w*\b", r"\bfammi ridere\b", r"\bjoke\b", r"\bmake me laugh\b", r"\bqualcosa di divertente\b"]),
     ("house_summary", [r"\bcom e la casa\b", r"\bcosa succede\b", r"\bsituazione\b", r"\bstato della casa\b",
                        r"\bhow is the house\b", r"\bwhat s happening\b", r"\bwhat is happening\b", r"\bstatus\b",
@@ -282,6 +285,13 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
                     return Intent("who_in", {"room": find_room(t)}, 0.8)
                 continue
             args["name"] = name
+        elif intent == "empty_room":
+            room = find_room(t)
+            if not room and not re.search(r"\b(casa|house)\b", t):
+                continue
+            if room == "garage":
+                return Intent("car_where", {}, 0.8)       # an empty garage is about the car
+            return Intent("who_in", {"room": room} if room else {}, 0.9)
         elif intent in ("who_in", "count", "temperature", "humidity", "lights_off", "lights_on"):
             room = find_room(t)
             if room:

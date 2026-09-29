@@ -248,6 +248,14 @@ def create_app(ctx: "Context") -> FastAPI:
     # ============================================================ live view
     @app.get("/api/snapshot.jpg")
     async def snapshot(overlay: int = 0):
+        # the vision process makes images only while somebody watches: wait for one made after the
+        # request, or the answer could be a frame from minutes ago (before the webcam was moved)
+        if ctx.vision.available and not ctx.sim.enabled:
+            asked = time.time()
+            for _ in range(20):
+                if ctx.vision.jpeg(bool(overlay), since=asked):
+                    break
+                await asyncio.sleep(0.1)
         return Response(_frame(ctx, bool(overlay)), media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
     @app.get("/api/stream")

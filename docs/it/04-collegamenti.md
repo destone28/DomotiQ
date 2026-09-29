@@ -99,7 +99,7 @@ Nell'uso normale la ventola gira 20 secondi per ogni grigliata (un'impostazione 
 
 ## Audio
 
-- **Scheda audio.** La UGREEN US205 si collega al Revodok. La casa la trova da sola come prima scheda audio USB; l'audio HDMI della UNO Q viene ignorato.
+- **Scheda audio.** La UGREEN US205 si collega al Revodok. La casa la trova da sola come prima scheda audio USB capace di suonare: la C270 è anche lei una scheda audio USB, ma ha solo il microfono, e l'audio HDMI della UNO Q viene ignorato. A ogni apertura la casa mette l'uscita della scheda a 0 dB, spegne il ritorno del microfono sulle casse e regola il guadagno del microfono (`voice.mic_gain`, 100 %): il volume lo decide la casa in software, con la manopola delle casse al massimo.
 - **Casse.** Il loro jack da 3,5 mm va nell'uscita cuffie della US205; l'alimentazione la prendono dalla USB. Gira la loro manopola al massimo e lasciala lì: il volume lo imposta la casa (70 su 100 di serie), e si può cambiare dalla webapp o a voce.
 - **Microfono.** Il lavalier Neewer (TRS da 3,5 mm) va nell'ingresso microfono della US205 e sta nel tappo del totem. Registra a 16 kHz mono, solo mentre la casa ascolta; l'audio resta in memoria e non viene mai salvato.
 

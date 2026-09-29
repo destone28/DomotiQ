@@ -223,6 +223,7 @@ class VisionProcess(VisionLink):
         self._tracks: list[Track] = []
         self._tracks_at = 0.0
         self._jpeg: dict[bool, bytes | None] = {False: None, True: None}
+        self._jpeg_at: dict[bool, float] = {False: 0.0, True: 0.0}
         self._status: dict[str, Any] = {}
         self._camera = False
         self._replies: dict[int, Any] = {}
@@ -284,6 +285,7 @@ class VisionProcess(VisionLink):
                 self._camera = bool(msg[2].get("camera"))
             elif kind == "jpeg":
                 self._jpeg[bool(msg[1])] = msg[2]
+                self._jpeg_at[bool(msg[1])] = time.time()
             elif kind == "status":
                 self._status = msg[1]
                 self._camera = bool(msg[1].get("camera"))
@@ -336,11 +338,14 @@ class VisionProcess(VisionLink):
             return []
         return list(self._tracks)
 
-    def jpeg(self, overlay: bool = False) -> bytes | None:
+    def jpeg(self, overlay: bool = False, since: float = 0.0) -> bytes | None:
+        # the child encodes frames only while somebody asks for them: the cached one can be old
         now = time.time()
         if now - self._want_sent[overlay] > 1.0:
             self._want_sent[overlay] = now
             self._send("want", overlay)
+        if since:
+            return self._jpeg[overlay] if self._jpeg[overlay] is not None and self._jpeg_at[overlay] >= since else None
         return self._jpeg[overlay] or (self._jpeg[False] if overlay else None)
 
     def signature(self, track_id: str) -> tuple[list[float], str] | None:

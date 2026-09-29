@@ -34,9 +34,11 @@ export function mount(root) {
         `<li><span>${ok ? "🟢" : "🔴"}</span><span class="grow">${esc(MODULE_NAMES[k] || k)}</span></li>`).join("");
       const cam = d.camera || {};
       const i2c = d.mcu.i2c;
-      const bus = !i2c ? "" : (i2c.scl && i2c.sda && !i2c.held_low)
+      const stuck = !!i2c && i2c.held_low && !(i2c.scl && i2c.sda);
+      const low = i2c && !i2c.scl && !i2c.sda ? "SCL / SDA" : i2c && !i2c.scl ? "SCL" : "SDA";
+      const bus = !i2c ? "" : !stuck
         ? `<p class="muted small">${t("diag.bus_ok")}</p>`
-        : `<p>⚠️ ${t("diag.bus_low").replace("{line}", !i2c.scl ? "SCL" : "SDA")}</p>`;
+        : `<p>⚠️ ${t("diag.bus_low").replace("{line}", low)}</p>`;
       $("#body").innerHTML = `
         <div class="card"><h3 style="margin-top:0">${t("diag.system")}</h3><dl class="kv">
           <dt>${t("diag.host")}</dt><dd>${esc(d.hostname)} · DomotiQ ${esc(d.version)}</dd>

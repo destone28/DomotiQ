@@ -60,10 +60,10 @@ async def main(args: argparse.Namespace) -> int:
 
     try:
         bus = parse_bus(int(await mcu._call("bus")))
-        free = bus["scl"] and bus["sda"]
-        print(f"    bus: SCL {'high' if bus['scl'] else 'LOW'}, SDA {'high' if bus['sda'] else 'LOW'}"
-              f"{'' if free else ' -> the bus is stuck'}")
-        if not free:
+        stuck = bus["held_low"] and not (bus["scl"] and bus["sda"])
+        low = "SCL and SDA" if not (bus["scl"] or bus["sda"]) else "SCL" if not bus["scl"] else "SDA"
+        print(f"    bus: {low + ' held low -> the bus is stuck' if stuck else 'free'}")
+        if stuck:
             print("    Nothing can answer while a line is held low. Usually a Qwiic cable with reversed wires\n"
                   "    (pin 1 to pin 4: compare the colour order at its two ends) or a damaged connector.\n"
                   "    Unplug the cables from the Hub one at a time until both lines are high.")
@@ -71,6 +71,7 @@ async def main(args: argparse.Namespace) -> int:
         print("    bus: state not available (firmware older than the bus check)")
 
     print("\n[2] Hub channels (7-bit addresses)")
+    main_bus: list[int] = []
     try:
         main_bus = await mcu.scan(255)
         names = ", ".join(f"0x{a:02x} {KNOWN.get(a, '')}".strip() for a in main_bus) or "nothing"
@@ -79,7 +80,8 @@ async def main(args: argparse.Namespace) -> int:
         print(f"    main bus: {e}")
     for ch, what in HUB_CHANNELS.items():
         try:
-            found = [a for a in await mcu.scan(ch) if not 0x70 <= a <= 0x77]
+            # the main bus (Hub, Latch Relay) answers on every channel too: list only what is behind it
+            found = [a for a in await mcu.scan(ch) if a not in main_bus and not 0x70 <= a <= 0x77]
             names = ", ".join(f"0x{a:02x} {KNOWN.get(a, '?')}" for a in found) or "nothing"
         except McuError as e:
             names = str(e)

@@ -235,3 +235,36 @@ def test_alarm_of_a_one_off_event_ends_by_itself(env):
     assert env.house.alerts
     env.rules.tick(1031.0)
     assert not env.house.alerts
+
+
+def test_sound_card_choice_and_levels(tmp_path):
+    from domotiq.audio.output import find_card, mixer_commands
+    # the webcam enumerated first: it has a microphone only, the house must take the US205
+    (tmp_path / "cards").write_text(
+        " 0 [WEBCAM         ]: USB-Audio - C270 HD WEBCAM\n"
+        "                      C270 HD WEBCAM at usb-xhci-hcd.2.auto-1.2, high speed\n"
+        " 1 [Device         ]: USB-Audio - USB Audio Device\n"
+        "                      C-Media Electronics Inc. USB Audio Device at usb-xhci-hcd.2.auto-1.1\n")
+    for index, pcms in (("0", ["pcm0c"]), ("1", ["pcm0c", "pcm0p"])):
+        (tmp_path / f"card{index}").mkdir()
+        for pcm in pcms:
+            (tmp_path / f"card{index}" / pcm).mkdir()
+    assert find_card(tmp_path) == "plughw:CARD=Device,DEV=0"
+    (tmp_path / "card1" / "pcm0p").rmdir()
+    assert find_card(tmp_path) is None
+
+    us205 = """Simple mixer control 'Speaker',0
+  Capabilities: pvolume pswitch pswitch-joined
+  Playback channels: Front Left - Front Right
+  Limits: Playback 0 - 37
+  Front Left: Playback 14 [38%] [-23.00dB] [on]
+Simple mixer control 'Mic',0
+  Capabilities: pvolume pvolume-joined cvolume cvolume-joined pswitch pswitch-joined cswitch cswitch-joined
+  Mono: Playback 16 [52%] [-7.00dB] [off] Capture 35 [100%] [23.00dB] [on]
+Simple mixer control 'Auto Gain Control',0
+  Capabilities: pswitch pswitch-joined
+  Mono: Playback [on]
+"""
+    assert mixer_commands(us205, 80) == [["Speaker,0", "playback", "100%", "unmute"],
+                                         ["Mic,0", "playback", "0%", "mute"],
+                                         ["Mic,0", "capture", "80%", "cap"]]

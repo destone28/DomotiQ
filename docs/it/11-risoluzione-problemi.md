@@ -196,7 +196,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### Il pallino *Audio* è rosso, oppure la casa è muta
 **Causa.** La scheda audio USB manca o non viene trovata, il volume è a 0, la casa è impostata su *Silenziosa*, oppure il servizio di sintesi vocale è fermo.
 
-**Soluzione.** Controlla con `aplay -l` che ci sia una scheda audio USB, poi **Comandi → Volume** e **Loquacità**, e `systemctl status domotiq-tts`. La casa usa la prima scheda audio USB; per forzare un altro dispositivo, aggiungi `Environment=DOMOTIQ_AUDIO=plughw:CARD=<name>,DEV=0` con `sudo systemctl edit domotiq` e riavvia il servizio. Se la scheda sparisce mentre la casa è accesa, la casa la riapre da sola. Anche senza nessuna scheda audio, la casa continua a scrivere come sottotitoli quello che direbbe.
+**Soluzione.** Controlla con `aplay -l` che ci sia una scheda audio USB, poi **Comandi → Volume** e **Loquacità**, e `systemctl status domotiq-tts`. La casa usa la prima scheda audio USB che può suonare; per forzare un altro dispositivo, aggiungi `Environment=DOMOTIQ_AUDIO=plughw:CARD=<name>,DEV=0` con `sudo systemctl edit domotiq` e riavvia il servizio. Se la scheda sparisce mentre la casa è accesa, la casa la riapre da sola. Anche senza nessuna scheda audio, la casa continua a scrivere come sottotitoli quello che direbbe.
 
 ### La prima frase in inglese è lenta
 **Causa.** La voce inglese viene caricata al primo utilizzo.

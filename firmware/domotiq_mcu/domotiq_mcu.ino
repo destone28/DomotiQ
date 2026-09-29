@@ -187,6 +187,7 @@ static const uint8_t TOF_CONFIG[] = {
 static const struct device *const bus_port = DEVICE_DT_GET(DT_NODELABEL(gpiod));
 static const uint8_t PIN_SCL = 12, PIN_SDA = 13;
 static volatile bool bus_stuck = false;
+static volatile uint8_t bus_levels = 3;      // SCL and SDA at the last check, taken with the bus idle
 static volatile uint16_t bus_refused = 0;    // transactions not attempted because a line was low
 static volatile uint8_t bus_unsticks = 0;    // attempts to free the bus
 
@@ -204,6 +205,7 @@ static uint8_t bus_lines() {                 // bit 0 SCL high, bit 1 SDA high
 static bool bus_idle() {
   uint8_t l = bus_lines();
   if (l != 3) { k_busy_wait(50); l = bus_lines(); }
+  bus_levels = l;
   bus_stuck = l != 3;
   if (bus_stuck && bus_refused < 0xFFFF) bus_refused++;
   return !bus_stuck;
@@ -728,11 +730,19 @@ static void io_thread(void *, void *, void *) {
       k_mutex_unlock(&state_lock);
     }
 
-    // Linux silent for too long: fan off, lights back to the waiting breath
-    if (linux_seen && now - last_linux_ms > LINUX_SILENT_MS) {
+    // Linux silent for too long: fan off, lights back to the waiting breath.
+    // The Bridge thread updates last_linux_ms at any moment, also after `now`
+    // was read (the probes and the relay pulse take time): read it first, then
+    // a fresh clock, and compare with a signed difference. The fan goes off
+    // through req_relay, which is tried again until the module takes it.
+    uint32_t seen = last_linux_ms;
+    uint32_t t_now = k_uptime_get_32();
+    if (linux_seen && (int32_t)(t_now - seen) > (int32_t)LINUX_SILENT_MS) {
       linux_seen = false;
-      relay_command(false);
-      for (uint8_t li = 0; li < N_LIGHTS; li++) { cur_light[li] = LightCmd(); cur_light[li].started = now; }
+      k_mutex_lock(&state_lock, K_FOREVER);
+      req_relay = 0;
+      k_mutex_unlock(&state_lock);
+      for (uint8_t li = 0; li < N_LIGHTS; li++) { cur_light[li] = LightCmd(); cur_light[li].started = t_now; }
       party_on = false;
     }
 
@@ -848,13 +858,14 @@ bool limits(int max_brightness, int budget) {
 
 int modules() { seen_linux(); return (int)modules_mask; }
 
-// State of the Qwiic bus: bit 0 SCL high, bit 1 SDA high (now), bit 2 the
-// last transaction found a line held low, bits 8-15 attempts to free the
+// State of the Qwiic bus: bit 0 SCL high, bit 1 SDA high (both seen at the
+// last check, made with the bus idle: a live reading would often catch a
+// transfer), bit 2 the last check found a line held low, bits 8-15 attempts to free the
 // bus, bits 16-30 transactions refused because of a low line.
 int bus() {
   seen_linux();
   uint32_t refused = bus_refused > 0x7FFF ? 0x7FFF : bus_refused;
-  return (int)(bus_lines() | (bus_stuck ? 4u : 0u) | ((uint32_t)bus_unsticks << 8) | (refused << 16));
+  return (int)(bus_levels | (bus_stuck ? 4u : 0u) | ((uint32_t)bus_unsticks << 8) | (refused << 16));
 }
 
 // Which addresses answer on a hub channel (8 = main bus), 32 per block.
