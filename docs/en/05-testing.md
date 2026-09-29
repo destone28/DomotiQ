@@ -72,7 +72,7 @@ In **Diagnostics**:
 
 ## 9. Camera calibration
 
-The calibration tells the house where the base is in the image. Until it is done the house sees nothing, and the bathroom is not yet blurred in the live view: calibrate before the house is open to visitors.
+The calibration tells the house where the base is in the image. Until it is done the house sees nothing, and the blur of the bathroom in the live view is only approximate (see [chapter 7](07-recognition-and-identities.md#privacy)): calibrate before the house is open to visitors.
 
 Open **More → Calibration**.
 
@@ -87,7 +87,7 @@ Later:
 - **Adjust to the light again** is for when the light of the hall changes a lot. Slow changes are followed automatically on the free floor.
 - If the camera gets bumped, the web app shows *The webcam has moved: calibrate again*: repeat the whole procedure.
 
-**Diagnostics → Camera** now shows the frame rate (about 10 per second) and the processing time, without *not calibrated*.
+**Diagnostics → Webcam** now shows the frame rate (about 10 per second) and the processing time, without *not calibrated*.
 
 ## 10. The first figurine
 

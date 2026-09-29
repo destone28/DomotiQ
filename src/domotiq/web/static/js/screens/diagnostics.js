@@ -35,16 +35,16 @@ export function mount(root) {
       const cam = d.camera || {};
       $("#body").innerHTML = `
         <div class="card"><h3 style="margin-top:0">${t("diag.system")}</h3><dl class="kv">
-          <dt>Host</dt><dd>${esc(d.hostname)} · DomotiQ ${esc(d.version)}</dd>
-          <dt>Uptime</dt><dd>${dur(d.uptime_s)} (app ${dur(d.app_uptime_s)})</dd>
+          <dt>${t("diag.host")}</dt><dd>${esc(d.hostname)} · DomotiQ ${esc(d.version)}</dd>
+          <dt>${t("diag.uptime")}</dt><dd>${dur(d.uptime_s)} (app ${dur(d.app_uptime_s)})</dd>
           <dt>CPU</dt><dd class="num">${d.cpu.load.join(" / ")} · ${d.cpu.temperature != null ? d.cpu.temperature.toFixed(1) + " °C" : "—"}</dd>
           <dt>RAM</dt><dd class="num">${d.memory.available_mb} / ${d.memory.total_mb} MB (${d.memory.used_pct}%)</dd>
-          <dt>Disk</dt><dd class="num">${d.disk.free_mb} MB</dd>
+          <dt>${t("diag.disk")}</dt><dd class="num">${d.disk.free_mb} MB</dd>
           <dt>Wi-Fi</dt><dd>${d.wifi_clients ?? "—"}</dd>
-          <dt>Clock</dt><dd>${esc(d.clock.source)} · ${new Date(d.clock.now * 1000).toLocaleString()}</dd>
+          <dt>${t("diag.clock")}</dt><dd>${esc(d.clock.source)} · ${new Date(d.clock.now * 1000).toLocaleString()}</dd>
           <dt>Audio</dt><dd>${d.audio.ok ? "🟢" : "🔴"} ${esc(d.audio.device || "")}</dd>
-          <dt>Voice</dt><dd>${d.voice.ok ? "🟢" : "🔴"} ${esc(d.voice.stt || "")} ${d.voice.llm ? "· LLM 🟢" : ""}</dd>
-          <dt>Camera</dt><dd>${cam.available ? "🟢" : "🔴"} ${esc(cam.device || "")} ${cam.fps ? cam.fps.toFixed(1) + " fps" : ""} ${cam.proc_ms ? "· " + Math.round(cam.proc_ms) + " ms" : ""} ${cam.calibrated === false ? "· not calibrated" : ""} ${cam.moved ? "· ⚠️ moved, calibrate again" : ""}</dd>
+          <dt>${t("diag.voice")}</dt><dd>${d.voice.ok ? "🟢" : "🔴"} ${esc(d.voice.stt || "")} ${d.voice.llm ? "· LLM 🟢" : ""}</dd>
+          <dt>${t("diag.camera")}</dt><dd>${cam.available ? "🟢" : "🔴"} ${esc(cam.device || "")} ${cam.fps ? cam.fps.toFixed(1) + " fps" : ""} ${cam.proc_ms ? "· " + Math.round(cam.proc_ms) + " ms" : ""} ${cam.calibrated === false ? "· " + t("diag.not_calibrated") : ""} ${cam.moved ? "· ⚠️ " + t("diag.moved") : ""}</dd>
         </dl></div>
         <div class="card"><h3 style="margin-top:0">${t("diag.modules")} ${d.mcu.ok ? "🟢" : "🔴"} ${d.mcu.version != null ? "v" + d.mcu.version : ""}</h3><ul class="list">${mods}</ul></div>`;
     } catch (e) { $("#body").innerHTML = `<p class="muted">${t("common.error")}</p>`; }

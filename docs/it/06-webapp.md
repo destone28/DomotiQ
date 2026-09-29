@@ -114,7 +114,7 @@ Personaggi virtuali da trascinare sulla piantina al posto delle statuine vere, s
 
 *Solo per lo staff.* Si aggiorna ogni pochi secondi:
 
-- **Scheda**: nome host e versione, tempo di attività, carico e temperatura della CPU, memoria, disco libero, numero di client Wi-Fi, orologio e provenienza dell'ora, dispositivo audio, voce (riconoscimento vocale e modello linguistico), webcam (dispositivo, fotogrammi al secondo, tempo di elaborazione, *not calibrated*, *moved, calibrate again*). Le etichette di queste righe (Host, Uptime, CPU, RAM, Disk, Wi-Fi, Clock, Audio, Voice, Camera) restano in inglese anche con la webapp in italiano.
+- **Scheda**: nome host e versione, tempo di attività, carico e temperatura della CPU, memoria, disco libero, numero di client Wi-Fi, orologio e provenienza dell'ora, dispositivo audio, voce (riconoscimento vocale e modello linguistico), webcam (dispositivo, fotogrammi al secondo, tempo di elaborazione, *da calibrare*, *spostata, rifare la calibrazione*).
 - **Modulino**: lo stato del collegamento con il microcontrollore, la versione del protocollo del firmware, e un pallino verde o rosso per ogni modulo.
 - Pulsanti: **Scansione I2C** (gli indirizzi che rispondono su ogni canale dell'Hub), **Prova audio**, **Prova microfono (3 s)**, **Scarica i registri** (mostra le ultime 500 righe del log dell'applicazione e le salva in un file).
 

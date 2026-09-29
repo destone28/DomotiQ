@@ -73,7 +73,9 @@ arduino-app-cli system update
 ## Microcontroller and modules
 
 ### The *Microcontroller* dot is red
-**Cause.** Linux cannot talk to the sketch: `arduino-router` is not running, the firmware is not loaded, an App Lab app replaced it at boot, or the firmware speaks another protocol version (the log says *the MCU speaks protocol N, expected 1: reload the firmware*).
+**Right after a reboot of Linux** this is normal for about half a minute. The sketch starts at power-up without waiting for Linux (so the barbecue relay is switched off at once after a blackout); when Linux reboots, the router resets the microcontroller as it stops, and the sketch then starts before the new router listens. The house notices that the router answers but the sketch does not, resets the microcontroller once more through its reset line, and the dot turns green, about 70 seconds after the reboot. The log says *the microcontroller does not answer: resetting it*. It tries three times, one minute apart.
+
+**Cause, if it stays red.** Linux cannot talk to the sketch: `arduino-router` is not running, the firmware is not loaded, an App Lab app replaced it at boot, or the firmware speaks another protocol version (the log says *the MCU speaks protocol N, expected 1: reload the firmware*).
 
 **Fix.**
 

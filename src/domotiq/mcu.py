@@ -28,6 +28,10 @@ SOCKET = "/run/arduino-router.sock"
 PROTOCOL = 1
 NOTIFICATIONS = ("btn", "dist", "thermo", "mods")
 
+# The reset line of the STM32U585, as the board's own router service drives it when it stops.
+RESET_CHIP = "/dev/gpiochip1"
+RESET_LINE = 38
+
 # Bit order of `modules()`, the same as in the sketch.
 MODULES = ("hub", "relay", "pixels_garage", "pixels_bedroom", "pixels_kitchen",
            "pixels_living", "thermo_bathroom", "pixels_bathroom", "thermo_thermostat",
@@ -187,6 +191,27 @@ class Mcu:
         except (McuError, asyncio.TimeoutError, ValueError, TypeError):
             self.ok = False
         return self.ok
+
+    async def reset(self) -> bool:
+        """Restart the microcontroller (the sketch starts again and registers with the router).
+
+        The sketch starts at power-up without waiting for Linux, so that the
+        barbecue relay is switched off at once after a blackout. When Linux
+        reboots, the router resets the microcontroller as it stops, and the
+        sketch then starts before the new router is listening: its methods
+        are never registered. A second reset, with the router ready, fixes it.
+        """
+        async def gpio(value: int) -> bool:
+            proc = await asyncio.create_subprocess_exec(
+                "gpioset", "-c", RESET_CHIP, "-t0", f"{RESET_LINE}={value}",
+                stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+            return await proc.wait() == 0
+        try:
+            ok = await gpio(0)
+            await asyncio.sleep(0.2)
+            return await gpio(1) and ok
+        except OSError:
+            return False
 
     def set_modules(self, mask: int) -> None:
         self.modules = {name: bool(mask & (1 << i)) for i, name in enumerate(MODULES)}

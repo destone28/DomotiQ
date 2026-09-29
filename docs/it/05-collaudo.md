@@ -52,7 +52,7 @@ In **Comandi → Luci** scegli una stanza, un colore e **Accendi**; ripeti per t
 
 Nella schermata **Casa** le schede mostrano temperatura e umidità del termostato e umidità del bagno.
 
-- Appoggia un dito sul Thermo della credenza: la temperatura sale lentamente, perché la scheda del sensore ha una sua inerzia termica. Soffiarci sopra è più rapido: l'umidità fa un balzo, il termostato passa a **caldo**, la casa dice "Fa caldo! Accendo il climatizzatore." e un'onda di azzurro fresco scorre in tutte le stanze per un massimo di due minuti, o finché la lettura non torna normale.
+- Appoggia un dito sul Thermo della credenza: la temperatura sale lentamente, perché la scheda del sensore ha una sua inerzia termica. Soffiarci sopra è più rapido: l'umidità fa un balzo, il termostato passa a **caldo**, la casa dice "Fa caldo! Accendo il climatizzatore." e un'onda azzurra (effetto *Aria fresca*) scorre in tutte le stanze per un massimo di due minuti, o finché la lettura non torna normale.
 - Soffia sul Thermo del bagno: quando l'umidità sale di 8 punti sopra la sua media recente parte la regola della doccia ("Accendo l'aspiratore del bagno.", luce fresca in bagno, notifica *Doccia in corso*).
 
 Le soglie sono relative alla media degli ultimi 5 minuti, quindi dopo l'accensione lascia ai sensori qualche minuto.
@@ -67,7 +67,7 @@ Poi prova un'interruzione di corrente: avvia il barbecue e stacca l'alimentazion
 
 In **Diagnostica**:
 
-- **Prova audio** suona un campanello e dice "Prova dell'audio: mi senti?". La manopola delle casse deve essere al massimo; il livello si regola con **Comandi → Volume**.
+- **Prova audio** fa suonare un campanello breve e dice "Prova dell'audio: mi senti?". La manopola delle casse deve essere al massimo; il livello si regola con **Comandi → Volume**.
 - **Prova microfono (3 s)** registra tre secondi: parla verso il tappo del totem. Il risultato mostra il livello, il picco e il testo riconosciuto. Un livello vicino a zero vuol dire che all'ingresso del microfono non arriva nessun suono.
 
 ## 9. Calibrazione della webcam
@@ -87,7 +87,7 @@ In seguito:
 - **Regola di nuovo la luce** serve quando la luce del padiglione cambia molto. I cambiamenti lenti vengono seguiti automaticamente sul pavimento libero.
 - Se la webcam viene urtata, la webapp mostra *La webcam si è spostata: rifare la calibrazione*: ripeti tutta la procedura.
 
-Ora in **Diagnostica**, alla riga *Camera*, compaiono i fotogrammi al secondo (circa 10) e il tempo di elaborazione, senza *not calibrated*.
+Ora in **Diagnostica**, alla riga *Webcam*, compaiono i fotogrammi al secondo (circa 10) e il tempo di elaborazione, senza *da calibrare*.
 
 ## 10. Il primo personaggio
 
@@ -102,7 +102,7 @@ Il [capitolo 7](07-riconoscimento-e-identita.md) spiega nel dettaglio la registr
 
 Tieni premuto **Parla** e chiedi, in italiano, "Dov'è Marco?" (con il nome che hai registrato); rilascia e aspetta la risposta. Passa all'inglese con il tasto Lingua e chiedi "Where is Marco?".
 
-Poi chiedi qualcosa che le frasi fisse non coprono, per esempio "Quanta gente c'è in cucina?". La casa dice "Vediamo…" / "Let me see…" e passa la frase al modello linguistico. In **Diagnostica**, alla riga *Voice*, compare *LLM* con un pallino verde quando il server del modello linguistico è disponibile.
+Poi chiedi qualcosa che le frasi fisse non coprono, per esempio "Quanta gente c'è in cucina?". La casa dice "Vediamo…" / "Let me see…" e passa la frase al modello linguistico. In **Diagnostica**, alla riga *Voce*, compare *LLM* con un pallino verde quando il server del modello linguistico è disponibile.
 
 ## 12. Citofono e regole
 
@@ -121,7 +121,7 @@ Poi chiedi qualcosa che le frasi fisse non coprono, per esempio "Quanta gente c'
 
 ## 14. Orologio
 
-La UNO Q non ha una batteria per l'orologio e in fiera non c'è internet. Dopo un riavvio, il primo telefono che apre la webapp imposta l'ora della casa (un messaggio dice *Ora della casa impostata da questo telefono*). In **Diagnostica**, alla riga *Clock*, si vede da dove arriva l'ora. Per impostarla a voce vedi il [capitolo 8](08-voce.md#impostare-lora-a-voce).
+La UNO Q non ha una batteria per l'orologio e in fiera non c'è internet. Dopo un riavvio, il primo telefono che apre la webapp imposta l'ora della casa (un messaggio dice *Ora della casa impostata da questo telefono*). In **Diagnostica**, alla riga *Orologio*, si vede da dove arriva l'ora. Per impostarla a voce vedi il [capitolo 8](08-voce.md#impostare-lora-a-voce).
 
 ## Provare senza statuine
 

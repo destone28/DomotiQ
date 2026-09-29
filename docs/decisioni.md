@@ -67,3 +67,7 @@ Ogni decisione ha la data, il contesto, la scelta e il motivo. Quando una decisi
 ### D-16 — Esposizione bloccata con margine (29/9)
 **Scelta:** "Regola di nuovo" lascia trovare alla camera esposizione e bilanciamento sulla casa vuota, poi li blocca con l'esposizione ridotta del 25 %.
 **Perché:** un canale saturo non porta informazione; con il margine il pavimento sotto le luci della casa accese non satura.
+
+### D-17 — Reset del microcontrollore dopo un riavvio di Linux (29/9)
+**Scelta:** se il router risponde ma lo sketch no per qualche secondo, la casa resetta il microcontrollore dalla linea di reset (GPIO 38 del gpiochip1, la stessa che usa il servizio del router quando si ferma); al massimo tre volte, a un minuto di distanza.
+**Perché:** con la modalità Immediate (D-13) lo sketch parte all'accensione, e dopo un riavvio di Linux parte prima che il nuovo router sia in ascolto: la registrazione dei suoi metodi va persa e la libreria aspetta per sempre la risposta. Tornare alla modalità predefinita toglierebbe la sicurezza del relè dopo un blackout; un secondo reset con il router pronto risolve senza toccare i servizi di sistema.

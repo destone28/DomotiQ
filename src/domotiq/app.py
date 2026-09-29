@@ -224,6 +224,8 @@ async def on_mcu_notify(ctx: Context, name: str, params: list[Any]) -> None:
 async def periodic(ctx: Context) -> None:
     last_check = 0.0
     last_purge = 0.0
+    silent_since: float | None = None     # the router answers but the sketch does not
+    resets: list[float] = []
     clock_warned = False
     while True:
         now = time.time()
@@ -248,6 +250,17 @@ async def periodic(ctx: Context) -> None:
                 ctx.house.status["modules"] = ctx.mcu.modules
                 if ok and not was:
                     await _mcu_ready(ctx)
+                client = ctx.mcu.client
+                if ok or not isinstance(client, RouterClient) or not client.connected.is_set():
+                    silent_since = None
+                elif silent_since is None:
+                    silent_since = now
+                elif now - silent_since > 8 and len(resets) < 3 and (not resets or now - resets[-1] > 60):
+                    # typically after a reboot of Linux: restart the sketch now that the router listens
+                    resets.append(now)
+                    silent_since = None
+                    log.warning("the microcontroller does not answer: resetting it (attempt %d)", len(resets))
+                    await ctx.mcu.reset()
                 if ctx.voice is not None:
                     ctx.house.status["llm"] = getattr(ctx.voice, "llm_ok", False)
                 if ctx.audio is not None:

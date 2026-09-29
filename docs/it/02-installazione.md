@@ -20,7 +20,7 @@ cd ~/domotiq && bash scripts/install.sh --house 1
 
 Se sulla scheda manca `git`, installalo prima con `sudo apt-get install -y git`.
 
-Lo script chiede la password di `sudo` una volta sola, e solo se `sudo` ne vuole una, e la mantiene valida fino alla fine. Ogni passo salta quello che è già fatto, quindi rilanciarlo non fa danni, ed è anche il modo per aggiornare una casa già installata.
+Lo script chiede la password di `sudo` una sola volta (e solo se `sudo` la richiede) e la mantiene valida fino alla fine. Ogni passo salta quello che è già fatto, quindi rilanciarlo non fa danni, ed è anche il modo per aggiornare una casa già installata.
 
 ### Opzioni
 
