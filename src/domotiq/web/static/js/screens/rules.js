@@ -42,7 +42,7 @@ const CONDITIONS = {
 };
 const ACTIONS = {
   light: [["room", "rooms"], ["color", "color", "#ffaa5a"], ["effect", "effect", "solid"], ["brightness", "num", 60], ["duration_s", "num", 30]],
-  light_off: [],
+  light_off: [["rule", "rule"]],
   sound: [["name", "sound", "chime"]],
   say: [["text", "text2"], ["verbosity", "verbosity", "normal"]],
   notify: [["level", "level", "info"], ["text", "text2"]],
@@ -78,7 +78,15 @@ function summary(rule) {
   if (w.seconds !== undefined) s += ` · ${w.seconds} s`;
   if (w.state) s += " · " + t("st." + w.state);
   if (w.at) s += " · " + w.at;
-  return s + " → " + (rule.then || []).map(a => t("ac." + a.type)).join(", ");
+  return s + " → " + (rule.then || []).map(a => action(rule, a)).join(", ");
+}
+
+function action(rule, a) {
+  if (a.type === "light_off" && a.rule && a.rule !== rule.id) {
+    const other = (store.state.rules || []).find(r => r.id === a.rule);
+    return t("ac.light_off_of", { name: other ? tr(other.name) : a.rule });
+  }
+  return t("ac." + a.type);
 }
 
 function roomLabel(id) {
@@ -173,6 +181,8 @@ function field(key, kind, value) {
     input = `<select data-k="${key}">${["info", "success", "warning", "alarm"].map(x => opt(x, t("lvl." + x), value === x)).join("")}</select>`;
   } else if (kind === "verbosity") {
     input = `<select data-k="${key}">${["normal", "chatty"].map(x => opt(x, t("cmd." + x), value === x)).join("")}</select>`;
+  } else if (kind === "rule") {
+    input = `<select data-k="${key}">${opt("", t("f.this_rule"), !value)}${(s.rules || []).map(r => opt(r.id, tr(r.name), value === r.id)).join("")}</select>`;
   } else if (kind === "bool") {
     input = `<span class="switch"><input type="checkbox" data-k="${key}" ${value ? "checked" : ""}><span></span></span>`;
   } else if (kind.startsWith("state:")) {
@@ -199,6 +209,8 @@ function readFields(node, target, schema) {
       if (!inp) continue;
       if (kind === "num") {
         if (inp.value === "") delete target[key]; else target[key] = Number(inp.value);
+      } else if (kind === "rule") {
+        if (inp.value) target[key] = inp.value; else delete target[key];
       } else target[key] = inp.value;
     }
   }

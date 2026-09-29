@@ -105,5 +105,5 @@ def draw_plan(ctx: "Context", width: int = 640) -> np.ndarray:
         if bx > ax and by > ay:
             roi = img[ay:by, ax:bx]
             img[ay:by, ax:bx] = cv2.GaussianBlur(roi, (0, 0), 9)
-    cv2.putText(img, "SIMULAZIONE", (10, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
+    cv2.putText(img, "SIMULAZIONE - SIMULATION", (10, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
     return img

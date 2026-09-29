@@ -20,7 +20,7 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna qu
 ## Microcontrollore
 | Componente | Versione | Licenza | Uso |
 |---|---|---|---|
-| core `arduino:zephyr` | 0.52.0 | Apache-2.0 | base dello sketch |
+| core `arduino:zephyr` | 1.0.0 | Apache-2.0 | base dello sketch |
 | Arduino_RouterBridge | 0.4.3 | MPL-2.0 | chiamate e notifiche verso Linux |
 | Configurazione di fabbrica del VL53L4CD | dai valori del costruttore | BSD-3-Clause (ST) | avvio del sensore di distanza |
 
@@ -35,12 +35,14 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna qu
 | segno | BSD-3-Clause | QR del cartello |
 | Vosk | Apache-2.0 | riconoscimento vocale |
 | ONNX Runtime | MIT | categoria degli oggetti |
+| (nessun SciPy) | — | l'assegnamento ungherese del tracciamento è scritto nel progetto |
 
 ## Programmi esterni
 | Programma | Licenza | Uso |
 |---|---|---|
-| Piper (`piper1-gpl`) | GPL-3.0 | sintesi vocale; ambiente separato, chiamato da riga di comando, non incluso nel codice |
-| llama.cpp (`llama-server`) | MIT | modello linguistico |
+| Piper (`piper1-gpl`) 1.8.0 | GPL-3.0 | sintesi vocale; ambiente separato, server HTTP locale, non incluso nel codice |
+| Flask | BSD-3-Clause | serve al server HTTP di Piper (nel suo ambiente) |
+| llama.cpp (`llama-server`), commit 74a7c897 | MIT | modello linguistico; compilato sulla scheda |
 
 ## Modelli e voci
 | Modello | Licenza | Uso |
@@ -48,8 +50,8 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna qu
 | vosk-model-small-it-0.22 | Apache-2.0 | riconoscimento vocale italiano |
 | vosk-model-small-en-us-0.15 | Apache-2.0 | riconoscimento vocale inglese |
 | Qwen2.5-0.5B-Instruct (GGUF) | Apache-2.0 | intenti delle frasi libere |
-| YOLOX-Nano (ONNX) | Apache-2.0, addestrato su COCO | categoria di un oggetto nuovo |
-| Voce Piper it_IT-serena-medium | CC BY 4.0 (dataset serena-synthetic-it-27h) | voce italiana |
+| YOLOX-Nano (ONNX, release 0.1.1rc0) | Apache-2.0, addestrato su COCO | categoria di un oggetto nuovo |
+| Voce Piper it_IT-serena-medium, revisione ea046e84 | CC BY 4.0 (dataset serena-synthetic-it-27h) | voce italiana |
 | Voce Piper en_US-ljspeech-medium | pubblico dominio (LJ Speech) | voce inglese |
 
 ## Webapp

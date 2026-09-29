@@ -44,7 +44,7 @@ export function mount(root) {
           <dt>Clock</dt><dd>${esc(d.clock.source)} · ${new Date(d.clock.now * 1000).toLocaleString()}</dd>
           <dt>Audio</dt><dd>${d.audio.ok ? "🟢" : "🔴"} ${esc(d.audio.device || "")}</dd>
           <dt>Voice</dt><dd>${d.voice.ok ? "🟢" : "🔴"} ${esc(d.voice.stt || "")} ${d.voice.llm ? "· LLM 🟢" : ""}</dd>
-          <dt>Camera</dt><dd>${cam.available ? "🟢" : "🔴"} ${esc(cam.device || "")} ${cam.fps ? cam.fps.toFixed(1) + " fps" : ""} ${cam.calibrated === false ? "· not calibrated" : ""}</dd>
+          <dt>Camera</dt><dd>${cam.available ? "🟢" : "🔴"} ${esc(cam.device || "")} ${cam.fps ? cam.fps.toFixed(1) + " fps" : ""} ${cam.proc_ms ? "· " + Math.round(cam.proc_ms) + " ms" : ""} ${cam.calibrated === false ? "· not calibrated" : ""} ${cam.moved ? "· ⚠️ moved, calibrate again" : ""}</dd>
         </dl></div>
         <div class="card"><h3 style="margin-top:0">${t("diag.modules")} ${d.mcu.ok ? "🟢" : "🔴"} ${d.mcu.version != null ? "v" + d.mcu.version : ""}</h3><ul class="list">${mods}</ul></div>`;
     } catch (e) { $("#body").innerHTML = `<p class="muted">${t("common.error")}</p>`; }
