@@ -37,6 +37,8 @@ Everyone can change the rules and the characters on purpose: this is a house for
 
 ## House
 
+<img src="../images/screens/en/home.png" alt="House" width="260">
+
 The virtual house: a plan drawn from the CAD model, with the driveway, where visitors stand, at the bottom.
 
 - Rooms, walls, doors and furniture; each room light glows in its current colour and effect.
@@ -50,11 +52,15 @@ At the bottom, the list of everything the house sees, with name (or *Guest* for 
 
 ## Live
 
+<img src="../images/screens/en/live.png" alt="Live" width="260">
+
 *Live from the webcam*: the image of the camera, about 5 frames per second. The switch **Names and rooms** writes the name and the room over each character. The bathroom is always blurred, on the board, before the image reaches any phone.
 
 When there is no camera the screen says *The webcam is not connected.*; while the simulation is on it shows a drawing of the house marked *SIMULAZIONE - SIMULATION*.
 
 ## Controls
+
+<img src="../images/screens/en/commands.png" alt="Controls" width="260">
 
 - **Party!**: 20 seconds of dance music composed by the house's own code, with a light show on every Pixels. There is a 30-second pause before the next party.
 - **Barbecue** / **Stop the barbecue**: starts or stops the fan of the barbecue.
@@ -66,6 +72,8 @@ When there is no camera the screen says *The webcam is not connected.*; while th
 When a command cannot run right now (a party is already on, or resting), a message says *Already running or resting, try again in a moment*.
 
 ## Events
+
+<img src="../images/screens/en/events.png" alt="Events" width="260">
 
 Four tabs:
 
@@ -80,17 +88,25 @@ The house keeps events for 7 days and positions for 24 hours.
 
 ### Rules
 
+<img src="../images/screens/en/rules.png" alt="Rules" width="260">
+
 The list of rules, each with a switch to turn it on or off, and the **+ New rule** button. Tapping a rule opens the When / If / Then editor. Everything about rules is in [chapter 9](09-rules.md).
 
 ### Characters and objects
+
+<img src="../images/screens/en/identities.png" alt="Characters and objects" width="260">
 
 The list of registered characters, pets, cars and objects, with photo or silhouette, kind, and where they are now (*Now: Kitchen*, or *Not in sight*). **+ Add** starts the guided registration; tapping one opens its card, where you can change **Name**, **Kind** and **English pronunciation (optional)**, or **Delete** it (it stays in the bin for 24 hours). See [chapter 7](07-recognition-and-identities.md).
 
 ### Simulation
 
+<img src="../images/screens/en/sim.png" alt="Simulation" width="260">
+
 Virtual characters dragged on the plan instead of real figurines, virtual sensors (thermostat and bathroom temperature and humidity, distance from the doorbell) and the three buttons of the totem (**Talk** is held down as on the totem). Anyone can open the page; turning the simulation on or off needs the staff PIN. **Real lights and voice muted** keeps the real house quiet while you try. While the simulation is on, the house ignores the webcam. Drag a virtual character out of the house to remove it.
 
 ### Calibration
+
+<img src="../images/screens/en/calibration.png" alt="Calibration" width="260">
 
 *Staff only.* The four corners of the base, the overlay check, **Save the empty house** and **Adjust to the light again** (see [chapter 5](05-testing.md#9-camera-calibration)), and the dataset tools: **Capture**, **Burst (10)**, **Record a sequence (60 s)** and **Download the dataset** (see [chapter 7](07-recognition-and-identities.md#datasets-and-recordings)).
 
@@ -104,6 +120,8 @@ Virtual characters dragged on the plan instead of real figurines, virtual sensor
 
 ### Settings
 
+<img src="../images/screens/en/settings.png" alt="Settings" width="260">
+
 *Staff only.*
 
 - **House**: the name of the house in Italian and English; **Buttons mounted upside down**, for a totem assembled the other way round.
@@ -114,6 +132,8 @@ Virtual characters dragged on the plan instead of real figurines, virtual sensor
 - **System**: **Restart the app**, **Reboot the board**, **Power off the board**, each after *Are you sure?*.
 
 ### Printable sign
+
+<img src="../images/screens/sign.png" alt="The printable sign" width="360">
 
 An A4 portrait page, ready to print, with the name of the house and two QR codes: **1 Join the Wi-Fi** (with SSID and password written below) and **2 Open the house** (with the address). A note in Italian and English explains what to do if the phone complains about the missing internet, and how to use the buttons of the totem. It opens at `/sign`.
 

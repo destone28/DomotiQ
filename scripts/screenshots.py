@@ -32,8 +32,9 @@ SCREENS = [
     ("home", "#/home"), ("live", "#/live"), ("commands", "#/commands"), ("events", "#/events"),
     ("more", "#/more"), ("rules", "#/rules"), ("rule-edit", "#/rules?edit=r-utility-forbidden"),
     ("identities", "#/identities"), ("sim", "#/sim"), ("calibration", "#/calibration"),
-    ("diagnostics", "#/diagnostics"), ("settings", "#/settings"),
+    ("settings", "#/settings"),
 ]
+# the diagnostics show the computer they run on: they are taken from a real house instead
 
 
 def free_port() -> int:
