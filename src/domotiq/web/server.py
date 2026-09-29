@@ -558,33 +558,46 @@ def create_app(ctx: "Context") -> FastAPI:
         ctx.bus.publish("volume", volume=ctx.settings.get("voice.volume"))
         return ctx.settings.public()
 
+    def confirm_pin(body: dict, w: Who) -> None:
+        """The PIN and the Wi-Fi password change only with the current PIN, not with a session alone."""
+        lock = ctx.auth.locked_for(w.client)
+        if lock > 0:
+            raise HTTPException(429, f"locked for {int(lock) + 1} s")
+        if not ctx.auth.verify(str(body.get("current", "")), w.client):
+            raise HTTPException(403, "wrong current PIN")
+
     @app.post("/api/staff/pin", dependencies=[Depends(staff)])
-    async def pin(body: dict, w: Who = Depends(who)):
+    async def pin(body: dict, request: Request, w: Who = Depends(who)):
+        confirm_pin(body, w)
         try:
             ctx.settings.set_pin(str(body.get("pin", "")))
         except ValueError as e:
             raise HTTPException(400, str(e)) from e
+        ended = ctx.auth.revoke_all(keep=request.headers.get("x-staff"))
         audit(w, "settings", "pin", "update")
-        return {"ok": True}
+        return {"ok": True, "sessions_ended": ended}
 
     @app.post("/api/staff/network", dependencies=[Depends(staff)])
     async def network(body: dict, w: Who = Depends(who)):
         from .. import network as net
+        confirm_pin(body, w)
         password = str(body.get("password", ""))
         if not net.valid_password(password):
             raise HTTPException(400, "the Wi-Fi password must be 8 to 63 characters, letters, digits and symbols")
-        exists, active = await net.hotspot_state()
-        applied = False
-        if exists:
-            applied, error = await net.set_hotspot_password(password)
-            if not applied:
-                raise HTTPException(500, f"the hotspot did not accept the password: {error}")
+        try:
+            exists, active = await net.hotspot_state()
+            if exists:
+                await net.set_hotspot_password(password)
+        except net.HotspotError as e:
+            raise HTTPException(503, str(e)) from e      # nothing saved: hotspot and sign stay as they were
         ctx.settings.set("network.password", password)
         audit(w, "settings", "network", "update")
-        if applied and active:
+        if exists and active:
             # after the answer: the phones on the hotspot drop and join again with the new password
             asyncio.get_running_loop().call_later(2.0, lambda: asyncio.ensure_future(net.restart_hotspot()))
-        return {"ok": True, "applied": applied, "restarting": applied and active}
+        return {"ok": True, "applied": exists, "restarting": exists and active,
+                "reason": None if exists else ("no NetworkManager on this machine" if not net.available()
+                                               else "the hotspot is not set up yet: scripts/hotspot.sh setup")}
 
     @app.post("/api/staff/time", dependencies=[Depends(staff)])
     async def staff_time(body: dict):

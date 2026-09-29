@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
 # SPDX-License-Identifier: MIT
-# The staff page of the web app can reboot or power off the board and change the hotspot password;
+# The staff page of the web app can reboot or power off the board, restart the services and
+# change the hotspot password (only through domotiq-hotspot-psk, which takes no arguments);
 # scripts/release.sh restarts the services after copying new code.
-arduino ALL=(root) NOPASSWD: /usr/bin/systemctl reboot, /usr/bin/systemctl poweroff, /usr/bin/systemctl restart domotiq, /usr/bin/systemctl restart domotiq-tts, /usr/bin/systemctl restart domotiq-llm, /usr/bin/nmcli connection modify domotiq-hotspot *, /usr/bin/nmcli connection up domotiq-hotspot
+arduino ALL=(root) NOPASSWD: /usr/bin/systemctl reboot, /usr/bin/systemctl poweroff, /usr/bin/systemctl restart domotiq, /usr/bin/systemctl restart domotiq-tts, /usr/bin/systemctl restart domotiq-llm, /usr/local/sbin/domotiq-hotspot-psk "", /usr/bin/nmcli connection up domotiq-hotspot

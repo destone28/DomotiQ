@@ -1,0 +1,17 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
+# SPDX-License-Identifier: MIT
+#
+# Installed as /usr/local/sbin/domotiq-hotspot-psk (root:root, 0755) by install.sh.
+# Sets the password of the DomotiQ hotspot, read from the standard input, and
+# nothing else: the web app may run it through sudo without a password, so it
+# takes no arguments and checks what it reads.
+set -eu
+[ "$#" -eq 0 ] || { echo "no arguments: the password is read from the standard input" >&2; exit 2; }
+IFS= read -r psk || true
+# WPA2 passphrase: 8 to 63 printable ASCII characters
+if ! printf '%s' "$psk" | LC_ALL=C grep -qx '[ -~]\{8,63\}'; then
+    echo "the password must be 8 to 63 printable characters" >&2
+    exit 2
+fi
+exec /usr/bin/nmcli connection modify domotiq-hotspot 802-11-wireless-security.psk "$psk"

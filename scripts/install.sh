@@ -227,8 +227,11 @@ ok "casa$HOUSE, Wi-Fi DomotiQ-Casa$HOUSE"
 step "Services"
 sudo install -m644 scripts/systemd/domotiq.service scripts/systemd/domotiq-tts.service \
     scripts/systemd/domotiq-llm.service /etc/systemd/system/
-sudo install -m440 scripts/systemd/domotiq.sudoers /etc/sudoers.d/60-domotiq
-sudo visudo -cf /etc/sudoers.d/60-domotiq >/dev/null
+# the only way the web app changes the hotspot password: a root-owned script, no wildcard sudo rule
+sudo install -o root -g root -m755 scripts/systemd/domotiq-hotspot-psk /usr/local/sbin/domotiq-hotspot-psk
+# check the rules before they go live: a broken sudoers file would lock sudo out
+sudo visudo -cf scripts/systemd/domotiq.sudoers >/dev/null || die "scripts/systemd/domotiq.sudoers is not valid"
+sudo install -o root -g root -m440 scripts/systemd/domotiq.sudoers /etc/sudoers.d/60-domotiq
 sudo install -m644 scripts/systemd/journald-domotiq.conf /etc/systemd/journald.conf.d/60-domotiq.conf 2>/dev/null \
     || { sudo mkdir -p /etc/systemd/journald.conf.d && sudo install -m644 scripts/systemd/journald-domotiq.conf /etc/systemd/journald.conf.d/60-domotiq.conf; }
 sudo systemctl daemon-reload

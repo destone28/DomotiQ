@@ -19,7 +19,7 @@ Every house serves its own web app from the board. It needs no internet and noth
 | Answering the questions of the house | Turning the simulation on and off |
 | Printable sign, Booth display, About | Making the house say a sentence |
 
-The **staff PIN** is chosen when the house is installed and is meant to be the same in both houses. Type it in **More → Staff PIN** and tap **Staff login**. After five wrong attempts the phone must wait a minute (*Too many attempts: wait a minute*). A staff login lasts 12 hours on that phone, until you tap **Leave staff mode**, or until the application restarts. The staff pages show *Staff only* to everyone else.
+The **staff PIN** is chosen when the house is installed and is meant to be the same in both houses. Type it in **More → Staff PIN** and tap **Staff login**. After five wrong attempts the phone must wait a minute (*Too many attempts: wait a minute*); after ten wrong attempts from any phones in ten minutes, logins stop for everybody for a minute, then two, four, up to a quarter of an hour, so the PIN cannot be guessed by trying (staff already logged in keep working, and the PIN can always be changed on the board). A staff login lasts 12 hours on that phone, until you tap **Leave staff mode**, or until the application restarts. The staff pages show *Staff only* to everyone else.
 
 Everyone can change the rules and the characters on purpose: this is a house for playing. Every change is recorded with the time, the phone and an optional nickname, deletions go to a bin for 24 hours, and the staff can restore them (see [Rules](09-rules.md#who-can-change-the-rules)).
 
@@ -126,8 +126,8 @@ Virtual characters dragged on the plan instead of real figurines, virtual sensor
 
 - **House**: the name of the house in Italian and English; **Buttons mounted upside down**, for a totem assembled the other way round.
 - **Lights · Party · Barbecue · Climate**: *Maximum brightness (%)*, *Pixels current limit (mA)*, *Brightness of the follow-me lights*, *Off after (s)*, *Colour of the follow-me lights*, party *Duration (s)* (10–60), *Fan duration (s)* (5–120), *Hot: rise over the baseline (°C)*, *Shower: humidity rise (%)*. Then **Save**. Brightness and current limit go to the microcontroller at once.
-- **PIN · Time**: *New PIN (4-8 digits)*; **Use this phone's time** to set the clock of the house.
-- **Wi-Fi of the house**: the network name and *Wi-Fi password* (8 to 63 characters). **Save** writes it into the hotspot; if the hotspot is on, it restarts after a couple of seconds and every phone, the staff phone included, must join again with the new password. The printable sign updates by itself: print it again.
+- **PIN · Time**: *Current PIN* and *New PIN (4-8 digits)*; a new PIN ends every other staff session. **Use this phone's time** sets the clock of the house.
+- **Wi-Fi of the house**: the network name and *Wi-Fi password* (8 to 63 characters), confirmed with the *Current PIN*. **Save** writes it into the hotspot; if the hotspot is on, it restarts after a couple of seconds and every phone, the staff phone included, must join again with the new password. The printable sign updates by itself: print it again.
 - **Backup**: **Download the backup** (a zip with rules, characters with their photos, and settings; never the network, the house name, the PIN or the camera calibration), **Restore from a backup** (replaces rules, characters and settings), **Default rules** (replaces all rules with the ones the house started with).
 - **Bin**: rules and characters deleted in the last 24 hours, each with **Restore**.
 - **System**: **Restart the app**, **Reboot the board**, **Power off the board**, each after *Are you sure?*.

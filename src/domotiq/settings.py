@@ -9,11 +9,13 @@ configuration survives an older program.
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import hashlib
 import json
 import os
 import secrets
+import tempfile
 import threading
 from pathlib import Path
 from typing import Any
@@ -74,12 +76,17 @@ def _merge(base: dict, extra: dict) -> dict:
 
 def write_json_atomic(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp, path)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=path.name, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
+        raise
 
 
 def read_json(path: Path, default: Any) -> Any:
@@ -120,6 +127,20 @@ class Settings:
         self.path = paths.config / "settings.json"
         self._lock = threading.Lock()
         self._data = _merge(DEFAULTS, read_json(self.path, {}))
+        self._mtime = self._disk_mtime()
+
+    def _disk_mtime(self) -> int | None:
+        try:
+            return os.stat(self.path).st_mtime_ns
+        except OSError:
+            return None
+
+    def _refresh_locked(self) -> None:
+        """Another process (the admin command) may have written the file: never overwrite its changes."""
+        m = self._disk_mtime()
+        if m != self._mtime:
+            self._data = _merge(DEFAULTS, read_json(self.path, {}))
+            self._mtime = m
 
     # ------------------------------------------------------------ access
     def get(self, dotted: str, default: Any = None) -> Any:
@@ -132,6 +153,7 @@ class Settings:
 
     def set(self, dotted: str, value: Any, save: bool = True) -> None:
         with self._lock:
+            self._refresh_locked()
             parts = dotted.split(".")
             node = self._data
             for part in parts[:-1]:
@@ -139,11 +161,14 @@ class Settings:
             node[parts[-1]] = value
             if save:
                 write_json_atomic(self.path, self._data)
+                self._mtime = self._disk_mtime()
 
     def update(self, values: dict[str, Any]) -> None:
         with self._lock:
+            self._refresh_locked()
             self._data = _merge(self._data, values)
             write_json_atomic(self.path, self._data)
+            self._mtime = self._disk_mtime()
 
     def public(self) -> dict[str, Any]:
         """Everything except secrets, for the settings page."""
@@ -155,6 +180,7 @@ class Settings:
     def save(self) -> None:
         with self._lock:
             write_json_atomic(self.path, self._data)
+            self._mtime = self._disk_mtime()
 
     # ------------------------------------------------------------ staff PIN
     def set_pin(self, pin: str) -> None:

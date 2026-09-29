@@ -182,10 +182,10 @@ Both can be changed at any time from **More → Settings** in the web app (staff
 
 ```bash
 cd ~/domotiq
-venv/bin/python -m domotiq.admin pin 4821
-venv/bin/python -m domotiq.admin wifi "a-new-password"
+PYTHONPATH=src venv/bin/python -m domotiq.admin pin 4821
+PYTHONPATH=src venv/bin/python -m domotiq.admin wifi "a-new-password"
 ```
 
-The command restarts the house so it reads the new values; a new Wi-Fi password also restarts the hotspot if it is on.
+The command restarts the house so it reads the new values (every staff session ends); a new Wi-Fi password also restarts the hotspot if it is on. From the web app both changes ask for the current PIN, so a phone that only holds a staff session cannot make them.
 
 Next: [print and assemble](03-print-and-assemble.md).

@@ -38,6 +38,7 @@ export function mount(root) {
         <button class="btn primary block" id="save">${t("common.save")}</button>
       </div>
       <div class="card"><h3 style="margin-top:0">PIN · ${t("set.time")}</h3>
+        <label class="field"><span>${t("set.pin_current")}</span><input type="password" inputmode="numeric" id="pin-cur" maxlength="8" autocomplete="current-password"></label>
         <label class="field"><span>${t("set.pin")}</span><input type="password" inputmode="numeric" id="pin" maxlength="8" autocomplete="new-password"></label>
         <button class="btn block" id="pin-save">${t("common.save")}</button>
         <p class="muted small" style="margin-top:12px">${new Date().toLocaleString()}</p>
@@ -46,6 +47,7 @@ export function mount(root) {
       <div class="card"><h3 style="margin-top:0">${t("set.wifi")}</h3>
         <p class="muted small">${t("set.wifi_ssid")}: <b>${esc(s.network.ssid || "—")}</b></p>
         <label class="field"><span>${t("set.wifi_password")}</span><input type="text" id="wifi" minlength="8" maxlength="63" autocomplete="off" spellcheck="false" value="${esc(s.network.password || "")}"></label>
+        <label class="field"><span>${t("set.pin_current")}</span><input type="password" inputmode="numeric" id="wifi-pin" maxlength="8" autocomplete="current-password"></label>
         <p class="muted small">${t("set.wifi_hint")}</p>
         <button class="btn block" id="wifi-save">${t("common.save")}</button>
       </div>
@@ -76,17 +78,22 @@ export function mount(root) {
       try { await api("PUT", "/api/staff/settings", body); toast(t("common.saved"), "success"); } catch (e) { toast(e.message, "alarm"); }
     };
     $("#pin-save").onclick = async () => {
-      try { await api("POST", "/api/staff/pin", { pin: $("#pin").value }); toast(t("set.pin_changed"), "success"); $("#pin").value = ""; }
-      catch (e) { toast(e.message, "alarm"); }
+      try {
+        await api("POST", "/api/staff/pin", { pin: $("#pin").value, current: $("#pin-cur").value });
+        toast(t("set.pin_changed"), "success", 6000);
+        $("#pin").value = ""; $("#pin-cur").value = "";
+      } catch (e) { toast(e.status === 403 ? t("set.pin_wrong") : e.message, "alarm"); }
     };
     $("#wifi-save").onclick = async () => {
       const password = $("#wifi").value;
       if (password.length < 8 || password.length > 63) { toast(t("set.wifi_bad"), "warning"); return; }
       if (!(await ask(t("set.wifi_confirm")))) return;
       try {
-        const r = await api("POST", "/api/staff/network", { password });
-        toast(r.restarting ? t("set.wifi_restarting") : t("common.saved"), "success", 8000);
-      } catch (e) { toast(e.message, "alarm"); }
+        const r = await api("POST", "/api/staff/network", { password, current: $("#wifi-pin").value });
+        $("#wifi-pin").value = "";
+        if (!r.applied) toast(t("set.wifi_not_applied") + (r.reason ? ` (${r.reason})` : ""), "warning", 10000);
+        else toast(r.restarting ? t("set.wifi_restarting") : t("common.saved"), "success", 8000);
+      } catch (e) { toast(e.status === 403 ? t("set.pin_wrong") : e.message, "alarm", 8000); }
     };
     $("#time").onclick = async () => {
       try { await api("POST", "/api/staff/time", { epoch: Date.now() / 1000 }); toast(t("time.set"), "success"); } catch (e) { toast(e.message, "alarm"); }

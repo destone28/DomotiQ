@@ -182,10 +182,10 @@ Tutti e due si possono cambiare in qualsiasi momento da **Altro → Impostazioni
 
 ```bash
 cd ~/domotiq
-venv/bin/python -m domotiq.admin pin 4821
-venv/bin/python -m domotiq.admin wifi "una-password-nuova"
+PYTHONPATH=src venv/bin/python -m domotiq.admin pin 4821
+PYTHONPATH=src venv/bin/python -m domotiq.admin wifi "una-password-nuova"
 ```
 
-Il comando riavvia la casa perché legga i valori nuovi; una password del Wi-Fi nuova riavvia anche l'hotspot, se è acceso.
+Il comando riavvia la casa perché legga i valori nuovi (tutte le sessioni dello staff finiscono); una password del Wi-Fi nuova riavvia anche l'hotspot, se è acceso. Dalla webapp entrambi i cambi chiedono il PIN attuale: un telefono che ha soltanto una sessione dello staff non può farli.
 
 Avanti: [stampa e montaggio](03-stampa-e-montaggio.md).

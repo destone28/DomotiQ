@@ -134,20 +134,39 @@ def test_websocket_hello(web):
 def test_staff_changes_the_wifi_password_and_pin(web, tmp_path):
     ctx, c = web
     h = {"X-Staff": c.post("/api/staff/login", json={"pin": "0000"}).json()["token"]}
-    assert c.post("/api/staff/network", json={"password": "short"}, headers=h).status_code == 400
-    assert c.post("/api/staff/network", json={"password": "x" * 64}, headers=h).status_code == 400
-    r = c.post("/api/staff/network", json={"password": "casa-nuova-2026"}, headers=h).json()
-    assert r["ok"] and not r["restarting"]          # no hotspot on a test machine: saved only
+    # a session alone is not enough: the current PIN is asked again
+    assert c.post("/api/staff/network", json={"password": "casa-nuova-2026"}, headers=h).status_code == 403
+    assert c.post("/api/staff/network", json={"password": "short", "current": "0000"}, headers=h).status_code == 400
+    assert c.post("/api/staff/network", json={"password": "x" * 64, "current": "0000"}, headers=h).status_code == 400
+    r = c.post("/api/staff/network", json={"password": "casa-nuova-2026", "current": "0000"}, headers=h).json()
+    assert r["ok"] and not r["applied"] and r["reason"]     # no NetworkManager on a test machine: saved only
     assert ctx.settings.get("network.password") == "casa-nuova-2026"
     # the generic settings endpoint cannot change the network behind the hotspot's back
     c.put("/api/staff/settings", json={"network": {"password": "sneaky-pass"}}, headers=h)
     assert ctx.settings.get("network.password") == "casa-nuova-2026"
-    assert c.post("/api/staff/network", json={"password": "casa-nuova-2026"}).status_code == 401
-    # PIN: from the web app, then the old one no longer works
-    assert c.post("/api/staff/pin", json={"pin": "12"}, headers=h).status_code == 400
-    assert c.post("/api/staff/pin", json={"pin": "4821"}, headers=h).json()["ok"]
+    assert c.post("/api/staff/network", json={"password": "casa-nuova-2026", "current": "0000"}).status_code == 401
+    # PIN: needs the current one, then the old one no longer works and other sessions are over
+    other = {"X-Staff": c.post("/api/staff/login", json={"pin": "0000"}).json()["token"]}
+    assert c.post("/api/staff/pin", json={"pin": "4821"}, headers=h).status_code == 403
+    assert c.post("/api/staff/pin", json={"pin": "12", "current": "0000"}, headers=h).status_code == 400
+    r = c.post("/api/staff/pin", json={"pin": "4821", "current": "0000"}, headers=h).json()
+    assert r["ok"] and r["sessions_ended"] == 1
+    assert c.get("/api/staff/check", headers=h).status_code == 200
+    assert c.get("/api/staff/check", headers=other).status_code == 401
     assert c.post("/api/staff/login", json={"pin": "0000"}).status_code == 403
     assert c.post("/api/staff/login", json={"pin": "4821"}).status_code == 200
+
+
+def test_wrong_pins_from_many_addresses_lock_everybody(web):
+    ctx, c = web
+    from domotiq.auth import GLOBAL_ERRORS
+    now = 1000.0
+    for i in range(GLOBAL_ERRORS):
+        assert ctx.auth.login("9999", f"10.42.1.{i + 10}", now + i) is None
+    # a new address is locked too, and the lock grows while wrong PINs keep coming
+    assert ctx.auth.locked_for("10.42.1.200", now + GLOBAL_ERRORS) > 0
+    assert ctx.auth.login("0000", "10.42.1.201", now + GLOBAL_ERRORS) is None
+    assert ctx.auth.login("0000", "10.42.1.201", now + GLOBAL_ERRORS + 61) is not None
 
 
 def test_admin_command_line(tmp_path):
