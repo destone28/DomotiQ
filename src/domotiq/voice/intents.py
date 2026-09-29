@@ -1,0 +1,231 @@
+# SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
+# SPDX-License-Identifier: MIT
+"""From a sentence to an intent, without a language model.
+
+Most of what visitors ask is short and predictable: "where is Marco?",
+"turn on the kitchen light", "let's party". Keywords, the names of the
+rooms and of the characters, colours and numbers are enough, and they are
+tolerant of the mistakes of the speech recognizer. What this parser does
+not understand goes to the language model.
+"""
+
+from __future__ import annotations
+
+import difflib
+import re
+import unicodedata
+from dataclasses import dataclass, field
+from typing import Any, Iterable
+
+from ..scenes import find_scene
+
+
+@dataclass
+class Intent:
+    name: str
+    args: dict[str, Any] = field(default_factory=dict)
+    confidence: float = 1.0
+    source: str = "rules"
+
+
+def normalize(text: str) -> str:
+    text = unicodedata.normalize("NFKD", text.lower())
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    text = re.sub(r"[’'`]", " ", text)
+    text = re.sub(r"[^a-z0-9: ]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+ROOMS = {
+    "kitchen": ["cucina", "kitchen", "cucinino"],
+    "living": ["soggiorno", "salotto", "sala", "living room", "living", "lounge", "sitting room", "salone"],
+    "bedroom": ["camera da letto", "camera", "stanza da letto", "bedroom", "bed room", "letto"],
+    "bathroom": ["bagno", "bathroom", "toilet", "toilette", "restroom"],
+    "utility": ["locale tecnico", "tecnico", "ripostiglio", "utility room", "utility", "technical room"],
+    "garage": ["garage", "box", "autorimessa"],
+    "garden": ["giardino", "garden", "yard", "backyard", "cortile"],
+    "driveway": ["vialetto", "ingresso", "entrata", "driveway", "front door", "entrance"],
+}
+COLORS = {
+    "red": ["rosso", "rossa", "red"], "green": ["verde", "green"], "blue": ["blu", "blue"],
+    "yellow": ["giallo", "gialla", "yellow"], "orange": ["arancione", "arancio", "orange"],
+    "purple": ["viola", "purple", "violet"], "pink": ["rosa", "pink"], "white": ["bianco", "bianca", "white"],
+    "cyan": ["azzurro", "azzurra", "celeste", "cyan", "light blue"], "warm": ["calda", "caldo", "warm"],
+}
+IT_NUMBERS = {"una": 1, "uno": 1, "due": 2, "tre": 3, "quattro": 4, "cinque": 5, "sei": 6, "sette": 7,
+              "otto": 8, "nove": 9, "dieci": 10, "undici": 11, "dodici": 12, "tredici": 13,
+              "quattordici": 14, "quindici": 15, "sedici": 16, "diciassette": 17, "diciotto": 18,
+              "diciannove": 19, "venti": 20, "ventuno": 21, "ventidue": 22, "ventitre": 23,
+              "mezzanotte": 0, "mezzogiorno": 12, "trenta": 30, "quaranta": 40, "cinquanta": 50,
+              "dieci minuti": 10}
+EN_NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
+              "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+              "fifteen": 15, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "noon": 12, "midnight": 0}
+
+# (intent, patterns); the first match wins, so order matters
+PATTERNS: list[tuple[str, list[str]]] = [
+    ("cancel", [r"\b(annulla|lascia stare|niente|cancel|never mind|stop)\b"]),
+    ("set_time", [r"\bsono le\b", r"\be l una\b", r"\bit s \d", r"\bset the (time|clock)\b",
+                  r"\bimposta l ora\b", r"\bl ora e\b", r"\bthe time is\b"]),
+    ("time_now", [r"\bche or[ae]\b", r"\bche ora e\b", r"\bwhat time\b", r"\bwhat s the time\b"]),
+    ("register", [r"\b(aggiungi|registra|nuovo|nuova) (un |una )?(personaggio|persona|oggetto|animale)\b",
+                  r"\b(add|register) (a |an |new )*(character|person|object|pet)\b", r"\bnew character\b"]),
+    ("language", [r"\b(parla|parliamo|in) (inglese|italiano)\b", r"\bspeak (english|italian)\b",
+                  r"\bin (english|italian)\b", r"\b(english|inglese) please\b"]),
+    ("verbosity", [r"\b(stai zitta|silenzio|zitta|be quiet|shut up|silent|quiet mode)\b",
+                   r"\b(parla di piu|chiacchierona|talk more|chatty)\b", r"\b(parla normale|normal mode)\b"]),
+    ("volume", [r"\b(alza|abbassa) (il |la )?(volume|musica)\b", r"\bvolume (su|giu|up|down)\b", r"\bpiu (forte|piano)\b",
+                r"\b(louder|quieter|softer)\b", r"\b(turn|volume) (it )?(up|down)\b"]),
+    ("party", [r"\b(festa|party|balliamo|ballare|musica|let s dance|dance)\b"]),
+    ("grill", [r"\b(barbecue|grigliata|griglia|grill|bbq)\b"]),
+    ("scene", [r"\bscenari[oa]\b", r"\bmodalita\b", r"\bscene\b", r"\bmode\b", r"\bcinema\b", r"\brelax\b",
+               r"\bbuonanotte\b", r"\bgood night\b"]),
+    ("lights_off", [r"\b(spegni|spengi|turn off|switch off|lights off)\b"]),
+    ("lights_on", [r"\b(accendi|illumina|turn on|switch on|lights on|light up)\b", r"\bluce\b.*\b(rossa|verde|blu|gialla|viola|rosa|bianca|azzurra|arancione)\b",
+                   r"\b(make|paint|colour|color)\b.*\b(red|green|blue|yellow|purple|pink|white|orange|cyan)\b"]),
+    ("car_where", [r"\b(dov e|dove e|dove si trova|where is|where s) (l |la |the )?(auto|macchina|car|automobile)\b",
+                   r"\b(auto|macchina|car)\b.*\b(garage|dove|where)\b"]),
+    ("where_is", [r"\bdov e\b", r"\bdove e\b", r"\bdove si trova\b", r"\bdove sta\b", r"\bwhere is\b",
+                  r"\bwhere s\b", r"\bwhere are\b", r"\bfind\b", r"\bcerca\b", r"\bin che stanza\b"]),
+    ("who_in", [r"\bchi c e\b", r"\bchi e in\b", r"\bchi sta\b", r"\bwho is in\b", r"\bwho s in\b",
+                r"\bwho is there\b", r"\banyone in\b", r"\bc e qualcuno\b", r"\bis anyone\b"]),
+    ("count", [r"\bquant[ie]\b", r"\bhow many\b", r"\bnumero di persone\b"]),
+    ("temperature", [r"\btemperatura\b", r"\bgradi\b", r"\bcaldo\b", r"\bfreddo\b", r"\btemperature\b",
+                     r"\bhow (hot|warm|cold)\b", r"\bdegrees\b"]),
+    ("humidity", [r"\bumidita\b", r"\bumido\b", r"\bhumidity\b", r"\bhumid\b", r"\bdoccia\b", r"\bshower\b"]),
+    ("house_summary", [r"\bcom e la casa\b", r"\bcosa succede\b", r"\bsituazione\b", r"\bstato della casa\b",
+                       r"\bhow is the house\b", r"\bwhat s happening\b", r"\bwhat is happening\b", r"\bstatus\b",
+                       r"\braccont\w*\b", r"\bdescri\w*\b", r"\btell me about\b"]),
+    ("who_are_you", [r"\bchi sei\b", r"\bcome ti chiami\b", r"\bwho are you\b", r"\bwhat s your name\b",
+                     r"\bwhat is your name\b"]),
+    ("help", [r"\bcosa sai fare\b", r"\baiuto\b", r"\bche cosa puoi\b", r"\bwhat can you do\b", r"\bhelp\b"]),
+    ("yes", [r"^(si|sì|certo|esatto|giusto|ok|okay|va bene|yes|yeah|yep|right|correct|sure)( .*)?$"]),
+    ("no", [r"^(no|sbagliato|non e (lui|lei|giusto)|nope|wrong|not (him|her|right))( .*)?$"]),
+]
+
+
+def find_room(text: str) -> str | None:
+    for room, words in ROOMS.items():
+        for w in sorted(words, key=len, reverse=True):
+            if re.search(rf"\b{re.escape(w)}\b", text):
+                return room
+    return None
+
+
+def find_color(text: str) -> str | None:
+    for color, words in COLORS.items():
+        if any(re.search(rf"\b{re.escape(w)}\b", text) for w in words):
+            return color
+    return None
+
+
+def find_name(text: str, names: Iterable[str], cutoff: float = 0.78) -> str | None:
+    """The registered name mentioned in the sentence, tolerating recognizer errors."""
+    names = list(names)
+    if not names:
+        return None
+    norm = {normalize(n): n for n in names}
+    for nn, orig in sorted(norm.items(), key=lambda kv: -len(kv[0])):
+        if re.search(rf"\b{re.escape(nn)}\b", text):
+            return orig
+    words = text.split()
+    grams = words + [" ".join(words[i:i + 2]) for i in range(len(words) - 1)]
+    best, score = None, 0.0
+    for g in grams:
+        for nn, orig in norm.items():
+            r = difflib.SequenceMatcher(None, g, nn).ratio()
+            if r > score:
+                best, score = orig, r
+    return best if score >= cutoff else None
+
+
+def parse_time(text: str) -> tuple[int, int] | None:
+    t = f" {text} "
+    m = re.search(r"\b(\d{1,2})[: ](\d{2})\b", t)
+    if m:
+        h, mi = int(m.group(1)), int(m.group(2))
+        return (h, mi) if h < 24 and mi < 60 else None
+    words = {**IT_NUMBERS, **EN_NUMBERS}
+    hour = None
+    m = re.search(r"\b(?:sono le|e l|it s|at|alle)\s+(\w+)", t)
+    if m:
+        tok = m.group(1)
+        hour = int(tok) if tok.isdigit() else words.get(tok)
+    if hour is None:
+        m = re.search(r"\b(\d{1,2})\b", t)
+        hour = int(m.group(1)) if m else None
+    if hour is None or hour > 23:
+        return None
+    minute = 0
+    if re.search(r"\be mezz[ao]\b|\bhalf past\b|\bthirty\b|\be trenta\b", t):
+        minute = 30
+    elif re.search(r"\be un quarto\b|\bquarter past\b|\be quindici\b", t):
+        minute = 15
+    elif re.search(r"\bmeno un quarto\b|\bquarter to\b", t):
+        hour, minute = (hour - 1) % 24, 45
+    else:
+        m = re.search(r"\be (\w+)(?: minuti)?\s*$", text)
+        if m:
+            tok = m.group(1)
+            val = int(tok) if tok.isdigit() else words.get(tok)
+            if val is not None and val < 60:
+                minute = val
+    if "pomeriggio" in t or "sera" in t or " pm " in t:
+        if hour < 12:
+            hour += 12
+    return hour, minute
+
+
+def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
+    t = normalize(text)
+    if not t:
+        return None
+    names = list(names)
+    for intent, patterns in PATTERNS:
+        if not any(re.search(p, t) for p in patterns):
+            continue
+        args: dict[str, Any] = {}
+        if intent == "where_is":
+            name = find_name(t, names)
+            if not name:
+                if find_room(t) and re.search(r"\b(chi|who)\b", t):
+                    return Intent("who_in", {"room": find_room(t)}, 0.8)
+                continue
+            args["name"] = name
+        elif intent in ("who_in", "count", "temperature", "humidity", "lights_off", "lights_on"):
+            room = find_room(t)
+            if room:
+                args["room"] = room
+            if intent == "lights_on":
+                color = find_color(t)
+                if color:
+                    args["color"] = color
+            if intent == "count":
+                args["what"] = "animals" if re.search(r"\b(animali|animals|pets|cani|gatti|dogs|cats)\b", t) else "persons"
+        elif intent == "scene":
+            scene = find_scene(t) or ("night" if re.search(r"buonanotte|good night|notte|night", t) else None)
+            if not scene:
+                continue
+            args["scene"] = scene
+        elif intent == "language":
+            args["language"] = "en" if re.search(r"inglese|english", t) else "it"
+        elif intent == "verbosity":
+            args["level"] = ("silent" if re.search(r"zitta|silenzio|quiet|shut|silent", t)
+                             else "chatty" if re.search(r"di piu|chiacchierona|more|chatty", t) else "normal")
+        elif intent == "volume":
+            args["direction"] = "down" if re.search(r"abbassa|giu|piano|down|quieter|softer", t) else "up"
+        elif intent == "set_time":
+            hm = parse_time(t)
+            if not hm:
+                continue
+            args["hour"], args["minute"] = hm
+        elif intent == "party" and re.search(r"\b(spegni|basta|stop|ferma)\b", t):
+            continue
+        elif intent == "grill" and re.search(r"\b(spegni|stop|ferma|turn off)\b", t):
+            return Intent("grill_stop", {}, 0.9)
+        return Intent(intent, args, 0.9)
+    # a bare name is a "where is" question
+    name = find_name(t, names, 0.85)
+    if name and len(t.split()) <= 3:
+        return Intent("where_is", {"name": name}, 0.7)
+    return None
