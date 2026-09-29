@@ -86,3 +86,10 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
 - Barzellette fisse sulla casa, in italiano e in inglese.
 
 **Prestazioni della visione sulla scheda.** Prima versione: 186 ms per fotogramma, circa 5 al secondo. Ora 82 ms di mediana: la luce si rimisura tre volte al secondo (o subito quando la casa cambia una luce), le immagini dei guadagni restano in memoria, il confronto con la casa vuota si fa in Lab a 8 bit (OpenCV lo converte con tabelle, molto più in fretta che in virgola mobile) e con funzioni native. La webcam viene letta come MJPEG grezzo e decodificata direttamente a metà risoluzione: 7 ms invece di 15 più 3 di ridimensionamento. Una codifica JPEG per la diretta costa 14 ms.
+
+**Hotspot e riavvio (29/9, notte).**
+- Prova dell'hotspot senza perdere la scheda: comandi via USB (adb), mentre la seconda scheda Wi-Fi del PC si collega all'hotspot e la prima resta sulla rete del laboratorio. `DomotiQ-Casa1` compare sul canale 1; collegamento e indirizzo (10.42.1.250) in pochi secondi; la webapp risponde in 0,18 s; il DNS della casa risponde per `casa1.lan` e `domotiq.lan` con 10.42.1.1 e fa fallire subito i nomi di iCloud Private Relay.
+- Dieci dirette insieme dallo stesso PC: 4,8 immagini al secondo per ciascuna, processore della scheda libero all'86 %. Con la webcam vera le immagini saranno di circa 24 KB: una decina di Mbit/s in tutto, da verificare con i telefoni in fiera.
+- `hotspot.sh off` chiede la password: le regole sudo della casa permettono solo di accendere l'hotspot, non di spegnerlo. In fiera non serve.
+- Riavvio completo di casa1: webapp raggiungibile dopo 40 s, voce pronta dopo 48 s; il modello linguistico finisce di leggere i suoi esempi un paio di minuti dopo, in sottofondo.
+- Senza scheda audio USB all'avvio la casa restava muta fino al riavvio: ora la cerca ogni 5 secondi, e il microfono la segue.

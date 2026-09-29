@@ -60,8 +60,10 @@ class Voice:
         self.ctx = ctx
         self.speaker = Speaker()
         self.listener = None if ctx.args.no_voice else Listener(ctx.paths.models)
-        device = ctx.audio.device if ctx.audio is not None and not ctx.audio.dry else None
-        self.mic = Microphone(device)
+        audio = ctx.audio
+        device = audio.device if audio is not None and not audio.dry else None
+        # the microphone is on the same USB sound card: it follows the output if that is found later
+        self.mic = Microphone(device, follow=(lambda: audio.device if not audio.dry else None) if audio else None)
         self.llm = None if ctx.args.no_llm else LanguageModel()
         self.llm_ok = False
         self._jokes = random.randrange(100)

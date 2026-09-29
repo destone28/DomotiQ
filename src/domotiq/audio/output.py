@@ -83,6 +83,9 @@ class Audio:
         self.device = device or find_card()
         self.dry = dry or self.device is None
         self.ok = self.dry is False
+        # no sound card at start: keep looking, it may be plugged in with the house already on
+        self._waiting_card = not dry and self.device is None
+        self._card_checked = 0.0
         self.latency_ms = int((LEAD_S + 0.1) * 1000)
         self._lock = threading.Lock()
         self._voice: deque[_Item] = deque()
@@ -102,7 +105,8 @@ class Audio:
         self._running = True
         self._thread = threading.Thread(target=self._run, name="audio-mixer", daemon=True)
         self._thread.start()
-        log.info("audio output: %s", "none (dry run)" if self.dry else self.device)
+        log.info("audio output: %s", self.device if not self.dry else
+                 "no USB sound card yet, still looking" if self._waiting_card else "none (dry run)")
 
     def stop(self) -> None:
         self._running = False
@@ -230,6 +234,12 @@ class Audio:
         written = 0
         start = time.monotonic()
         while self._running:
+            if self._waiting_card and time.monotonic() - self._card_checked > 5.0:
+                self._card_checked = time.monotonic()
+                card = find_card()
+                if card:
+                    self.device, self.dry, self._waiting_card = card, False, False
+                    log.info("audio output: %s (plugged in)", card)
             if not self.dry and (self._proc is None or self._proc.poll() is not None):
                 if self._proc is not None:
                     err = self._proc.stderr.read().decode(errors="replace") if self._proc.stderr else ""

@@ -22,18 +22,21 @@ CHUNK_BYTES = MIC_RATE // 10 * 2        # 100 ms of 16-bit mono
 
 
 class Microphone:
-    def __init__(self, device: str | None) -> None:
+    def __init__(self, device: str | None, follow: Callable[[], str | None] | None = None) -> None:
         self.device = device
+        self.follow = follow                      # where to ask for the device when there is none
         self.last_level = 0.0
 
     @property
     def available(self) -> bool:
+        if self.device is None and self.follow is not None:
+            self.device = self.follow()           # the sound card may have been plugged in since
         return self.device is not None
 
     async def listen(self, stop: asyncio.Event, on_chunk: Callable[[bytes], None] | None = None,
                      max_s: float = 60.0, min_s: float = 0.0) -> bytes:
         """Record until `stop` is set (after at least `min_s`) or `max_s` passes."""
-        if not self.device:
+        if not self.available:
             try:
                 await asyncio.wait_for(stop.wait(), timeout=max_s)
             except asyncio.TimeoutError:
