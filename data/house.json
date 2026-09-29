@@ -67,7 +67,7 @@
     {"id": "bench-1",      "room": "garden",   "name": {"it": "Panca", "en": "Bench"},                 "rect": [40, 80, 256, 268],    "color": "#b38b5d", "height": 19.5},
     {"id": "bench-2",      "room": "garden",   "name": {"it": "Panca", "en": "Bench"},                 "rect": [40, 80, 312, 324],    "color": "#b38b5d", "height": 19.5},
     {"id": "tree",         "room": "garden",   "name": {"it": "Albero", "en": "Tree"},                 "circle": [35, 340, 28],       "color": "#4f8a45", "height": 166},
-    {"id": "totem",        "room": "driveway", "name": {"it": "Citofono", "en": "Intercom"},           "rect": [222, 288, -40, -26],  "color": "#3c4045", "height": 105},
+    {"id": "totem",        "room": "driveway", "name": {"it": "Citofono", "en": "Intercom"},           "rect": [222, 288, -40, -26],  "color": "#3c4045", "height": 103},
     {"id": "planter-l",    "room": "driveway", "name": {"it": "Fioriera", "en": "Planter"},            "rect": [105, 165, -70, -10],  "color": "#35613f", "height": 33},
     {"id": "planter-r",    "room": "driveway", "name": {"it": "Fioriera", "en": "Planter"},            "rect": [300, 360, -70, -10],  "color": "#35613f", "height": 33},
     {"id": "pole",         "room": "utility",  "name": {"it": "Palo della camera", "en": "Camera pole"},"rect": [307, 343, 323.5, 359.5], "color": "#8a8f94", "height": 1100}
