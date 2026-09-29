@@ -22,6 +22,7 @@ class FakeRouter:
         self.writers: list[asyncio.StreamWriter] = []
         self.server: asyncio.base_events.Server | None = None
         self.relay = 0
+        self.bus: int | None = 3                 # both lines high
 
     async def start(self) -> None:
         self.server = await asyncio.start_unix_server(self._client, self.path)
@@ -54,6 +55,8 @@ class FakeRouter:
                     result = True
                 elif method == "modules":
                     result = 0b111
+                elif method == "bus" and self.bus is not None:
+                    result = self.bus
                 elif method == "relay":
                     self.relay = params[0]
                     result = self.relay
@@ -101,6 +104,13 @@ def test_calls_notifications_and_reconnection(tmp_path):
         mcu = Mcu(client)
         assert await mcu.check()
         assert mcu.version == PROTOCOL
+        assert mcu.i2c == {"scl": True, "sda": True, "held_low": False, "unsticks": 0, "refused": 0}
+        router.bus = 2 | 4 | (6 << 8) | (61 << 16)      # SCL held low by a reversed cable
+        assert await mcu.check()
+        assert mcu.i2c == {"scl": False, "sda": True, "held_low": True, "unsticks": 6, "refused": 61}
+        router.bus = None                               # firmware without the bus method
+        assert await mcu.check() and mcu.i2c is None
+        router.bus = 3
         assert [m for m, on in mcu.modules.items() if on] == list(MODULES[:3])
         assert await mcu.relay(True) is True and router.relay == 1
         assert await mcu.light(2, 1, 255, 170, 90, 60, 50) is True

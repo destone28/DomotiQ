@@ -24,7 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from domotiq.layout import Layout  # noqa: E402
-from domotiq.mcu import MODULES, Mcu, McuError, RouterClient  # noqa: E402
+from domotiq.mcu import MODULES, Mcu, McuError, RouterClient, parse_bus  # noqa: E402
 
 HUB_CHANNELS = {0: "Pixels garage", 1: "Pixels camera", 2: "Pixels cucina", 3: "Pixels soggiorno",
                 4: "Thermo bagno", 5: "Pixels bagno", 6: "Thermo credenza, Buttons, Distance", 7: "libero"}
@@ -57,6 +57,18 @@ async def main(args: argparse.Namespace) -> int:
     print(f"\n[1] Firmware: protocol {mcu.version}, {'OK' if ok else 'NOT OK (reload the firmware)'}")
     for name in MODULES:
         print(f"    {'ok     ' if mcu.modules[name] else 'MISSING'}  {name}")
+
+    try:
+        bus = parse_bus(int(await mcu._call("bus")))
+        free = bus["scl"] and bus["sda"]
+        print(f"    bus: SCL {'high' if bus['scl'] else 'LOW'}, SDA {'high' if bus['sda'] else 'LOW'}"
+              f"{'' if free else ' -> the bus is stuck'}")
+        if not free:
+            print("    Nothing can answer while a line is held low. Usually a Qwiic cable with reversed wires\n"
+                  "    (pin 1 to pin 4: compare the colour order at its two ends) or a damaged connector.\n"
+                  "    Unplug the cables from the Hub one at a time until both lines are high.")
+    except (McuError, ValueError, TypeError):
+        print("    bus: state not available (firmware older than the bus check)")
 
     print("\n[2] Hub channels (7-bit addresses)")
     try:

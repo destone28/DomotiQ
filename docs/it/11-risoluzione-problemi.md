@@ -95,7 +95,12 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### Un modulo è rosso in *Diagnostica*
 **Causa.** Un cavo Qwiic allentato, il modulo sul canale sbagliato dell'Hub, oppure un modulo che non risponde.
 
-**Soluzione.** Lancia **Scansione I2C** e confronta con la tabella del [capitolo 5](05-collaudo.md#3-microcontrollore-e-moduli). Ogni canale dell'Hub deve mostrare gli indirizzi dei suoi moduli: 0x36 per un Pixels, 0x44 per un Thermo, 0x3E Buttons, 0x29 Distance. Il Latch Relay può essere a 0x02 o a 0x10 e l'Hub ovunque tra 0x70 e 0x77: vanno bene tutti. Un modulo ricollegato ricompare entro 5 secondi.
+**Soluzione.** Lancia **Scansione I2C** e confronta con la tabella del [capitolo 5](05-collaudo.md#3-microcontrollore-e-moduli). Ogni canale dell'Hub deve mostrare gli indirizzi dei suoi moduli: 0x36 per un Pixels, 0x44 per un Thermo, 0x3E Buttons, 0x29 Distance. Il Latch Relay può essere a 0x02, a 0x15 o a 0x10 e l'Hub ovunque tra 0x70 e 0x77: vanno bene tutti. Un modulo ricollegato ricompare entro 5 secondi.
+
+### Tutti i moduli sono rossi e c'è l'avviso "Il bus dei Modulino è bloccato"
+**Causa.** Una delle due linee del bus Qwiic (SCL o SDA) è tenuta a massa, e finché resta così nessun modulo può rispondere. Quasi sempre è un cavo con i fili invertiti: i cavi JST-SH a 4 poli si vendono anche in versione "inversa" (pin 1 collegato al pin 4), che sul Qwiic mette la massa di un modulo sulla linea dei dati. Sul tratto principale (UNO Q → Hub → Relay) blocca subito tutto; su un canale dell'Hub blocca il bus appena il firmware apre quel canale. Un segno tipico: i LED verdi di alimentazione dei moduli dopo quel cavo restano spenti o fiochi. Più di rado è un connettore danneggiato.
+
+**Soluzione.** Stacca l'alimentazione e controlla i cavi: affianca i due connettori dello stesso cavo, girati nello stesso modo; in un cavo Qwiic giusto i colori dei fili sono nello stesso ordine su tutti e due. Con fili tutti dello stesso colore usa un tester in continuità: il pin più a sinistra di un connettore deve suonare con il pin più a sinistra dell'altro. Se i cavi sono giusti, con la casa accesa stacca dall'Hub un cavo alla volta: l'avviso sparisce entro 5 secondi da quando togli quello guasto. La riga sopra i moduli in *Diagnostica* e `scripts/bench_mcu.py` mostrano lo stato di SCL e SDA.
 
 ### La casa dice che il termostato o il sensore non risponde
 **Causa.** Nessuna lettura da quel Thermo (canale 6 per la credenza, canale 4 per il bagno). La casa lo dice con "Il termostato non risponde." o "Il sensore non risponde.".

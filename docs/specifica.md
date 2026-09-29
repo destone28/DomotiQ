@@ -141,7 +141,7 @@ Principi:
 ### 5.1 Base
 - Core `arduino:zephyr` 0.52.0 e `Arduino_RouterBridge` 0.4.3, le versioni collaudate da Amelie (D24). Si compila e si carica **dalla scheda stessa** con `arduino-cli` e `remoteocd` locale.
 - Nessun uso della libreria Arduino_Modulino: ogni transazione I2C è scritta nello sketch, con attese limitate.
-- All'avvio: sblocco del bus (`i2c_recover_bus`), `Wire1` a 100 kHz, ricerca dell'Hub, relè spento, luci spente, poi "respiro" tenue su tutte le luci finché Linux non manda il primo comando.
+- All'avvio: `Wire1` a 100 kHz, sblocco del bus se una linea è bassa (nove impulsi su SCL e uno STOP, a mano), ricerca dell'Hub, relè spento, luci spente, poi "respiro" tenue su tutte le luci finché Linux non manda il primo comando.
 - I gestori del Bridge scrivono solo variabili protette da un mutex; tutte le transazioni I2C avvengono nel `loop()`.
 
 ### 5.2 Ciclo

@@ -115,4 +115,6 @@ After the calibration, exposure, white balance and gain are locked, anti-flicker
 
 Plan the cable runs before closing the house: from the UNO Q and the Hub to the five wall lights, to the bathroom Thermo, to the sideboard and on to the totem, and from the relay to the barbecue in the garden. Measure them on your assembled house before buying Qwiic cables, and keep them along the walls and away from the floor areas the camera looks at.
 
+The cables must be real Qwiic cables, with pin 1 wired to pin 1: generic 4-pin JST-SH cables are also sold in a "reverse" version (pin 1 to pin 4), which puts the ground of a module on a data line and stops the whole bus. Before fitting them, hold the two connectors of each cable side by side, turned the same way: the wire colours must be in the same order on both (with wires of one colour, check continuity with a tester).
+
 Next: [testing and commissioning](05-testing.md).

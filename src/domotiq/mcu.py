@@ -166,6 +166,7 @@ class Mcu:
         self.ok = False
         self.last_ping = 0.0
         self.relay_state: bool | None = None
+        self.i2c: dict[str, Any] | None = None     # state of the Qwiic bus, None with older firmware
 
     @property
     def available(self) -> bool:
@@ -187,6 +188,10 @@ class Mcu:
                 return False
             await self._call("ping")
             self.set_modules(int(await self._call("modules")))
+            try:
+                self.i2c = parse_bus(int(await self._call("bus")))
+            except (McuError, ValueError, TypeError):
+                self.i2c = None
             self.ok = True
             self.last_ping = time.time()
         except (McuError, asyncio.TimeoutError, ValueError, TypeError):
@@ -246,6 +251,14 @@ class Mcu:
         return found
 
 
+def parse_bus(value: int) -> dict[str, Any]:
+    """The `bus` answer of the sketch: line levels now, and whether the last
+    transaction found a line held low (the sketch then refuses them until
+    the bus is free again)."""
+    return {"scl": bool(value & 1), "sda": bool(value & 2), "held_low": bool(value & 4),
+            "unsticks": (value >> 8) & 0xFF, "refused": (value >> 16) & 0x7FFF}
+
+
 class SimulatedMcu(Mcu):
     """Stands in for the microcontroller on a PC and in the tests."""
 
@@ -255,6 +268,7 @@ class SimulatedMcu(Mcu):
         self.ok = True
         self.version = PROTOCOL
         self.set_modules((1 << len(MODULES)) - 1)
+        self.i2c = parse_bus(3)
         self.leds_state = (0, 0)
 
     async def check(self) -> bool:

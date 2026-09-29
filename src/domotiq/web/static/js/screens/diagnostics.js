@@ -33,6 +33,10 @@ export function mount(root) {
       const mods = Object.entries(d.mcu.modules || {}).map(([k, ok]) =>
         `<li><span>${ok ? "🟢" : "🔴"}</span><span class="grow">${esc(MODULE_NAMES[k] || k)}</span></li>`).join("");
       const cam = d.camera || {};
+      const i2c = d.mcu.i2c;
+      const bus = !i2c ? "" : (i2c.scl && i2c.sda && !i2c.held_low)
+        ? `<p class="muted small">${t("diag.bus_ok")}</p>`
+        : `<p>⚠️ ${t("diag.bus_low").replace("{line}", !i2c.scl ? "SCL" : "SDA")}</p>`;
       $("#body").innerHTML = `
         <div class="card"><h3 style="margin-top:0">${t("diag.system")}</h3><dl class="kv">
           <dt>${t("diag.host")}</dt><dd>${esc(d.hostname)} · DomotiQ ${esc(d.version)}</dd>
@@ -46,7 +50,7 @@ export function mount(root) {
           <dt>${t("diag.voice")}</dt><dd>${d.voice.ok ? "🟢" : "🔴"} ${esc(d.voice.stt || "")} ${d.voice.llm ? "· LLM 🟢" : ""}</dd>
           <dt>${t("diag.camera")}</dt><dd>${cam.available ? "🟢" : "🔴"} ${esc(cam.device || "")} ${cam.fps ? cam.fps.toFixed(1) + " fps" : ""} ${cam.proc_ms ? "· " + Math.round(cam.proc_ms) + " ms" : ""} ${cam.calibrated === false ? "· " + t("diag.not_calibrated") : ""} ${cam.moved ? "· ⚠️ " + t("diag.moved") : ""}</dd>
         </dl></div>
-        <div class="card"><h3 style="margin-top:0">${t("diag.modules")} ${d.mcu.ok ? "🟢" : "🔴"} ${d.mcu.version != null ? "v" + d.mcu.version : ""}</h3><ul class="list">${mods}</ul></div>`;
+        <div class="card"><h3 style="margin-top:0">${t("diag.modules")} ${d.mcu.ok ? "🟢" : "🔴"} ${d.mcu.version != null ? "v" + d.mcu.version : ""}</h3>${bus}<ul class="list">${mods}</ul></div>`;
     } catch (e) { $("#body").innerHTML = `<p class="muted">${t("common.error")}</p>`; }
   };
   const out = (text) => { $("#out").hidden = false; $("#out").textContent = text; };

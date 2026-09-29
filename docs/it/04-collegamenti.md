@@ -115,4 +115,6 @@ Dopo la calibrazione, esposizione, bilanciamento del bianco e guadagno vengono b
 
 Pianifica i percorsi dei cavi prima di chiudere la casa: dalla UNO Q e dall'Hub alle cinque applique, al Thermo del bagno, alla credenza e poi fino al totem, e dal relè al barbecue in giardino. Misurali sulla tua casa montata prima di comprare i cavi Qwiic, e falli correre lungo le pareti, lontano dalle zone di pavimento che la webcam guarda.
 
+I cavi devono essere Qwiic veri, cioè con il pin 1 collegato al pin 1: i cavi JST-SH a 4 poli generici si vendono anche in versione "inversa" (pin 1 sul pin 4), che mette la massa di un modulo sulla linea dei dati e blocca tutto il bus. Prima di montarli, affianca i due connettori di ogni cavo girati nello stesso modo: i colori dei fili devono essere nello stesso ordine su tutti e due (con fili dello stesso colore, prova la continuità con un tester).
+
 Avanti: [collaudo e messa in servizio](05-collaudo.md).

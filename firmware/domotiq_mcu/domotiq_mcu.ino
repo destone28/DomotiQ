@@ -40,6 +40,7 @@
 #include <Arduino_RouterBridge.h>
 #include <Wire.h>
 #include <zephyr/device.h>
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/kernel.h>
 
@@ -179,14 +180,67 @@ static const uint8_t TOF_CONFIG[] = {
   0x06, 0x00, 0x00, 0x02, 0xc7, 0xff, 0x9b, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00
 };
 
-// ============================================================ bus helpers
-static void bus_recover() {
-  const struct device *bus = DEVICE_DT_GET(DT_NODELABEL(i2c4));
-  if (device_is_ready(bus)) i2c_recover_bus(bus);
+// ============================================================ bus health
+// SCL and SDA of I2C4 are PD12 and PD13 (pinctrl-0 of i2c4 in the UNO Q
+// devicetree). The input register of the port shows their levels even while
+// the I2C peripheral drives them.
+static const struct device *const bus_port = DEVICE_DT_GET(DT_NODELABEL(gpiod));
+static const uint8_t PIN_SCL = 12, PIN_SDA = 13;
+static volatile bool bus_stuck = false;
+static volatile uint16_t bus_refused = 0;    // transactions not attempted because a line was low
+static volatile uint8_t bus_unsticks = 0;    // attempts to free the bus
+
+static uint8_t bus_lines() {                 // bit 0 SCL high, bit 1 SDA high
+  gpio_port_value_t v = 0;
+  if (gpio_port_get_raw(bus_port, &v) != 0) return 3;
+  return (uint8_t)(((v >> PIN_SCL) & 1u) | (((v >> PIN_SDA) & 1u) << 1));
 }
 
+// Between two transactions both lines are high. With one held low (a
+// reversed Qwiic cable, a module without power, a target stuck halfway
+// through a byte) every transaction would wait the 500 ms timeout of the
+// driver and freeze lights and buttons: it fails at once instead, and the io
+// thread tries to free the bus every few seconds.
+static bool bus_idle() {
+  uint8_t l = bus_lines();
+  if (l != 3) { k_busy_wait(50); l = bus_lines(); }
+  bus_stuck = l != 3;
+  if (bus_stuck && bus_refused < 0xFFFF) bus_refused++;
+  return !bus_stuck;
+}
+
+// The standard way out: up to nine clocks on SCL let a target that was
+// sending a byte finish it and release SDA, then a STOP. i2c_recover_bus()
+// would do it, but the UNO Q devicetree gives the driver no GPIOs for it, so
+// it is done here by hand; Wire1.begin() gives the pins back to the I2C
+// peripheral and setClock() restarts it.
+static void bus_unstick() {
+  k_mutex_lock(&bus_lock, K_FOREVER);
+  if (bus_unsticks < 0xFF) bus_unsticks++;
+  gpio_pin_configure(bus_port, PIN_SDA, GPIO_INPUT);
+  gpio_pin_configure(bus_port, PIN_SCL, GPIO_OUTPUT_HIGH | GPIO_OPEN_DRAIN);
+  k_busy_wait(10);
+  for (uint8_t i = 0; i < 9 && !(bus_lines() & 2); i++) {
+    gpio_pin_set_raw(bus_port, PIN_SCL, 0); k_busy_wait(5);
+    gpio_pin_set_raw(bus_port, PIN_SCL, 1); k_busy_wait(5);
+  }
+  if (bus_lines() == 3) {                    // STOP: SDA rises while SCL is high
+    gpio_pin_configure(bus_port, PIN_SDA, GPIO_OUTPUT_LOW | GPIO_OPEN_DRAIN);
+    k_busy_wait(5);
+    gpio_pin_set_raw(bus_port, PIN_SDA, 1);
+    k_busy_wait(5);
+  }
+  Wire1.begin();
+  Wire1.setClock(100000);
+  hub_channel = -1;
+  bus_idle();
+  k_mutex_unlock(&bus_lock);
+}
+
+// ============================================================ bus helpers
 static bool bus_write(uint8_t addr, const uint8_t *data, uint8_t len) {
   k_mutex_lock(&bus_lock, K_FOREVER);
+  if (!bus_idle()) { k_mutex_unlock(&bus_lock); return false; }
   Wire1.beginTransmission(addr);
   for (uint8_t i = 0; i < len; i++) Wire1.write(data[i]);
   bool ok = Wire1.endTransmission() == 0;
@@ -196,6 +250,7 @@ static bool bus_write(uint8_t addr, const uint8_t *data, uint8_t len) {
 
 static bool bus_read(uint8_t addr, uint8_t *out, uint8_t len) {
   k_mutex_lock(&bus_lock, K_FOREVER);
+  if (!bus_idle()) { k_mutex_unlock(&bus_lock); return false; }
   bool ok = (int)Wire1.requestFrom((int)addr, (int)len) == (int)len;
   if (ok) for (uint8_t i = 0; i < len; i++) out[i] = (uint8_t)Wire1.read();
   k_mutex_unlock(&bus_lock);
@@ -204,6 +259,7 @@ static bool bus_read(uint8_t addr, uint8_t *out, uint8_t len) {
 
 static bool bus_probe(uint8_t addr) {
   k_mutex_lock(&bus_lock, K_FOREVER);
+  if (!bus_idle()) { k_mutex_unlock(&bus_lock); return false; }
   Wire1.beginTransmission(addr);
   bool ok = Wire1.endTransmission() == 0;
   k_mutex_unlock(&bus_lock);
@@ -491,6 +547,7 @@ static void write_leds(uint32_t now) {
 static bool tof_read(uint16_t reg, uint8_t *out, uint8_t len) {
   uint8_t a[2] = {(uint8_t)(reg >> 8), (uint8_t)(reg & 0xFF)};
   k_mutex_lock(&bus_lock, K_FOREVER);
+  if (!bus_idle()) { k_mutex_unlock(&bus_lock); return false; }
   Wire1.beginTransmission(ADDR_TOF);
   Wire1.write(a[0]); Wire1.write(a[1]);
   bool ok = Wire1.endTransmission() == 0 && (int)Wire1.requestFrom((int)ADDR_TOF, (int)len) == (int)len;
@@ -652,6 +709,7 @@ static void io_thread(void *, void *, void *) {
 
     if (first || now >= next_probe) {
       next_probe = now + PROBE_MS;
+      if (bus_stuck || bus_lines() != 3) bus_unstick();
       if (first || !hub_addr) hub_find();
       if (first || !relay_addr) relay_find();
       probe_lights();
@@ -790,6 +848,15 @@ bool limits(int max_brightness, int budget) {
 
 int modules() { seen_linux(); return (int)modules_mask; }
 
+// State of the Qwiic bus: bit 0 SCL high, bit 1 SDA high (now), bit 2 the
+// last transaction found a line held low, bits 8-15 attempts to free the
+// bus, bits 16-30 transactions refused because of a low line.
+int bus() {
+  seen_linux();
+  uint32_t refused = bus_refused > 0x7FFF ? 0x7FFF : bus_refused;
+  return (int)(bus_lines() | (bus_stuck ? 4u : 0u) | ((uint32_t)bus_unsticks << 8) | (refused << 16));
+}
+
 // Which addresses answer on a hub channel (8 = main bus), 32 per block.
 // The io thread does it, because it is the only owner of the bus.
 int scan(int channel, int block) {
@@ -819,9 +886,9 @@ static void do_scan() {
 
 // ============================================================ setup / loop
 void setup() {
-  bus_recover();
-  Wire1.begin();
+  Wire1.begin();                     // I2C4 has deferred init: this is where it starts
   Wire1.setClock(100000);            // Modulino run at 100 kHz; the UNO Q default is 400 kHz
+  if (bus_lines() != 3) bus_unstick();
   for (uint8_t li = 0; li < N_LIGHTS; li++) { cur_light[li].started = 0; req_light_dirty[li] = false; }
   req_relay = 0;                     // the latching relay may still be closed from before a power cut
   k_thread_create(&io_thread_data, io_stack, K_THREAD_STACK_SIZEOF(io_stack),
@@ -838,6 +905,7 @@ void setup() {
   Bridge.provide("limits", limits);
   Bridge.provide("modules", modules);
   Bridge.provide("scan", scan);
+  Bridge.provide("bus", bus);
   bridge_ready = true;
   Event ev = {4, (int32_t)modules_mask, 0, 0};
   k_msgq_put(&events, &ev, K_NO_WAIT);

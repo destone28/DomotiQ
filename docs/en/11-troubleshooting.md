@@ -95,7 +95,12 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### A module is red in *Diagnostics*
 **Cause.** A loose Qwiic cable, the module on the wrong Hub channel, or a module that does not answer.
 
-**Fix.** Run **I2C scan** and compare with the table in [chapter 5](05-testing.md#3-microcontroller-and-modules). Each Hub channel must show the addresses of its modules: 0x36 for a Pixels, 0x44 for a Thermo, 0x3E Buttons, 0x29 Distance. The Latch Relay may be at 0x02 or 0x10 and the Hub anywhere between 0x70 and 0x77: both are fine. A module plugged in again shows up within 5 seconds.
+**Fix.** Run **I2C scan** and compare with the table in [chapter 5](05-testing.md#3-microcontroller-and-modules). Each Hub channel must show the addresses of its modules: 0x36 for a Pixels, 0x44 for a Thermo, 0x3E Buttons, 0x29 Distance. The Latch Relay may be at 0x02, 0x15 or 0x10 and the Hub anywhere between 0x70 and 0x77: both are fine. A module plugged in again shows up within 5 seconds.
+
+### Every module is red and the alert "The Modulino bus is stuck" is shown
+**Cause.** One of the two lines of the Qwiic bus (SCL or SDA) is held low, and while it is no module can answer. It is almost always a cable with reversed wires: 4-pin JST-SH cables are also sold in a "reverse" version (pin 1 wired to pin 4), which on Qwiic puts the ground of a module on a data line. On the main run (UNO Q → Hub → Relay) it stops everything at once; on a Hub channel it stops the bus as soon as the firmware opens that channel. A typical sign: the green power LEDs of the modules after that cable stay off or dim. More rarely it is a damaged connector.
+
+**Fix.** Unplug the power and check the cables: hold the two connectors of the same cable side by side, turned the same way; on a proper Qwiic cable the wire colours are in the same order on both. With wires all of one colour use a continuity tester: the leftmost pin of one connector must beep with the leftmost pin of the other. If the cables are right, with the house on unplug the cables from the Hub one at a time: the alert goes away within 5 seconds of removing the faulty one. The line above the modules in *Diagnostics* and `scripts/bench_mcu.py` show the state of SCL and SDA.
 
 ### The house says the thermostat or the sensor is not answering
 **Cause.** No reading from that Thermo (channel 6 for the sideboard, channel 4 for the bathroom).

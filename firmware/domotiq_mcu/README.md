@@ -68,6 +68,6 @@ Linux receives them after registering the names with `$/register` on the router 
 
 - **Power budget.** Each Pixels can draw up to 264 mA at full white from the 3.3 V of the Qwiic line. The firmware estimates the current of every frame and scales all lights down when it exceeds the budget (450 mA by default), on top of the maximum brightness (30 % by default).
 - **Relay.** Off at power-up, and off when Linux has been silent for 30 seconds; the lights then go back to the waiting breath.
-- **Stuck bus.** `i2c_recover_bus()` runs before anything else, so a module reset in the middle of a byte cannot keep the bus locked.
+- **Stuck bus.** Before every transaction the firmware reads the levels of SCL (PD12) and SDA (PD13). With a line held low it does not start the transaction, which would otherwise wait the 500 ms timeout of the driver and freeze lights and buttons; every 5 seconds it tries to free the bus with nine clocks on SCL and a STOP, done by hand because the UNO Q devicetree gives `i2c_recover_bus()` no GPIOs to do it. The `bus` method reports the state (bit 0 SCL high, bit 1 SDA high, bit 2 held low at the last transaction, bits 8-15 attempts to free it, bits 16-30 refused transactions); the house raises an alert and *Diagnostics* shows it. A line held low for good is almost always hardware: a Qwiic cable with reversed wires, a damaged connector, a module that is not powered.
 
 The default configuration of the VL53L4CD comes from the ultra-lite driver by STMicroelectronics (BSD-3-Clause).

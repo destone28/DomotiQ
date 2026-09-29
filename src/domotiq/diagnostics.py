@@ -76,7 +76,7 @@ async def collect(ctx: "Context") -> dict[str, Any]:
         "memory": memory(),
         "disk": {"free_mb": round(disk.free / 2**20), "total_mb": round(disk.total / 2**20)},
         "mcu": {"ok": ctx.mcu.ok, "version": ctx.mcu.version, "modules": ctx.mcu.modules,
-                "relay": ctx.mcu.relay_state},
+                "relay": ctx.mcu.relay_state, "i2c": ctx.mcu.i2c},
         "camera": ctx.vision.status(),
         "audio": ctx.audio.status() if ctx.audio is not None else {"ok": False},
         "voice": ctx.voice.status() if ctx.voice is not None else {"ok": False},
