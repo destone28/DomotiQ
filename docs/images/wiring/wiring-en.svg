@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 720" width="1120" height="720" font-family="Open Sans, Arial, sans-serif">
+<style>.b{font-size:15px;font-weight:600;fill:#1b1f22}.s{font-size:12.5px;fill:#4a5358}.t{font-size:22px;font-weight:700;fill:#1b1f22}</style>
+<rect width="1120" height="720" fill="#f6f7f5"/>
+<text x="30" y="44" class="t">DomotiQ wiring (one house)</text>
+<rect x="30" y="80" width="250" height="50" rx="10" fill="#fff7e6" stroke="#e0a100" stroke-width="2"/><text x="155.0" y="110.0" text-anchor="middle" class="b">UGREEN 65 W power supply</text>
+<rect x="30" y="170" width="250" height="60" rx="10" fill="#fff7e6" stroke="#e0a100" stroke-width="2"/><text x="155.0" y="197.0" text-anchor="middle" class="b">UGREEN Revodok 105</text><text x="155.0" y="215.0" text-anchor="middle" class="s">USB-C hub</text>
+<path d="M155 130 L155 170" stroke="#e0a100" stroke-width="2" fill="none"/>
+<rect x="400" y="160" width="300" height="150" rx="10" fill="#e6f4f5" stroke="#00878f" stroke-width="2"/><text x="550.0" y="240.0" text-anchor="middle" class="b"></text>
+<text x="550" y="188" text-anchor="middle" class="b">Arduino UNO Q 4GB</text>
+<rect x="420" y="205" width="125" height="52" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="482.5" y="228.0" text-anchor="middle" class="b">Linux</text><text x="482.5" y="246.0" text-anchor="middle" class="s">QRB2210</text>
+<rect x="555" y="205" width="125" height="52" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="617.5" y="228.0" text-anchor="middle" class="b">MCU</text><text x="617.5" y="246.0" text-anchor="middle" class="s">STM32U585</text>
+<text x="550" y="292" class="s" fill="#4a5358" text-anchor="middle">arduino-router · MessagePack-RPC</text>
+<path d="M280 200 L400 200" stroke="#e0a100" stroke-width="2" fill="none"/>
+<text x="290" y="176" class="s" fill="#e0a100" text-anchor="start">USB-C PD</text><text x="290" y="192" class="s" fill="#e0a100" text-anchor="start">5 V / 3 A</text>
+<rect x="30" y="290" width="250" height="50" rx="10" fill="#ffffff" stroke="#7a8288" stroke-width="2"/><text x="155.0" y="320.0" text-anchor="middle" class="b">Logitech C270 webcam</text>
+<rect x="30" y="380" width="250" height="60" rx="10" fill="#ffffff" stroke="#7a8288" stroke-width="2"/><text x="155.0" y="407.0" text-anchor="middle" class="b">UGREEN US205</text><text x="155.0" y="425.0" text-anchor="middle" class="s">USB sound card</text>
+<rect x="30" y="500" width="120" height="60" rx="10" fill="#ffffff" stroke="#7a8288" stroke-width="2"/><text x="90.0" y="527.0" text-anchor="middle" class="b">Microphone</text><text x="90.0" y="545.0" text-anchor="middle" class="s">lavalier TRS</text>
+<rect x="160" y="500" width="120" height="60" rx="10" fill="#ffffff" stroke="#7a8288" stroke-width="2"/><text x="220.0" y="527.0" text-anchor="middle" class="b">Speakers</text><text x="220.0" y="545.0" text-anchor="middle" class="s">3.5 mm · USB power</text>
+<path d="M280 315 L310 315 L310 230 L280 230" stroke="#7a8288" stroke-width="2" fill="none"/>
+<path d="M280 410 L310 410 L310 315" stroke="#7a8288" stroke-width="2" fill="none"/>
+<text x="318" y="300" class="s" fill="#7a8288" text-anchor="start">USB</text>
+<path d="M90 440 L90 500" stroke="#7a8288" stroke-width="2" fill="none"/>
+<text x="96" y="476" class="s" fill="#7a8288" text-anchor="start">mic in</text>
+<path d="M220 440 L220 500" stroke="#7a8288" stroke-width="2" fill="none"/>
+<text x="226" y="476" class="s" fill="#7a8288" text-anchor="start">out</text>
+<path d="M617 257 L617 350 L550 350 L550 400" stroke="#00878f" stroke-width="2" fill="none"/>
+<text x="560" y="380" class="s" fill="#00878f" text-anchor="start">Qwiic · I²C 100 kHz</text>
+<rect x="460" y="400" width="180" height="58" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="550.0" y="426.0" text-anchor="middle" class="b">Modulino Hub</text><text x="550.0" y="444.0" text-anchor="middle" class="s">TCA9548A · 0x70</text>
+<path d="M550 458 L550 520" stroke="#00878f" stroke-width="2" fill="none"/>
+<text x="560" y="495" class="s" fill="#00878f" text-anchor="start">main bus</text>
+<rect x="460" y="520" width="180" height="58" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="550.0" y="546.0" text-anchor="middle" class="b">Modulino Latch Relay</text><text x="550.0" y="564.0" text-anchor="middle" class="s">0x02</text>
+<path d="M550 578 L550 630" stroke="#c0392b" stroke-width="2" fill="none"/>
+<text x="560" y="610" class="s" fill="#c0392b" text-anchor="start">NO contact</text>
+<rect x="450" y="630" width="200" height="48" rx="10" fill="#ffffff" stroke="#c0392b" stroke-width="2"/><text x="550.0" y="659.0" text-anchor="middle" class="b">5 V fan (barbecue)</text>
+<text x="662" y="652" class="s" fill="#c0392b" text-anchor="start">between the 5 V of the UNO Q and the fan</text>
+<path d="M640 429 L700 429" stroke="#00878f" stroke-width="2" fill="none"/>
+<path d="M700 105 L700 609" stroke="#00878f" stroke-width="2" fill="none"/>
+<path d="M700 105 L750 105" stroke="#00878f" stroke-width="2" fill="none"/>
+<text x="706" y="99" class="s" fill="#00878f" text-anchor="start">ch 0</text>
+<rect x="750" y="80" width="340" height="50" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="920.0" y="110.0" text-anchor="middle" class="b">Pixels · garage</text>
+<path d="M700 177 L750 177" stroke="#00878f" stroke-width="2" fill="none"/>
+<text x="706" y="171" class="s" fill="#00878f" text-anchor="start">ch 1</text>
+<rect x="750" y="152" width="340" height="50" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="920.0" y="182.0" text-anchor="middle" class="b">Pixels · bedroom</text>
+<path d="M700 249 L750 249" stroke="#00878f" stroke-width="2" fill="none"/>
+<text x="706" y="243" class="s" fill="#00878f" text-anchor="start">ch 2</text>
+<rect x="750" y="224" width="340" height="50" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="920.0" y="254.0" text-anchor="middle" class="b">Pixels · kitchen</text>
+<path d="M700 321 L750 321" stroke="#00878f" stroke-width="2" fill="none"/>
+<text x="706" y="315" class="s" fill="#00878f" text-anchor="start">ch 3</text>
+<rect x="750" y="296" width="340" height="50" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="920.0" y="326.0" text-anchor="middle" class="b">Pixels · living room</text>
+<path d="M700 393 L750 393" stroke="#00878f" stroke-width="2" fill="none"/>
+<text x="706" y="387" class="s" fill="#00878f" text-anchor="start">ch 4</text>
+<rect x="750" y="368" width="340" height="50" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="920.0" y="398.0" text-anchor="middle" class="b">Thermo · bathroom</text>
+<path d="M700 465 L750 465" stroke="#00878f" stroke-width="2" fill="none"/>
+<text x="706" y="459" class="s" fill="#00878f" text-anchor="start">ch 5</text>
+<rect x="750" y="440" width="340" height="50" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="920.0" y="470.0" text-anchor="middle" class="b">Pixels · bathroom</text>
+<path d="M700 537 L750 537" stroke="#00878f" stroke-width="2" fill="none"/>
+<text x="706" y="531" class="s" fill="#00878f" text-anchor="start">ch 6</text>
+<rect x="750" y="512" width="340" height="58" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="920.0" y="538.0" text-anchor="middle" class="b">Thermo · thermostat</text><text x="920.0" y="556.0" text-anchor="middle" class="s">→ Buttons → Distance (totem)</text>
+<path d="M700 609 L750 609" stroke="#00878f" stroke-width="2" fill="none"/>
+<text x="706" y="603" class="s" fill="#00878f" text-anchor="start">ch 7</text>
+<rect x="750" y="584" width="150" height="50" rx="10" fill="#eceeee" stroke="#b0b6b9" stroke-width="2"/><text x="825.0" y="614.0" text-anchor="middle" class="b">free</text>
+
+<text x="30" y="706" class="s">One Hub channel is open at a time. The firmware limits the current of the Pixels (450 mA in total).</text>
+</svg>
