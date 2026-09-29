@@ -182,7 +182,7 @@ class Engine:
         self.observations = obs
         self.tracks = self.tracker.update(obs, now)
         # the hall light drifts slowly: follow it on the free floor, when nothing moves
-        if now - self._last_ref_update > 2.0 and not any(o.hand for o in obs):
+        if now - self._last_ref_update > 5.0 and not any(o.hand for o in obs):
             self._last_ref_update = now
             self.segmenter.update_reference(small, fg, rate=0.02)
         if now - self._moved["checked"] > 30.0:

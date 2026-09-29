@@ -141,6 +141,7 @@ class Camera:
         self.size: tuple[int, int] | None = None
         self.controls: Controls | None = None
         self._cap: cv2.VideoCapture | None = None
+        self._raw = False
         self._frame: np.ndarray | None = None
         self._seq = 0
         self._at = 0.0
@@ -168,13 +169,21 @@ class Camera:
                 break
         cap.set(cv2.CAP_PROP_FPS, self.fps)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        # take the MJPEG data as it comes and decode it at half size: the analysis and the live view
+        # work at 640 pixels, and a JPEG decoded at half size costs half as much as a full one
+        self._raw = bool(cap.set(cv2.CAP_PROP_CONVERT_RGB, 0))
         ok, frame = cap.read()
+        frame = self._decode(frame) if ok else None
+        if frame is None and self._raw:
+            self._raw = False
+            cap.set(cv2.CAP_PROP_CONVERT_RGB, 1)
+            ok, frame = cap.read()
         if not ok or frame is None:
             cap.release()
             return False
         self._cap = cap
         self.device = dev
-        self.size = (frame.shape[1], frame.shape[0])
+        self.size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
         self.controls = Controls(dev)
         log.info("camera %s at %dx%d", dev, *self.size)
         if self.on_connect:
@@ -183,6 +192,13 @@ class Camera:
             except Exception:  # noqa: BLE001
                 log.exception("camera settings")
         return True
+
+    def _decode(self, frame: np.ndarray | None) -> np.ndarray | None:
+        if frame is None:
+            return None
+        if frame.ndim == 3:
+            return frame                        # already decoded by the driver
+        return cv2.imdecode(frame.reshape(-1), cv2.IMREAD_REDUCED_COLOR_2)
 
     def start(self) -> bool:
         ok = self._open()
@@ -203,6 +219,8 @@ class Camera:
                     continue
                 self.reconnects += 1
             ok, frame = self._cap.read()
+            if ok and self._raw:
+                frame = self._decode(frame)
             if not ok or frame is None:
                 self.errors += 1
                 if self.errors % 10 == 0:
