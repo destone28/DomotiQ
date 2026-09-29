@@ -47,3 +47,25 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
 - Il socket `/run/arduino-router.sock` ha permessi 0666: qualsiasi processo della scheda può parlare con la MCU.
 - La scansione I2C chiesta da Linux la esegue il thread di I/O, unico padrone del bus: dal thread del Bridge avrebbe potuto cambiare il canale dell'Hub a metà di un'altra transazione.
 - Sulla scheda mancavano `rsync` e il modulo Python `msgpack`: installati da apt.
+
+**Voce (29/9).**
+- La voce italiana `it_IT-serena-medium` sul ramo principale del repository delle voci Piper era diversa da quella provata in Amelie: si scarica una revisione fissata (`ea046e84`), controllata con SHA-256.
+- Piper (GPL-3.0) gira come programma a sé nel suo ambiente, con il suo server HTTP (`python -m piper.http_server`): la casa gli manda il testo e riceve il WAV. Sulla scheda una frase italiana si sintetizza in 0,6–0,7 s; la prima frase inglese ha richiesto 11,9 s perché la voce si carica al primo uso: la casa la "scalda" all'avvio.
+- Vosk piccolo italiano: 1,8 s per 1,5 s di parlato in modalità libera, 0,47 s per riconoscere un nome con la grammatica ristretta. Il modello inglese piccolo ha capito male una frase sintetizzata ("who is in the kitchen"): le frasi non riconosciute dall'analizzatore passano al modello linguistico.
+- Un solo flusso `aplay` sempre aperto a 22050 Hz, con un miscelatore che somma voce, effetti e musica: niente clic fra un suono e l'altro e nessun ritardo di apertura della scheda audio.
+
+**Visione (29/9).** Scritta e collaudata al PC su immagini sintetiche, in attesa della casa montata.
+- Un generatore di immagini disegna la casa vista dal palo con la stessa geometria della camera vera: pareti, arredi, personaggi, auto, mani, luci colorate delle stanze, ombre, rumore. Per le occlusioni basta un buffer delle altezze: lungo un raggio di una camera che guarda in basso il punto più vicino è sempre il più alto.
+- Correggere la luce con un guadagno unico in Lab non basta: sotto una luce colorata un arredo bianco satura in un canale e il pavimento no. Si corregge ogni canale RGB separatamente, stanza per stanza, con il rapporto più frequente misurato sul pavimento libero. Un canale saturo si tratta come limite inferiore.
+- L'auto parcheggiata copre due terzi del garage: il rapporto più frequente sarebbe il suo. Rimedi: si escludono i punti dove l'immagine precedente vedeva già qualcosa, si preferisce il rapporto più vicino a quello dell'immagine precedente, e la casa avvisa la visione quando cambia una luce di una stanza.
+- Sulle soglie delle porte la luce di due stanze si mescola: il guadagno passa gradualmente dall'una all'altra attraverso lo spessore del muro. Le sommità dei muri sono escluse: niente ci può stare sopra.
+- Un braccio che attraversa i muretti della facciata viene diviso in due pezzi: un pezzo grande vicino a una mano è la stessa mano.
+- Posizione di un personaggio: il punto più vicino al centro sono i piedi, il più lontano la testa; riportata a terra con l'altezza, la testa dà anche la posizione dei piedi quando sono nascosti dietro un muro. Scarto sulle scene sintetiche: sotto 12 mm.
+- Due personaggi uguali: se uno solo viene preso in mano e posato, è per forza lui (l'altro è rimasto in vista); se vengono presi tutti e due, la casa chiede chi è chi.
+- Per figurine bianche, grigie o nere la luminosità pesa di più nel confronto dei colori: è l'unica cosa che le distingue.
+- Niente SciPy sulla scheda: l'assegnamento ungherese è scritto nel progetto (una sessantina di righe, confrontato con la ricerca esaustiva).
+- YOLOX-Nano sulle immagini di prova di Ubuntu: gatto, persona, tazza, aereo, uccello, libro riconosciuti, 35–50 ms al PC.
+
+**Spazio su casa1.** La partizione di sistema ha 2 GB liberi su 9,8; `/home/arduino` è una partizione a parte con 15 GB. Docker contiene 2,3 GB di immagini di App Lab che la casa non usa.
+
+**Installazione su casa1.** Il primo tentativo di compilare llama.cpp non era partito: l'immagine non ha né compilatore né cmake. Li installa `install.sh` (pacchetti `build-essential` e `cmake`).

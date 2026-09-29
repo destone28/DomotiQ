@@ -70,7 +70,12 @@ step "Checks"
 [ "$ROOT" = "/home/arduino/domotiq" ] || echo "    note: the services expect the project in /home/arduino/domotiq (it is in $ROOT)"
 grep -q 'VERSION_ID="13"' /etc/os-release || echo "    note: tested on Debian 13 (trixie)"
 FREE=$(df -Pm "$ROOT" | awk 'NR==2 {print $4}')
-[ "$FREE" -gt 3000 ] || die "at least 3 GB free are needed in $ROOT (free: ${FREE} MB)"
+# what is still missing: models about 800 MB, environments 500 MB, compilers and llama.cpp 600 MB
+NEED=400
+[ -f "$MODELS/llm/qwen2.5-0.5b-instruct-q4_k_m.gguf" ] || NEED=$((NEED + 800))
+[ -x venv/bin/python ] && [ -x piper-venv/bin/python ] || NEED=$((NEED + 500))
+[ -x llama.cpp/build/bin/llama-server ] || NEED=$((NEED + 600))
+[ "$FREE" -gt "$NEED" ] || die "at least $NEED MB free are needed in $ROOT (free: ${FREE} MB)"
 curl -sfI https://deb.debian.org >/dev/null || die "no internet: the first installation downloads packages and models"
 if [ -z "$HOUSE" ]; then
     HOUSE=$(python3 -c "import json;print(json.load(open('$VAR/config/settings.json'))['house']['number'])" 2>/dev/null || echo "")
@@ -83,11 +88,11 @@ step "System packages"
 # The image prefers the audio profiles from trixie-backports but not the ALSA
 # library they need: without this the system update stops on a dependency.
 if ! dpkg -l libasound2t64 2>/dev/null | grep -q "bpo13"; then
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -t trixie-backports \
+    sudo NEEDRESTART_SUSPEND=1 DEBIAN_FRONTEND=noninteractive apt-get install -y -t trixie-backports \
         libasound2t64 libasound2-data libatopology2t64 alsa-ucm-conf >/dev/null
     ok "ALSA library from backports"
 fi
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+sudo NEEDRESTART_SUSPEND=1 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     python3-venv python3-dev build-essential cmake git curl rsync unzip \
     alsa-utils v4l-utils iw sqlite3 avahi-daemon dnsmasq-base libgomp1 >/dev/null
 sudo systemctl enable --now avahi-daemon >/dev/null 2>&1 || true
@@ -95,17 +100,19 @@ ok "packages installed"
 
 # ---------------------------------------------------------------------------
 step "Python environment of the application"
-[ -d venv ] || python3 -m venv venv
-./venv/bin/pip install -q --upgrade pip
-./venv/bin/pip install -q -r requirements.txt
-ok "$(./venv/bin/python --version) with $(./venv/bin/pip freeze | wc -l) packages"
+# an environment copied from elsewhere or half made does not work: make it again
+venv_ok() { [ -x "$1/bin/python" ] && "$1/bin/python" -m pip --version >/dev/null 2>&1; }
+venv_ok venv || { rm -rf venv; python3 -m venv venv; }
+./venv/bin/python -m pip install -q --upgrade pip
+./venv/bin/python -m pip install -q -r requirements.txt
+ok "$(./venv/bin/python --version) with $(./venv/bin/python -m pip freeze | wc -l) packages"
 
 # ---------------------------------------------------------------------------
 step "Speech synthesis (Piper, separate environment)"
 # Piper is GPL-3.0: it runs as its own program, in its own environment, and
 # the application talks to it over HTTP on the loopback interface.
-[ -d piper-venv ] || python3 -m venv piper-venv
-./piper-venv/bin/pip install -q "piper-tts==$PIPER_VERSION" flask
+venv_ok piper-venv || { rm -rf piper-venv; python3 -m venv piper-venv; }
+./piper-venv/bin/python -m pip install -q "piper-tts==$PIPER_VERSION" flask
 ok "piper-tts $PIPER_VERSION"
 
 # ---------------------------------------------------------------------------

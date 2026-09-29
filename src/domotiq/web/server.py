@@ -85,7 +85,10 @@ class Hub:
                 self.send({"type": "tracks", "data": ev.get("tracks")})
             elif not self._tracks_pending:
                 self._tracks_pending = True
-                asyncio.get_event_loop().call_later(0.2, self._flush_tracks)
+                try:
+                    asyncio.get_running_loop().call_later(0.2, self._flush_tracks)
+                except RuntimeError:          # outside the loop (tests, tools): send now
+                    self._flush_tracks()
         elif t == "lights_changed":
             self.send({"type": "lights", "data": self.ctx.lights.state()})
         elif t in ("sensor", "climate", "shower"):

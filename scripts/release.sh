@@ -11,8 +11,11 @@
 set -euo pipefail
 HOST="${1:-casa1}"
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-rsync -a --delete --exclude .git --exclude .venv --exclude venv --exclude piper-venv \
-    --exclude models --exclude var --exclude llama.cpp --exclude __pycache__ --exclude .pytest_cache \
+# what git ignores stays on the PC, and what the board downloads or writes stays on the board
+EXTRA=()
+[ -f .git/info/exclude ] && EXTRA=(--exclude-from=.git/info/exclude)
+rsync -a --delete --exclude .git --filter=':- .gitignore' "${EXTRA[@]}" \
+    --exclude venv --exclude piper-venv --exclude models --exclude var --exclude llama.cpp \
     ./ "$HOST:domotiq/"
 if [ "${2:-}" = "--install" ]; then
     ssh -t "$HOST" "cd ~/domotiq && bash scripts/install.sh"
