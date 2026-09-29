@@ -3,7 +3,7 @@
 // Characters, pets, cars and objects: the list, and the guided registration.
 
 import { api, ask, esc, modal, roomName, setNickname, store, toast } from "../app.js";
-import { t } from "../i18n.js";
+import { t, tr } from "../i18n.js";
 import { ICONS, Plan } from "../plan.js";
 
 const CATS = ["person", "dog", "cat", "animal", "car", "object"];
@@ -146,7 +146,10 @@ class Wizard {
     } else if (s.status === "confirm") {
       this.plan.setPick([s.track]);
       const guess = s.category_guess || "person";
-      msg.innerHTML = `<div class="step"><b>3</b><span>${t("id.confirm")}<br><span class="muted">${t("id.guess", { cat: t("cat." + guess) })}</span></span></div>
+      const label = s.label_name && guess === "object" ? ` (${esc(tr(s.label_name))})` : "";
+      const warn = (s.warnings || []).map(w => `<p class="small warn-text">⚠️ ${esc(tr(w))}</p>`).join("");
+      msg.innerHTML = `<div class="step"><b>3</b><span>${t("id.confirm")}<br><span class="muted">${t("id.guess", { cat: t("cat." + guess) })}${label}</span></span></div>
+        ${warn}
         <div class="pill-list" id="cats">${CATS.map(c => `<button class="chip ${c === guess ? "on" : ""}" data-cat="${c}">${t("cat." + c)}</button>`).join("")}</div>
         <button class="btn primary block" style="margin-top:12px" id="ok">${t("common.save")}</button>`;
       let cat = guess;

@@ -55,7 +55,7 @@ DEFAULTS: dict[str, Any] = {
     "buttons": {"reversed": False},
     "staff": {"pin_hash": None, "pin_salt": None, "session_hours": 12},
     "network": {"ssid": "", "password": "", "channel": 1, "address": "", "hostname": ""},
-    "camera": {"mode": "auto", "exposure": None, "white_balance": None, "gain": None},
+    "camera": {"device": None},           # a /dev/v4l/by-id path, if the webcam is not found by itself
     "clock": {"timezone": "Europe/Rome"},
 }
 

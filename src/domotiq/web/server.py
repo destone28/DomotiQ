@@ -241,17 +241,17 @@ def create_app(ctx: "Context") -> FastAPI:
 
     # ============================================================ live view
     @app.get("/api/snapshot.jpg")
-    async def snapshot():
-        return Response(_frame(ctx), media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+    async def snapshot(overlay: int = 0):
+        return Response(_frame(ctx, bool(overlay)), media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
     @app.get("/api/stream")
-    async def stream(fps: float = 5.0):
+    async def stream(fps: float = 5.0, overlay: int = 0):
         fps = max(1.0, min(fps, 10.0))
 
         async def gen():
             boundary = b"--frame\r\n"
             while True:
-                jpg = _frame(ctx)
+                jpg = _frame(ctx, bool(overlay))
                 yield boundary + b"Content-Type: image/jpeg\r\nContent-Length: " + \
                     str(len(jpg)).encode() + b"\r\n\r\n" + jpg + b"\r\n"
                 await asyncio.sleep(1.0 / fps)
@@ -608,8 +608,11 @@ def create_app(ctx: "Context") -> FastAPI:
         return result
 
     @app.get("/api/staff/vision/raw.jpg", dependencies=[Depends(staff)])
-    async def vision_raw():
-        jpg = ctx.vision.command("raw_frame").get("jpeg") if ctx.vision.available else None
+    async def vision_raw(overlay: int = 0):
+        jpg = None
+        if ctx.vision.available:
+            jpg = (await asyncio.get_running_loop().run_in_executor(
+                None, lambda: ctx.vision.command("raw_frame", overlay=bool(overlay)))).get("jpeg")
         return Response(jpg or _frame(ctx), media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
     @app.get("/api/staff/dataset.zip", dependencies=[Depends(staff)])
@@ -705,8 +708,8 @@ def create_app(ctx: "Context") -> FastAPI:
     return app
 
 
-def _frame(ctx: "Context") -> bytes:
-    jpg = ctx.vision.jpeg() if ctx.vision.available else None
+def _frame(ctx: "Context", overlay: bool = False) -> bytes:
+    jpg = ctx.vision.jpeg(overlay) if ctx.vision.available and not ctx.sim.enabled else None
     if jpg:
         return jpg
     return placeholder.render(ctx)

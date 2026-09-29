@@ -107,10 +107,10 @@ def _optional_parts(ctx: Context) -> None:
         ctx.voice = Voice(ctx)
     except Exception as e:  # noqa: BLE001
         log.warning("voice not available: %s", e)
-    if not args.no_camera and not args.simulate:
+    if not args.no_camera and (not args.simulate or args.camera):
         try:
             from .vision.worker import VisionProcess
-            ctx.vision = VisionProcess(ctx.paths, ctx.layout, ctx.settings, ctx.identities)
+            ctx.vision = VisionProcess(ctx.paths, ctx.layout, ctx.settings, ctx.identities, device=args.camera)
             ctx.house.status["camera"] = True
         except Exception as e:  # noqa: BLE001
             log.warning("vision not available: %s", e)
@@ -151,6 +151,56 @@ def _wire(ctx: Context) -> None:
     for t in ("room_enter", "room_exit", "car", "climate", "shower", "scene", "registered",
               "language", "grill", "party", "say"):
         bus.subscribe(t, record)
+    _wire_vision(ctx)
+
+
+def _wire_vision(ctx: Context) -> None:
+    """Questions of the vision about who is who, and the lights it must know about."""
+    bus = ctx.bus
+    if hasattr(ctx.vision, "on_question"):
+        # called from the thread that reads the vision process: the bus brings it to the loop
+        ctx.vision.on_question = lambda track, cands: bus.publish(
+            "vision_question", track=track.to_dict(), candidates=list(cands))
+
+    def ask_who(ev: Event) -> None:
+        from .voice.answers import room as room_phrase
+        track = ev.get("track") or {}
+        cands = [c for c in ev.get("candidates") or [] if ctx.identities.get(c)]
+        if len(cands) < 2 or not track.get("id"):
+            return
+        if any(c["context"].get("kind") == "who" and c["context"].get("track") == track["id"]
+               for c in ctx.house.confirmations.values()):
+            return
+        names = [ctx.identities.name_of(c) for c in cands]
+        where_it = room_phrase(ctx, track.get("room"), "it")
+        where_en = room_phrase(ctx, track.get("room"), "en")
+        question = {"it": f"{where_it[0].upper()}{where_it[1:]} c'è {' o '.join(names)}?",
+                    "en": f"Is it {' or '.join(names)} {where_en}?"}
+        options = [{"value": c, "label": {"it": n, "en": n}} for c, n in zip(cands, names)]
+        ctx.house.ask(question, options, {"kind": "who", "track": track["id"]}, timeout_s=60)
+
+    def answered(ev: Event) -> None:
+        c = ev.get("context") or {}
+        if c.get("kind") == "who" and ev.get("value"):
+            ctx.vision.assign(c["track"], ev.get("value"))
+
+    last: dict[str, Any] = {}
+
+    def lights(ev: Event) -> None:
+        state = ev.get("lights") or {}
+        rooms = []
+        for lid, st in state.items():
+            if last.get(lid) != st:
+                light = ctx.layout.lights.get(lid)
+                if light:
+                    rooms.append(light.room)
+            last[lid] = st
+        if rooms:
+            ctx.vision.lights_changed(rooms)
+
+    bus.subscribe("vision_question", ask_who)
+    bus.subscribe("confirm_answer", answered)
+    bus.subscribe("lights_changed", lights)
 
 
 async def on_mcu_notify(ctx: Context, name: str, params: list[Any]) -> None:
@@ -290,6 +340,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--router", default="/run/arduino-router.sock")
     p.add_argument("--no-mcu", action="store_true")
     p.add_argument("--no-camera", action="store_true")
+    p.add_argument("--camera", default=None,
+                   help="webcam device (default: found by name); 'synthetic' renders a house with figurines")
     p.add_argument("--no-audio", action="store_true")
     p.add_argument("--audio", action="store_true", help="play sound even in simulation")
     p.add_argument("--audio-device", default=os.environ.get("DOMOTIQ_AUDIO"))

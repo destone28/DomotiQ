@@ -19,8 +19,8 @@ class VisionLink:
     def tracks(self) -> list[Track]:
         return []
 
-    def jpeg(self) -> bytes | None:
-        """The latest frame for the live view, already privacy-filtered."""
+    def jpeg(self, overlay: bool = False) -> bytes | None:
+        """The latest frame for the live view, already privacy-filtered (names drawn on it if asked)."""
         return None
 
     def unknown_tracks(self) -> list[Track]:
@@ -37,6 +37,13 @@ class VisionLink:
 
     def category_guess(self, track_id: str) -> str | None:
         return None
+
+    def quality(self, track_id: str) -> list[dict[str, str]]:
+        """Warnings about how well this track can be recognized, as {"it": ..., "en": ...}."""
+        return []
+
+    def lights_changed(self, rooms: list[str]) -> None:
+        """The house changed the light of these rooms (the pipeline measures them again)."""
 
     def status(self) -> dict[str, Any]:
         return {"available": self.available}

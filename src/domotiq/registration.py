@@ -36,6 +36,8 @@ class Session:
     room: str | None = None
     category_guess: str | None = None
     label_guess: str | None = None       # e.g. "chair" from the photo classifier
+    label_name: dict[str, str] | None = None   # the proposed name of an object, {"it": "sedia", "en": "chair"}
+    warnings: list[dict[str, str]] = field(default_factory=list)   # what may make it hard to recognize
     identity: str | None = None
     device: str | None = None
     nickname: str | None = None
@@ -86,8 +88,10 @@ class Registration:
         if photo and self.ctx.classifier is not None:
             guess = self.ctx.classifier.classify_file(photo)
             if guess:
+                from .vision.classify import label_name
                 s.category_guess = s.category_guess or guess[0]
                 s.label_guess = guess[1]
+                s.label_name = {"it": label_name(guess[1], "it"), "en": label_name(guess[1], "en")}
         self.sessions[s.id] = s
         self._advance(s)
         return s
@@ -117,6 +121,7 @@ class Registration:
         s.candidates = []
         s.category_guess = s.category_guess or self.ctx.vision.category_guess(track_id) or \
             (track.category if track.category in CATEGORIES and track.category != "object" else None) or PERSON
+        s.warnings = [] if track.virtual else self.ctx.vision.quality(track_id)
         s.status = "confirm"
         self._publish(s)
 
