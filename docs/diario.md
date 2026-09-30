@@ -145,3 +145,10 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
 - Problema trovato nella prova: "Marco ha pagato le bollette?" finiva al modello dei comandi, che la prendeva per "dov'è Marco"; "hai dato da mangiare al cane?" riceveva una barzelletta. Ora le domande sulla vita di casa vanno direttamente al database.
 - Il riconoscimento della lingua di una frase contava "a" e "in" come inglesi, e ha fatto leggere con la voce inglese una frase italiana. Le frasi generate ora hanno la loro lingua senza doverla indovinare. Per le frasi scritte dallo staff quelle due parole non contano più.
 - Il servizio `domotiq-story` è fermo e disabilitato sulla scheda, e `install.sh` non scarica più il secondo modello. La sintesi vocale torna a usare tutti e quattro i core.
+
+**Luci confermate e cavi ricontrollati (30/9, sera).** Emilio ha confermato a occhio i colori di ogni stanza e l'ordine dei LED dei tasti: il collaudo visivo al banco è superato. Dal repository è uscita la placca del secondo modulo Buttons (`33_Placca_Totem_Tasti2`), che nel totem con un solo modulo non serve più. Ho ricontrollato i cavi Qwiic sui percorsi del CAD:
+- le tratte 3-6 (Pixels di garage, camera, cucina e soggiorno) vogliono cavi da almeno 50 cm;
+- la 1 (UNO Q → Hub) e la 7 (Thermo del bagno), provate al banco con cavi da 20 cm, nella casa ne richiedono almeno 28-29;
+- la 8, la 9 e la 10 (35 cm) coprono il percorso con meno di 1 cm di margine.
+
+Le lunghezze vere si misurano sulla casa montata e poi entrano nel capitolo dei collegamenti.

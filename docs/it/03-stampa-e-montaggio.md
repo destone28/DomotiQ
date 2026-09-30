@@ -59,7 +59,7 @@ Le pareti sono alte 135 mm; le tre pareti di facciata sono alte 46 mm, così la 
 |---|---|---|
 | 32 | `32_Placca_UNO_Q` | la Arduino UNO Q |
 | 33 | `33_Placca_Hub`, `33_Placca_Relay` | il Modulino Hub e il Modulino Latch Relay |
-| 33 | `33_Placca_Totem_Distance`, `33_Placca_Totem_Tasti1`, `_Tasti2` | il sensore Distance e il modulo Buttons dentro il totem del citofono |
+| 33 | `33_Placca_Totem_Distance`, `33_Placca_Totem_Tasti1` | il sensore Distance e il modulo Buttons dentro il totem del citofono |
 | 34 | `34_Placca_Thermo_Bagno` | il Thermo del bagno |
 | 39 | `39_Credenza_Termostato` | la credenza del soggiorno, con sopra il Thermo del termostato |
 | 40 | `40_Placca_Termostato` | la placca del Thermo del termostato, dentro la credenza |

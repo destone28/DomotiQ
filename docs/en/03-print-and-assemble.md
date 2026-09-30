@@ -59,7 +59,7 @@ Walls are 135 mm high; the three facade walls are 46 mm high, so the camera can 
 |---|---|---|
 | 32 | `32_Placca_UNO_Q` | the Arduino UNO Q |
 | 33 | `33_Placca_Hub`, `33_Placca_Relay` | the Modulino Hub and the Modulino Latch Relay |
-| 33 | `33_Placca_Totem_Distance`, `33_Placca_Totem_Tasti1`, `_Tasti2` | the Distance sensor and the Buttons module inside the intercom totem |
+| 33 | `33_Placca_Totem_Distance`, `33_Placca_Totem_Tasti1` | the Distance sensor and the Buttons module inside the intercom totem |
 | 34 | `34_Placca_Thermo_Bagno` | the Thermo of the bathroom |
 | 39 | `39_Credenza_Termostato` | the living room sideboard, with the Thermo of the thermostat on top |
 | 40 | `40_Placca_Termostato` | the plate of the thermostat Thermo in the sideboard |
