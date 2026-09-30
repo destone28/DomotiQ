@@ -23,6 +23,7 @@ class FakeModel:
     def __init__(self) -> None:
         self.asked: list[str] = []
         self.slots: list[int] = []
+        self.rate = 10.0                            # tokens a second: fast enough to speak while writing
         self.personas = 0
         self.story = ("Marco trovò un pacco in garage. Dentro c'era una tromba d'oro. "
                       "Suonò in cucina e tutti ballarono. Fu una serata bellissima.")
@@ -312,4 +313,24 @@ def test_a_story_stops_when_the_language_changes(ctx):
         await asyncio.wait({task}, timeout=2)
         assert task.done()
         assert len([s for s in ctx.said if s.startswith("Frase numero")]) < 4
+    asyncio.run(scenario())
+
+
+def test_a_slow_model_promises_the_story_and_tells_it_later(ctx):
+    async def scenario():
+        place(ctx, "Marco", KITCHEN)
+        ctx.model.rate = 1.0                        # like a big model on the UNO Q: slower than speech
+        st = ctx.voice.stories
+        assert st.slow
+        assert await st.tell(["Marco"])
+        assert ctx.said[-1] == "La sto ancora scrivendo: te la racconto tra un paio di minuti!"
+        await asyncio.gather(*list(ctx.voice._tasks))
+        assert "Ecco la storia che mi avevi chiesto!" in ctx.said
+        assert ctx.said[-1] == "Fu una serata bellissima."
+        ctx.model.story = "Sì, Marco le ha pagate lunedì."
+        assert await st.answer("Marco ha pagato le bollette?", ["Marco"])
+        assert ctx.said[-1] == "Bella domanda! Ci penso e te lo dico tra poco."
+        await asyncio.gather(*list(ctx.voice._tasks))
+        assert ctx.said[-2:] == ["Ecco la risposta alla domanda di prima.", "Sì, Marco le ha pagate lunedì."]
+        assert any("pagate lunedì" in item for item in st.lore)
     asyncio.run(scenario())

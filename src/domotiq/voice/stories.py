@@ -60,6 +60,9 @@ STORY_TOKENS = 220            # about five sentences
 ANSWER_TOKENS = 80            # one or two sentences
 PERSONA_TOKENS = 40
 AHEAD_EVERY_S = 4.0
+LIVE_MIN_RATE = 3.5           # tokens a second needed to speak a story while it is written
+MAX_PENDING = 2               # stories or answers promised "in a moment" at the same time
+DELIVER_WAIT_S = 300.0
 MAX_AHEAD_CAST = 4            # stories written ahead for at most this many characters in the house
 
 SYSTEM = {
@@ -151,9 +154,10 @@ def _sentences(text: str, limit: int) -> list[str]:
 class StoryModel:
     """The HTTP side of the second llama-server: streamed chat completions on a given slot."""
 
-    def __init__(self, url: str = URL, timeout: float = 180.0) -> None:
+    def __init__(self, url: str = URL, timeout: float = 600.0) -> None:
         self.url = url
         self.timeout = timeout
+        self.rate = 0.0                     # tokens a second of the last text written (0: not measured yet)
 
     def health(self) -> bool:
         try:
@@ -175,6 +179,7 @@ class StoryModel:
             body["grammar"] = grammar
         req = urllib.request.Request(self.url + "/v1/chat/completions", data=json.dumps(body).encode(),
                                      headers={"Content-Type": "application/json"})
+        first, count = 0.0, 0
         with urllib.request.urlopen(req, timeout=self.timeout) as r:
             for raw in r:
                 if stop is not None and stop.is_set():
@@ -187,6 +192,11 @@ class StoryModel:
                 except (ValueError, KeyError, IndexError):
                     continue
                 if piece:
+                    count += 1
+                    if count == 1:
+                        first = time.monotonic()
+                    elif count >= 12:
+                        self.rate = (count - 1) / max(0.001, time.monotonic() - first)
                     yield piece
 
     def complete(self, messages: list[dict[str, str]], tokens: int, temperature: float = 0.7,
@@ -214,6 +224,7 @@ class StoryTeller:
         self._ahead_busy = False
         self._live = 0                                          # requests of visitors being served
         self._warm_key = ""                                     # the memory already read in the live slot
+        self._pending = 0                                       # stories and answers promised for later
 
     @property
     def lang(self) -> str:
@@ -513,6 +524,8 @@ class StoryTeller:
         if self._fresh(entry):
             said = await self._speak(list(entry["sentences"]), self._light_rooms)
             cast_ids = list(entry["cast"])
+        elif self.slow:
+            return await self._promise("story", lambda: self._deliver_story(names, room, party))
         else:
             async with self._Live(self):
                 await self.ctx.actions.say({"it": "Fammi pensare...", "en": "Let me think..."})
@@ -522,6 +535,9 @@ class StoryTeller:
                 told = self.told.setdefault("+".join(sorted(cast_ids)) or (room or "house"), deque(maxlen=3))
                 said = await self._speak_live(self._story_prompt(lines, told, room, party), STORY_TOKENS, 6,
                                               self._light_rooms)
+        return await self._after_story(said, cast_ids, room)
+
+    async def _after_story(self, said: list[str], cast_ids: list[str], room: str | None) -> bool:
         if said:
             cast_key = "+".join(sorted(cast_ids)) or (room or "house")
             self.told.setdefault(cast_key, deque(maxlen=3)).append(" ".join(said[0].split()[:12]))
@@ -533,33 +549,110 @@ class StoryTeller:
         await self.ctx.actions.lights_auto("all")
         return bool(said)
 
+    # ================================================================ later
+    @property
+    def slow(self) -> bool:
+        """The model writes slower than the house speaks (measured): stories and answers come later."""
+        return self.model.rate < LIVE_MIN_RATE
+
+    async def _promise(self, kind: str, make: Callable[[], Any]) -> bool:
+        """Promise a story or an answer "in a moment", write it in the background, say it when the house is free."""
+        if self._pending >= MAX_PENDING:
+            await self.ctx.actions.say({"it": "Ho già delle storie da finire: chiedimelo di nuovo tra un po'!",
+                                        "en": "I already have stories to finish: ask me again in a while!"})
+            return True
+        self._pending += 1
+        text = ({"it": "La sto ancora scrivendo: te la racconto tra un paio di minuti!",
+                 "en": "I'm still writing it: I'll tell you in a couple of minutes!"} if kind == "story" else
+                {"it": "Bella domanda! Ci penso e te lo dico tra poco.",
+                 "en": "Good question! Let me think about it, I'll tell you in a moment."})
+        await self.ctx.actions.say(text)
+
+        async def run() -> None:
+            try:
+                await make()
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # noqa: BLE001 - a promise that fails is simply not kept
+                log.exception("story or answer for later failed")
+            finally:
+                self._pending -= 1
+        self.voice._spawn(run())
+        return True
+
+    async def _when_free(self) -> bool:
+        end = time.monotonic() + DELIVER_WAIT_S
+        v = self.voice
+        while time.monotonic() < end:
+            speaking = self.ctx.audio is not None and self.ctx.audio.speaking
+            if not v.busy.locked() and not speaking and not v.in_flight:
+                return True
+            await asyncio.sleep(1.0)
+        return False
+
+    async def _deliver_story(self, names: list[str] | None, room: str | None, party: bool) -> None:
+        async with self._Live(self):
+            cast = self._cast(names)
+            cast_ids = [i.id for i in cast]
+            lines = await self._lines(cast)
+            told = self.told.setdefault("+".join(sorted(cast_ids)) or (room or "house"), deque(maxlen=3))
+            text = await self._call(self._story_prompt(lines, told, room, party), STORY_TOKENS, 0.85)
+        sentences = _sentences(text, 6)
+        if not sentences or not await self._when_free():
+            return
+        async with self.voice.busy:
+            self.task = asyncio.current_task()
+            await self.ctx.actions.say({"it": "Ecco la storia che mi avevi chiesto!", "en": "Here is the story you asked me for!"})
+            said = await self._speak(sentences, self._light_rooms)
+            await self._after_story(said, cast_ids, room)
+
+    async def _deliver_answer(self, question: str, names: list[str] | None, memory: bool) -> None:
+        async with self._Live(self):
+            messages = await self._answer_prompt(question, names, memory)
+            text = await self._call(messages, ANSWER_TOKENS, 0.85)
+        sentences = _sentences(text, 3)
+        if not sentences or not await self._when_free():
+            return
+        async with self.voice.busy:
+            self.task = asyncio.current_task()
+            await self.ctx.actions.say({"it": "Ecco la risposta alla domanda di prima.", "en": "Here is the answer to the question you asked."})
+            said = await self._speak(sentences)
+        if said:
+            self.lore.append(f"({question.strip()[:70]}) {' '.join(said)[:160]}")
+            self._warm_key = ""
+
     # ================================================================ free answers
     async def answer(self, question: str, names: list[str] | None = None, memory: bool = False) -> bool:
         """A free answer about the life of the house, kept so that the next ones agree with it."""
         if not self.ok and not await self.check():
             return False
         self.task = asyncio.current_task()
-        lang = self.lang
+        if self.slow:
+            return await self._promise("answer", lambda: self._deliver_answer(question, names, memory))
         async with self._Live(self):
-            ids = self.ctx.identities
-            for ident in [i for i in (ids.by_name(n) for n in (names or [])) if i]:
-                await self.persona(ident)
-            turns, _ = self._memory()
-            if lang == "it":
-                ask = (f"Un visitatore chiede: \"{question}\"\n"
-                       + ("È un ricordo: raccontalo con qualche dettaglio, come se fosse successo davvero. " if memory else "")
-                       + "Rispondi come la casa, in una o due frasi brevi. Sulla casa e sui personaggi inventa pure, "
-                         "restando coerente con la memoria. Sul mondo fuori dalla casa di' che sei una casa e non lo sai.")
-            else:
-                ask = (f"A visitor asks: \"{question}\"\n"
-                       + ("It is a memory: tell it with some details, as if it really happened. " if memory else "")
-                       + "Answer as the house, in one or two short sentences. About the house and the characters, make "
-                         "things up freely but agree with the memory. About the world outside, say you are a house and don't know.")
-            said = await self._speak_live(turns + [{"role": "user", "content": ask}], ANSWER_TOKENS, 3)
+            said = await self._speak_live(await self._answer_prompt(question, names, memory), ANSWER_TOKENS, 3)
         if said:
             self.lore.append(f"({question.strip()[:70]}) {' '.join(said)[:160]}")
             self._warm_key = ""
         return bool(said)
+
+    async def _answer_prompt(self, question: str, names: list[str] | None, memory: bool) -> list[dict[str, str]]:
+        lang = self.lang
+        ids = self.ctx.identities
+        for ident in [i for i in (ids.by_name(n) for n in (names or [])) if i]:
+            await self.persona(ident)
+        turns, _ = self._memory()
+        if lang == "it":
+            ask = (f"Un visitatore chiede: \"{question}\"\n"
+                   + ("È un ricordo: raccontalo con qualche dettaglio, come se fosse successo davvero. " if memory else "")
+                   + "Rispondi come la casa, in una o due frasi brevi. Sulla casa e sui personaggi inventa pure, "
+                     "restando coerente con la memoria. Sul mondo fuori dalla casa di' che sei una casa e non lo sai.")
+        else:
+            ask = (f"A visitor asks: \"{question}\"\n"
+                   + ("It is a memory: tell it with some details, as if it really happened. " if memory else "")
+                   + "Answer as the house, in one or two short sentences. About the house and the characters, make "
+                     "things up freely but agree with the memory. About the world outside, say you are a house and don't know.")
+        return turns + [{"role": "user", "content": ask}]
 
     async def about(self, name: str) -> str:
         """What the house knows (and has made up) about a character."""
@@ -627,6 +720,11 @@ class StoryTeller:
         if not sentences:
             return None
         return {"lang": lang, "sentences": sentences, "cast": [ident.id], "facts": {ident.id: tuple(ident.facts)}}
+
+    def chat_ready(self, identity: str) -> list[str]:
+        """The kinds of chatty line already written for a character (with a slow model, only those are used)."""
+        return [k for k in ("anecdote", "memory", "question")
+                if self._fresh(self.ahead.get(f"chat:{k}:{identity}"))]
 
     async def chat(self, ident, room: str | None, kind: str) -> list[str]:
         """A line of small talk about a character in the house (chatty mode); returns what was said."""

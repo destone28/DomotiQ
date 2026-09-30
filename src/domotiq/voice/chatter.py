@@ -600,8 +600,10 @@ class Chatter:
         for identity in order:
             # now and then something the storyteller makes up, instead of a question of the list
             if stories is not None and stories.ok and self.rng.random() < GENERATED_SHARE:
-                kind = self.rng.choice(("anecdote", "memory", "question"))
-                return identity, {"id": f"gen-{kind}", "kind": "generated", "gen": kind}
+                kinds = stories.chat_ready(identity) if stories.slow else ["anecdote", "memory", "question"]
+                if kinds:
+                    kind = self.rng.choice(kinds)
+                    return identity, {"id": f"gen-{kind}", "kind": "generated", "gen": kind}
             qs = self._questions_for(present[identity])
             if qs:
                 return identity, self.rng.choice(qs)
