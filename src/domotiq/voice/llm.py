@@ -75,6 +75,8 @@ _EXAMPLES = [
     ("raccontami una barzelletta", "joke"), ("make me laugh", "joke"),
     ("che tempo fa domani a Milano", "other"), ("chi ha vinto la partita ieri", "other"),
     ("what is the capital of France", "other"), ("ciao come stai", "other"), ("quanto fa sette per otto", "other"),
+    ("Marco ha pagato le bollette", "other"), ("quando scade l'assicurazione della macchina", "other"),
+    ("did Leo feed the cat this morning", "other"),
 ]
 
 

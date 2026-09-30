@@ -83,6 +83,10 @@ The examples below are understood directly by the rule-based parser. It tolerate
 | Talkativeness | Stai zitta · Parla di più · Parla normale | Be quiet · Talk more · Normal mode |
 | Volume | Alza il volume · Abbassa la musica | Louder · Turn it down |
 | New character | Aggiungi un personaggio | Add a character |
+| A story | Raccontami una storia · Una storia su Marco e Giulia · Una storia sulla cucina · Un'altra storia | Tell me a story · A story about Marco and Giulia · A story about the kitchen · Another story |
+| The day | Cosa ha fatto Marco oggi? · Dov'è stato Luca? · Chi è stato in cucina oggi? · Quante feste abbiamo fatto oggi? | What did Marco do today? · Where has Luca been? · Who has been in the kitchen today? · How many parties today? |
+| A character | Ricorda che Marco fa il medico · Cosa sai di Marco? · Chi è Giulia? | Remember that Marco is a doctor · What do you know about Marco? · Who is Giulia? |
+| Memories and free questions | Ti ricordi la festa di compleanno di Giulia del 1998? · Luca ha pagato le bollette? · Quando scade l'assicurazione dell'auto? | Do you remember Giulia's birthday party in 1998? · Did Luca pay the bills? · When does the car insurance expire? |
 | Cancel | Annulla · Lascia stare | Cancel · Never mind |
 
 Colours: rosso/red, verde/green, blu/blue, giallo/yellow, arancione/orange, viola/purple, rosa/pink, bianco/white, azzurro/cyan, caldo/warm. Rooms can be called in several ways: *soggiorno*, *salotto* or *sala*; *camera* or *camera da letto*; *locale tecnico* or *tecnico*; *living room*, *lounge*; and so on.
@@ -96,17 +100,22 @@ A few details:
 
 What the answers sound like: "Marco è in cucina." / "Marco is in the kitchen.", "In cucina ci sono Marco e un cane.", "There are 2 people in the house.", "It's 24.3 degrees in the living room.", "The car is parked in the garage." When the house is not sure about a figurine it adds "Almeno credo." / "I think.".
 
-## Free questions and the language model
+## Two language models: commands and stories
 
-A sentence the parser does not understand ("Quanta gente c'è in cucina?", a request with unusual words, a sentence mangled by the recognizer) goes to the **language model**. While it works, the house says "Vediamo…" / "Let me see…".
+The house uses two language models, on the board and with no internet, each in its own service with its own cache: one understands commands, the other tells stories.
 
-The model is **Qwen2.5-0.5B-Instruct** (quantized to 4 bits, in GGUF format), a small language model run by `llama-server` from llama.cpp in the `domotiq-llm` service, on the board, with no internet. It receives fixed instructions with the rooms, the commands of the house and a few examples, then the names of the registered characters and the sentence. Its output is constrained while it is produced, so it can only write one command of the house with its arguments, in a few words: *where_is Marco*, *who_in kitchen*, *lights_on bedroom purple*, *scene relax*, or *other* for anything that is not about the house. The commands cover the same requests as the table above (where is, who is in, how many, temperature, humidity, time, lights, scenes, party, barbecue, the car, the house summary, help, language, volume, who are you, add a character, a joke). A name can only be one of the registered characters. The instructions are always the same text, which `llama-server` keeps in its cache, so each question adds only a few words to read.
+**Commands.** A sentence the parser does not understand ("Quanta gente c'è in cucina?", a request with unusual words, a sentence mangled by the recognizer) goes to **Qwen2.5-0.5B-Instruct** (quantized to 4 bits, GGUF), run by `llama-server` from llama.cpp in the `domotiq-llm` service. While it works, the house says "Vediamo…" / "Let me see…". It receives fixed instructions with the rooms, the commands of the house and a few examples, then the names of the registered characters and the sentence. Its output is constrained while it is produced, so it can only write one command of the house with its arguments: *where_is Marco*, *who_in kitchen*, *lights_on bedroom purple*, or *other* for anything else. The instructions are always the same text, which `llama-server` keeps in its cache. **This model chooses what to do and never writes what the house says**: the answer is composed from the real state of the house, with sentences prepared in Italian and English, so it cannot make things up. The same holds for the day of the characters ("What did Marco do today?"): the answer comes from what the camera really saw, not from a model.
 
-**The model chooses what to do; it never writes what the house says.** The answer is then composed by the same code that answers the fixed phrases, from the real state of the house, with sentences prepared in Italian and English. So the house cannot make things up: if the model misunderstands, the worst case is a correct answer to a different question.
+**Stories and free questions.** Stories, memories ("Do you remember Giulia's birthday party in 1998?") and questions about life in the house ("Did Luca pay the bills?") are written by a second model, **Qwen3.5-0.8B** (Apache-2.0, 4 bits), in the `domotiq-story` service. Here the house makes things up, on purpose:
+- **Personalities.** The first time a character appears in a story, the model gives it a job, a character, a passion and a quirk, keeping what the house already knows about it (the information written in the web app, under *Who they are*, or said aloud: "Remember that Marco is a doctor"). Personalities stay the same until the house restarts: if Marco is a doctor, he stays a doctor in the next stories. After a restart the house starts again from the given information only. When new information is added, that character's personality is made again to agree with it.
+- **Always a new story.** The model gets a different idea each time and the beginnings of the stories already told about that character, pair or room, to avoid.
+- **The life of the house.** What the house makes up when asked ("the insurance expires on the tenth of March") stays in memory until the restart and is given back to the model, so later answers agree with it.
+- **Spoken while it is written.** The model writes roughly as fast as the house speaks: each sentence is spoken as soon as it is complete, and the room it talks about lights up. Before the story the house says "Let me think…"; the first sentence comes a few seconds later. **Talk** interrupts the story.
+- To a question about the world outside the house the model is instructed to answer that it is a house and knows nothing about it. Sentences with words unsuitable for a fair are dropped before they are spoken.
 
-A question that is not about the house gets: "Sono la casa: posso dirti chi c'è e dove, che temperatura fa, e posso accendere luci, fare festa o grigliare." / "I'm the house: I can tell you who's here and where, the temperature, and I can turn on lights, throw a party or light the barbecue." A sentence nobody understood gets "I didn't get that. Try asking: where is Marco? Or: let's party!".
+In **Chatty** mode, about one time in three, instead of a question from the list the house says something written by the second model about a character in the house: a small anecdote, a made-up memory ("Do you remember when…"), or a question about life in the house ("Marco, did you pay the electricity bill?"), followed by a reply that agrees with what the visitor said. These memories and replies stay in memory too, until the restart.
 
-Without the language model (installed with `--no-llm`, or with its service stopped) the fixed phrases above keep working.
+Without the second model (service stopped or not installed) stories and free questions get the usual answer: "I'm the house: I can tell you who's here and where, the temperature, and I can turn on lights, throw a party or light the barbecue.". Without any model (installed with `--no-llm`) the fixed phrases keep working.
 
 ## Speech recognition
 
@@ -115,7 +124,7 @@ The Vosk models are `vosk-model-small-it-0.22` and `vosk-model-small-en-us-0.15`
 - **A closed list of phrases** for names, yes/no and the options of a question: the model accepts only those words, which makes it fast (under half a second for a name on the board) and very hard to fool;
 - **Free speech** for questions and commands, turned into an intent afterwards.
 
-The microphone is on only while the house listens, at 16 kHz mono: while Talk is held, after "Who is it?" and for a few seconds after greeting a new phone or asking a chatty question. The audio stays in memory and is never saved; of what the house hears without Talk the log keeps only the outcome (yes, no, an option), never the text, and the recognised text is not sent to the phones.
+The microphone is on only while the house listens, at 16 kHz mono: while Talk is held, after "Who is it?" and for a few seconds after greeting a new phone or asking a chatty question. The audio stays in memory and is never saved; of what the house hears without Talk the log keeps only the outcome (yes, no, an option), never the text, and the recognised text is not sent to the phones. A visitor's answer to a question about life in the house (chatty mode) stays in the storyteller's memory, for later stories, until the restart: it is not written to disk.
 
 ## Speech synthesis
 

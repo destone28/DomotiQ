@@ -56,6 +56,7 @@ class Identity:
     photo: str | None = None             # file name under var/photos
     created_at: float = field(default_factory=time.time)
     created_by: str | None = None
+    facts: list[str] = field(default_factory=list)   # "fa il medico", "ha paura dei ragni": used in the stories
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

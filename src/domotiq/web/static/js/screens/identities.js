@@ -198,6 +198,8 @@ function editIdentity(id) {
       <label class="field"><span>${t("id.name")}</span><input type="text" id="name" value="${esc(i.name)}"></label>
       <label class="field"><span>${t("id.category")}</span><select id="cat">${CATS.map(c => `<option value="${c}" ${c === i.category ? "selected" : ""}>${t("cat." + c)}</option>`).join("")}</select></label>
       <label class="field"><span>${t("id.alias")}</span><input type="text" id="alias" value="${esc(i.alias_en || "")}"></label>
+      <label class="field"><span>${t("id.facts")}</span><textarea id="facts" rows="4" maxlength="900" placeholder="${esc(t("id.facts_ph"))}">${esc((i.facts || []).join("\n"))}</textarea></label>
+      <p class="muted small">${t("id.facts_hint")}</p>
       <div class="row" style="justify-content:space-between">
         <button class="btn danger" id="del">${t("common.delete")}</button>
         <div class="row"><button class="btn" id="close">${t("common.close")}</button><button class="btn primary" id="save">${t("common.save")}</button></div>
@@ -208,6 +210,7 @@ function editIdentity(id) {
         await api("PUT", `/api/identities/${id}`, {
           name: card.querySelector("#name").value, category: card.querySelector("#cat").value,
           alias_en: card.querySelector("#alias").value || null,
+          facts: card.querySelector("#facts").value.split("\n").map(s => s.trim()).filter(Boolean),
         });
         close();
       } catch (e) { toast(e.status === 409 ? t("id.taken", { name: card.querySelector("#name").value }) : e.message, "warning"); }

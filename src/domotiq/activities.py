@@ -81,6 +81,11 @@ class Actions:
         line = self.fill(text, ctx, lang)
         if not line:
             return
+        if isinstance(text, str):
+            # a sentence given as it is (typed by the staff, written by the storyteller) may be in the other
+            # language: it is read by the voice of the language it is written in
+            from .voice.stories import sentence_lang
+            lang = sentence_lang(line, lang)
         spoken = self.speaks(level)
         self.ctx.bus.publish("say", text=line, lang=lang, spoken=spoken)
         if spoken and self.ctx.voice is not None:

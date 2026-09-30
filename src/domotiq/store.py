@@ -134,6 +134,17 @@ class Store:
         return self._query("SELECT ts, x, y, room FROM positions WHERE identity=? AND ts>=? "
                            "ORDER BY ts", (identity, since))
 
+    def identities_in_room(self, room: str, since: float) -> list[str]:
+        """Who has been seen in a room since then, first seen first."""
+        rows = self._query("SELECT identity, MIN(ts) AS first FROM positions WHERE room=? AND ts>=? "
+                           "AND identity IS NOT NULL GROUP BY identity ORDER BY first", (room, since))
+        return [r["identity"] for r in rows]
+
+    def strangers_in_room(self, room: str, since: float) -> int:
+        rows = self._query("SELECT COUNT(DISTINCT track) AS n FROM positions WHERE room=? AND ts>=? "
+                           "AND identity IS NULL", (room, since))
+        return int(rows[0]["n"]) if rows else 0
+
     def room_changes(self, identity: str, since: float) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
         last = None

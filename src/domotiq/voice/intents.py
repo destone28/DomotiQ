@@ -73,6 +73,23 @@ PATTERNS: list[tuple[str, list[str]]] = [
                   r"\bit (s|is) (half|quarter|\w+( \w+)? (minutes )?(past|to))\b", r"\bit (s|is) \w+( \w+)? (am|pm)\b",
                   r"\bit (s|is) (one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|noon|midnight)\b"]),
     ("time_now", [r"\bche or[ae]\b", r"\bche ora e\b", r"\bwhat time\b", r"\bwhat s the time\b"]),
+    # "ricorda che Marco fa il medico": something to use in the stories (before everything that has a name)
+    ("fact", [r"^(ricorda|ricordati|ricordate|memorizza|segnati) che\b", r"^(remember|note|keep in mind) that\b"]),
+    # what the house really saw today (before where_is: "dov'è stato Marco" is not "dov'è Marco")
+    ("remember", [r"\bcosa ha fatto\b", r"\bche (cosa )?ha fatto\b", r"\bdove e (stato|stata|andato|andata)\b",
+                  r"\bdov e (stato|stata|andato|andata)\b", r"\bwhat (did|has) \w+( \w+)? (do|done|been doing)\b",
+                  r"\bwhere (has|did) \w+( \w+)? (been|go)\b", r"\bchi e (stato|stata|passato|passata|entrato|entrata)\b",
+                  r"\bchi c e stato\b", r"\bwho (has been|was|went) in\b", r"\bquante feste\b", r"\bhow many parties\b",
+                  r"\bquante grigliate\b", r"\bhow many barbecues\b"]),
+    ("story", [r"\b(raccont|narr|invent)\w* (una |un |la |qualche )?(storia|storie|favola|fiaba|racconto|avventura)\b",
+               r"\b(storia|favola|fiaba|racconto) (su|di|della|del|dei|delle|sulla|sul|con)\b",
+               r"\btell (me |us )?(a |another )?(story|tale|fairy tale)\b", r"\b(story|tale) about\b",
+               r"\b(another|a new) story\b", r"\bun altra storia\b", r"\bstoria nuova\b"]),
+    # a memory of the house (not a real one: the house makes it up, and then remembers it)
+    ("recall", [r"\bti ricordi\b", r"\bvi ricordate\b", r"\bte lo ricordi\b", r"\bdo you remember\b",
+                r"\bremember when\b", r"\bdo you recall\b"]),
+    ("about", [r"\bcosa sai (di|su|del|della)\b", r"\bche sai (di|su)\b", r"\bparlami (di|del|della)\b",
+               r"\bchi e\b", r"\bwhat do you know about\b", r"\btell me about\b", r"\bwho is\b"]),
     ("register", [r"\b(aggiungi|registra|nuovo|nuova) (un |una )?(personaggio|persona|oggetto|animale)\b",
                   r"\b(add|register) (a |an |new )*(character|person|object|pet)\b", r"\bnew character\b"]),
     ("language", [r"\b(parla|parliamo|in) (inglese|italiano)\b", r"\bspeak (english|italian)\b",
@@ -137,6 +154,19 @@ def name_from_speech(text: str) -> str:
     """The name in a spoken introduction: at most two words, capitalised; "" if there is none."""
     words = [w for w in normalize(text).split() if w not in NAME_FILLERS and not w.isdigit()]
     return " ".join(words[:2]).title()
+
+
+def find_names(text: str, names: Iterable[str]) -> list[str]:
+    """Every known name in the sentence, in the order they are said ("Marco e Giulia")."""
+    t = f" {text} "
+    found = []
+    for n in sorted(set(names), key=len, reverse=True):
+        key = normalize(n)
+        pos = t.find(f" {key} ")
+        if key and pos >= 0 and n not in found:
+            found.append((pos, n))
+            t = t.replace(f" {key} ", " " + "#" * len(key) + " ")
+    return [n for _, n in sorted(found)]
 
 
 def find_room(text: str) -> str | None:
@@ -286,13 +316,44 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
         return None
     names = list(names)
     short = len(t.split()) <= 3
+    found_names = find_names(t, names)
     for intent, patterns in PATTERNS:
         if intent in SHORT_ONLY and not short:
             continue                 # "si gela in camera" is not a yes, "the barbecue can stop now" is not a cancel
         if not any(re.search(p, t) for p in patterns):
             continue
         args: dict[str, Any] = {}
-        if intent == "where_is":
+        if intent == "fact":
+            if not found_names:
+                continue
+            args["name"] = found_names[0]
+        elif intent == "remember":
+            room = find_room(t)
+            if re.search(r"quante (feste|grigliate)|how many (parties|barbecues)", t):
+                return Intent("remember", {"what": "parties"})
+            if found_names:
+                return Intent("remember", {"what": "day", "name": found_names[0]})
+            if room and re.search(r"\bchi\b|\bwho\b", t):
+                return Intent("remember", {"what": "room", "room": room})
+            continue
+        elif intent == "story":
+            if found_names:
+                args["names"] = found_names[:3]
+            room = find_room(t)
+            if room:
+                args["room"] = room
+            if re.search(r"\bfest|\bparty|\bcompleanno|\bbirthday", t):
+                args["party"] = True
+        elif intent == "recall":
+            if found_names:
+                args["names"] = found_names[:3]
+        elif intent == "about":
+            if not found_names:
+                continue            # "chi è in cucina", "tell me about the house": other intents
+            if re.search(r"\bchi e (in|nel|nella|dentro)\b|\bwho is in\b", t):
+                continue
+            args["name"] = found_names[0]
+        elif intent == "where_is":
             name = find_name(t, names)
             if not name:
                 if find_room(t) and re.search(r"\b(chi|who)\b", t):

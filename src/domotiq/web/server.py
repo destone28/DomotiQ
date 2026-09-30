@@ -382,7 +382,7 @@ def create_app(ctx: "Context") -> FastAPI:
     async def identity_update(identity_id: str, body: dict, w: Who = Depends(who)):
         if not ctx.identities.get(identity_id):
             raise HTTPException(404, "no such identity")
-        fields = {k: body[k] for k in ("name", "category", "alias_en") if k in body}
+        fields = {k: body[k] for k in ("name", "category", "alias_en", "facts") if k in body}
         try:
             return ctx.identities.update(identity_id, device=w.device, nickname=w.nickname,
                                          **fields).to_dict()
@@ -762,6 +762,23 @@ def create_app(ctx: "Context") -> FastAPI:
         await ctx.actions.sound("chime")
         await ctx.actions.say({"it": "Prova dell'audio: mi senti?", "en": "Audio test: can you hear me?"})
         return {"ok": ctx.audio is not None and ctx.audio.ok}
+
+    @app.post("/api/staff/voice/text", dependencies=[Depends(staff)])
+    async def voice_text(body: dict):
+        """A sentence handled as if it had been said with Talk (for the staff: demos and tests)."""
+        if ctx.voice is None:
+            raise HTTPException(503, "voice not available")
+        text = " ".join(str(body.get("text", "")).split())[:200]
+        if not text:
+            raise HTTPException(400, "empty text")
+        voice = ctx.voice
+
+        async def run() -> None:
+            async with voice.busy:
+                voice._talk_task = asyncio.current_task()
+                await voice.handle(text)
+        voice._spawn(run())
+        return {"ok": True}
 
     @app.post("/api/staff/diagnostics/mic", dependencies=[Depends(staff)])
     async def mic_test():

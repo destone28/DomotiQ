@@ -49,7 +49,7 @@ export function mount(root) {
           <dt>Wi-Fi</dt><dd>${d.wifi_clients ?? "—"} · ${t("diag.open")} ${d.phones ?? 0}</dd>
           <dt>${t("diag.clock")}</dt><dd>${esc(d.clock.source)} · ${new Date(d.clock.now * 1000).toLocaleString()}</dd>
           <dt>Audio</dt><dd>${d.audio.ok ? "🟢" : "🔴"} ${esc(d.audio.device || "")}</dd>
-          <dt>${t("diag.voice")}</dt><dd>${d.voice.ok ? "🟢" : "🔴"} ${esc(d.voice.stt || "")} ${d.voice.llm ? "· LLM 🟢" : ""}</dd>
+          <dt>${t("diag.voice")}</dt><dd>${d.voice.ok ? "🟢" : "🔴"} ${esc(d.voice.stt || "")} ${d.voice.llm ? "· LLM 🟢" : ""} ${d.voice.stories ? "· " + t("diag.stories") + " 🟢" : ""}</dd>
           <dt>${t("diag.camera")}</dt><dd>${cam.available ? "🟢" : "🔴"} ${esc(cam.device || "")} ${cam.fps ? cam.fps.toFixed(1) + " fps" : ""} ${cam.proc_ms ? "· " + Math.round(cam.proc_ms) + " ms" : ""} ${cam.calibrated === false ? "· " + t("diag.not_calibrated") : ""} ${cam.moved ? "· ⚠️ " + t("diag.moved") : ""}</dd>
         </dl></div>
         <div class="card"><h3 style="margin-top:0">${t("diag.modules")} ${d.mcu.ok ? "🟢" : "🔴"} ${d.mcu.version != null ? "v" + d.mcu.version : ""}</h3>${bus}<ul class="list">${mods}</ul></div>`;

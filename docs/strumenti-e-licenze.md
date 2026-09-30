@@ -51,6 +51,7 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna qu
 | vosk-model-small-it-0.22 | Apache-2.0 | riconoscimento vocale italiano |
 | vosk-model-small-en-us-0.15 | Apache-2.0 | riconoscimento vocale inglese |
 | Qwen2.5-0.5B-Instruct (GGUF) | Apache-2.0 | intenti delle frasi libere |
+| Qwen3.5-0.8B (GGUF, quantizzazione di bartowski) | Apache-2.0 | storie, ricordi e domande libere (servizio `domotiq-story`) |
 | YOLOX-Nano (ONNX, release 0.1.1rc0) | Apache-2.0, addestrato su COCO | categoria di un oggetto nuovo |
 | Voce Piper it_IT-serena-medium, revisione ea046e84 | CC BY 4.0 (dataset serena-synthetic-it-27h) | voce italiana |
 | Voce Piper en_US-ljspeech-medium | pubblico dominio (LJ Speech) | voce inglese |

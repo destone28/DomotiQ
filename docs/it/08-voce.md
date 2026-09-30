@@ -83,6 +83,10 @@ Gli esempi qui sotto vengono capiti direttamente dall'analizzatore a regole. Tol
 | Loquacità | Stai zitta · Parla di più · Parla normale | Be quiet · Talk more · Normal mode |
 | Volume | Alza il volume · Abbassa la musica | Louder · Turn it down |
 | Nuovo personaggio | Aggiungi un personaggio | Add a character |
+| Una storia | Raccontami una storia · Una storia su Marco e Giulia · Una storia sulla cucina · Un'altra storia | Tell me a story · A story about Marco and Giulia · A story about the kitchen · Another story |
+| La giornata | Cosa ha fatto Marco oggi? · Dov'è stato Luca? · Chi è stato in cucina oggi? · Quante feste abbiamo fatto oggi? | What did Marco do today? · Where has Luca been? · Who has been in the kitchen today? · How many parties today? |
+| Un personaggio | Ricorda che Marco fa il medico · Cosa sai di Marco? · Chi è Giulia? | Remember that Marco is a doctor · What do you know about Marco? · Who is Giulia? |
+| Ricordi e domande libere | Ti ricordi la festa di compleanno di Giulia del 1998? · Luca ha pagato le bollette? · Quando scade l'assicurazione dell'auto? | Do you remember Giulia's birthday party in 1998? · Did Luca pay the bills? · When does the car insurance expire? |
 | Annullare | Annulla · Lascia stare | Cancel · Never mind |
 
 Colori: rosso/red, verde/green, blu/blue, giallo/yellow, arancione/orange, viola/purple, rosa/pink, bianco/white, azzurro/cyan, caldo/warm. Le stanze si possono chiamare in più modi: *soggiorno*, *salotto* o *sala*; *camera* o *camera da letto*; *locale tecnico* o *tecnico*; *living room*, *lounge*; e così via.
@@ -96,17 +100,22 @@ Qualche dettaglio:
 
 Ecco come suonano le risposte: "Marco è in cucina." / "Marco is in the kitchen.", "In cucina ci sono Marco e un cane.", "In casa ci sono 2 persone.", "In soggiorno ci sono 24.3 gradi.", "L'auto è parcheggiata in garage." Quando la casa non è sicura di una statuina aggiunge "Almeno credo." / "I think.".
 
-## Domande libere e il modello linguistico
+## Due modelli linguistici: i comandi e le storie
 
-Una frase che l'analizzatore non capisce ("Quanta gente c'è in cucina?", una richiesta con parole insolite, una frase storpiata dal riconoscimento) passa al **modello linguistico**. Mentre lavora, la casa dice "Vediamo…" / "Let me see…".
+La casa usa due modelli linguistici, sulla scheda e senza internet, ognuno nel suo servizio con la sua cache: uno capisce i comandi, l'altro racconta.
 
-Il modello è **Qwen2.5-0.5B-Instruct** (quantizzato a 4 bit, in formato GGUF), un piccolo modello linguistico fatto girare da `llama-server` di llama.cpp nel servizio `domotiq-llm`, sulla scheda, senza internet. Riceve istruzioni fisse con le stanze, i comandi della casa e qualche esempio, poi i nomi dei personaggi registrati e la frase. La sua uscita è vincolata mentre viene prodotta, così può scrivere soltanto un comando della casa con i suoi argomenti, in poche parole: *where_is Marco*, *who_in kitchen*, *lights_on bedroom purple*, *scene relax*, oppure *other* per tutto ciò che non riguarda la casa. I comandi coprono le stesse richieste della tabella qui sopra (dov'è, chi c'è, quanti, temperatura, umidità, ora, luci, scenari, festa, barbecue, l'auto, il riepilogo della casa, aiuto, lingua, volume, chi sei, aggiungere un personaggio, una barzelletta). Un nome può essere solo quello di uno dei personaggi registrati. Le istruzioni sono sempre lo stesso testo, che `llama-server` tiene nella sua cache, quindi ogni domanda aggiunge da leggere solo poche parole.
+**I comandi.** Una frase che l'analizzatore non capisce ("Quanta gente c'è in cucina?", una richiesta con parole insolite, una frase storpiata dal riconoscimento) passa a **Qwen2.5-0.5B-Instruct** (quantizzato a 4 bit, in formato GGUF), fatto girare da `llama-server` di llama.cpp nel servizio `domotiq-llm`. Mentre lavora, la casa dice "Vediamo…" / "Let me see…". Riceve istruzioni fisse con le stanze, i comandi della casa e qualche esempio, poi i nomi dei personaggi registrati e la frase. La sua uscita è vincolata mentre viene prodotta, così può scrivere soltanto un comando della casa con i suoi argomenti: *where_is Marco*, *who_in kitchen*, *lights_on bedroom purple*, oppure *other* per tutto il resto. Le istruzioni sono sempre lo stesso testo, che `llama-server` tiene nella sua cache. **Questo modello sceglie cosa fare e non scrive mai quello che dice la casa**: la risposta si compone dallo stato reale della casa, con frasi preparate in italiano e in inglese, quindi non può inventare. Lo stesso vale per la giornata dei personaggi ("Cosa ha fatto Marco oggi?"): la risposta viene da quello che la webcam ha visto davvero, non da un modello.
 
-**Il modello sceglie cosa fare; non scrive mai quello che dice la casa.** La risposta viene poi composta dallo stesso codice che risponde alle frasi fisse, a partire dallo stato reale della casa, con frasi preparate in italiano e in inglese. Così la casa non può inventare niente: se il modello capisce male, il caso peggiore è una risposta corretta a un'altra domanda.
+**Le storie e le domande libere.** Le storie, i ricordi ("Ti ricordi la festa di compleanno di Giulia del 1998?") e le domande sulla vita di casa ("Luca ha pagato le bollette?") le scrive un secondo modello, **Qwen3.5-0.8B** (Apache-2.0, 4 bit), nel servizio `domotiq-story`. Qui la casa inventa, ed è voluto:
+- **Personalità.** La prima volta che un personaggio compare in una storia, il modello gli dà un lavoro, un carattere, una passione e una mania, rispettando quello che la casa sa già di lui (le informazioni scritte nella webapp, in *Chi è*, o dette a voce: "Ricorda che Marco fa il medico"). Le personalità restano le stesse fino al prossimo riavvio della casa: se Marco è un medico, nelle storie successive resta un medico. Al riavvio si riparte dalle sole informazioni date. Se si aggiunge un'informazione nuova, la personalità di quel personaggio si rifà rispettandola.
+- **Sempre una storia nuova.** Al modello vengono dati uno spunto diverso ogni volta e l'inizio delle storie già raccontate su quel personaggio, quella coppia o quella stanza, da non ripetere.
+- **La vita della casa.** Quello che la casa inventa quando le si chiede qualcosa ("l'assicurazione scade il dieci marzo") resta in memoria fino al riavvio e viene ridato al modello, così le risposte successive sono coerenti.
+- **Detta mentre viene scritta.** Il modello scrive più o meno alla velocità con cui la casa parla: ogni frase si dice appena è completa, e la stanza di cui parla si accende. Prima della storia la casa dice "Fammi pensare…"; la prima frase arriva dopo qualche secondo. **Parla** interrompe la storia.
+- A una domanda sul mondo fuori dalla casa il modello è istruito a rispondere che è una casa e che di quello non sa niente. Le frasi con parole inadatte a una fiera vengono scartate prima di essere dette.
 
-A una domanda che non riguarda la casa risponde: "Sono la casa: posso dirti chi c'è e dove, che temperatura fa, e posso accendere luci, fare festa o grigliare." / "I'm the house: I can tell you who's here and where, the temperature, and I can turn on lights, throw a party or light the barbecue." A una frase che nessuno ha capito risponde "Non ho capito. Prova a chiedermi: dov'è Marco? Oppure: fai festa!".
+In modalità **Chiacchierona**, circa una volta su tre al posto di una domanda della lista la casa dice qualcosa scritto dal secondo modello su un personaggio presente: un piccolo aneddoto, un ricordo inventato ("Vi ricordate quando…"), oppure una domanda sulla vita di casa ("Marco, hai pagato la bolletta della luce?"), seguita da una risposta coerente con quello che ha detto il visitatore. Anche questi ricordi e queste risposte restano in memoria, fino al riavvio.
 
-Senza il modello linguistico (installato con `--no-llm`, o con il suo servizio fermo) le frasi fisse qui sopra continuano a funzionare.
+Senza il secondo modello (servizio fermo o non installato) le storie e le domande libere ricevono la risposta di sempre: "Sono la casa: posso dirti chi c'è e dove, che temperatura fa, e posso accendere luci, fare festa o grigliare.". Senza nessun modello (installazione con `--no-llm`) le frasi fisse continuano a funzionare.
 
 ## Riconoscimento vocale
 
@@ -115,7 +124,7 @@ I modelli Vosk sono `vosk-model-small-it-0.22` e `vosk-model-small-en-us-0.15` (
 - **Un elenco chiuso di frasi** per i nomi, il sì/no e le opzioni di una domanda: il modello accetta solo quelle parole, il che lo rende veloce (meno di mezzo secondo per un nome sulla scheda) e molto difficile da ingannare;
 - **Parlato libero** per domande e comandi, trasformato poi in un intento.
 
-Il microfono è acceso solo mentre la casa ascolta, a 16 kHz mono: mentre Parla è premuto, dopo "Chi è?" e per qualche secondo dopo il saluto a un telefono nuovo o una domanda della modalità chiacchierona. L'audio resta in memoria e non viene mai salvato; di quello che la casa sente senza Parla resta nel registro solo l'esito (sì, no, un'opzione), mai il testo, e il testo riconosciuto non viene mandato ai telefoni.
+Il microfono è acceso solo mentre la casa ascolta, a 16 kHz mono: mentre Parla è premuto, dopo "Chi è?" e per qualche secondo dopo il saluto a un telefono nuovo o una domanda della modalità chiacchierona. L'audio resta in memoria e non viene mai salvato; di quello che la casa sente senza Parla resta nel registro solo l'esito (sì, no, un'opzione), mai il testo, e il testo riconosciuto non viene mandato ai telefoni. La risposta di un visitatore a una domanda sulla vita di casa (modalità chiacchierona) resta nella memoria del narratore, per le storie successive, fino al riavvio: non viene scritta su disco.
 
 ## Sintesi vocale
 

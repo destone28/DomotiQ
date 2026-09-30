@@ -7,6 +7,9 @@ Description=DomotiQ speech synthesis (Piper)
 After=network.target
 
 [Service]
+# the storyteller writes on cores 2-3 while the synthesis speaks on cores 0-1: sharing all four,
+# each slowed the other down to a sentence every 15 seconds
+CPUAffinity=0 1
 Type=simple
 User=arduino
 Group=arduino

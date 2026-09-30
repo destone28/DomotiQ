@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any
@@ -31,8 +32,9 @@ from ..audio.mic import MIC_RATE, Microphone
 from ..identities import NameTaken
 from ..model import CATEGORY_NAMES
 from ..scenes import scene_name
-from . import answers
+from . import answers, memory
 from .chatter import WELCOME, Chatter
+from .stories import StoryTeller
 from .intents import Intent, find_name, find_room, name_from_speech, normalize, parse
 from .llm import LanguageModel
 from .stt import Listener
@@ -92,6 +94,9 @@ class Voice:
         bus.subscribe("registered", self._on_registered)
         bus.subscribe("count_changed", self._on_count)
         self.chatter = Chatter(self)
+        self.stories = StoryTeller(self)
+        # a story in one language stops when the house changes language, rather than go on in the old one
+        bus.subscribe("language", lambda ev: self._spawn(self.stories.preempt()) if self.stories.active else None)
 
     # ================================================================ lifecycle
     @property
@@ -100,6 +105,7 @@ class Voice:
 
     async def start(self) -> None:
         self._spawn(self._background())
+        self._spawn(self.stories.run_ahead())
 
     async def stop(self) -> None:
         for t in list(self._tasks):
@@ -131,12 +137,14 @@ class Voice:
                 if self.llm_ok and not warmed:
                     warmed = True
                     await loop.run_in_executor(None, self.llm.warm)
+            if not self.ctx.args.no_llm:
+                await self.stories.check()
             await asyncio.sleep(30)
 
     def status(self) -> dict[str, Any]:
         return {"ok": bool(self.listener and self.listener.ok) or self.speaker.ok,
                 "stt": "vosk" if self.listener and self.listener.ok else "",
-                "tts": self.speaker.ok, "llm": self.llm_ok, "mic": self.mic.available,
+                "tts": self.speaker.ok, "llm": self.llm_ok, "stories": self.stories.ok, "mic": self.mic.available,
                 "level": round(self.mic.last_level, 3)}
 
     # ================================================================ speaking
@@ -147,13 +155,25 @@ class Voice:
             samples = await self.speaker.synth(text, lang)
             if samples is None:
                 return
-            if self.ctx.audio is not None and not (self.ctx.sim.enabled and self.ctx.sim.mute):
-                await self.ctx.audio.play_voice(samples)
-            else:
-                await asyncio.sleep(len(samples) / 22050)
+            await self._play(samples)
         finally:
             self.in_flight -= 1
             self.voice_end = time.monotonic()
+
+    async def play(self, samples) -> None:
+        """Speech already synthesized (the storyteller prepares the next sentence while one plays)."""
+        self.in_flight += 1
+        try:
+            await self._play(samples)
+        finally:
+            self.in_flight -= 1
+            self.voice_end = time.monotonic()
+
+    async def _play(self, samples) -> None:
+        if self.ctx.audio is not None and not (self.ctx.sim.enabled and self.ctx.sim.mute):
+            await self.ctx.audio.play_voice(samples)
+        else:
+            await asyncio.sleep(len(samples) / 22050)
 
     async def say(self, text: str, level: str = "normal") -> None:
         await self.ctx.actions.say(text, level=level)
@@ -223,10 +243,14 @@ class Voice:
     async def talk_button(self, pressed: bool) -> None:
         if pressed:
             if self._talk_task and not self._talk_task.done():
-                return
+                if not self.stories.active:
+                    return
+                self._talk_task.cancel()              # Talk during a story: the story stops, Talk listens
+                await asyncio.wait({self._talk_task}, timeout=2.0)
             if self.ctx.audio is not None:
                 self.ctx.audio.stop_voice()
             await self.chatter.preempt()              # Talk comes before the small talk
+            await self.stories.preempt()
             self._talk_stop = asyncio.Event()
             self._talk_task = self._spawn(self._talk(self._talk_stop))
         elif self._talk_stop is not None:
@@ -268,10 +292,13 @@ class Voice:
                 if not await self._yes_no(it, en):
                     await self.reply("D'accordo, niente.", "All right, nothing then.")
                     return
+        if intent is None and self.stories.ok:
+            intent = Intent("other", {}, 0.5, "rules")      # no model for commands: the storyteller answers
         if intent is None:
             await self.say(answers.not_understood(lang))
             return
         log.info("intent %s %s (%s)", intent.name, intent.args, intent.source)
+        intent.args.setdefault("text", text)
         await self.execute(intent)
 
     def _describe(self, intent: Intent) -> tuple[str, str]:
@@ -380,8 +407,51 @@ class Voice:
             await self.say(answers.joke(lang, self._jokes))
         elif name in ("yes", "no", "cancel"):
             await self.reply("D'accordo.", "OK.")
+        elif name == "fact":
+            await self._learn_fact(a.get("name", ""), a.get("text", ""))
+        elif name == "remember":
+            what = a.get("what")
+            if what == "day":
+                await self.say(memory.day_of(ctx, a.get("name", ""), lang))
+            elif what == "room":
+                await self.say(memory.room_day(ctx, a.get("room"), lang))
+            else:
+                await self.say(memory.parties_today(ctx, lang))
+        elif name == "about":
+            await self.say(await self.stories.about(a.get("name", "")))
+        elif name == "story":
+            if not await self.stories.tell(a.get("names"), a.get("room"), bool(a.get("party"))):
+                await self.say(answers.off_topic(lang))
+        elif name in ("recall", "other") and self.stories.ok:
+            if name == "recall":
+                await self.say("Vediamo..." if lang == "it" else "Let me see...")
+            if not await self.stories.answer(a.get("text", ""), a.get("names") or self._mentioned(a.get("text", "")),
+                                             memory=name == "recall"):
+                await self.say(answers.off_topic(lang))
         else:
             await self.say(answers.off_topic(lang))
+
+    def _mentioned(self, text: str) -> list[str]:
+        from .intents import find_names
+        return find_names(normalize(text), self._names())
+
+    async def _learn_fact(self, name: str, text: str) -> None:
+        """"Ricorda che Marco fa il medico": "fa il medico" joins what the house knows about Marco."""
+        ident = self.ctx.identities.by_name(name)
+        if not ident:
+            await self.reply(f"Non conosco nessuno che si chiama {name}.", f"I don't know anyone called {name}.")
+            return
+        fact = re.sub(r"^\s*(ricorda(ti|te)?|memorizza|segnati|remember|note|keep in mind)\s+(che|that)\s+", "",
+                      text.strip(), flags=re.I).strip(" .")
+        for alias in filter(None, (ident.name, ident.alias_en)):
+            if normalize(fact).startswith(normalize(alias) + " "):
+                fact = fact[len(alias):].strip()
+                break
+        if len(fact.split()) < 2:
+            await self.reply("Cosa devo ricordare?", "What should I remember?")
+            return
+        self.ctx.identities.add_fact(ident.id, fact)
+        await self.reply(f"Me lo ricorderò: {ident.name} {fact}.", f"I'll remember: {ident.name} {fact}.")
 
     # ================================================================ intercom
     async def intercom(self) -> None:

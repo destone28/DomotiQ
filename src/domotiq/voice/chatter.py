@@ -53,6 +53,7 @@ ACTIVE_S = 300.0       # questions only if something happened in the house in th
 NAME_CONFIDENCE = 0.5  # a name heard with less confidence is not proposed
 OFFER_CONFIDENCE = 0.6 # an offer is carried out only on a yes heard at least this well
 ASK_ROOMS = ("kitchen", "living", "bedroom", "garage", "garden")
+GENERATED_SHARE = 0.35  # when the storyteller is there, about one line in three is made up by it
 ANIMALS = ("dog", "cat", "animal")
 
 # the grammar needs the spelling of the speech model; the matching below ignores accents
@@ -595,7 +596,12 @@ class Chatter:
         # never the same character twice in a row: with only one around, the house waits
         order = sorted((i for i in present if i != self.last_asked),
                        key=lambda i: (self.asked.get(i, -1e18), self.rng.random()))
+        stories = getattr(self.voice, "stories", None)
         for identity in order:
+            # now and then something the storyteller makes up, instead of a question of the list
+            if stories is not None and stories.ok and self.rng.random() < GENERATED_SHARE:
+                kind = self.rng.choice(("anecdote", "memory", "question"))
+                return identity, {"id": f"gen-{kind}", "kind": "generated", "gen": kind}
             qs = self._questions_for(present[identity])
             if qs:
                 return identity, self.rng.choice(qs)
@@ -620,6 +626,9 @@ class Chatter:
                     self.last_question = time.monotonic()
                     self.recent.append(q["id"])
                     v.last_chatter = time.monotonic()
+                    if q["kind"] == "generated":
+                        await self._generated(identity, room, q["gen"])
+                        return
                     data = {"name": name, "room": room}
                     lang = self.lang
                     await self._say(q["text"], data, level="chatty")
@@ -646,6 +655,23 @@ class Chatter:
             self.asking = False
             v.last_chatter = time.monotonic()
             self.next_at = time.monotonic() + self._every()
+
+    async def _generated(self, identity: str, room: str, kind: str) -> None:
+        """An anecdote, a memory or a question made up by the storyteller (inside _ask, holding the lock)."""
+        stories = self.voice.stories
+        ident = self.ctx.identities.get(identity)
+        if ident is None:
+            return
+        said = await stories.chat(ident, room, kind)
+        outcome = "told" if said else "none"
+        if kind == "question" and said:
+            text, _, _, spoke = await self._listen(None)
+            heard = "" if spoke else text
+            self.unanswered = 0 if heard else self.unanswered + 1
+            await stories.chat_reply(ident, said[0], heard)
+            outcome = "answered" if heard else "none"
+        self.ctx.store.add_event("chatter", {"name": ident.name, "question": f"gen-{kind}", "room": room,
+                                             "outcome": outcome, "action": None})
 
     async def _do(self, action: dict[str, Any], room: str) -> None:
         a = self.ctx.actions

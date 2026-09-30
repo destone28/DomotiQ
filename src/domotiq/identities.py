@@ -33,6 +33,21 @@ def clean_name(name: str, limit: int = 40) -> str:
     return name[:limit]
 
 
+MAX_FACTS = 8
+
+
+def clean_facts(facts: Any) -> list[str]:
+    """Up to eight short lines of plain text about a character, for its stories."""
+    if isinstance(facts, str):
+        facts = facts.splitlines()
+    out: list[str] = []
+    for f in facts or []:
+        f = clean_name(str(f), 120).strip(" .;,-")
+        if f and f.casefold() not in (x.casefold() for x in out):
+            out.append(f)
+    return out[-MAX_FACTS:]
+
+
 def name_key(name: str) -> str:
     return clean_name(name).casefold()
 
@@ -105,6 +120,10 @@ class Identities:
         self.bus.publish("identities_changed", action="create", identity=ident.id)
         return ident
 
+    def add_fact(self, identity_id: str, fact: str) -> Identity:
+        ident = self._items[identity_id]
+        return self.update(identity_id, facts=ident.facts + [fact])
+
     def update(self, identity_id: str, *, device: str | None = None,
                nickname: str | None = None, **fields: Any) -> Identity:
         with self._lock:
@@ -123,6 +142,8 @@ class Identities:
             for key in ("alias_en", "color", "photo"):
                 if key in fields:
                     setattr(ident, key, fields[key])
+            if "facts" in fields and fields["facts"] is not None:
+                ident.facts = clean_facts(fields["facts"])
             if "signature" in fields and fields["signature"] is not None:
                 ident.signature = list(fields["signature"])
             self._save()

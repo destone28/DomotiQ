@@ -25,6 +25,8 @@ cd "$ROOT"
 HOUSE=""
 HOTSPOT="boot"
 PIN=""
+STORY_MODEL="Qwen_Qwen3.5-0.8B-Q4_0.gguf"      # Apache-2.0; see docs/decisioni.md D-19
+STORY_URL="https://huggingface.co/bartowski/Qwen_Qwen3.5-0.8B-GGUF/resolve/main/$STORY_MODEL"
 WITH_LLM=1
 WITH_FIRMWARE=1
 while [ $# -gt 0 ]; do
@@ -73,6 +75,7 @@ FREE=$(df -Pm "$ROOT" | awk 'NR==2 {print $4}')
 # what is still missing: models about 800 MB, environments 500 MB, compilers and llama.cpp 600 MB
 NEED=400
 [ -f "$MODELS/llm/qwen2.5-0.5b-instruct-q4_k_m.gguf" ] || NEED=$((NEED + 800))
+[ -f "$MODELS/llm/$STORY_MODEL" ] || NEED=$((NEED + 700))
 [ -x venv/bin/python ] && [ -x piper-venv/bin/python ] || NEED=$((NEED + 500))
 [ -x llama.cpp/build/bin/llama-server ] || NEED=$((NEED + 600))
 [ "$FREE" -gt "$NEED" ] || die "at least $NEED MB free are needed in $ROOT (free: ${FREE} MB)"
@@ -144,6 +147,9 @@ fetch "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/
 if [ "$WITH_LLM" = 1 ]; then
     fetch "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf" \
           "$MODELS/llm/qwen2.5-0.5b-instruct-q4_k_m.gguf"
+    # the storyteller (domotiq-story): a model that writes Italian and English well enough for stories
+    fetch "$STORY_URL" "$MODELS/llm/$STORY_MODEL"
+    ln -sfn "$STORY_MODEL" "$MODELS/llm/story.gguf"
 fi
 ok "$(du -sh "$MODELS" | cut -f1) of models"
 
@@ -226,7 +232,7 @@ ok "casa$HOUSE, Wi-Fi DomotiQ-Casa$HOUSE"
 # ---------------------------------------------------------------------------
 step "Services"
 sudo install -m644 scripts/systemd/domotiq.service scripts/systemd/domotiq-tts.service \
-    scripts/systemd/domotiq-llm.service /etc/systemd/system/
+    scripts/systemd/domotiq-llm.service scripts/systemd/domotiq-story.service /etc/systemd/system/
 # the only way the web app changes the hotspot password: a root-owned script, no wildcard sudo rule
 sudo install -o root -g root -m755 scripts/systemd/domotiq-hotspot-psk /usr/local/sbin/domotiq-hotspot-psk
 # check the rules before they go live: a broken sudoers file would lock sudo out
@@ -236,11 +242,11 @@ sudo install -m644 scripts/systemd/journald-domotiq.conf /etc/systemd/journald.c
     || { sudo mkdir -p /etc/systemd/journald.conf.d && sudo install -m644 scripts/systemd/journald-domotiq.conf /etc/systemd/journald.conf.d/60-domotiq.conf; }
 sudo systemctl daemon-reload
 sudo systemctl enable domotiq-tts domotiq >/dev/null
-if [ "$WITH_LLM" = 1 ]; then sudo systemctl enable domotiq-llm >/dev/null; fi
+if [ "$WITH_LLM" = 1 ]; then sudo systemctl enable domotiq-llm domotiq-story >/dev/null; fi
 # nothing should update the system at a fair
 sudo systemctl disable --now apt-daily.timer apt-daily-upgrade.timer >/dev/null 2>&1 || true
 sudo apt-mark hold alsa-ucm-conf libasound2t64 "linux-image-$(uname -r)" >/dev/null 2>&1 || true
-ok "domotiq, domotiq-tts$([ "$WITH_LLM" = 1 ] && echo ", domotiq-llm")"
+ok "domotiq, domotiq-tts$([ "$WITH_LLM" = 1 ] && echo ", domotiq-llm, domotiq-story")"
 
 # ---------------------------------------------------------------------------
 step "Hotspot"
@@ -254,7 +260,7 @@ esac
 # ---------------------------------------------------------------------------
 step "Start"
 sudo systemctl restart domotiq-tts
-[ "$WITH_LLM" = 1 ] && sudo systemctl restart domotiq-llm || true
+[ "$WITH_LLM" = 1 ] && sudo systemctl restart domotiq-llm domotiq-story || true
 sudo systemctl restart domotiq
 echo
 echo "${B}DomotiQ casa$HOUSE is installed.${N}"
