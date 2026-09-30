@@ -97,7 +97,7 @@ The list of rules, each with a switch to turn it on or off, and the **+ New rule
 
 <img src="../images/screens/en/identities.png" alt="Characters and objects" width="260">
 
-The list of registered characters, pets, cars and objects, with photo or silhouette, kind, and where they are now (*Now: Kitchen*, or *Not in sight*). **+ Add** starts the guided registration; tapping one opens its card, where you can change **Name**, **Kind**, **English pronunciation (optional)** and **Who they are (for the stories)** (one thing per line: a job, a passion, a quirk; the house uses them in stories and answers, see [chapter 8](08-voice.md#two-language-models-commands-and-stories)), or **Delete** it (it stays in the bin for 24 hours). See [chapter 7](07-recognition-and-identities.md).
+The list of registered characters, pets, cars and objects, with photo or silhouette, kind, and where they are now (*Now: Kitchen*, or *Not in sight*). **+ Add** starts the guided registration; tapping one opens its card, where you can change **Name**, **Kind**, **English pronunciation (optional)** and **Who they are (for the stories)** (one thing per line, as it would follow the name: *is a doctor*, *loves jazz*, *is afraid of spiders*; the house uses them in stories and answers, see [chapter 8](08-voice.md#stories-memories-and-free-questions)), or **Delete** it (it stays in the bin for 24 hours). See [chapter 7](07-recognition-and-identities.md).
 
 ### Simulation
 

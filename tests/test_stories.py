@@ -1,10 +1,12 @@
 # SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
 # SPDX-License-Identifier: MIT
-"""Stories, memories of the day and facts about the characters, with a fake story model."""
+"""Stories generated from the local database, the life of the house, memories of the day and facts."""
 
 from __future__ import annotations
 
 import asyncio
+import random
+import re
 import time
 from types import SimpleNamespace
 
@@ -13,44 +15,10 @@ import pytest
 from domotiq.app import build, parse_args
 from domotiq.voice import memory
 from domotiq.voice.intents import Intent
+from domotiq.voice.stories import MONTHS, fact_lang, is_job, load_db, sentence_lang
 
-KITCHEN, LIVING = (80, 100), (300, 100)
-
-
-class FakeModel:
-    """Answers like llama-server would, and remembers what it was asked."""
-
-    def __init__(self) -> None:
-        self.asked: list[str] = []
-        self.slots: list[int] = []
-        self.rate = 10.0                            # tokens a second: fast enough to speak while writing
-        self.personas = 0
-        self.story = ("Marco trovò un pacco in garage. Dentro c'era una tromba d'oro. "
-                      "Suonò in cucina e tutti ballarono. Fu una serata bellissima.")
-        self.question = "D: Marco, hai pagato la bolletta della luce?\nSI: Bravo, sei il più preciso della casa!\nNO: Allora corri, scade domani!"
-
-    def health(self) -> bool:
-        return True
-
-    def _text(self, grammar):
-        if grammar and "SI:" in grammar:
-            return self.question
-        if grammar:
-            self.personas += 1
-            return "lavoro: medico; carattere: distratto; passione: il jazz; mania: parla alle piante"
-        return self.story
-
-    def stream(self, messages, tokens, temperature=0.8, grammar=None, stop=None, slot=0):
-        self.asked.append("\n".join(m["content"] for m in messages))
-        self.slots.append(slot)
-        text = self._text(grammar) if tokens > 1 else ""
-        for word in text.split(" "):
-            if stop is not None and stop.is_set():
-                return
-            yield word + " "
-
-    def complete(self, messages, tokens, temperature=0.7, grammar=None, stop=None, slot=0):
-        return "".join(self.stream(messages, tokens, temperature, grammar, stop, slot))
+KITCHEN, LIVING, GARDEN = (80, 100), (300, 100), (300, 400)
+SENTENCE = re.compile(r"^[A-ZÀ-Ú\"«].*[.!?]$", re.S)
 
 
 @pytest.fixture
@@ -58,12 +26,9 @@ def ctx(tmp_path):
     c = build(parse_args(["--simulate", "--var", str(tmp_path / "var"), "--no-audio", "--no-camera", "--no-llm"]))
     from domotiq.voice.manager import Voice
     c.voice = Voice(c)
-    c.model = FakeModel()
-    c.voice.stories.model = c.model
-    c.voice.stories.ok = True
+    c.voice.stories.rng = random.Random(7)
     c.said = []
     c.bus.subscribe("say", lambda ev: c.said.append(ev.get("text")))
-
     c.voices = []                                   # (sentence, language of the voice) as synthesized
 
     async def speak(*args, **kwargs):
@@ -90,80 +55,117 @@ def place(ctx, name, where, category="person"):
     return ident
 
 
-def test_a_story_is_spoken_sentence_by_sentence(ctx):
-    async def scenario():
-        place(ctx, "Marco", KITCHEN)
-        assert await ctx.voice.stories.tell(["Marco"])
-        assert ctx.said[0] == "Fammi pensare..."
-        assert ctx.said[1:] == ["Marco trovò un pacco in garage.", "Dentro c'era una tromba d'oro.",
-                                "Suonò in cucina e tutti ballarono.", "Fu una serata bellissima."]
-        assert ctx.lights.state()["kitchen"]["source"] in ("auto", "off", "follow")      # back to normal at the end
-        assert ctx.store.events(types=["story"])[0]["data"]["cast"] == ["Marco"]
-    asyncio.run(scenario())
+def well_formed(sentences):
+    for s in sentences:
+        assert "{" not in s and "}" not in s, s
+        assert "  " not in s and " ," not in s and " ." not in s, s
+        assert SENTENCE.match(s), s
+
+
+# ------------------------------------------------------------------ the database
+def test_the_database_holds_together():
+    db = load_db()
+    events = {e["id"] for e in db["events"]}
+    for pool in ("discoveries", "reactions", "helps", "endings"):
+        for piece in db[pool]:
+            assert set(piece.get("for", ())) <= events, piece
+    for e in db["events"]:                          # every event can be explained
+        assert any(e["id"] in d.get("for", ()) for d in db["discoveries"]), e["id"]
+    for group in ("people", "animals"):
+        for slot, items in db[group].items():
+            assert all(x.get("id") for x in items), (group, slot)
+            assert len({x["id"] for x in items}) == len(items), (group, slot)
+    for plot in db["plots"]:
+        assert len(plot["it"]) == len(plot["en"]), plot["id"]
+    for piece in db["relations"] + db["anecdotes"]:
+        assert ("{a}" in piece["it"]) == ("{a}" in piece["en"]), piece
+
+
+# ------------------------------------------------------------------ stories
+def test_stories_are_well_formed_in_both_languages(ctx):
+    st = ctx.voice.stories
+    place(ctx, "Marco", KITCHEN)
+    place(ctx, "Giulia", LIVING)
+    place(ctx, "Fido", GARDEN, "dog")
+    ctx.identities.add("Micio", "cat")
+    casts = [None, ["Marco"], ["Fido"], ["Micio"], ["Marco", "Giulia"], ["Fido", "Micio"], ["Giulia", "Fido"]]
+    for lang in ("it", "en"):
+        for i in range(200):
+            names = casts[i % len(casts)]
+            sentences, cast = st.compose(names, room=("bathroom" if i % 11 == 0 else None), party=i % 9 == 0,
+                                         lang=lang)
+            well_formed(sentences)
+            assert 4 <= len(sentences) <= 6
+            assert all(c.name in " ".join(sentences) for c in cast)
+    # a dog does not hiss and a cat does not bark
+    for _ in range(80):
+        cat_story = " ".join(st.compose(["Micio"], lang="it")[0])
+        assert "abbai" not in cat_story and "scodinzol" not in cat_story
+
+
+def test_every_story_about_a_character_is_new(ctx):
+    st = ctx.voice.stories
+    marco = place(ctx, "Marco", KITCHEN)
+    place(ctx, "Giulia", LIVING)
+    told = [tuple(st.compose(["Marco"], lang="it")[0]) for _ in range(12)]
+    assert len(set(told)) == 12
+    plots = {k for k in st.used[marco.id] if k.startswith("plot:")}
+    assert plots == {"plot:alone", "plot:job", "plot:pair", "plot:pair_quirk", "plot:room"}
+    firsts = [s[0] for s in told[:5]]
+    assert len(set(firsts)) == 5
 
 
 def test_a_character_keeps_its_personality_until_the_restart(ctx):
-    async def scenario():
-        place(ctx, "Marco", KITCHEN)
-        st = ctx.voice.stories
-        await st.tell(["Marco"])
-        await st.tell(["Marco"])
-        assert ctx.model.personas == 1                      # made up once, then kept
-        assert "lavoro: medico; carattere: distratto" in ctx.model.asked[-1]   # the second story knows who Marco is
-        # a story already told is not told again
-        assert "Già raccontate, non ripeterle" in ctx.model.asked[-1] and "Marco trovò un pacco" in ctx.model.asked[-1]
-        st.reset()                                          # what a restart does
-        await st.tell(["Marco"])
-        assert ctx.model.personas == 2
-    asyncio.run(scenario())
+    st = ctx.voice.stories
+    marco = place(ctx, "Marco", KITCHEN)
+    giulia = place(ctx, "Giulia", LIVING)
+    first = st.persona(marco)
+    job_it, job_en = first["job"]["it"], first["job"]["en"]
+    jobs_said = set()
+    for _ in range(40):
+        for lang in ("it", "en"):
+            text = " ".join(st.compose(["Marco"], lang=lang)[0])
+            if "Marco, che " + job_it in text or "Marco, who " + job_en in text:
+                jobs_said.add(lang)
+            for other in st.db["people"]["jobs"]:
+                if other["id"] != first["job"]["id"]:
+                    assert f"Marco, che {other['it']}" not in text and f"Marco, who {other['en']}" not in text
+    assert jobs_said == {"it", "en"}
+    assert st.persona(marco) is first
+    assert st.persona(giulia)["job"]["id"] != first["job"]["id"]          # everyone their own
+    st.reset()                                                           # what a restart does
+    assert st.personas == {}
 
 
 def test_the_facts_of_the_staff_come_first(ctx):
-    async def scenario():
-        marco = place(ctx, "Marco", KITCHEN)
-        st = ctx.voice.stories
-        await st.tell(["Marco"])
-        assert ctx.model.personas == 1
-        ctx.identities.update(marco.id, facts=["fa il pompiere"])
-        await st.tell(["Marco"])
-        assert ctx.model.personas == 2                      # remade, keeping the new fact
-        persona_prompt = next(a for a in reversed(ctx.model.asked) if "personalità di Marco" in a)
-        assert "Deve rispettare: fa il pompiere" in persona_prompt
-        assert "fatti certi fa il pompiere" in ctx.model.asked[-1]
-    asyncio.run(scenario())
+    st = ctx.voice.stories
+    marco = place(ctx, "Marco", KITCHEN)
+    ctx.identities.update(marco.id, facts=["fa il medico", "ama il jazz", "is afraid of spiders"])
+    marco = ctx.identities.get(marco.id)
+    assert st.job(marco, "it")["text"] == "fa il medico"
+    assert st.job(marco, "en")["text"] == "works at the hospital"         # the same job in the other language
+    it_texts = [" ".join(st.compose(["Marco"], lang="it")[0]) for _ in range(40)]
+    en_texts = [" ".join(st.compose(["Marco"], lang="en")[0]) for _ in range(40)]
+    assert any("Marco, che fa il medico" in t for t in it_texts)
+    assert any("ama il jazz" in t for t in it_texts)
+    assert any("Marco, who works at the hospital" in t for t in en_texts)
+    assert any("is afraid of spiders" in t for t in en_texts)
+    assert not any("spiders" in t for t in it_texts) and not any("ama il jazz" in t for t in en_texts)
 
 
-def test_what_the_house_makes_up_is_remembered(ctx):
-    async def scenario():
-        st = ctx.voice.stories
-        ctx.model.story = "L'assicurazione dell'auto scade il dieci marzo."
-        await st.answer("quando scade l'assicurazione dell'auto")
-        assert ctx.said[-1] == "L'assicurazione dell'auto scade il dieci marzo."
-        await st.answer("e quanto costa l'assicurazione")
-        assert "scade il dieci marzo" in ctx.model.asked[-1]      # the next answer agrees with it
-    asyncio.run(scenario())
+def test_what_a_fact_is():
+    assert is_job("fa il medico") and is_job("è una maestra") and is_job("is a doctor") and is_job("a nurse")
+    assert is_job("lavora in banca") and is_job("fa il medico di famiglia")
+    assert not is_job("fa la spesa ogni sabato") and not is_job("è un grande amico di Luca")
+    assert not is_job("ama il jazz") and not is_job("loves jazz")
+    assert fact_lang("ama il jazz") == "it" and fact_lang("loves jazz") == "en" and fact_lang("Juventus") is None
 
 
-def test_stories_and_answers_in_english(ctx):
-    async def scenario():
-        ctx.settings.set("voice.language", "en")
-        place(ctx, "Marco", KITCHEN)
-        ctx.model.story = "Marco found a parcel. It was a golden trumpet."
-        await ctx.voice.stories.tell(["Marco"])
-        assert ctx.said[0] == "Let me think..."
-        assert any("A new story, at most five sentences" in a for a in ctx.model.asked)
-        assert any("Make up the personality of Marco" in a for a in ctx.model.asked)
-    asyncio.run(scenario())
-
-
-def test_blocked_words_are_never_said(ctx):
-    async def scenario():
-        ctx.model.story = "Marco entrò in cucina. Poi disse una parolaccia: merda! Alla fine risero tutti."
-        place(ctx, "Marco", KITCHEN)
-        await ctx.voice.stories.tell(["Marco"])
-        assert not any("merda" in s for s in ctx.said)
-        assert "Alla fine risero tutti." in ctx.said
-    asyncio.run(scenario())
+def test_the_language_of_a_sentence_typed_by_the_staff():
+    assert sentence_lang("Proprio in quel momento dal soffitto cominciò a cadere qualche goccia d'acqua.", "it") == "it"
+    assert sentence_lang("Marco entrò in cucina con una torta.", "en") == "it"
+    assert sentence_lang("Then he saw that the cake was gone and the kitchen was empty.", "it") == "en"
+    assert sentence_lang("Marco is in the kitchen.", "en") == "en"
 
 
 def test_facts_by_voice_and_what_the_house_knows(ctx):
@@ -172,17 +174,35 @@ def test_facts_by_voice_and_what_the_house_knows(ctx):
         await ctx.voice.execute(Intent("fact", {"name": "Marco", "text": "ricorda che marco fa il medico"}))
         assert ctx.identities.get(marco.id).facts == ["fa il medico"]
         assert ctx.said[-1] == "Me lo ricorderò: Marco fa il medico."
-        text = await ctx.voice.stories.about("Marco")
-        assert text.startswith("Di Marco so questo: fa il medico") and "distratto" in text
+        ctx.identities.add_fact(marco.id, "loves jazz")
+        await ctx.voice.execute(Intent("about", {"name": "Marco"}))
+        p = ctx.voice.stories.persona(ctx.identities.get(marco.id))
+        assert ctx.said[-4] == "Mi hai detto che Marco fa il medico."
+        assert ctx.said[-2] == "Marco loves jazz."
+        assert ctx.said[-1].startswith("E poi so che Marco " + p["trait"]["it"])
+        assert p["job"]["it"] not in ctx.said[-1]                          # the job the staff gave, not another
+        assert ("Marco loves jazz.", "en") in ctx.voices                   # read by the English voice
+        assert ctx.said[-3] == "Me l'hai detto anche in inglese:"
+        en = ctx.voice.stories.about("Marco", "en")
+        assert en[0] == ("You told me that Marco loves jazz.", "en") and en[1] == ("You also told me in Italian:", "en")
+    asyncio.run(scenario())
+
+
+def test_a_story_is_told_and_the_lights_go_back(ctx):
+    async def scenario():
+        place(ctx, "Marco", KITCHEN)
+        assert await ctx.voice.stories.tell(["Marco"])
+        assert 4 <= len(ctx.said) <= 6
+        assert all(lang == "it" for _, lang in ctx.voices)
+        assert ctx.lights.state()["kitchen"]["source"] in ("auto", "off", "follow")
+        assert ctx.store.events(types=["story"])[0]["data"]["cast"][0] == "Marco"
     asyncio.run(scenario())
 
 
 def test_talk_stops_a_story(ctx):
     async def scenario():
         place(ctx, "Marco", KITCHEN)
-        ctx.model.story = " ".join(f"Frase numero {i} della storia." for i in range(40))
         v = ctx.voice
-
         ctx.play_s = 0.2
 
         async def listen(grammar, *, stop=None, max_s=5.0, auto_end=True):
@@ -193,17 +213,132 @@ def test_talk_stops_a_story(ctx):
             await asyncio.sleep(0.01)
         assert v.stories.active
         await v.talk_button(True)
-        assert v._talk_task.done() is False or not v.stories.active
         await v.talk_button(False)
         await asyncio.gather(*list(v._tasks), return_exceptions=True)
-        assert len([s for s in ctx.said if s.startswith("Frase numero")]) < 4     # stopped halfway
+        assert len(ctx.said) < 4                                           # stopped halfway
     asyncio.run(scenario())
 
 
-def test_a_generated_chatty_question_is_answered(ctx):
+def test_a_story_stops_when_the_language_changes(ctx):
+    async def scenario():
+        place(ctx, "Marco", KITCHEN)
+        ctx.play_s = 0.2
+        v = ctx.voice
+        task = v._spawn(v.execute(Intent("story", {"names": ["Marco"]})))
+        for _ in range(30):
+            await asyncio.sleep(0.01)
+        told = len(ctx.said)
+        await ctx.actions.set_language("en")
+        await asyncio.wait({task}, timeout=2)
+        assert task.done()
+        assert told < 4 and len(ctx.said) <= told + 2                      # at most the announcement after it
+    asyncio.run(scenario())
+
+
+# ------------------------------------------------------------------ the life of the house
+def month_of(text):
+    for lang in ("it", "en"):
+        for i, m in enumerate(MONTHS[lang]):
+            if re.search(rf"\b{m}\b", text):
+                return i
+    return None
+
+
+def test_the_life_of_the_house_stays_the_same(ctx):
+    st = ctx.voice.stories
+    place(ctx, "Luca", KITCHEN)
+    place(ctx, "Giulia", LIVING)
+    for q_it, q_en in [("Luca ha pagato le bollette?", "Did Luca pay the bills?"),
+                       ("Luca ha pagato la bolletta della luce?", "Did Luca pay the electricity bill?"),
+                       ("Quando scade l'assicurazione dell'auto?", "When does the car insurance run out?"),
+                       ("Chi ha fatto la spesa?", "Who did the shopping?"),
+                       ("Giulia ha portato fuori la spazzatura?", "Did Giulia take out the rubbish?"),
+                       ("Quando è il compleanno di Giulia?", "When is Giulia's birthday?"),
+                       ("Dove va in vacanza Luca?", "Where does Luca go on holiday?"),
+                       ("L'auto ha fatto il tagliando?", "Has the car had its service?")]:
+        it = st.life_answer(q_it, lang="it")
+        assert st.life_answer(q_it, lang="it") == it                      # asked again: the same answer
+        en = st.life_answer(q_en, lang="en")
+        well_formed(it + en)
+        assert it[0].startswith("Sì") == en[0].startswith("Yes"), (it, en)
+        assert it[0].startswith("No") == en[0].startswith("No"), (it, en)
+        assert month_of(" ".join(it)) == month_of(" ".join(en)), (it, en)
+        assert re.findall(r"\d+", " ".join(it).replace(" primo ", " 1 ")) == re.findall(r"\d+", " ".join(en)), (it, en)
+
+
+def test_a_party_of_the_past_is_remembered(ctx):
+    st = ctx.voice.stories
+    place(ctx, "Marco", KITCHEN)
+    it = st.life_answer("ti ricordi la festa di compleanno di giulia del 1998?", recall=True, lang="it")
+    assert it[0].startswith("Certo che me la ricordo! La festa di compleanno di Giulia del 1998 si fece ")
+    assert st.life_answer("ti ricordi la festa di compleanno di giulia del 1998?", recall=True, lang="it") == it
+    en = st.life_answer("do you remember giulia's birthday party in 1998?", recall=True, lang="en")
+    assert en[0].startswith("Of course I remember! Giulia's birthday party in 1998 was ")
+    rooms = {"in giardino": "in the garden", "in soggiorno": "in the living room", "in cucina": "in the kitchen"}
+    assert rooms[it[0].split(" si fece ")[1].rstrip(".")] == en[0].split(" was ")[1].rstrip(".")
+    well_formed(it + en)
+    xmas = st.life_answer("ti ricordi la festa di natale del 2005?", recall=True, lang="it")
+    assert "La festa di Natale del 2005" in xmas[0]
+
+
+def test_other_free_questions(ctx):
+    st = ctx.voice.stories
+    place(ctx, "Marco", KITCHEN)
+    place(ctx, "Fido", GARDEN, "dog")
+    for lang, questions in {"it": ["hai dato da mangiare al cane?", "ti ricordi quando marco è caduto dalla bici?",
+                                   "marco è simpatico?", "chi ha vinto i mondiali?", "le bollette sono pagate?"],
+                            "en": ["did you feed the dog?", "do you remember when marco fell off his bike?",
+                                   "is marco nice?", "who won the world cup?", "are the bills paid?"]}.items():
+        for q in questions:
+            lines = st.life_answer(q, recall="ricord" in q or "remember" in q, lang=lang)
+            assert lines
+            well_formed(lines)
+    assert "Fido" in st.life_answer("hai dato da mangiare al cane?", lang="it")[0]
+    assert st.life_answer("chi ha vinto i mondiali?", lang="it")[0] in [u["it"] for u in st.db["unknown"]]
+
+
+def test_free_questions_by_voice(ctx):
+    async def scenario():
+        place(ctx, "Luca", KITCHEN)
+        await ctx.voice.handle("ti ricordi la festa di compleanno di giulia del 1998")
+        assert any("Giulia del 1998" in s for s in ctx.said)
+        ctx.said.clear()
+        await ctx.voice.handle("quando scade l'assicurazione dell'auto")
+        assert ctx.said and ctx.said[-1].startswith("L'assicurazione dell'auto scade ")
+        # never to the model of the commands, which took it for "where is Luca"
+        asked = []
+
+        class Llm:
+            async def understand(self, text, names):
+                asked.append(text)
+                return Intent("where_is", {"name": "Luca"}, 0.9, "llm")
+        ctx.voice.llm = Llm()
+        ctx.said.clear()
+        await ctx.voice.handle("luca ha pagato le bollette")
+        assert not asked and ctx.said[-1].startswith(("Sì, Luca", "Non ancora", "Non tutte"))
+    asyncio.run(scenario())
+
+
+# ------------------------------------------------------------------ chatty mode
+def test_chatty_lines_are_well_formed(ctx):
+    st = ctx.voice.stories
+    marco = place(ctx, "Marco", KITCHEN)
+    fido = place(ctx, "Fido", GARDEN, "dog")
+    for lang in ("it", "en"):
+        for _ in range(60):
+            for ident in (marco, fido):
+                for kind in st.chat_ready(ident.id):
+                    lines, reply = st.chat_lines(ident, kind, lang)
+                    well_formed(lines + ([reply["yes"], reply["no"]] if reply else []))
+                    assert ident.name in " ".join(lines)
+
+
+def test_a_chatty_question_is_answered_and_remembered(ctx):
     async def scenario():
         from domotiq.voice import chatter as chatter_mod
         chatter_mod.ECHO_S = 0.0
+        st = ctx.voice.stories
+        st.db["chat_questions"] = [q for q in st.db["chat_questions"] if q["topic"] == "bill"]
         marco = place(ctx, "Marco", KITCHEN)
         ctx.settings.set("voice.verbosity", "chatty")
         ctx.voice.listener = SimpleNamespace(ok=True)
@@ -218,53 +353,14 @@ def test_a_generated_chatty_question_is_answered(ctx):
             return "sì", 1.0
         ctx.voice._listen, ctx.voice._recognize = listen, recognize
         await ctx.voice.chatter._ask(marco.id, {"id": "gen-question", "kind": "generated", "gen": "question"})
-        assert ctx.said[0] == "Marco, hai pagato la bolletta della luce?"
-        assert ctx.said[1] == "Bravo, sei il più preciso della casa!"        # the reply written with the question
-        assert any("Marco: sì" in item for item in ctx.voice.stories.lore)
+        m = re.match(r"Marco, hai pagato la bolletta (della luce|del gas|dell'acqua|di internet)\?", ctx.said[0])
+        assert m
+        assert ctx.said[1] == "Perfetto, una cosa in meno a cui pensare!"
+        # now the house knows it
+        assert st.life_answer(f"Marco ha pagato la bolletta {m.group(1)}?", lang="it")[0].startswith("Sì, Marco ha pagato")
         ev = ctx.store.events(types=["chatter"])[0]["data"]
         assert ev["question"] == "gen-question" and ev["outcome"] == "answered" and "heard" not in ev
     asyncio.run(scenario())
-
-
-def test_stories_are_written_ahead_and_told_at_once(ctx):
-    async def scenario():
-        marco = place(ctx, "Marco", KITCHEN)
-        st = ctx.voice.stories
-        for _ in range(6):                          # personality, memory of the house, Marco's story, any story
-            await st._ahead_step()
-        assert f"story:{marco.id}" in st.ahead and "story:*" in st.ahead
-        assert all(slot == 1 for slot, asked in zip(ctx.model.slots, ctx.model.asked) if "Storia nuova" in asked)
-        asked_before = len(ctx.model.asked)
-        await st.tell(["Marco"])
-        assert "Fammi pensare..." not in ctx.said                   # no waiting: it was ready
-        assert ctx.said[0] == "Marco trovò un pacco in garage."
-        assert len(ctx.model.asked) == asked_before                 # nothing asked to the model meanwhile
-        assert f"story:{marco.id}" not in st.ahead                  # used: the next one will be different
-        ctx.identities.update(marco.id, facts=["fa il pompiere"])
-        await st._ahead_step()
-        assert not any(marco.id in v["cast"] for v in st.ahead.values())   # written with the old facts: thrown away
-    asyncio.run(scenario())
-
-
-def test_the_memory_of_the_house_is_given_to_every_free_answer(ctx):
-    async def scenario():
-        marco = place(ctx, "Marco", KITCHEN)
-        ctx.identities.update(marco.id, facts=["fa il medico"])
-        st = ctx.voice.stories
-        ctx.model.story = "Sì, Marco le ha pagate lunedì."
-        await st.answer("Marco ha pagato le bollette?", ["Marco"])
-        asked = ctx.model.asked[-1]
-        assert "Memoria della casa" in asked and "fatti certi fa il medico" in asked
-        await st.answer("e quando scadono le prossime?")
-        assert "le ha pagate lunedì" in ctx.model.asked[-1]
-        assert all(slot == 0 for slot in ctx.model.slots[-2:])         # the slot that keeps the memory read
-    asyncio.run(scenario())
-
-
-def test_sentences_split_well():
-    from domotiq.voice.stories import split_sentences
-    done, rest = split_sentences("Lived Mr. Smith in a house. Dott. Rossi arrived! And then")
-    assert done == ["Lived Mr. Smith in a house.", "Dott. Rossi arrived!"] and rest == "And then"
 
 
 # ------------------------------------------------------------------ memories of the day
@@ -285,52 +381,3 @@ def test_what_a_character_did_today(ctx):
     assert "Marco" in memory.room_day(ctx, "kitchen", "it", now=t0 + 1000)
     assert "una festa" in memory.parties_today(ctx, "it", now=t0 + 1000)
     assert memory.day_of(ctx, "Nessuno", "it").startswith("Non conosco")
-
-
-def test_each_sentence_is_read_by_the_voice_of_its_language(ctx):
-    async def scenario():
-        place(ctx, "Marco", KITCHEN)
-        ctx.model.story = ("Marco entrò in cucina con una torta. Then he saw that the cake was gone and the kitchen was "
-                           "empty. Alla fine la torta era nel frigo.")
-        await ctx.voice.stories.tell(["Marco"])
-        voices = dict(ctx.voices)
-        assert voices["Marco entrò in cucina con una torta."] == "it"
-        assert voices["Then he saw that the cake was gone and the kitchen was empty."] == "en"
-        assert voices["Alla fine la torta era nel frigo."] == "it"
-    asyncio.run(scenario())
-
-
-def test_a_story_stops_when_the_language_changes(ctx):
-    async def scenario():
-        place(ctx, "Marco", KITCHEN)
-        ctx.model.story = " ".join(f"Frase numero {i} della storia." for i in range(40))
-        ctx.play_s = 0.2
-        v = ctx.voice
-        task = v._spawn(v.execute(Intent("story", {"names": ["Marco"]})))
-        for _ in range(30):
-            await asyncio.sleep(0.01)
-        await ctx.actions.set_language("en")
-        await asyncio.wait({task}, timeout=2)
-        assert task.done()
-        assert len([s for s in ctx.said if s.startswith("Frase numero")]) < 4
-    asyncio.run(scenario())
-
-
-def test_a_slow_model_promises_the_story_and_tells_it_later(ctx):
-    async def scenario():
-        place(ctx, "Marco", KITCHEN)
-        ctx.model.rate = 1.0                        # like a big model on the UNO Q: slower than speech
-        st = ctx.voice.stories
-        assert st.slow
-        assert await st.tell(["Marco"])
-        assert ctx.said[-1] == "La sto ancora scrivendo: te la racconto tra un paio di minuti!"
-        await asyncio.gather(*list(ctx.voice._tasks))
-        assert "Ecco la storia che mi avevi chiesto!" in ctx.said
-        assert ctx.said[-1] == "Fu una serata bellissima."
-        ctx.model.story = "Sì, Marco le ha pagate lunedì."
-        assert await st.answer("Marco ha pagato le bollette?", ["Marco"])
-        assert ctx.said[-1] == "Bella domanda! Ci penso e te lo dico tra poco."
-        await asyncio.gather(*list(ctx.voice._tasks))
-        assert ctx.said[-2:] == ["Ecco la risposta alla domanda di prima.", "Sì, Marco le ha pagate lunedì."]
-        assert any("pagate lunedì" in item for item in st.lore)
-    asyncio.run(scenario())

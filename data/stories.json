@@ -1,0 +1,2715 @@
+{
+  "_about": "Pieces the house combines into stories, memories and answers, in Italian and English. Every piece is written to agree with any name: in Italian no adjective or participle refers to a character (never 'contento', 'andato'), in English no he or she. 'for' ties a piece to the events it explains; 'tags' join the pieces that belong together (an event tagged 'dark' is followed by reactions and endings tagged 'dark' or without tags); day and night, summer and winter never meet; 'not_in' keeps an event out of a room and 'not' out of a moment that already says it; 'only' keeps a piece for dogs or cats; 'pet' marks the relationships that also fit a pet; 'match' tells which facts of the staff are a job. {A} and {B} are the characters at their first mention ('il cane Fido'), {a} and {b} their names; {a.trait}, {a.job}, {a.passion}, {a.passion_use}, {a.job_use}, {a.quirk} their personality; {room_in} is a room with its preposition ('in cucina').",
+  "people": {
+    "jobs": [
+      {
+        "id": "pastry",
+        "it": "fa i dolci in una pasticceria",
+        "en": "makes cakes in a pastry shop",
+        "use": {
+          "it": "sfornò una torta al cioccolato per tutti",
+          "en": "baked a chocolate cake for everyone"
+        },
+        "tags": [
+          "food"
+        ],
+        "match": "pasticc|pastry"
+      },
+      {
+        "id": "firefighter",
+        "it": "spegne gli incendi per mestiere",
+        "en": "puts out fires for a living",
+        "use": {
+          "it": "controllò che in casa fosse tutto in sicurezza",
+          "en": "checked that the whole house was safe"
+        },
+        "tags": [
+          "dark",
+          "smell"
+        ],
+        "match": "pompier|vigil\\w* del fuoco|firefighter|fireman"
+      },
+      {
+        "id": "doctor",
+        "it": "lavora in ospedale",
+        "en": "works at the hospital",
+        "use": {
+          "it": "si assicurò che nessuno si fosse fatto male",
+          "en": "made sure nobody had been hurt"
+        },
+        "tags": [],
+        "match": "medic|dottor|ospedal|doctor|hospital|nurse|infermier"
+      },
+      {
+        "id": "teacher",
+        "it": "insegna in una scuola elementare",
+        "en": "teaches at a primary school",
+        "use": {
+          "it": "spiegò a tutti cosa era successo con molta pazienza",
+          "en": "patiently explained to everyone what had happened"
+        },
+        "tags": [],
+        "match": "insegn|maestr|professor|teacher|school"
+      },
+      {
+        "id": "florist",
+        "it": "vende fiori in un piccolo negozio",
+        "en": "sells flowers in a little shop",
+        "use": {
+          "it": "riempì il soggiorno di margherite",
+          "en": "filled the living room with daisies"
+        },
+        "tags": [
+          "garden"
+        ],
+        "match": "fior(aio|aia|ista)|florist"
+      },
+      {
+        "id": "mechanic",
+        "it": "ripara automobili in un'officina",
+        "en": "repairs cars in a garage",
+        "use": {
+          "it": "sistemò tutto con la sua cassetta degli attrezzi",
+          "en": "fixed everything with a toolbox"
+        },
+        "tags": [
+          "dark",
+          "noise"
+        ],
+        "match": "meccanic|officina|mechanic|garage"
+      },
+      {
+        "id": "vet",
+        "it": "cura gli animali in un ambulatorio",
+        "en": "looks after animals at a clinic",
+        "use": {
+          "it": "accarezzò tutti gli animali della casa",
+          "en": "stroked every animal in the house"
+        },
+        "tags": [
+          "animal"
+        ],
+        "match": "veterinari|vet\\b|vets\\b"
+      },
+      {
+        "id": "cook",
+        "it": "cucina in un ristorante",
+        "en": "cooks in a restaurant",
+        "use": {
+          "it": "preparò una pasta al pomodoro in cinque minuti",
+          "en": "made pasta with tomato sauce in five minutes"
+        },
+        "tags": [
+          "food"
+        ],
+        "match": "cuoc|chef|ristorant|cook\\b|restaurant"
+      },
+      {
+        "id": "gardener",
+        "it": "si occupa dei giardini della città",
+        "en": "looks after the town's gardens",
+        "use": {
+          "it": "piantò un albero nuovo in giardino",
+          "en": "planted a new tree in the garden"
+        },
+        "tags": [
+          "garden",
+          "weather"
+        ],
+        "match": "giardinier|gardener"
+      },
+      {
+        "id": "electrician",
+        "it": "fa l'elettricista",
+        "en": "works as an electrician",
+        "use": {
+          "it": "rimise a posto la corrente in un attimo",
+          "en": "had the power back on in no time"
+        },
+        "tags": [
+          "dark"
+        ],
+        "match": "elettricist|electrician"
+      },
+      {
+        "id": "postal",
+        "it": "consegna la posta in bicicletta",
+        "en": "delivers the post by bicycle",
+        "use": {
+          "it": "consegnò un biglietto di auguri a tutti",
+          "en": "handed everyone a greetings card"
+        },
+        "tags": [
+          "visitor"
+        ],
+        "match": "postin|postman|postwoman|post office|mail"
+      },
+      {
+        "id": "musician",
+        "it": "suona il violino in un'orchestra",
+        "en": "plays the violin in an orchestra",
+        "use": {
+          "it": "suonò una canzone allegra per tutti",
+          "en": "played a cheerful tune for everyone"
+        },
+        "tags": [
+          "party",
+          "noise"
+        ],
+        "match": "music|violin|orchestr|pianist|chitarrist|guitarist"
+      },
+      {
+        "id": "librarian",
+        "it": "lavora in una biblioteca",
+        "en": "works in a library",
+        "use": {
+          "it": "lesse ad alta voce una storia buffa",
+          "en": "read a funny story aloud"
+        },
+        "tags": [],
+        "match": "bibliotec|librarian|library"
+      },
+      {
+        "id": "pilot",
+        "it": "pilota aerei di linea",
+        "en": "flies passenger planes",
+        "use": {
+          "it": "raccontò di quando aveva visto un temporale dall'alto",
+          "en": "told everyone about seeing a storm from above"
+        },
+        "tags": [
+          "weather"
+        ],
+        "match": "pilot"
+      },
+      {
+        "id": "painter",
+        "it": "dipinge quadri pieni di colori",
+        "en": "paints colourful pictures",
+        "use": {
+          "it": "dipinse un ritratto di tutta la casa",
+          "en": "painted a portrait of the whole house"
+        },
+        "tags": [],
+        "match": "pittor|painter|artist"
+      },
+      {
+        "id": "baker",
+        "it": "fa il pane di notte in un forno",
+        "en": "bakes bread at night in a bakery",
+        "use": {
+          "it": "portò una cesta di pane ancora caldo",
+          "en": "brought a basket of warm bread"
+        },
+        "tags": [
+          "food",
+          "night"
+        ],
+        "match": "fornai|panettier|baker|bakery"
+      },
+      {
+        "id": "scientist",
+        "it": "fa esperimenti in un laboratorio",
+        "en": "does experiments in a laboratory",
+        "use": {
+          "it": "spiegò con un esperimento cosa era successo",
+          "en": "showed with an experiment what had happened"
+        },
+        "tags": [
+          "noise",
+          "smell"
+        ],
+        "match": "scienziat|ricercat|laboratori|scientist|research|lab\\b"
+      },
+      {
+        "id": "plumber",
+        "it": "ripara tubi e rubinetti",
+        "en": "mends pipes and taps",
+        "use": {
+          "it": "chiuse la perdita con una chiave inglese",
+          "en": "stopped the leak with a spanner"
+        },
+        "tags": [
+          "water"
+        ],
+        "match": "idraulic|plumber"
+      },
+      {
+        "id": "photographer",
+        "it": "fa il fotografo ai matrimoni",
+        "en": "takes photos at weddings",
+        "use": {
+          "it": "scattò una foto ricordo a tutti",
+          "en": "took a souvenir photo of everyone"
+        },
+        "tags": [
+          "party"
+        ],
+        "match": "fotograf|photographer"
+      },
+      {
+        "id": "tailor",
+        "it": "cuce vestiti su misura",
+        "en": "sews made-to-measure clothes",
+        "use": {
+          "it": "cucì una bandierina per ogni stanza",
+          "en": "sewed a little flag for every room"
+        },
+        "tags": [],
+        "match": "sart|tailor"
+      },
+      {
+        "id": "farmer",
+        "it": "coltiva ortaggi in campagna",
+        "en": "grows vegetables in the countryside",
+        "use": {
+          "it": "portò una cassetta di pomodori dell'orto",
+          "en": "brought a crate of tomatoes from the vegetable patch"
+        },
+        "tags": [
+          "food",
+          "garden"
+        ],
+        "match": "contadin|agricolt|farmer"
+      },
+      {
+        "id": "driver",
+        "it": "guida l'autobus in città",
+        "en": "drives a bus in town",
+        "use": {
+          "it": "accompagnò tutti a fare un giro in macchina",
+          "en": "took everyone for a drive"
+        },
+        "tags": [
+          "car"
+        ],
+        "match": "autist|driver|bus\\b|autobus|tassist|taxi"
+      },
+      {
+        "id": "clown",
+        "it": "fa ridere i bambini alle feste",
+        "en": "makes children laugh at parties",
+        "use": {
+          "it": "fece un numero di magia con tre palline",
+          "en": "did a magic trick with three balls"
+        },
+        "tags": [
+          "party"
+        ],
+        "match": "clown|pagliacc"
+      },
+      {
+        "id": "astronomer",
+        "it": "studia le stelle con un telescopio",
+        "en": "studies the stars through a telescope",
+        "use": {
+          "it": "mostrò a tutti la luna dal giardino",
+          "en": "showed everyone the moon from the garden"
+        },
+        "tags": [
+          "night",
+          "garden"
+        ],
+        "match": "astronom"
+      }
+    ],
+    "traits": [
+      {
+        "id": "smile",
+        "it": "ha sempre il sorriso",
+        "en": "always has a smile"
+      },
+      {
+        "id": "calm",
+        "it": "non perde mai la calma",
+        "en": "never loses their temper"
+      },
+      {
+        "id": "curious",
+        "it": "vuole sempre sapere tutto",
+        "en": "always wants to know everything"
+      },
+      {
+        "id": "scared",
+        "it": "si spaventa per un nonnulla",
+        "en": "gets scared at the slightest thing"
+      },
+      {
+        "id": "grumpy",
+        "it": "brontola per ogni cosa",
+        "en": "grumbles about everything"
+      },
+      {
+        "id": "hurry",
+        "it": "è sempre di corsa",
+        "en": "is always in a hurry"
+      },
+      {
+        "id": "distracted",
+        "it": "si dimentica sempre dove mette le cose",
+        "en": "always forgets where things are"
+      },
+      {
+        "id": "generous",
+        "it": "divide sempre tutto con tutti",
+        "en": "always shares everything with everyone"
+      },
+      {
+        "id": "brave",
+        "it": "non ha paura di niente",
+        "en": "is afraid of nothing"
+      },
+      {
+        "id": "funny",
+        "it": "racconta barzellette a tutte le ore",
+        "en": "tells jokes at all hours"
+      },
+      {
+        "id": "tidy",
+        "it": "tiene tutto in ordine perfetto",
+        "en": "keeps everything perfectly tidy"
+      },
+      {
+        "id": "sleepy",
+        "it": "sbadiglia dalla mattina alla sera",
+        "en": "yawns from morning till night"
+      },
+      {
+        "id": "greedy",
+        "it": "non dice mai di no a un dolce",
+        "en": "never says no to a sweet"
+      },
+      {
+        "id": "chatty",
+        "it": "chiacchiera senza sosta",
+        "en": "chats non-stop"
+      },
+      {
+        "id": "patient",
+        "it": "ha una pazienza infinita",
+        "en": "has endless patience"
+      },
+      {
+        "id": "romantic",
+        "it": "si commuove per un tramonto",
+        "en": "is moved to tears by a sunset"
+      },
+      {
+        "id": "stubborn",
+        "it": "non cambia mai idea",
+        "en": "never changes their mind"
+      },
+      {
+        "id": "early",
+        "it": "si alza prima del sole",
+        "en": "gets up before the sun"
+      },
+      {
+        "id": "optimist",
+        "it": "vede il lato bello di ogni cosa",
+        "en": "sees the bright side of everything"
+      },
+      {
+        "id": "shy",
+        "it": "arrossisce quando qualcuno fa un complimento",
+        "en": "blushes at every compliment"
+      }
+    ],
+    "passions": [
+      {
+        "id": "jazz",
+        "it": "ama il jazz",
+        "en": "loves jazz",
+        "use": {
+          "it": "mise su un disco di jazz",
+          "en": "put on a jazz record"
+        }
+      },
+      {
+        "id": "football",
+        "it": "tifa per la squadra del quartiere",
+        "en": "supports the local football team",
+        "use": {
+          "it": "cantò l'inno della squadra del quartiere",
+          "en": "sang the local team's anthem"
+        }
+      },
+      {
+        "id": "puzzles",
+        "it": "adora i puzzle da mille pezzi",
+        "en": "adores thousand-piece puzzles",
+        "use": {
+          "it": "tirò fuori un puzzle da mille pezzi",
+          "en": "brought out a thousand-piece puzzle"
+        }
+      },
+      {
+        "id": "dance",
+        "it": "balla il tango",
+        "en": "dances the tango",
+        "use": {
+          "it": "improvvisò un tango in soggiorno",
+          "en": "danced a tango in the living room"
+        }
+      },
+      {
+        "id": "stamps",
+        "it": "colleziona francobolli",
+        "en": "collects stamps",
+        "use": {
+          "it": "mostrò a tutti il francobollo più raro della collezione",
+          "en": "showed everyone the rarest stamp in the collection"
+        }
+      },
+      {
+        "id": "cooking",
+        "it": "sperimenta ricette nuove",
+        "en": "tries out new recipes",
+        "use": {
+          "it": "inventò una ricetta nuova con quello che c'era in frigo",
+          "en": "invented a new recipe with whatever was in the fridge"
+        }
+      },
+      {
+        "id": "cycling",
+        "it": "va in bicicletta anche sotto la pioggia",
+        "en": "cycles even in the rain",
+        "use": {
+          "it": "propose a tutti un giro in bicicletta",
+          "en": "suggested a bike ride for everyone"
+        }
+      },
+      {
+        "id": "cards",
+        "it": "gioca a carte con gli amici",
+        "en": "plays cards with friends",
+        "use": {
+          "it": "organizzò una partita a carte",
+          "en": "set up a game of cards"
+        }
+      },
+      {
+        "id": "gardening",
+        "it": "cura un piccolo orto",
+        "en": "tends a small vegetable patch",
+        "use": {
+          "it": "raccolse le fragole dell'orto per tutti",
+          "en": "picked strawberries from the patch for everyone"
+        }
+      },
+      {
+        "id": "photos",
+        "it": "fotografa gli uccellini",
+        "en": "photographs little birds",
+        "use": {
+          "it": "fece vedere a tutti le foto degli uccellini",
+          "en": "showed everyone the photos of little birds"
+        }
+      },
+      {
+        "id": "singing",
+        "it": "canta nel coro della parrocchia",
+        "en": "sings in the church choir",
+        "use": {
+          "it": "intonò una canzone e tutti la cantarono insieme",
+          "en": "started a song and everyone sang along"
+        }
+      },
+      {
+        "id": "books",
+        "it": "legge un libro alla settimana",
+        "en": "reads a book a week",
+        "use": {
+          "it": "consigliò a tutti il libro della settimana",
+          "en": "recommended the book of the week to everyone"
+        }
+      },
+      {
+        "id": "films",
+        "it": "conosce a memoria i film di cartoni animati",
+        "en": "knows cartoon films by heart",
+        "use": {
+          "it": "propose di guardare un cartone animato tutti insieme",
+          "en": "suggested watching a cartoon all together"
+        }
+      },
+      {
+        "id": "chess",
+        "it": "gioca a scacchi",
+        "en": "plays chess",
+        "use": {
+          "it": "sfidò tutti a una partita a scacchi",
+          "en": "challenged everyone to a game of chess"
+        }
+      },
+      {
+        "id": "knitting",
+        "it": "fa maglioni ai ferri",
+        "en": "knits jumpers",
+        "use": {
+          "it": "regalò a tutti una sciarpa fatta a mano",
+          "en": "gave everyone a hand-knitted scarf"
+        }
+      },
+      {
+        "id": "stars",
+        "it": "guarda le stelle cadenti",
+        "en": "watches shooting stars",
+        "use": {
+          "it": "portò tutti in giardino a guardare le stelle",
+          "en": "took everyone into the garden to watch the stars"
+        }
+      },
+      {
+        "id": "guitar",
+        "it": "suona la chitarra",
+        "en": "plays the guitar",
+        "use": {
+          "it": "prese la chitarra e suonò una canzone",
+          "en": "picked up the guitar and played a song"
+        }
+      },
+      {
+        "id": "magic",
+        "it": "fa giochi di prestigio",
+        "en": "does magic tricks",
+        "use": {
+          "it": "fece sparire una moneta e la ritrovò in un'arancia",
+          "en": "made a coin vanish and found it inside an orange"
+        }
+      },
+      {
+        "id": "painting",
+        "it": "dipinge acquerelli",
+        "en": "paints watercolours",
+        "use": {
+          "it": "dipinse un acquerello della serata",
+          "en": "painted a watercolour of the evening"
+        }
+      },
+      {
+        "id": "trains",
+        "it": "costruisce trenini in miniatura",
+        "en": "builds model trains",
+        "use": {
+          "it": "fece correre un trenino per tutto il soggiorno",
+          "en": "ran a model train all around the living room"
+        }
+      },
+      {
+        "id": "pizza",
+        "it": "fa la pizza più buona del quartiere",
+        "en": "makes the best pizza in the neighbourhood",
+        "use": {
+          "it": "sfornò una pizza margherita per tutti",
+          "en": "baked a margherita pizza for everyone"
+        }
+      },
+      {
+        "id": "crosswords",
+        "it": "risolve le parole crociate",
+        "en": "does crosswords",
+        "use": {
+          "it": "propose una sfida di parole crociate",
+          "en": "set everyone a crossword challenge"
+        }
+      },
+      {
+        "id": "karaoke",
+        "it": "adora il karaoke",
+        "en": "adores karaoke",
+        "use": {
+          "it": "accese il karaoke e cantò per primo",
+          "en": "turned on the karaoke and sang first"
+        }
+      },
+      {
+        "id": "hiking",
+        "it": "cammina in montagna",
+        "en": "goes walking in the mountains",
+        "use": {
+          "it": "raccontò la sua ultima gita in montagna",
+          "en": "told everyone about the last mountain walk"
+        }
+      }
+    ],
+    "quirks": [
+      {
+        "id": "plants",
+        "it": "parla alle piante",
+        "en": "talks to the plants"
+      },
+      {
+        "id": "shower",
+        "it": "canta sotto la doccia",
+        "en": "sings in the shower"
+      },
+      {
+        "id": "stairs",
+        "it": "conta i gradini delle scale",
+        "en": "counts the steps on every staircase"
+      },
+      {
+        "id": "socks",
+        "it": "porta sempre calzini spaiati",
+        "en": "always wears odd socks"
+      },
+      {
+        "id": "whistle",
+        "it": "fischietta nei momenti di tensione",
+        "en": "whistles when nervous"
+      },
+      {
+        "id": "notes",
+        "it": "scrive tutto su foglietti colorati",
+        "en": "writes everything on colourful sticky notes"
+      },
+      {
+        "id": "clock",
+        "it": "controlla l'orologio ogni cinque minuti",
+        "en": "checks the clock every five minutes"
+      },
+      {
+        "id": "hats",
+        "it": "colleziona cappelli buffi",
+        "en": "collects funny hats"
+      },
+      {
+        "id": "tea",
+        "it": "beve dieci tazze di tè al giorno",
+        "en": "drinks ten cups of tea a day"
+      },
+      {
+        "id": "names",
+        "it": "dà un nome a ogni oggetto di casa",
+        "en": "gives a name to every object in the house"
+      },
+      {
+        "id": "backwards",
+        "it": "legge i giornali dall'ultima pagina",
+        "en": "reads newspapers from the last page"
+      },
+      {
+        "id": "hums",
+        "it": "canticchia mentre lavora",
+        "en": "hums while working"
+      },
+      {
+        "id": "lists",
+        "it": "fa una lista per ogni cosa",
+        "en": "makes a list for everything"
+      },
+      {
+        "id": "weather",
+        "it": "annuncia il meteo a tutti ogni mattina",
+        "en": "announces the weather to everyone every morning"
+      },
+      {
+        "id": "sandwich",
+        "it": "mangia il panino partendo dal centro",
+        "en": "eats sandwiches starting from the middle"
+      },
+      {
+        "id": "pockets",
+        "it": "ha sempre le tasche piene di caramelle",
+        "en": "always has pockets full of sweets"
+      },
+      {
+        "id": "hello",
+        "it": "saluta il postino dalla finestra",
+        "en": "waves to the postman from the window"
+      },
+      {
+        "id": "slippers",
+        "it": "non si toglie mai le pantofole",
+        "en": "never takes their slippers off"
+      },
+      {
+        "id": "alarm",
+        "it": "mette tre sveglie ogni sera",
+        "en": "sets three alarms every night"
+      },
+      {
+        "id": "dancing",
+        "it": "balla quando passa la lavatrice in centrifuga",
+        "en": "dances whenever the washing machine spins"
+      }
+    ]
+  },
+  "animals": {
+    "traits": [
+      {
+        "id": "lazy",
+        "it": "dorme quasi tutto il giorno",
+        "en": "sleeps nearly all day"
+      },
+      {
+        "id": "greedy",
+        "it": "annusa ogni briciola",
+        "en": "sniffs out every crumb"
+      },
+      {
+        "id": "brave",
+        "it": "fa la guardia a tutta la casa",
+        "en": "guards the whole house"
+      },
+      {
+        "id": "playful",
+        "it": "vuole giocare in ogni momento",
+        "en": "wants to play all the time"
+      },
+      {
+        "id": "shy",
+        "it": "si nasconde quando arriva qualcuno di nuovo",
+        "en": "hides when someone new arrives"
+      },
+      {
+        "id": "clever",
+        "it": "capisce tutto al volo",
+        "en": "understands everything in a flash"
+      },
+      {
+        "id": "noisy",
+        "it": "fa sentire la sua voce a ogni rumore",
+        "en": "makes itself heard at every noise"
+      },
+      {
+        "id": "cuddly",
+        "it": "cerca coccole da tutti",
+        "en": "looks for cuddles from everyone"
+      }
+    ],
+    "passions": [
+      {
+        "id": "balls",
+        "it": "adora le palline",
+        "en": "adores balls",
+        "use": {
+          "it": "portò una pallina a tutti per giocare",
+          "en": "brought everyone a ball to play with"
+        }
+      },
+      {
+        "id": "sofa",
+        "it": "ama il divano del soggiorno",
+        "en": "loves the living room sofa",
+        "use": {
+          "it": "si acciambellò sul divano accanto a tutti",
+          "en": "curled up on the sofa next to everyone"
+        }
+      },
+      {
+        "id": "garden",
+        "it": "adora scavare in giardino",
+        "en": "loves digging in the garden",
+        "use": {
+          "it": "scavò una buca in giardino per festeggiare",
+          "en": "dug a hole in the garden to celebrate"
+        }
+      },
+      {
+        "id": "sun",
+        "it": "cerca sempre il raggio di sole più caldo",
+        "en": "always looks for the warmest ray of sun",
+        "use": {
+          "it": "si sdraiò al sole in mezzo a tutti",
+          "en": "lay down in the sun among everyone"
+        }
+      },
+      {
+        "id": "biscuits",
+        "it": "impazzisce per i biscotti",
+        "en": "goes mad for biscuits",
+        "use": {
+          "it": "ricevette un biscotto come premio",
+          "en": "got a biscuit as a reward"
+        }
+      },
+      {
+        "id": "boxes",
+        "it": "adora le scatole di cartone",
+        "en": "adores cardboard boxes",
+        "use": {
+          "it": "si infilò in una scatola di cartone tutta contenta",
+          "en": "happily squeezed into a cardboard box"
+        }
+      }
+    ],
+    "quirks": [
+      {
+        "id": "pigeons",
+        "it": "abbaia ai piccioni dalla finestra",
+        "en": "barks at the pigeons from the window",
+        "only": [
+          "dog"
+        ]
+      },
+      {
+        "id": "tail",
+        "it": "rincorre la propria coda",
+        "en": "chases its own tail"
+      },
+      {
+        "id": "socks",
+        "it": "ruba i calzini dal cesto del bucato",
+        "en": "steals socks from the laundry basket"
+      },
+      {
+        "id": "door",
+        "it": "aspetta tutti davanti alla porta",
+        "en": "waits for everyone at the door"
+      },
+      {
+        "id": "phone",
+        "it": "risponde ogni volta che squilla il telefono",
+        "en": "answers every time the phone rings"
+      },
+      {
+        "id": "mirror",
+        "it": "fissa il proprio riflesso nello specchio",
+        "en": "stares at its reflection in the mirror"
+      },
+      {
+        "id": "vacuum",
+        "it": "scappa quando parte l'aspirapolvere",
+        "en": "runs away when the vacuum cleaner starts"
+      },
+      {
+        "id": "shoes",
+        "it": "dorme sopra le scarpe",
+        "en": "sleeps on top of the shoes"
+      },
+      {
+        "id": "purr",
+        "it": "fa le fusa più forte di un motore",
+        "en": "purrs louder than an engine",
+        "only": [
+          "cat"
+        ]
+      }
+    ]
+  },
+  "moments": [
+    {
+      "it": "Una domenica mattina",
+      "en": "One Sunday morning",
+      "tags": [
+        "day"
+      ]
+    },
+    {
+      "it": "Una sera d'inverno",
+      "en": "One winter evening",
+      "tags": [
+        "night",
+        "winter"
+      ]
+    },
+    {
+      "it": "Un pomeriggio di pioggia",
+      "en": "One rainy afternoon",
+      "tags": [
+        "weather",
+        "day"
+      ],
+      "not": [
+        "storm"
+      ]
+    },
+    {
+      "it": "Una notte di luna piena",
+      "en": "One night under a full moon",
+      "tags": [
+        "night"
+      ]
+    },
+    {
+      "it": "Il giorno di Ferragosto",
+      "en": "On a hot August holiday",
+      "tags": [
+        "day",
+        "summer"
+      ]
+    },
+    {
+      "it": "Una mattina di primavera",
+      "en": "One spring morning",
+      "tags": [
+        "day"
+      ]
+    },
+    {
+      "it": "La vigilia di Natale",
+      "en": "On Christmas Eve",
+      "tags": [
+        "night",
+        "party",
+        "winter"
+      ]
+    },
+    {
+      "it": "Un sabato pomeriggio",
+      "en": "One Saturday afternoon",
+      "tags": [
+        "day"
+      ]
+    },
+    {
+      "it": "Una sera d'estate",
+      "en": "One summer evening",
+      "tags": [
+        "night",
+        "summer"
+      ]
+    },
+    {
+      "it": "Un lunedì molto presto",
+      "en": "Very early one Monday",
+      "tags": [
+        "day"
+      ]
+    },
+    {
+      "it": "Il giorno del compleanno della casa",
+      "en": "On the house's birthday",
+      "tags": [
+        "party"
+      ]
+    },
+    {
+      "it": "Una mattina di nebbia",
+      "en": "One foggy morning",
+      "tags": [
+        "weather",
+        "day"
+      ],
+      "not": [
+        "fog"
+      ]
+    },
+    {
+      "it": "Un giovedì sera",
+      "en": "One Thursday evening",
+      "tags": [
+        "night"
+      ]
+    },
+    {
+      "it": "Il primo giorno di scuola",
+      "en": "On the first day of school",
+      "tags": [
+        "day"
+      ]
+    },
+    {
+      "it": "Una notte di temporale",
+      "en": "One stormy night",
+      "tags": [
+        "night",
+        "weather"
+      ],
+      "not": [
+        "storm"
+      ]
+    },
+    {
+      "it": "Un pomeriggio d'autunno",
+      "en": "One autumn afternoon",
+      "tags": [
+        "day"
+      ]
+    }
+  ],
+  "activities": {
+    "kitchen": [
+      {
+        "it": "preparare una torta",
+        "en": "baking a cake"
+      },
+      {
+        "it": "lavare i piatti",
+        "en": "washing the dishes"
+      },
+      {
+        "it": "fare il caffè",
+        "en": "making coffee"
+      },
+      {
+        "it": "impastare la pizza",
+        "en": "kneading pizza dough"
+      },
+      {
+        "it": "sbucciare le patate",
+        "en": "peeling potatoes"
+      },
+      {
+        "it": "cercare un barattolo di marmellata",
+        "en": "looking for a jar of jam"
+      }
+    ],
+    "living": [
+      {
+        "it": "leggere un libro sul divano",
+        "en": "reading a book on the sofa"
+      },
+      {
+        "it": "guardare un film",
+        "en": "watching a film"
+      },
+      {
+        "it": "fare un puzzle",
+        "en": "doing a jigsaw puzzle"
+      },
+      {
+        "it": "sistemare le fotografie",
+        "en": "sorting out the photographs"
+      },
+      {
+        "it": "annaffiare le piante",
+        "en": "watering the plants"
+      },
+      {
+        "it": "suonare il pianoforte",
+        "en": "playing the piano"
+      }
+    ],
+    "bedroom": [
+      {
+        "it": "piegare i vestiti",
+        "en": "folding clothes"
+      },
+      {
+        "it": "fare un pisolino",
+        "en": "taking a nap"
+      },
+      {
+        "it": "cercare un calzino perduto",
+        "en": "looking for a lost sock"
+      },
+      {
+        "it": "leggere a letto",
+        "en": "reading in bed"
+      },
+      {
+        "it": "sistemare l'armadio",
+        "en": "tidying the wardrobe"
+      },
+      {
+        "it": "scrivere un diario",
+        "en": "writing a diary"
+      }
+    ],
+    "bathroom": [
+      {
+        "it": "lavarsi i denti",
+        "en": "brushing their teeth"
+      },
+      {
+        "it": "pulire lo specchio",
+        "en": "cleaning the mirror"
+      },
+      {
+        "it": "riempire la vasca",
+        "en": "running a bath"
+      },
+      {
+        "it": "cercare lo shampoo",
+        "en": "looking for the shampoo"
+      }
+    ],
+    "garage": [
+      {
+        "it": "riparare la bicicletta",
+        "en": "repairing the bicycle"
+      },
+      {
+        "it": "lavare la macchina",
+        "en": "washing the car"
+      },
+      {
+        "it": "cercare un cacciavite",
+        "en": "looking for a screwdriver"
+      },
+      {
+        "it": "mettere in ordine gli attrezzi",
+        "en": "tidying up the tools"
+      },
+      {
+        "it": "gonfiare le gomme della bicicletta",
+        "en": "pumping up the bicycle tyres"
+      }
+    ],
+    "garden": [
+      {
+        "it": "annaffiare i fiori",
+        "en": "watering the flowers"
+      },
+      {
+        "it": "raccogliere i pomodori",
+        "en": "picking tomatoes"
+      },
+      {
+        "it": "preparare la griglia",
+        "en": "getting the barbecue ready"
+      },
+      {
+        "it": "tagliare l'erba",
+        "en": "mowing the lawn"
+      },
+      {
+        "it": "appendere il bucato",
+        "en": "hanging out the washing"
+      },
+      {
+        "it": "guardare le nuvole",
+        "en": "watching the clouds"
+      }
+    ],
+    "utility": [
+      {
+        "it": "controllare la lavatrice",
+        "en": "checking the washing machine"
+      },
+      {
+        "it": "cercare una lampadina di ricambio",
+        "en": "looking for a spare light bulb"
+      },
+      {
+        "it": "mettere via le scope",
+        "en": "putting the brooms away"
+      }
+    ]
+  },
+  "animal_activities": {
+    "kitchen": [
+      {
+        "it": "aspettare che cadesse qualcosa dal tavolo",
+        "en": "waiting for something to fall off the table"
+      },
+      {
+        "it": "annusare la dispensa",
+        "en": "sniffing the pantry"
+      }
+    ],
+    "living": [
+      {
+        "it": "dormire sul divano",
+        "en": "sleeping on the sofa"
+      },
+      {
+        "it": "giocare con una pallina",
+        "en": "playing with a ball"
+      }
+    ],
+    "bedroom": [
+      {
+        "it": "sonnecchiare sul tappeto",
+        "en": "dozing on the rug"
+      },
+      {
+        "it": "nascondersi sotto il letto",
+        "en": "hiding under the bed"
+      }
+    ],
+    "bathroom": [
+      {
+        "it": "bere dal rubinetto",
+        "en": "drinking from the tap"
+      }
+    ],
+    "garage": [
+      {
+        "it": "annusare le gomme della macchina",
+        "en": "sniffing the car tyres"
+      }
+    ],
+    "garden": [
+      {
+        "it": "rincorrere le farfalle",
+        "en": "chasing butterflies"
+      },
+      {
+        "it": "scavare una buca",
+        "en": "digging a hole"
+      }
+    ],
+    "utility": [
+      {
+        "it": "dormire nel cesto del bucato",
+        "en": "sleeping in the laundry basket"
+      }
+    ]
+  },
+  "events": [
+    {
+      "id": "blackout",
+      "it": "saltò la luce in tutta la casa",
+      "en": "the power went out in the whole house",
+      "tags": [
+        "dark"
+      ]
+    },
+    {
+      "id": "noise_garage",
+      "it": "dal garage arrivò un rumore misterioso",
+      "en": "a mysterious noise came from the garage",
+      "tags": [
+        "noise"
+      ],
+      "not_in": [
+        "garage"
+      ]
+    },
+    {
+      "id": "doorbell",
+      "it": "qualcuno suonò al citofono",
+      "en": "someone rang the intercom",
+      "tags": [
+        "visitor"
+      ]
+    },
+    {
+      "id": "wind",
+      "it": "il vento spalancò la finestra",
+      "en": "the wind blew the window wide open",
+      "tags": [
+        "weather"
+      ]
+    },
+    {
+      "id": "smell",
+      "it": "dalla cucina arrivò un odore di bruciato",
+      "en": "a smell of burning came from the kitchen",
+      "tags": [
+        "smell",
+        "food"
+      ],
+      "not_in": [
+        "kitchen"
+      ]
+    },
+    {
+      "id": "leak",
+      "it": "dal soffitto cominciò a cadere qualche goccia d'acqua",
+      "en": "a few drops of water started falling from the ceiling",
+      "tags": [
+        "water"
+      ]
+    },
+    {
+      "id": "keys",
+      "it": "sparirono le chiavi di casa",
+      "en": "the house keys vanished",
+      "tags": [
+        "lost"
+      ]
+    },
+    {
+      "id": "parcel",
+      "it": "davanti alla porta comparve un pacco senza nome",
+      "en": "a parcel with no name appeared at the door",
+      "tags": [
+        "surprise",
+        "visitor"
+      ]
+    },
+    {
+      "id": "storm",
+      "it": "scoppiò un temporale fortissimo",
+      "en": "a huge thunderstorm broke out",
+      "tags": [
+        "weather",
+        "dark"
+      ]
+    },
+    {
+      "id": "cake_gone",
+      "it": "la torta appena sfornata sparì dal tavolo",
+      "en": "the freshly baked cake vanished from the table",
+      "tags": [
+        "food",
+        "lost"
+      ]
+    },
+    {
+      "id": "scratch",
+      "it": "si sentì grattare dietro la porta",
+      "en": "a scratching sound came from behind the door",
+      "tags": [
+        "noise",
+        "animal"
+      ]
+    },
+    {
+      "id": "music",
+      "it": "dalla camera partì una musica a tutto volume",
+      "en": "music started playing at full volume in the bedroom",
+      "tags": [
+        "noise",
+        "party"
+      ],
+      "not_in": [
+        "bedroom"
+      ]
+    },
+    {
+      "id": "phone",
+      "it": "il telefono squillò nel cuore della notte",
+      "en": "the phone rang in the middle of the night",
+      "tags": [
+        "noise",
+        "night"
+      ]
+    },
+    {
+      "id": "washing",
+      "it": "la lavatrice cominciò a ballare per tutto il locale tecnico",
+      "en": "the washing machine started dancing across the utility room",
+      "tags": [
+        "noise"
+      ]
+    },
+    {
+      "id": "bird",
+      "it": "un uccellino entrò in soggiorno dalla finestra",
+      "en": "a little bird flew into the living room through the window",
+      "tags": [
+        "animal"
+      ]
+    },
+    {
+      "id": "fog",
+      "it": "una nebbia fittissima coprì il giardino",
+      "en": "a very thick fog covered the garden",
+      "tags": [
+        "weather"
+      ]
+    },
+    {
+      "id": "letter",
+      "it": "nella cassetta della posta comparve una lettera misteriosa",
+      "en": "a mysterious letter turned up in the letterbox",
+      "tags": [
+        "surprise"
+      ]
+    },
+    {
+      "id": "fridge",
+      "it": "il frigorifero si spense all'improvviso",
+      "en": "the fridge suddenly switched off",
+      "tags": [
+        "food"
+      ]
+    },
+    {
+      "id": "glasses",
+      "it": "sparirono gli occhiali della nonna",
+      "en": "grandma's glasses disappeared",
+      "tags": [
+        "lost"
+      ]
+    },
+    {
+      "id": "snow",
+      "it": "cominciò a nevicare come non succedeva da anni",
+      "en": "it started snowing like it hadn't for years",
+      "tags": [
+        "weather",
+        "winter"
+      ]
+    },
+    {
+      "id": "footsteps",
+      "it": "sul tetto si sentirono dei passi leggeri",
+      "en": "light footsteps were heard on the roof",
+      "tags": [
+        "noise",
+        "animal",
+        "night"
+      ]
+    },
+    {
+      "id": "party_plan",
+      "it": "arrivò la notizia che mezzo quartiere sarebbe venuto a cena",
+      "en": "news arrived that half the neighbourhood was coming to dinner",
+      "tags": [
+        "party",
+        "food"
+      ]
+    },
+    {
+      "id": "car_horn",
+      "it": "l'allarme della macchina suonò da solo",
+      "en": "the car alarm went off by itself",
+      "tags": [
+        "noise",
+        "car"
+      ]
+    },
+    {
+      "id": "balloon",
+      "it": "in giardino atterrò un palloncino colorato",
+      "en": "a colourful balloon landed in the garden",
+      "tags": [
+        "surprise",
+        "party"
+      ]
+    }
+  ],
+  "reactions": [
+    {
+      "it": "prese subito una torcia",
+      "en": "grabbed a torch at once",
+      "tags": [
+        "dark"
+      ]
+    },
+    {
+      "it": "decise di andare a vedere",
+      "en": "decided to go and have a look",
+      "tags": []
+    },
+    {
+      "it": "chiamò tutti a raccolta",
+      "en": "called everyone together",
+      "tags": []
+    },
+    {
+      "it": "si nascose dietro il divano",
+      "en": "hid behind the sofa",
+      "tags": [
+        "noise",
+        "dark",
+        "night"
+      ]
+    },
+    {
+      "it": "rimase un attimo senza parole",
+      "en": "was speechless for a moment",
+      "tags": [
+        "surprise"
+      ]
+    },
+    {
+      "it": "corse ad aprire la porta",
+      "en": "ran to open the door",
+      "tags": [
+        "visitor"
+      ]
+    },
+    {
+      "it": "cercò dappertutto, perfino dentro il frigorifero",
+      "en": "searched everywhere, even inside the fridge",
+      "tags": [
+        "lost"
+      ]
+    },
+    {
+      "id": "window",
+      "it": "corse a chiudere la finestra",
+      "en": "rushed to close the window",
+      "tags": [
+        "weather"
+      ]
+    },
+    {
+      "it": "aprì le finestre per far entrare aria fresca",
+      "en": "opened the windows to let in fresh air",
+      "tags": [
+        "smell"
+      ]
+    },
+    {
+      "it": "mise un secchio sotto le gocce",
+      "en": "put a bucket under the drips",
+      "for": [
+        "leak"
+      ]
+    },
+    {
+      "it": "scrisse tutto su un foglietto per non dimenticarlo",
+      "en": "wrote it all down on a note so as not to forget",
+      "tags": []
+    },
+    {
+      "it": "si mise a ridere a crepapelle",
+      "en": "burst out laughing",
+      "tags": [
+        "party",
+        "surprise"
+      ]
+    },
+    {
+      "it": "prese in mano la situazione",
+      "en": "took charge of the situation",
+      "tags": []
+    },
+    {
+      "it": "cominciò a preparare una lista di cose da fare",
+      "en": "started writing a list of things to do",
+      "tags": [
+        "party",
+        "visitor"
+      ]
+    },
+    {
+      "it": "tese l'orecchio per capire da dove venisse il rumore",
+      "en": "listened carefully to work out where the noise came from",
+      "tags": [
+        "noise"
+      ]
+    },
+    {
+      "it": "fece un bel respiro e contò fino a dieci",
+      "en": "took a deep breath and counted to ten",
+      "tags": []
+    },
+    {
+      "it": "accese tutte le candele che trovò",
+      "en": "lit every candle to be found",
+      "tags": [
+        "dark"
+      ]
+    },
+    {
+      "it": "chiamò il gatto dei vicini per nome",
+      "en": "called the neighbours' cat by name",
+      "for": [
+        "scratch",
+        "footsteps"
+      ]
+    },
+    {
+      "it": "aprì la finestra per far uscire l'uccellino",
+      "en": "opened the window to let the little bird out",
+      "for": [
+        "bird"
+      ]
+    },
+    {
+      "it": "indossò gli stivali di gomma",
+      "en": "put on the wellington boots",
+      "tags": [
+        "weather",
+        "water"
+      ]
+    }
+  ],
+  "animal_reactions": [
+    {
+      "it": "abbaiò con tutto il fiato che aveva",
+      "en": "barked as loudly as it could",
+      "tags": [
+        "noise",
+        "visitor"
+      ],
+      "only": [
+        "dog"
+      ]
+    },
+    {
+      "it": "drizzò le orecchie",
+      "en": "pricked up its ears",
+      "tags": []
+    },
+    {
+      "it": "corse a nascondersi sotto il letto",
+      "en": "ran to hide under the bed",
+      "tags": [
+        "noise",
+        "dark",
+        "weather"
+      ]
+    },
+    {
+      "it": "si mise ad annusare ogni angolo",
+      "en": "started sniffing every corner",
+      "tags": [
+        "lost",
+        "smell",
+        "food"
+      ]
+    },
+    {
+      "it": "scodinzolò verso la porta",
+      "en": "wagged its tail at the door",
+      "tags": [
+        "visitor"
+      ],
+      "only": [
+        "dog"
+      ]
+    },
+    {
+      "it": "fece un salto di mezzo metro",
+      "en": "jumped half a metre in the air",
+      "tags": [
+        "surprise",
+        "noise"
+      ]
+    },
+    {
+      "it": "soffiò con il pelo tutto dritto",
+      "en": "hissed with its fur standing on end",
+      "tags": [
+        "noise",
+        "surprise",
+        "visitor"
+      ],
+      "only": [
+        "cat"
+      ]
+    }
+  ],
+  "party_preps": [
+    {
+      "it": "gonfiò cento palloncini",
+      "en": "blew up a hundred balloons"
+    },
+    {
+      "it": "preparò una torta alta tre piani",
+      "en": "baked a three-tier cake"
+    },
+    {
+      "it": "appese festoni colorati in ogni stanza",
+      "en": "hung colourful streamers in every room"
+    },
+    {
+      "it": "scrisse gli inviti a mano",
+      "en": "wrote the invitations by hand"
+    },
+    {
+      "it": "nascose i regali dietro le tende",
+      "en": "hid the presents behind the curtains"
+    },
+    {
+      "it": "preparò una playlist di canzoni allegre",
+      "en": "made a playlist of cheerful songs"
+    },
+    {
+      "it": "decorò il giardino con le lucine",
+      "en": "decorated the garden with fairy lights"
+    },
+    {
+      "it": "organizzò una caccia al tesoro",
+      "en": "organised a treasure hunt"
+    }
+  ],
+  "relations": [
+    {
+      "it": "con cui {a} divide la casa",
+      "en": "who shares the house with {a}",
+      "pet": true
+    },
+    {
+      "it": "che {a} conosce dai tempi della scuola",
+      "en": "who has known {a} since school"
+    },
+    {
+      "it": "con cui {a} litiga sempre per il telecomando",
+      "en": "who always fights with {a} over the remote"
+    },
+    {
+      "it": "a cui {a} presta sempre i libri",
+      "en": "who always borrows books from {a}"
+    },
+    {
+      "it": "che abita alla porta accanto",
+      "en": "who lives next door"
+    },
+    {
+      "it": "con cui {a} va in vacanza ogni estate",
+      "en": "who goes on holiday with {a} every summer",
+      "pet": true
+    },
+    {
+      "id": "cook_for",
+      "it": "per cui {a} cucina ogni domenica",
+      "en": "for whom {a} cooks every Sunday"
+    },
+    {
+      "it": "che viene a trovare {a} ogni giovedì",
+      "en": "who visits {a} every Thursday"
+    },
+    {
+      "it": "con cui {a} gioca a carte il venerdì",
+      "en": "who plays cards with {a} on Fridays"
+    },
+    {
+      "it": "che ha insegnato a {a} ad andare in bicicletta",
+      "en": "who taught {a} to ride a bike"
+    },
+    {
+      "it": "che vuole bene a {a} più di ogni altra cosa",
+      "en": "who loves {a} more than anything",
+      "pet": true
+    }
+  ],
+  "helps": [
+    {
+      "it": "insieme controllarono tutte le stanze",
+      "en": "together they checked every room",
+      "tags": []
+    },
+    {
+      "it": "insieme trovarono il quadro della corrente",
+      "en": "together they found the fuse box",
+      "tags": [
+        "dark"
+      ]
+    },
+    {
+      "it": "insieme seguirono il rumore in punta di piedi",
+      "en": "together they followed the noise on tiptoe",
+      "tags": [
+        "noise"
+      ]
+    },
+    {
+      "it": "insieme misero tutto al riparo",
+      "en": "together they put everything under cover",
+      "tags": [
+        "weather",
+        "water"
+      ]
+    },
+    {
+      "it": "insieme aprirono il pacco con grande attenzione",
+      "en": "together they opened the parcel very carefully",
+      "tags": [
+        "surprise",
+        "visitor"
+      ]
+    },
+    {
+      "it": "insieme rovesciarono tutti i cassetti",
+      "en": "together they turned out every drawer",
+      "tags": [
+        "lost"
+      ]
+    },
+    {
+      "it": "insieme prepararono da mangiare per un reggimento",
+      "en": "together they cooked enough food for an army",
+      "tags": [
+        "party",
+        "food"
+      ]
+    },
+    {
+      "it": "insieme spensero il fornello e aprirono le finestre",
+      "en": "together they turned off the hob and opened the windows",
+      "tags": [
+        "smell"
+      ]
+    },
+    {
+      "it": "insieme cercarono di capire che cosa stesse succedendo",
+      "en": "together they tried to work out what was going on",
+      "tags": []
+    },
+    {
+      "it": "insieme accompagnarono l'uccellino fuori",
+      "en": "together they guided the little bird outside",
+      "for": [
+        "bird"
+      ]
+    }
+  ],
+  "discoveries": [
+    {
+      "it": "era saltato soltanto un fusibile",
+      "en": "only a fuse had blown",
+      "for": [
+        "blackout"
+      ]
+    },
+    {
+      "it": "era solo il gatto dei vicini a caccia di avventure",
+      "en": "it was only the neighbours' cat looking for adventure",
+      "for": [
+        "noise_garage",
+        "scratch"
+      ]
+    },
+    {
+      "it": "il pacco era un regalo per la casa",
+      "en": "the parcel was a present for the house",
+      "for": [
+        "parcel"
+      ]
+    },
+    {
+      "it": "le chiavi erano nella tasca del cappotto",
+      "en": "the keys were in the coat pocket",
+      "for": [
+        "keys"
+      ]
+    },
+    {
+      "it": "gli occhiali erano sulla testa della nonna",
+      "en": "the glasses were on top of grandma's head",
+      "for": [
+        "glasses"
+      ]
+    },
+    {
+      "it": "era solo un toast dimenticato nel tostapane",
+      "en": "it was only a piece of toast forgotten in the toaster",
+      "for": [
+        "smell"
+      ]
+    },
+    {
+      "it": "era il vento che faceva sbattere una persiana",
+      "en": "it was the wind banging a shutter",
+      "for": [
+        "noise_garage",
+        "footsteps"
+      ]
+    },
+    {
+      "it": "era un amico venuto a fare una sorpresa",
+      "en": "it was a friend who had come to give a surprise",
+      "for": [
+        "doorbell"
+      ]
+    },
+    {
+      "it": "la torta era finita nella cuccia del cane",
+      "en": "the cake had ended up in the dog's basket",
+      "for": [
+        "cake_gone"
+      ]
+    },
+    {
+      "it": "la lettera era un invito a una festa",
+      "en": "the letter was an invitation to a party",
+      "for": [
+        "letter"
+      ]
+    },
+    {
+      "it": "la perdita veniva dal vaso dei fiori al piano di sopra",
+      "en": "the leak came from a flower vase upstairs",
+      "for": [
+        "leak"
+      ]
+    },
+    {
+      "it": "la lavatrice era solo troppo piena",
+      "en": "the washing machine was simply too full",
+      "for": [
+        "washing"
+      ]
+    },
+    {
+      "it": "la musica veniva da una radio rimasta accesa",
+      "en": "the music came from a radio left on",
+      "for": [
+        "music"
+      ]
+    },
+    {
+      "it": "sul tetto passeggiava una famiglia di gatti",
+      "en": "a family of cats was strolling on the roof",
+      "for": [
+        "footsteps"
+      ]
+    },
+    {
+      "it": "la spina del frigorifero si era staccata",
+      "en": "the fridge had come unplugged",
+      "for": [
+        "fridge"
+      ]
+    },
+    {
+      "it": "il palloncino veniva da una festa del quartiere",
+      "en": "the balloon came from a street party nearby",
+      "for": [
+        "balloon"
+      ]
+    },
+    {
+      "it": "il temporale se ne stava già andando",
+      "en": "the storm was already moving away",
+      "for": [
+        "storm",
+        "wind"
+      ]
+    },
+    {
+      "it": "a telefonare era la nonna, che voleva dare la buonanotte",
+      "en": "it was grandma calling to say goodnight",
+      "for": [
+        "phone"
+      ]
+    },
+    {
+      "it": "l'allarme era scattato per colpa di una foglia",
+      "en": "a leaf had set off the alarm",
+      "for": [
+        "car_horn"
+      ]
+    },
+    {
+      "it": "non c'era niente da temere",
+      "en": "there was nothing to be afraid of",
+      "tags": []
+    },
+    {
+      "it": "tutto si poteva sistemare in un attimo",
+      "en": "everything could be fixed in a moment",
+      "tags": []
+    },
+    {
+      "it": "l'uccellino cercava soltanto qualche briciola",
+      "en": "the little bird was only looking for a few crumbs",
+      "for": [
+        "bird"
+      ]
+    },
+    {
+      "it": "la nebbia sarebbe sparita prima di pranzo",
+      "en": "the fog would be gone before lunch",
+      "for": [
+        "fog"
+      ]
+    },
+    {
+      "it": "la neve era perfetta per fare un pupazzo",
+      "en": "the snow was perfect for building a snowman",
+      "for": [
+        "snow"
+      ]
+    },
+    {
+      "it": "in dispensa c'era pasta per tutto il quartiere",
+      "en": "there was enough pasta in the cupboard for the whole street",
+      "for": [
+        "party_plan"
+      ]
+    },
+    {
+      "it": "la finestra aveva soltanto la maniglia allentata",
+      "en": "the window just had a loose handle",
+      "for": [
+        "wind"
+      ]
+    },
+    {
+      "it": "era il postino con una cartolina dal mare",
+      "en": "it was the postman with a postcard from the seaside",
+      "for": [
+        "doorbell"
+      ]
+    },
+    {
+      "it": "le chiavi erano rimaste attaccate alla porta",
+      "en": "the keys had been left in the door",
+      "for": [
+        "keys"
+      ]
+    },
+    {
+      "it": "la corrente mancava in tutto il quartiere, e tornò dopo pochi minuti",
+      "en": "the power was out in the whole street, and it came back a few minutes later",
+      "for": [
+        "blackout",
+        "storm"
+      ]
+    },
+    {
+      "it": "gli occhiali erano finiti dentro il portapane",
+      "en": "the glasses had ended up in the bread bin",
+      "for": [
+        "glasses"
+      ]
+    },
+    {
+      "it": "il cibo in frigo era ancora freddo",
+      "en": "the food in the fridge was still cold",
+      "for": [
+        "fridge"
+      ]
+    },
+    {
+      "it": "a grattare era un riccio che cercava riparo",
+      "en": "the scratching was a hedgehog looking for shelter",
+      "for": [
+        "scratch"
+      ]
+    }
+  ],
+  "endings": [
+    {
+      "it": "Tutti risero e la giornata finì con una merenda in giardino.",
+      "en": "Everyone laughed, and the day ended with a snack in the garden.",
+      "tags": [
+        "day"
+      ]
+    },
+    {
+      "it": "Da quel giorno, in casa, nessuno ha più paura del buio.",
+      "en": "Since that day, nobody in the house has been afraid of the dark.",
+      "tags": [
+        "dark"
+      ]
+    },
+    {
+      "it": "Quella sera la casa brillò di luci colorate fino a tardi.",
+      "en": "That evening the house glowed with coloured lights until late.",
+      "tags": [
+        "party",
+        "night"
+      ]
+    },
+    {
+      "it": "E da allora le chiavi hanno un gancio tutto loro vicino alla porta.",
+      "en": "And ever since, the keys have had a hook of their own by the door.",
+      "for": [
+        "keys"
+      ]
+    },
+    {
+      "it": "Alla fine tutti si sedettero a tavola, di ottimo umore.",
+      "en": "In the end everyone sat down at the table in excellent spirits.",
+      "tags": [
+        "food"
+      ]
+    },
+    {
+      "it": "La casa accese una luce calda in ogni stanza, per festeggiare.",
+      "en": "The house turned on a warm light in every room to celebrate.",
+      "tags": []
+    },
+    {
+      "it": "E la sera finì con una grande festa in soggiorno.",
+      "en": "And the evening ended with a big party in the living room.",
+      "tags": [
+        "party"
+      ]
+    },
+    {
+      "it": "Fuori smise di piovere e in cielo spuntò un arcobaleno.",
+      "en": "Outside the rain stopped and a rainbow appeared in the sky.",
+      "for": [
+        "storm",
+        "wind",
+        "leak"
+      ]
+    },
+    {
+      "it": "Da quel giorno la finestra si chiude con un bel lucchetto rosso.",
+      "en": "Since that day the window has been shut with a bright red padlock.",
+      "for": [
+        "wind"
+      ]
+    },
+    {
+      "it": "E l'uccellino, riconoscente, tornò ogni mattina a cantare sul davanzale.",
+      "en": "And the little bird, grateful, came back every morning to sing on the windowsill.",
+      "for": [
+        "bird"
+      ]
+    },
+    {
+      "it": "Quella notte tutti dormirono sonni tranquilli.",
+      "en": "That night everyone slept soundly.",
+      "tags": [
+        "night"
+      ]
+    },
+    {
+      "it": "E la casa, contentissima, fece l'occhiolino con le luci del giardino.",
+      "en": "And the house, delighted, winked with the garden lights.",
+      "tags": []
+    },
+    {
+      "it": "Da allora, ogni volta che succede qualcosa di strano, tutti ne ridono insieme.",
+      "en": "Since then, whenever something strange happens, everyone laughs about it together.",
+      "tags": []
+    },
+    {
+      "it": "Il giorno dopo tutto il quartiere ne parlava ancora.",
+      "en": "The next day the whole neighbourhood was still talking about it.",
+      "tags": [
+        "visitor",
+        "party"
+      ]
+    },
+    {
+      "it": "E quel giorno, in giardino, spuntò il pupazzo di neve più bello del quartiere.",
+      "en": "And that day the finest snowman in the street appeared in the garden.",
+      "for": [
+        "snow"
+      ]
+    },
+    {
+      "it": "E il riccio, da quel giorno, ha una casetta tutta sua in fondo al giardino.",
+      "en": "And from that day on, the hedgehog has had a little house of its own at the end of the garden.",
+      "for": [
+        "scratch"
+      ]
+    }
+  ],
+  "plots": [
+    {
+      "id": "alone",
+      "cast": 1,
+      "needs": [
+        "reaction"
+      ],
+      "it": [
+        "{moment} {A} era {room_in} a {activity}.",
+        "All'improvviso {event}.",
+        "{a}, che {a.trait}, {reaction}.",
+        "Alla fine {a} scoprì che {discovery}.",
+        "Per festeggiare, {a} {a.passion_use}.",
+        "{ending}"
+      ],
+      "en": [
+        "{moment}, {A} was {room_in} {activity}.",
+        "Suddenly {event}.",
+        "{a}, who {a.trait}, {reaction}.",
+        "In the end {a} found out that {discovery}.",
+        "To celebrate, {a} {a.passion_use}.",
+        "{ending}"
+      ]
+    },
+    {
+      "id": "job",
+      "cast": 1,
+      "needs": [
+        "job"
+      ],
+      "it": [
+        "{moment} {A}, che {a.job}, era {room_in} a {activity}.",
+        "Proprio in quel momento {event}.",
+        "Senza perdersi d'animo, {a} {a.job_use}.",
+        "Poi si scoprì che {discovery}.",
+        "{ending}"
+      ],
+      "en": [
+        "{moment}, {A}, who {a.job}, was {room_in} {activity}.",
+        "Right at that moment {event}.",
+        "Keeping a cool head, {a} {a.job_use}.",
+        "Then it turned out that {discovery}.",
+        "{ending}"
+      ]
+    },
+    {
+      "id": "pair",
+      "cast": 2,
+      "needs": [
+        "reaction"
+      ],
+      "it": [
+        "{moment} {A} era {room_in} a {activity}.",
+        "A un tratto {event}.",
+        "{a}, che {a.trait}, {reaction}.",
+        "Per fortuna arrivò {B}, {relation}, e {help}.",
+        "Alla fine scoprirono che {discovery}.",
+        "{ending}"
+      ],
+      "en": [
+        "{moment}, {A} was {room_in} {activity}.",
+        "All of a sudden {event}.",
+        "{a}, who {a.trait}, {reaction}.",
+        "Luckily {B}, {relation}, came along, and {help}.",
+        "In the end they found out that {discovery}.",
+        "{ending}"
+      ]
+    },
+    {
+      "id": "pair_quirk",
+      "cast": 2,
+      "needs": [],
+      "it": [
+        "Tutti sanno che {A} {a.quirk}.",
+        "{moment}, {event}, e {b}, {relation}, pensò subito a uno scherzo di {a}.",
+        "Invece, dopo aver cercato {room_in}, scoprirono che {discovery}.",
+        "Per farsi perdonare, {b} {b.passion_use}.",
+        "{ending}"
+      ],
+      "en": [
+        "Everybody knows that {A} {a.quirk}.",
+        "{moment}, {event}, and {b}, {relation}, immediately suspected one of {a}'s pranks.",
+        "Instead, after searching {room_in}, they found out that {discovery}.",
+        "To make up for it, {b} {b.passion_use}.",
+        "{ending}"
+      ]
+    },
+    {
+      "id": "party",
+      "cast": 2,
+      "needs": [],
+      "tags": [
+        "party"
+      ],
+      "it": [
+        "{moment}, tutti preparavano una festa a sorpresa per {A}.",
+        "{B}, {relation}, {party_prep} di nascosto.",
+        "Ma all'ultimo momento {event}.",
+        "Per fortuna si scoprì che {discovery}.",
+        "Quando {a} arrivò {room_in}, tutti gridarono: sorpresa!",
+        "{ending}"
+      ],
+      "en": [
+        "{moment}, everyone was getting a surprise party ready for {A}.",
+        "{B}, {relation}, secretly {party_prep}.",
+        "But at the last minute {event}.",
+        "Luckily it turned out that {discovery}.",
+        "When {a} arrived {room_in}, everyone shouted: surprise!",
+        "{ending}"
+      ]
+    },
+    {
+      "id": "room",
+      "cast": 1,
+      "needs": [
+        "reaction"
+      ],
+      "it": [
+        "{moment}, {room_in}, regnava un silenzio strano.",
+        "{A}, che {a.trait}, stava per {activity} quando {event}.",
+        "{a} {reaction}.",
+        "Si scoprì che {discovery}.",
+        "{ending}"
+      ],
+      "en": [
+        "{moment}, there was a strange silence {room_in}.",
+        "{A}, who {a.trait}, was just about to start {activity} when {event}.",
+        "{a} {reaction}.",
+        "It turned out that {discovery}.",
+        "{ending}"
+      ]
+    }
+  ],
+  "anecdotes": [
+    {
+      "it": "Una volta {a} provò a lavare i piatti con lo shampoo, e la cucina si riempì di bolle profumate.",
+      "en": "Once {a} tried to wash the dishes with shampoo, and the kitchen filled with scented bubbles."
+    },
+    {
+      "it": "L'altro giorno {a} ha messo il telecomando in frigorifero e il latte vicino al divano.",
+      "en": "The other day {a} put the remote in the fridge and the milk next to the sofa."
+    },
+    {
+      "it": "Ieri {a} ha cercato gli occhiali per un'ora, e li aveva sul naso.",
+      "en": "Yesterday {a} looked for their glasses for an hour, and they were on their nose all along."
+    },
+    {
+      "it": "Una mattina {a} ha salutato la lavatrice come se fosse una persona.",
+      "en": "One morning {a} said good morning to the washing machine as if it were a person."
+    },
+    {
+      "it": "La settimana scorsa {a} ha innaffiato un fiore finto per tre giorni di fila.",
+      "en": "Last week {a} watered a fake flower three days in a row."
+    },
+    {
+      "it": "Una volta {a} ha preparato una torta dimenticando lo zucchero, e tutti hanno fatto finta che fosse buonissima.",
+      "en": "Once {a} baked a cake and forgot the sugar, and everyone pretended it was delicious."
+    },
+    {
+      "it": "Ieri sera {a} ha ballato così tanto che ho dovuto accendere le luci della festa.",
+      "en": "Last night {a} danced so much that I had to turn on the party lights."
+    },
+    {
+      "it": "Stamattina {a} ha provato ad aprire la porta del garage con le chiavi della cassetta della posta.",
+      "en": "This morning {a} tried to open the garage door with the letterbox key."
+    },
+    {
+      "it": "Una volta {a} ha fatto un pisolino sul divano con un biscotto in mano, e il biscotto è sparito misteriosamente.",
+      "en": "Once {a} had a nap on the sofa holding a biscuit, and the biscuit mysteriously vanished."
+    },
+    {
+      "it": "L'altra sera {a} ha raccontato una barzelletta così lunga che tutti hanno dimenticato l'inizio.",
+      "en": "The other evening {a} told a joke so long that everyone forgot how it started."
+    },
+    {
+      "it": "Una domenica {a} ha messo i calzini sul termosifone e il soggiorno profumava di lavanda per tutto il giorno.",
+      "en": "One Sunday {a} put the socks on the radiator and the living room smelt of lavender all day."
+    },
+    {
+      "it": "Ieri {a} ha chiesto a me, la casa, se oggi pioveva. Io ho acceso una luce azzurra per rispondere di sì.",
+      "en": "Yesterday {a} asked me, the house, whether it would rain today. I turned on a blue light to say yes."
+    }
+  ],
+  "animal_anecdotes": [
+    {
+      "it": "Ieri {a} ha dormito dentro il cesto del bucato pulito, e adesso tutte le magliette sono piene di peli.",
+      "en": "Yesterday {a} slept in the basket of clean washing, and now every T-shirt is covered in hair."
+    },
+    {
+      "it": "Stamattina {a} ha abbaiato al proprio riflesso nella porta del forno.",
+      "en": "This morning {a} barked at its own reflection in the oven door.",
+      "only": [
+        "dog"
+      ]
+    },
+    {
+      "it": "Una volta {a} ha nascosto una ciabatta in giardino, e l'abbiamo ritrovata dopo una settimana.",
+      "en": "Once {a} hid a slipper in the garden, and we found it a week later."
+    },
+    {
+      "it": "L'altro giorno {a} ha seguito un raggio di sole per tutta la casa, da una stanza all'altra.",
+      "en": "The other day {a} followed a ray of sunshine all through the house, from room to room."
+    },
+    {
+      "it": "Stamattina {a} ha fatto cadere una matita dal tavolo, poi un'altra, poi un'altra ancora, guardandomi negli occhi.",
+      "en": "This morning {a} knocked a pencil off the table, then another, then another, looking me straight in the eye.",
+      "only": [
+        "cat"
+      ]
+    }
+  ],
+  "memories": [
+    {
+      "it": "organizzò una grigliata sotto la pioggia",
+      "en": "organised a barbecue in the pouring rain"
+    },
+    {
+      "it": "restò fuori di casa senza chiavi e dormì in garage",
+      "en": "got locked out without keys and slept in the garage"
+    },
+    {
+      "it": "ballò il tango con la scopa alla festa di Capodanno",
+      "en": "danced the tango with a broom at the New Year's party"
+    },
+    {
+      "it": "portò a casa un cucciolo trovato sotto la pioggia",
+      "en": "brought home a puppy found out in the rain"
+    },
+    {
+      "it": "cucinò una lasagna per trenta persone",
+      "en": "cooked a lasagne for thirty people"
+    },
+    {
+      "it": "vinse la gara di torte del quartiere",
+      "en": "won the neighbourhood cake contest"
+    },
+    {
+      "it": "piantò l'albero di limoni in giardino",
+      "en": "planted the lemon tree in the garden"
+    },
+    {
+      "it": "dipinse il garage di verde in una notte sola",
+      "en": "painted the garage green in a single night"
+    },
+    {
+      "it": "organizzò una caccia al tesoro in tutta la casa",
+      "en": "organised a treasure hunt all over the house"
+    },
+    {
+      "it": "fece suonare per sbaglio tutte le sveglie alle tre di notte",
+      "en": "accidentally set off every alarm clock at three in the morning"
+    },
+    {
+      "it": "imparò a fare la pizza guardando un video, e la farina finì fino al soffitto",
+      "en": "learned to make pizza from a video, and the flour reached the ceiling"
+    },
+    {
+      "it": "tornò dal mare con una conchiglia gigante che ancora sta in soggiorno",
+      "en": "came back from the seaside with a giant shell that is still in the living room"
+    }
+  ],
+  "life": {
+    "bills": [
+      {
+        "id": "electricity",
+        "it": "della luce",
+        "en": "electricity"
+      },
+      {
+        "id": "gas",
+        "it": "del gas",
+        "en": "gas"
+      },
+      {
+        "id": "water",
+        "it": "dell'acqua",
+        "en": "water"
+      },
+      {
+        "id": "internet",
+        "it": "di internet",
+        "en": "internet"
+      }
+    ],
+    "insurances": [
+      {
+        "id": "car",
+        "it": "dell'auto",
+        "en": "car"
+      },
+      {
+        "id": "house",
+        "it": "della casa",
+        "en": "home"
+      }
+    ],
+    "chores": [
+      {
+        "id": "rubbish",
+        "it": "portare fuori la spazzatura",
+        "en": "taking out the rubbish",
+        "done": {
+          "it": "ha portato fuori la spazzatura",
+          "en": "took out the rubbish"
+        }
+      },
+      {
+        "id": "dishes",
+        "it": "lavare i piatti",
+        "en": "doing the dishes",
+        "done": {
+          "it": "ha lavato i piatti",
+          "en": "did the dishes"
+        }
+      },
+      {
+        "id": "laundry",
+        "it": "stendere il bucato",
+        "en": "hanging out the washing",
+        "done": {
+          "it": "ha steso il bucato",
+          "en": "hung out the washing"
+        }
+      },
+      {
+        "id": "hoover",
+        "it": "passare l'aspirapolvere",
+        "en": "hoovering",
+        "done": {
+          "it": "ha passato l'aspirapolvere",
+          "en": "did the hoovering"
+        }
+      },
+      {
+        "id": "plants",
+        "it": "annaffiare le piante",
+        "en": "watering the plants",
+        "done": {
+          "it": "ha annaffiato le piante",
+          "en": "watered the plants"
+        }
+      }
+    ],
+    "excuses": [
+      {
+        "it": "dice che lo farà dopo il suo programma preferito",
+        "en": "says they will do it after their favourite programme"
+      },
+      {
+        "it": "sostiene che oggi toccava a qualcun altro",
+        "en": "claims it was someone else's turn today"
+      },
+      {
+        "it": "giura che lo farà appena finisce il caffè",
+        "en": "swears they will do it as soon as their coffee is finished"
+      },
+      {
+        "it": "ha promesso di farlo prima di cena",
+        "en": "has promised to do it before dinner"
+      }
+    ],
+    "groceries": [
+      {
+        "it": "pane, latte e un chilo di arance",
+        "en": "bread, milk and a bag of oranges"
+      },
+      {
+        "it": "pasta, pomodori e il gelato al cioccolato",
+        "en": "pasta, tomatoes and chocolate ice cream"
+      },
+      {
+        "it": "uova, farina e zucchero per una torta",
+        "en": "eggs, flour and sugar for a cake"
+      },
+      {
+        "it": "biscotti, formaggio e un mazzo di fiori",
+        "en": "biscuits, cheese and a bunch of flowers"
+      },
+      {
+        "it": "insalata, mele e i croccantini per gli animali",
+        "en": "lettuce, apples and pet food"
+      }
+    ],
+    "holidays": [
+      {
+        "it": "al mare in Sardegna",
+        "en": "to the seaside in Sardinia"
+      },
+      {
+        "it": "in montagna sulle Dolomiti",
+        "en": "to the mountains in the Dolomites"
+      },
+      {
+        "it": "a Parigi a vedere la torre Eiffel",
+        "en": "to Paris to see the Eiffel Tower"
+      },
+      {
+        "it": "in campeggio sul lago",
+        "en": "camping by the lake"
+      },
+      {
+        "it": "in Sicilia a mangiare cannoli",
+        "en": "to Sicily to eat cannoli"
+      },
+      {
+        "it": "in Islanda a vedere l'aurora boreale",
+        "en": "to Iceland to see the northern lights"
+      }
+    ],
+    "cakes": [
+      {
+        "it": "una torta alle fragole con la panna",
+        "en": "a strawberry cake with cream"
+      },
+      {
+        "it": "una torta al cioccolato a tre piani",
+        "en": "a three-tier chocolate cake"
+      },
+      {
+        "it": "una crostata di albicocche",
+        "en": "an apricot tart"
+      },
+      {
+        "it": "un tiramisù gigante",
+        "en": "a giant tiramisu"
+      }
+    ],
+    "party_fun": [
+      {
+        "it": "tutti ballarono fino a mezzanotte",
+        "en": "everyone danced until midnight"
+      },
+      {
+        "it": "si giocò a nascondino in tutta la casa",
+        "en": "there was a game of hide-and-seek all over the house"
+      },
+      {
+        "it": "un mago fece sparire il telecomando, e non lo trovò più nessuno",
+        "en": "a magician made the remote disappear, and nobody ever found it"
+      },
+      {
+        "it": "le candeline non volevano spegnersi",
+        "en": "the candles would not go out"
+      },
+      {
+        "it": "il karaoke andò avanti fino all'alba",
+        "en": "the karaoke went on until dawn"
+      }
+    ],
+    "car_facts": [
+      {
+        "it": "ha fatto il tagliando a {month}",
+        "en": "had its service in {month}"
+      },
+      {
+        "it": "ha le gomme nuove da {month}",
+        "en": "has had new tyres since {month}"
+      },
+      {
+        "it": "ha il serbatoio mezzo pieno",
+        "en": "has half a tank of petrol"
+      }
+    ]
+  },
+  "chat_questions": [
+    {
+      "topic": "bill",
+      "it": "{a}, hai pagato la bolletta {kind}?",
+      "en": "{a}, did you pay the {kind} bill?",
+      "yes": {
+        "it": "Perfetto, una cosa in meno a cui pensare!",
+        "en": "Perfect, one less thing to think about!"
+      },
+      "no": {
+        "it": "Allora non dimenticarlo: scade {due}!",
+        "en": "Then don't forget: it's due on {due}!"
+      }
+    },
+    {
+      "topic": "shopping",
+      "it": "{a}, hai fatto la spesa oggi?",
+      "en": "{a}, did you do the shopping today?",
+      "yes": {
+        "it": "Ottimo, stasera si mangia!",
+        "en": "Great, we're eating tonight!"
+      },
+      "no": {
+        "it": "Allora preparo la lista: {items}.",
+        "en": "Then I'll write the list: {items}."
+      }
+    },
+    {
+      "topic": "chore",
+      "it": "{a}, oggi tocca a te {chore}: l'hai già fatto?",
+      "en": "{a}, it's your turn for {chore} today: done it yet?",
+      "yes": {
+        "it": "Grazie! La casa ringrazia.",
+        "en": "Thank you! The house is grateful."
+      },
+      "no": {
+        "it": "Dai, ti accendo una luce per farti compagnia mentre lo fai.",
+        "en": "Come on, I'll turn on a light to keep you company while you do it."
+      }
+    },
+    {
+      "topic": "insurance",
+      "it": "{a}, ti ricordi quando scade l'assicurazione {kind}?",
+      "en": "{a}, do you remember when the {kind} insurance runs out?",
+      "yes": {
+        "it": "Meno male, io me lo dimentico sempre!",
+        "en": "Thank goodness, I always forget!"
+      },
+      "no": {
+        "it": "Scade {due}: segnatelo su un foglietto!",
+        "en": "It runs out on {due}: write it on a note!"
+      }
+    },
+    {
+      "topic": "holiday",
+      "it": "{a}, hai già deciso dove andare in vacanza?",
+      "en": "{a}, have you decided where to go on holiday?",
+      "yes": {
+        "it": "Che bello! Io resto qui a fare la guardia alle piante.",
+        "en": "Lovely! I'll stay here and look after the plants."
+      },
+      "no": {
+        "it": "Io voterei per andare {place}!",
+        "en": "I'd vote for going {place}!"
+      }
+    },
+    {
+      "topic": "birthday",
+      "it": "{a}, lo sai che manca poco al tuo compleanno?",
+      "en": "{a}, did you know your birthday is coming up?",
+      "yes": {
+        "it": "Allora prepariamo una festa con tutte le luci!",
+        "en": "Then let's plan a party with all the lights!"
+      },
+      "no": {
+        "it": "È {date}: ti preparo le luci della festa!",
+        "en": "It's on {date}: I'll get the party lights ready!"
+      }
+    }
+  ],
+  "unknown": [
+    {
+      "it": "Questa proprio non la so: sono una casa! Chiedimi delle bollette, dei compleanni o di una festa.",
+      "en": "I really don't know that one: I'm a house! Ask me about the bills, birthdays or a party."
+    },
+    {
+      "it": "Mmm, di questo non mi hanno detto niente. Chiedimi una storia, invece!",
+      "en": "Hmm, nobody told me about that. Ask me for a story instead!"
+    },
+    {
+      "it": "Io so tutto di questa casa, ma del resto del mondo proprio niente!",
+      "en": "I know everything about this house, but nothing at all about the rest of the world!"
+    }
+  ]
+}

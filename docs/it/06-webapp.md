@@ -97,7 +97,7 @@ L'elenco delle regole, ognuna con un interruttore per attivarla o disattivarla, 
 
 <img src="../images/screens/it/identities.png" alt="Personaggi e oggetti" width="260">
 
-L'elenco dei personaggi, degli animali, delle auto e degli oggetti registrati, con foto o sagoma, tipo, e dove si trovano adesso (*Ora: Cucina*, oppure *Non lo vedo*). **+ Aggiungi** avvia la registrazione guidata; toccandone uno si apre la sua scheda, dove puoi cambiare **Nome**, **Tipo**, **Pronuncia inglese (facoltativa)** e **Chi è (per le storie)** (una cosa per riga: un lavoro, una passione, una mania; la casa le usa nelle storie e nelle risposte, vedi il [capitolo 8](08-voce.md#due-modelli-linguistici-i-comandi-e-le-storie)), oppure eliminarlo con **Elimina** (resta nel cestino per 24 ore). Vedi il [capitolo 7](07-riconoscimento-e-identita.md).
+L'elenco dei personaggi, degli animali, delle auto e degli oggetti registrati, con foto o sagoma, tipo, e dove si trovano adesso (*Ora: Cucina*, oppure *Non lo vedo*). **+ Aggiungi** avvia la registrazione guidata; toccandone uno si apre la sua scheda, dove puoi cambiare **Nome**, **Tipo**, **Pronuncia inglese (facoltativa)** e **Chi è (per le storie)** (una cosa per riga, come la si direbbe dopo il nome: *fa il medico*, *ama il jazz*, *ha paura dei ragni*; la casa le usa nelle storie e nelle risposte, vedi il [capitolo 8](08-voce.md#storie-ricordi-e-domande-libere)), oppure eliminarlo con **Elimina** (resta nel cestino per 24 ore). Vedi il [capitolo 7](07-riconoscimento-e-identita.md).
 
 ### Simulazione
 

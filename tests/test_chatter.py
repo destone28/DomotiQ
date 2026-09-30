@@ -25,6 +25,7 @@ def ctx(tmp_path, monkeypatch):
     monkeypatch.setattr(chatter_mod, "ECHO_S", 0.0)
     monkeypatch.setattr(chatter_mod, "GREET_GAP_S", 0.0)
     monkeypatch.setattr(chatter_mod, "THANK_GROUP_S", 0.0)
+    monkeypatch.setattr(chatter_mod, "GENERATED_SHARE", 0.0)   # the questions of the list (stories: test_stories)
     c = build(parse_args(["--simulate", "--var", str(tmp_path / "var"), "--no-audio", "--no-camera", "--no-llm"]))
     from domotiq.voice.manager import Voice
     c.voice = Voice(c)

@@ -53,7 +53,7 @@ ACTIVE_S = 300.0       # questions only if something happened in the house in th
 NAME_CONFIDENCE = 0.5  # a name heard with less confidence is not proposed
 OFFER_CONFIDENCE = 0.6 # an offer is carried out only on a yes heard at least this well
 ASK_ROOMS = ("kitchen", "living", "bedroom", "garage", "garden")
-GENERATED_SHARE = 0.35  # when the storyteller is there, about one line in three is made up by it
+GENERATED_SHARE = 0.4   # about two lines in five come from the storyteller (anecdotes, memories, questions)
 ANIMALS = ("dog", "cat", "animal")
 
 # the grammar needs the spelling of the speech model; the matching below ignores accents
@@ -599,11 +599,9 @@ class Chatter:
         stories = getattr(self.voice, "stories", None)
         for identity in order:
             # now and then something the storyteller makes up, instead of a question of the list
-            if stories is not None and stories.ok and self.rng.random() < GENERATED_SHARE:
-                kinds = stories.chat_ready(identity) if stories.slow else ["anecdote", "memory", "question"]
-                if kinds:
-                    kind = self.rng.choice(kinds)
-                    return identity, {"id": f"gen-{kind}", "kind": "generated", "gen": kind}
+            if stories is not None and self.rng.random() < GENERATED_SHARE:
+                kind = self.rng.choice(stories.chat_ready(identity))
+                return identity, {"id": f"gen-{kind}", "kind": "generated", "gen": kind}
             qs = self._questions_for(present[identity])
             if qs:
                 return identity, self.rng.choice(qs)

@@ -18,7 +18,8 @@ English version: [README.md](https://github.com/destone28/DomotiQ/blob/main/READ
 - Vincoli di partenza: locale tecnico vietato dopo 5 secondi, bagno per una persona alla volta.
 - Un clima virtuale: un termostato che si scalda con un dito e un bagno la cui umidità sale quando qualcuno "fa la doccia" (basta soffiare sul sensore).
 - Un citofono vocale che fa entrare i personaggi e registra quelli nuovi.
-- Domande e comandi a voce in italiano e in inglese, anche con frasi libere, senza risposte inventate.
+- Domande e comandi a voce in italiano e in inglese, anche con frasi libere; alle domande sulla casa risponde con il suo stato reale.
+- Storie, ricordi e risposte sulla vita di casa (bollette, compleanni, feste passate), generati sulla scheda da un database locale di pezzi in italiano e in inglese, con personaggi che mantengono la loro personalità fino al riavvio.
 - Una festa con musica elettronica generata dal codice e giochi di luce, e un barbecue con una ventola vera.
 - Un garage che vede arrivare e parcheggiare l'auto.
 - Una webapp completa servita dalla scheda sul suo hotspot, con il bagno sempre sfocato nella diretta.
@@ -94,6 +95,7 @@ Poi si apre http://localhost:8080 nel browser.
 - src/domotiq: l'applicazione (stato della casa, regole, visione, voce, audio, webapp).
 - firmware/domotiq_mcu: lo sketch del microcontrollore.
 - data/house.json: la mappa della casa, condivisa da visione, regole e webapp.
+- data/stories.json: i pezzi che la casa combina in storie, ricordi e risposte, in italiano e in inglese.
 - hardware/stl: i file di stampa numerati.
 - scripts: installazione, hotspot, copia su una scheda, schermate.
 - tests: test del nucleo, della voce, della visione (su immagini sintetiche) e delle API web.

@@ -105,7 +105,6 @@ class Voice:
 
     async def start(self) -> None:
         self._spawn(self._background())
-        self._spawn(self.stories.run_ahead())
 
     async def stop(self) -> None:
         for t in list(self._tasks):
@@ -137,8 +136,6 @@ class Voice:
                 if self.llm_ok and not warmed:
                     warmed = True
                     await loop.run_in_executor(None, self.llm.warm)
-            if not self.ctx.args.no_llm:
-                await self.stories.check()
             await asyncio.sleep(30)
 
     def status(self) -> dict[str, Any]:
@@ -281,6 +278,8 @@ class Voice:
         if self.question and await self._answer_question(text):
             return
         intent = parse(text, names)
+        if intent is None and self.stories.knows(text):
+            intent = Intent("other", {}, 0.8, "rules")      # bills, insurance, chores...: the life of the house
         if intent is None and self.llm is not None:
             filler = asyncio.create_task(self.say("Vediamo..." if lang == "it" else "Let me see..."))
             intent = await self.llm.understand(text, names)
@@ -292,8 +291,8 @@ class Voice:
                 if not await self._yes_no(it, en):
                     await self.reply("D'accordo, niente.", "All right, nothing then.")
                     return
-        if intent is None and self.stories.ok:
-            intent = Intent("other", {}, 0.5, "rules")      # no model for commands: the storyteller answers
+        if intent is None and len(text.split()) >= 3:
+            intent = Intent("other", {}, 0.5, "rules")      # not a command: a free question about the house
         if intent is None:
             await self.say(answers.not_understood(lang))
             return
@@ -418,16 +417,12 @@ class Voice:
             else:
                 await self.say(memory.parties_today(ctx, lang))
         elif name == "about":
-            await self.say(await self.stories.about(a.get("name", "")))
+            await self.stories.tell_about(a.get("name", ""))
         elif name == "story":
-            if not await self.stories.tell(a.get("names"), a.get("room"), bool(a.get("party"))):
-                await self.say(answers.off_topic(lang))
-        elif name in ("recall", "other") and self.stories.ok:
-            if name == "recall":
-                await self.say("Vediamo..." if lang == "it" else "Let me see...")
-            if not await self.stories.answer(a.get("text", ""), a.get("names") or self._mentioned(a.get("text", "")),
-                                             memory=name == "recall"):
-                await self.say(answers.off_topic(lang))
+            await self.stories.tell(a.get("names"), a.get("room"), bool(a.get("party")))
+        elif name in ("recall", "other"):
+            await self.stories.answer(a.get("text", ""), a.get("names") or self._mentioned(a.get("text", "")),
+                                      memory=name == "recall")
         else:
             await self.say(answers.off_topic(lang))
 

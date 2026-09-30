@@ -321,7 +321,9 @@ La registrazione di un nome controlla che Vosk lo conosca in entrambe le lingue;
 4. Se l'intento è incerto: "Intendi accendere la luce in cucina?".
 5. Se la domanda non riguarda la casa: "Sono la casa: posso dirti chi c'è, dove, che temperatura fa, e posso accendere luci, fare festa o grigliare."
 
-Intenti: dov'è X, chi c'è in una stanza, quante persone, dov'è l'auto, temperatura, umidità, che ore sono, imposta l'ora, luce accesa/spenta/colore per stanza o tutte, scenario, party, grigliata, riassunto della casa, cosa sai fare, lingua, loquacità, volume, aggiungi personaggio, sì/no/annulla.
+Intenti: dov'è X, chi c'è in una stanza, quante persone, dov'è l'auto, temperatura, umidità, che ore sono, imposta l'ora, luce accesa/spenta/colore per stanza o tutte, scenario, party, grigliata, riassunto della casa, cosa sai fare, lingua, loquacità, volume, aggiungi personaggio, sì/no/annulla, una storia, cosa ha fatto X oggi, ricorda che X…, cosa sai di X, ricordi e domande libere sulla vita di casa.
+
+**Storie e vita della casa (D-19).** Storie, ricordi e risposte sulla vita di casa (bollette, assicurazioni, compleanni, feste passate, spesa, faccende, animali, auto, vacanze) si generano combinando i pezzi di `data/stories.json`, scritti a mano in italiano e in inglese e compatibili con qualunque nome. Ogni personaggio riceve dal database lavoro, carattere, passione e mania, che restano fino al riavvio; le informazioni date dallo staff (webapp o "ricorda che…") vengono prima. Le storie su uno stesso personaggio non si ripetono finché ci sono pezzi nuovi; una risposta inventata resta la stessa, nelle due lingue, fino al riavvio. Qui la casa inventa di proposito: il punto 3 vale per i comandi e per le domande sullo stato reale della casa.
 
 ### 10.5 Sintesi
 Piper (`piper1-gpl`, GPL-3.0) **come programma separato**: un processo per lingua, sempre caricato, che riceve una frase per riga e restituisce audio grezzo. Il codice di DomotiQ resta MIT perché non incorpora Piper. Voci: `it_IT-serena-medium` (CC BY 4.0) ed `en_US-ljspeech-medium` (pubblico dominio). Le frasi fisse si sintetizzano all'avvio e restano in memoria.
@@ -331,7 +333,7 @@ Piper (`piper1-gpl`, GPL-3.0) **come programma separato**: un processo per lingu
 |---|---|
 | Silenziosa | non parla mai; restano campanello e suoni brevi; risposte solo sulla webapp |
 | Normale | eventi importanti, allarmi e avvisi, citofono, risposte |
-| Chiacchierona | commenta spostamenti, temperatura e umidità, propone di fare festa, grigliare o controllare l'auto; ogni due minuti circa fa una domanda a un personaggio con un nome, adatta alla stanza, e ascolta la risposta senza il tasto Parla (D-18) |
+| Chiacchierona | commenta spostamenti, temperatura e umidità, propone di fare festa, grigliare o controllare l'auto; ogni due minuti circa fa una domanda a un personaggio con un nome, adatta alla stanza, e ascolta la risposta senza il tasto Parla (D-18); due volte su cinque al suo posto un aneddoto, un ricordo o una domanda sulla vita di casa, generati dal database delle storie (D-19) |
 
 Ogni frase detta compare anche come testo nella webapp.
 
