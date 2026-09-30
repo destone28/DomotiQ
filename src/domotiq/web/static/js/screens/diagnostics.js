@@ -46,7 +46,7 @@ export function mount(root) {
           <dt>CPU</dt><dd class="num">${d.cpu.load.join(" / ")} · ${d.cpu.temperature != null ? d.cpu.temperature.toFixed(1) + " °C" : "—"}</dd>
           <dt>RAM</dt><dd class="num">${d.memory.available_mb} / ${d.memory.total_mb} MB (${d.memory.used_pct}%)</dd>
           <dt>${t("diag.disk")}</dt><dd class="num">${d.disk.free_mb} MB</dd>
-          <dt>Wi-Fi</dt><dd>${d.wifi_clients ?? "—"}</dd>
+          <dt>Wi-Fi</dt><dd>${d.wifi_clients ?? "—"} · ${t("diag.open")} ${d.phones ?? 0}</dd>
           <dt>${t("diag.clock")}</dt><dd>${esc(d.clock.source)} · ${new Date(d.clock.now * 1000).toLocaleString()}</dd>
           <dt>Audio</dt><dd>${d.audio.ok ? "🟢" : "🔴"} ${esc(d.audio.device || "")}</dd>
           <dt>${t("diag.voice")}</dt><dd>${d.voice.ok ? "🟢" : "🔴"} ${esc(d.voice.stt || "")} ${d.voice.llm ? "· LLM 🟢" : ""}</dd>

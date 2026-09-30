@@ -3,8 +3,9 @@
 """The lavalier microphone in the intercom cap, through the USB sound card.
 
 The microphone is open only while the house is listening: while the talk
-button is held, or for a few seconds after "Who is it?". The audio stays in
-memory and is never saved.
+button is held, or for a few seconds after "Who is it?", after greeting a new
+phone or after a question of chatty mode. The audio stays in memory and is
+never saved.
 """
 
 from __future__ import annotations

@@ -125,6 +125,20 @@ PATTERNS: list[tuple[str, list[str]]] = [
 ]
 
 
+# the words around a name when somebody introduces themselves: "ciao, sono Marco", "I'm Anna"
+NAME_FILLERS = {"sono", "io", "mi", "chiamo", "chiama", "e", "il", "la", "lo", "l", "un", "una", "nome", "mio",
+                "ciao", "salve", "buongiorno", "buonasera", "allora", "beh", "eh", "ehm", "si", "ok", "okay",
+                "i", "am", "m", "it", "s", "is", "my", "name", "this", "call", "me", "the", "a", "hello", "hi",
+                "hey", "well", "yes", "so", "um", "uh", "piacere", "grazie", "tu", "che", "di", "ho", "anni",
+                "nice", "meet", "you", "to", "called", "and", "here", "im"}
+
+
+def name_from_speech(text: str) -> str:
+    """The name in a spoken introduction: at most two words, capitalised; "" if there is none."""
+    words = [w for w in normalize(text).split() if w not in NAME_FILLERS and not w.isdigit()]
+    return " ".join(words[:2]).title()
+
+
 def find_room(text: str) -> str | None:
     for room, words in ROOMS.items():
         for w in sorted(words, key=len, reverse=True):

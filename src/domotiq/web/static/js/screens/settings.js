@@ -37,6 +37,13 @@ export function mount(root) {
         <label class="field"><span>${t("set.follow_color")}</span><input type="color" id="fcol" value="${esc(s.lights.follow_color)}"></label>
         <button class="btn primary block" id="save">${t("common.save")}</button>
       </div>
+      <div class="card"><h3 style="margin-top:0">${t("set.voice")}</h3>
+        <label class="row spread"><span>${t("set.greet_phones")}</span><span class="switch"><input type="checkbox" id="greet" ${s.voice.greet_phones ? "checked" : ""}><span></span></span></label>
+        <label class="row spread"><span>${t("set.chatty_questions")}</span><span class="switch"><input type="checkbox" id="chatq" ${s.voice.chatty_questions ? "checked" : ""}><span></span></span></label>
+        <label class="field"><span>${t("set.question_every")}</span>
+          <input type="number" data-path="voice.question_every_s" min="45" max="1800" step="5" value="${s.voice.question_every_s}"></label>
+        <button class="btn primary block" id="save-voice">${t("common.save")}</button>
+      </div>
       <div class="card"><h3 style="margin-top:0">PIN · ${t("set.time")}</h3>
         <label class="field"><span>${t("set.pin_current")}</span><input type="password" inputmode="numeric" id="pin-cur" maxlength="8" autocomplete="current-password"></label>
         <label class="field"><span>${t("set.pin")}</span><input type="password" inputmode="numeric" id="pin" maxlength="8" autocomplete="new-password"></label>
@@ -67,9 +74,10 @@ export function mount(root) {
         <button class="btn danger" data-sys="shutdown">${t("set.shutdown")}</button></div>
       </div>`;
     const $ = (q) => root.querySelector(q);
-    $("#save").onclick = async () => {
+    $("#save").onclick = $("#save-voice").onclick = async () => {
       const body = { house: { name: { it: $("#hn-it").value, en: $("#hn-en").value } }, buttons: { reversed: $("#rev").checked },
-        lights: { follow_color: $("#fcol").value } };
+        lights: { follow_color: $("#fcol").value },
+        voice: { greet_phones: $("#greet").checked, chatty_questions: $("#chatq").checked } };
       root.querySelectorAll("[data-path]").forEach(inp => {
         const [a, b] = inp.dataset.path.split(".");
         body[a] = body[a] || {};

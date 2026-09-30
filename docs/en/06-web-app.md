@@ -7,6 +7,7 @@ Every house serves its own web app from the board. It needs no internet and noth
 - **At the fair**: scan the two QR codes of the sign next to the house. The first joins the Wi-Fi `DomotiQ-CasaN`, the second opens `http://10.42.N.1/`. The names `http://casaN.lan/` and `http://casaN.local/` work too, but the numeric address always does.
 - **In the lab**: `http://casaN.local/`, with the board on your Wi-Fi.
 - Phones can add the page to the home screen; it then opens like an app.
+- The first time a phone opens it, the house greets it aloud and a card asks for the name and invites the visitor to add a character (see [chapter 8](08-voice.md#talking-without-pressing-talk)).
 - The web app uses plain `http://`. There are no system notifications (they would need HTTPS); photos are taken with the phone's own camera through the normal file picker, which works without HTTPS.
 
 ## Who can do what
@@ -126,6 +127,7 @@ Virtual characters dragged on the plan instead of real figurines, virtual sensor
 
 - **House**: the name of the house in Italian and English; **Buttons mounted upside down**, for a totem assembled the other way round.
 - **Lights · Party · Barbecue · Climate**: *Maximum brightness (%)*, *Pixels current limit (mA)*, *Brightness of the follow-me lights*, *Off after (s)*, *Colour of the follow-me lights*, party *Duration (s)* (10–60), *Fan duration (s)* (5–120), *Hot: rise over the baseline (°C)*, *Shower: humidity rise (%)*. Then **Save**. Brightness and current limit go to the microcontroller at once.
+- **Voice**: **Greet new phones**, **Questions to the characters (chatty mode)** and *One question every (s)* (see [chapter 8](08-voice.md#talking-without-pressing-talk)).
 - **PIN · Time**: *Current PIN* and *New PIN (4-8 digits)*; a new PIN ends every other staff session. **Use this phone's time** sets the clock of the house.
 - **Wi-Fi of the house**: the network name and *Wi-Fi password* (8 to 63 characters), confirmed with the *Current PIN*. **Save** writes it into the hotspot; if the hotspot is on, it restarts after a couple of seconds and every phone, the staff phone included, must join again with the new password. The printable sign updates by itself: print it again.
 - **Backup**: **Download the backup** (a zip with rules, characters with their photos, and settings; never the network, the house name, the PIN or the camera calibration), **Restore from a backup** (replaces rules, characters and settings), **Default rules** (replaces all rules with the ones the house started with).

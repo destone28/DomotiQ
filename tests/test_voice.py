@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from domotiq.voice.intents import parse, parse_time
+from domotiq.voice.intents import name_from_speech, parse, parse_time
 from domotiq.voice.tts import normalize as tts_normalize
 
 NAMES = ["Marco", "Sofia", "Luna", "Leo"]
@@ -128,3 +128,12 @@ def test_spoken_times_in_both_languages():
         assert i is not None and i.name == "set_time", text
         assert (i.args["hour"], i.args["minute"]) == (h, m), text
     assert parse("what time is it", []).name == "time_now"
+
+
+def test_name_from_speech():
+    assert name_from_speech("ciao sono Marco") == "Marco"
+    assert name_from_speech("mi chiamo Anna Maria") == "Anna Maria"
+    assert name_from_speech("I'm Anna") == "Anna"
+    assert name_from_speech("hello my name is Tom") == "Tom"
+    assert name_from_speech("sono io") == ""
+    assert name_from_speech("") == ""

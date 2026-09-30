@@ -58,6 +58,14 @@ CREATE TABLE IF NOT EXISTS trash (
     device TEXT,
     nickname TEXT
 );
+
+-- the phones that have opened the web app: the house greets each one once
+CREATE TABLE IF NOT EXISTS devices (
+    device TEXT PRIMARY KEY,
+    first_seen REAL NOT NULL,
+    last_seen REAL NOT NULL,
+    nickname TEXT
+);
 """
 
 EVENT_RETENTION_S = 7 * 24 * 3600
@@ -176,9 +184,33 @@ class Store:
         row["data"] = json.loads(row["data"])
         return row
 
+    # ------------------------------------------------------------ phones
+    def see_device(self, device: str, nickname: str | None = None, now: float | None = None) -> bool:
+        """Note a phone that opened the web app; True the first time this phone is seen."""
+        now = now or time.time()
+        cur = self._exec("INSERT OR IGNORE INTO devices(device, first_seen, last_seen, nickname) VALUES (?,?,?,?)",
+                         (device, now, now, nickname or None))
+        if cur.rowcount == 1:
+            return True
+        self._exec("UPDATE devices SET last_seen=?, nickname=COALESCE(?, nickname) WHERE device=?",
+                   (now, nickname or None, device))
+        return False
+
+    def name_device(self, device: str, nickname: str, now: float | None = None) -> None:
+        now = now or time.time()
+        self._exec("INSERT INTO devices(device, first_seen, last_seen, nickname) VALUES (?,?,?,?) "
+                   "ON CONFLICT(device) DO UPDATE SET nickname=excluded.nickname, last_seen=excluded.last_seen",
+                   (device, now, now, nickname))
+
+    def device(self, device: str) -> dict[str, Any] | None:
+        rows = self._query("SELECT * FROM devices WHERE device=?", (device,))
+        return rows[0] if rows else None
+
     # ------------------------------------------------------------ retention
     def purge(self, now: float | None = None) -> None:
         now = now or time.time()
         self._exec("DELETE FROM events WHERE ts < ?", (now - EVENT_RETENTION_S,))
         self._exec("DELETE FROM positions WHERE ts < ?", (now - POSITION_RETENTION_S,))
         self._exec("DELETE FROM trash WHERE ts < ?", (now - TRASH_RETENTION_S,))
+        # the phones (and the first names typed on them) are forgotten like the events
+        self._exec("DELETE FROM devices WHERE last_seen < ?", (now - EVENT_RETENTION_S,))

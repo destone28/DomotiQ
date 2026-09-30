@@ -29,9 +29,32 @@ During the intercom conversation and the registration by voice, the house listen
 |---|---|
 | **Silent** | Never speaks. The doorbell and short sounds remain; answers and everything else the house would say appear only as subtitles in the web app. |
 | **Normal** | Answers, the intercom, alarms and warnings, and the important events of the rules. |
-| **Chatty** | As Normal, plus comments: who goes where ("Marco is in the kitchen.", at most every 20 seconds), proposals ("So many of you in the living room: shall we party?" with three or more people there, "Lovely day in the garden: shall I light the barbecue?" with two or more in the garden, at most every 10 minutes) and the sentences that rules mark as chatty, such as "The temperature is back to normal." |
+| **Chatty** | As Normal, plus comments: who goes where ("Marco is in the kitchen.", at most every 20 seconds), proposals ("So many of you in the living room: shall we party?" with three or more people there, "Lovely day in the garden: shall I light the barbecue?" with two or more in the garden, at most every 10 minutes) the sentences that rules mark as chatty, such as "The temperature is back to normal.", and the **questions to the characters** (below). |
 
 Set it from **Controls → Talkativeness**, or by voice: "Stai zitta" / "Be quiet", "Parla di più" / "Talk more", "Parla normale" / "Normal mode". Every sentence the house says also appears as a subtitle on the phones and in **Events → Said by the house**.
+
+## Talking without pressing Talk
+
+In two cases the house asks something and then listens by itself for a few seconds: the **Talk** LED lights up and the phones show *The house is listening…*. If the house says something else while it listens (a rule, a warning), the answer is thrown away: it could be its own voice. **Talk** and the **intercom** always come first: pressing them interrupts the greeting or the question, and the house listens to the button.
+
+**A new phone.** The first time a phone opens the web app, the house greets it: "Hello! A new phone has just joined. What's your name?". The name can be said aloud (the house asks to confirm: "Is your name Luca?") or typed on the card that appears on the phone; then the house invites the visitor to come in with a character, and the phone offers **Add a character**. The name becomes the phone's nickname, the one shown in the change log.
+- Each phone is greeted once, also after a restart; a phone that comes back from the same address with another page (the home-screen icon, a private window, `casaN.lan`) is the same phone. The house forgets phones (and names) after 7 days.
+- Phones that join together get one greeting, and at most one spoken greeting (or thanks) every 45 seconds: the other phones get the card only.
+- Names **typed** on the phones are never read aloud (a name box would let anyone make the house say anything): the house thanks without the name, the phone shows it. Names said aloud are, since they come from the words the speech model knows.
+- **Later** on the card holds for that phone: the house stops asking. If the card is lost (page reloaded, phone locked), it comes back once on reconnection.
+- In **Silent** mode the house neither speaks nor listens: the card on the phone remains.
+- Turn it off in **Settings → Voice → Greet new phones**.
+
+**Questions to the characters** (**Chatty** mode only). About every two minutes, if visitors are around (something happened in the house in the last 5 minutes: a figurine moved, a button, a phone), a named character is in the house and the house is free, the house asks it a question that suits the room it is in, and listens for the answer:
+- kitchen: "Marco, what shall we cook tonight: pizza or pasta?", "are you hungry?";
+- living room: "how about some music?" (a yes starts the party), "shall we watch a film?" (a yes, cinema scene), "do you prefer the sofa or the armchair?";
+- bedroom: "did you sleep well?", "shall I dim the lights so you can rest?" (a yes dims the light);
+- garage: "where shall we drive to: the seaside or the mountains?";
+- garden: "shall I light the barbecue?" (a yes starts the fan), "do you like my garden?";
+- anywhere: "do you like this house?", "are you a morning or an evening person?", "where are you from?", "what's your favourite colour?" (the room light takes that colour);
+- animals: "would you like a walk?", "are you hungry?".
+
+The answer is matched against a few expected words (yes, no, pizza, pasta, the colours...) and is never run as a free command: in a chat, "I like music" must not start the party. Offers are carried out only after a short, clear yes ("why not" counts as yes, "I don't know" does not), and the house does not offer what it cannot do now (the barbecue already on, a party just over, the cinema already on). With no answer: "Nothing? Maybe next time, Marco." the first time, then silence; after two unanswered questions the house waits for a new sign of visitors. Never in the bathroom or the utility room, never twice in a row to the same character (with only one in the house it waits for another), and not during a party, a conversation, a registration or a question of the house. Adjust them in **Settings → Voice**: *Questions to the characters* and *One question every (s)* (at least 45, 120 by default; the exact moment varies by a quarter either way).
 
 ## What you can say
 
@@ -92,7 +115,7 @@ The Vosk models are `vosk-model-small-it-0.22` and `vosk-model-small-en-us-0.15`
 - **A closed list of phrases** for names, yes/no and the options of a question: the model accepts only those words, which makes it fast (under half a second for a name on the board) and very hard to fool;
 - **Free speech** for questions and commands, turned into an intent afterwards.
 
-The microphone is on only while the house listens, at 16 kHz mono; the audio stays in memory and is never saved.
+The microphone is on only while the house listens, at 16 kHz mono: while Talk is held, after "Who is it?" and for a few seconds after greeting a new phone or asking a chatty question. The audio stays in memory and is never saved; of what the house hears without Talk the log keeps only the outcome (yes, no, an option), never the text, and the recognised text is not sent to the phones.
 
 ## Speech synthesis
 

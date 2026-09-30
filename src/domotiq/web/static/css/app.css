@@ -177,8 +177,11 @@ input[type=color] { width: 56px; height: 40px; border: 1px solid var(--line); bo
 .toast.warning { background: var(--warning); color: #231a00; }
 .toast.success { background: var(--success); color: #fff; }
 
-.subtitle { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav-h) + 70px + env(safe-area-inset-bottom)); z-index: 25; background: rgba(20,24,26,.88); color: #fff; padding: 8px 14px; border-radius: 12px; max-width: min(92vw, 560px); text-align: center; font-size: 15px; }
+.subtitle { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav-h) + 70px + env(safe-area-inset-bottom)); z-index: 25; background: rgba(20,24,26,.88); color: #fff; padding: 8px 14px; border-radius: 12px; max-width: min(92vw, 560px); text-align: center; font-size: 15px; max-height: 30vh; overflow: hidden; pointer-events: none; }
 .subtitle::before { content: "🔊 "; }
+.listening { position: fixed; left: 50%; transform: translateX(-50%); top: calc(12px + env(safe-area-inset-top)); z-index: 45; background: var(--primary); color: var(--primary-ink); padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; animation: listen-pulse 1.2s ease-in-out infinite; }
+@keyframes listen-pulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .listening { animation: none; } }
 
 .modal { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; }
 .modal-card { background: var(--surface); width: 100%; max-width: 640px; max-height: 88vh; overflow: auto; border-radius: 18px 18px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); }

@@ -29,9 +29,32 @@ Durante la conversazione del citofono e la registrazione a voce, la casa ascolta
 |---|---|
 | **Silenziosa** | Non parla mai. Restano il campanello e i suoni brevi; le risposte e tutto il resto che la casa direbbe compaiono solo come sottotitoli nella webapp. |
 | **Normale** | Risposte, citofono, allarmi e avvisi, e gli eventi importanti delle regole. |
-| **Chiacchierona** | Come Normale, più i commenti: chi va dove ("Marco è in cucina.", al massimo ogni 20 secondi), le proposte ("Siete in tanti in soggiorno: facciamo festa?" con tre o più persone in soggiorno, "Che bella giornata in giardino: accendo il barbecue?" con due o più persone in giardino, al massimo ogni 10 minuti) e le frasi che le regole segnano come chiacchierone, come "La temperatura è tornata normale." |
+| **Chiacchierona** | Come Normale, più i commenti: chi va dove ("Marco è in cucina.", al massimo ogni 20 secondi), le proposte ("Siete in tanti in soggiorno: facciamo festa?" con tre o più persone in soggiorno, "Che bella giornata in giardino: accendo il barbecue?" con due o più persone in giardino, al massimo ogni 10 minuti) le frasi che le regole segnano come chiacchierone, come "La temperatura è tornata normale.", e le **domande ai personaggi** (sotto). |
 
 Si imposta da **Comandi → Loquacità**, oppure a voce: "Stai zitta" / "Be quiet", "Parla di più" / "Talk more", "Parla normale" / "Normal mode". Ogni frase che la casa dice compare anche come sottotitolo sui telefoni e in **Eventi → Detto dalla casa**.
+
+## Parlare senza premere Parla
+
+In due casi la casa fa una domanda e poi ascolta da sola per qualche secondo: il LED di **Parla** si accende e sui telefoni compare *La casa ti ascolta…*. Se mentre ascolta la casa dice qualcos'altro (una regola, un avviso), la risposta viene scartata: potrebbe essere la sua stessa voce. **Parla** e il **citofono** vengono sempre prima: premerli interrompe il saluto o la domanda, e la casa ascolta il tasto.
+
+**Un telefono nuovo.** La prima volta che un telefono apre la webapp, la casa lo saluta: "Ciao! Si è appena collegato un telefono nuovo. Come ti chiami?". Il nome si può dire a voce (la casa chiede conferma: "Ti chiami Luca?") oppure scrivere nella scheda che compare sul telefono; poi la casa invita a entrare con un personaggio, e il telefono propone **Aggiungi un personaggio**. Il nome diventa il soprannome del telefono, quello che compare nel registro delle modifiche.
+- Ogni telefono viene salutato una volta sola, anche dopo un riavvio; un telefono che si ricollega dallo stesso indirizzo con un'altra pagina (l'icona sulla schermata Home, una finestra anonima, `casaN.lan`) è lo stesso telefono. La casa dimentica i telefoni (e i nomi) dopo 7 giorni.
+- Se si collegano più telefoni insieme, un solo saluto per tutti, e al massimo un saluto a voce (o un ringraziamento) ogni 45 secondi: gli altri telefoni ricevono solo la scheda.
+- I nomi **scritti** sui telefoni non vengono mai letti ad alta voce (una casella per il nome permetterebbe di far dire alla casa qualunque cosa): la casa ringrazia senza il nome, il telefono lo mostra. I nomi detti a voce sì, perché vengono dalle parole che il modello vocale conosce.
+- **Più tardi** sulla scheda vale per quel telefono: la casa non lo chiede più. Se la scheda si perde (pagina ricaricata, telefono bloccato), torna una volta sola al ricollegamento.
+- In modalità **Silenziosa** la casa non parla e non ascolta: resta la scheda sul telefono.
+- Si spegne da **Impostazioni → Voce → Saluta i telefoni nuovi**.
+
+**Le domande ai personaggi** (solo in modalità **Chiacchierona**). Più o meno ogni due minuti, se ci sono visitatori (qualcosa è successo in casa negli ultimi 5 minuti: una statuina spostata, un tasto, un telefono), c'è un personaggio con un nome e la casa è libera, la casa gli fa una domanda adatta alla stanza in cui si trova, e ascolta la risposta:
+- in cucina: "Marco, cosa cuciniamo stasera: pizza o pasta?", "hai fame?";
+- in soggiorno: "ti va un po' di musica?" (con un sì parte la festa), "guardiamo un film?" (con un sì, scenario cinema), "preferisci il divano o la poltrona?";
+- in camera: "hai dormito bene?", "ti abbasso le luci per riposare?" (con un sì la luce diventa tenue);
+- in garage: "dove andiamo con la macchina: al mare o in montagna?";
+- in giardino: "accendo il barbecue?" (con un sì parte la ventola), "ti piace il mio giardino?";
+- dovunque: "ti piace questa casa?", "sei più da mattina o da sera?", "da dove vieni?", "qual è il tuo colore preferito?" (la luce della stanza prende quel colore);
+- agli animali: "vuoi fare una passeggiata?", "hai fame?".
+
+La risposta si confronta con poche parole attese (sì, no, pizza, pasta, i colori...) e non viene mai eseguita come un comando libero: in una chiacchierata "mi piace la musica" non deve far partire la festa. Le proposte si eseguono solo dopo un sì breve e chiaro ("perché no" vale sì, "non lo so" no, "dai" nemmeno), e la casa non propone quello che adesso non può fare (il barbecue già acceso, una festa appena finita, il cinema già in corso). Senza risposta: "Niente? Sarà per la prossima volta, Marco." la prima volta, poi silenzio; dopo due domande senza risposta la casa aspetta un nuovo segno di visitatori. Mai in bagno né nel locale tecnico, mai due volte di fila allo stesso personaggio (con uno solo in casa aspetta che ne arrivi un altro), e non durante una festa, una conversazione, una registrazione o una domanda della casa. Si regolano da **Impostazioni → Voce**: *Domande ai personaggi* e *Una domanda ogni (s)* (almeno 45, di solito 120; il momento esatto varia di un quarto in più o in meno).
 
 ## Cosa puoi dire
 
@@ -92,7 +115,7 @@ I modelli Vosk sono `vosk-model-small-it-0.22` e `vosk-model-small-en-us-0.15` (
 - **Un elenco chiuso di frasi** per i nomi, il sì/no e le opzioni di una domanda: il modello accetta solo quelle parole, il che lo rende veloce (meno di mezzo secondo per un nome sulla scheda) e molto difficile da ingannare;
 - **Parlato libero** per domande e comandi, trasformato poi in un intento.
 
-Il microfono è acceso solo mentre la casa ascolta, a 16 kHz mono; l'audio resta in memoria e non viene mai salvato.
+Il microfono è acceso solo mentre la casa ascolta, a 16 kHz mono: mentre Parla è premuto, dopo "Chi è?" e per qualche secondo dopo il saluto a un telefono nuovo o una domanda della modalità chiacchierona. L'audio resta in memoria e non viene mai salvato; di quello che la casa sente senza Parla resta nel registro solo l'esito (sì, no, un'opzione), mai il testo, e il testo riconosciuto non viene mandato ai telefoni.
 
 ## Sintesi vocale
 

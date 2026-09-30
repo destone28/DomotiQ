@@ -32,6 +32,9 @@ DEFAULTS: dict[str, Any] = {
         "music_gain": 80,
         "effects_gain": 80,
         "mic_gain": 100,             # capture level of the sound card, %
+        "greet_phones": True,        # welcome aloud a phone that opens the web app for the first time
+        "chatty_questions": True,    # in chatty mode, ask the characters questions now and then
+        "question_every_s": 120,     # about how often (at least 45 s)
     },
     "lights": {
         "max_brightness": 30,        # cap applied by the firmware, 0-100

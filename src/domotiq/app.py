@@ -66,6 +66,7 @@ class Context:
     classifier: Any = None
     started: float = 0.0
     version: str = __version__
+    hub_clients: Any = None          # the web app's live connections (set by the web server)
 
 
 def build(args: argparse.Namespace) -> Context:
@@ -268,6 +269,8 @@ async def periodic(ctx: Context) -> None:
                 ctx.registration.poll()
             if not (ctx.sim.enabled and ctx.sim.mute):
                 await ctx.lights.refresh()
+            if ctx.voice is not None:
+                ctx.voice.chatter.tick(mono)         # chatty mode: a question now and then
             if mono - last_check > 5:
                 last_check = mono
                 was = ctx.mcu.ok

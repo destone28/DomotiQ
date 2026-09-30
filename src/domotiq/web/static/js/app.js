@@ -75,7 +75,9 @@ let pingTimer = null;
 
 function connect() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
-  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  // the phone says who it is in the address: a websocket cannot carry headers
+  const who = `device=${encodeURIComponent(store.device)}&nick=${encodeURIComponent(store.nickname || "")}`;
+  ws = new WebSocket(`${proto}://${location.host}/ws?${who}`);
   ws.onopen = () => {
     retry = 1000;
     store.online = true;
@@ -85,6 +87,7 @@ function connect() {
   };
   ws.onclose = () => {
     store.online = false;
+    listening(false);
     emit("online");
     clearInterval(pingTimer);
     setTimeout(connect, retry);
@@ -137,8 +140,75 @@ function handle(msg) {
     }
     case "notify": toast(tr(msg.data.text), msg.data.level); break;
     case "say": subtitle(msg.data.text); break;
+    case "listening": listening(!!msg.data.on); break;
+    case "welcome": welcome(msg.data); break;
   }
   emit(msg.type);
+}
+
+// ------------------------------------------------------------------ welcome of a new phone
+// The house greets aloud a phone that opens the web app for the first time and asks the name:
+// it can be said aloud (the house then sends it here) or typed on this card.
+let queuedWelcome = null;
+
+function welcome(d) {
+  const open = !document.getElementById("modal").hidden;
+  if (d.stage === "named") {
+    if (!d.name || d.name === store.nickname) return;     // typed on this phone: the card is already there
+    setNickname(d.name);
+  }
+  if (d.stage === "ask" && document.querySelector('#modal [data-welcome="ask"]')) return;  // already open
+  if (open && !document.querySelector("#modal [data-welcome]")) { queuedWelcome = d; return; }  // after the other card
+  if (d.stage === "ask" && !store.nickname) return askName(!!d.listening);
+  invite(d.name || store.nickname);
+}
+
+function askName(listening) {
+  modal((card, close) => {
+    card.innerHTML = `<h2 style="margin-top:0" data-welcome="ask">👋 ${t("welcome.title")}</h2>
+      <p>${t(listening ? "welcome.ask_voice" : "welcome.ask")}</p>
+      <label class="field"><span>${t("welcome.name")}</span><input type="text" id="wname" maxlength="30" autocomplete="given-name"></label>
+      <div class="row" style="justify-content:flex-end;margin-top:12px">
+        <button class="btn" data-a="later">${t("welcome.later")}</button>
+        <button class="btn primary" data-a="ok">${t("common.ok")}</button></div>`;
+    const input = card.querySelector("#wname");
+    const send = async () => {
+      const name = input.value.trim();
+      if (!name) { input.focus(); return; }
+      try {
+        await api("POST", "/api/welcome", { name });
+        setNickname(name);
+        close();
+        invite(name);
+      } catch (e) { toast(e.message, "alarm"); }
+    };
+    card.querySelector('[data-a=ok]').onclick = send;
+    card.querySelector('[data-a=later]').onclick = () => {
+      close();
+      api("POST", "/api/welcome", { later: true }).catch(() => {});   // the house stops asking
+    };
+    input.onkeydown = (e) => { if (e.key === "Enter") send(); };
+  }, { sticky: true });
+}
+
+function invite(name) {
+  modal((card, close) => {
+    card.innerHTML = `<h2 style="margin-top:0" data-welcome="invite">${name ? t("welcome.hi", { name: esc(name) }) : "👋 " + t("welcome.title")}</h2>
+      <p>${t("welcome.invite")}</p>
+      <div class="row" style="justify-content:flex-end;margin-top:12px">
+        <button class="btn" data-a="later">${t("welcome.later")}</button>
+        <button class="btn primary" data-a="add">+ ${t("welcome.add")}</button></div>`;
+    card.querySelector('[data-a=later]').onclick = close;
+    card.querySelector('[data-a=add]').onclick = () => { close(); go("identities", { add: "1" }); };
+  });
+}
+
+// while the house listens without the Talk button (a name, the answer to a question)
+function listening(on) {
+  const el = document.getElementById("listening");
+  if (!el) return;
+  el.textContent = "🎙️ " + t("listen.on");
+  el.hidden = !on;
 }
 
 async function syncClock() {
@@ -170,17 +240,21 @@ function subtitle(text) {
   el.textContent = text;
   el.hidden = false;
   clearTimeout(subTimer);
-  subTimer = setTimeout(() => { el.hidden = true; }, Math.max(3500, text.length * 90));
+  subTimer = setTimeout(() => { el.hidden = true; }, Math.min(15000, Math.max(3500, text.length * 90)));
 }
 
-export function modal(build) {
+export function modal(build, { sticky = false } = {}) {
   const m = document.getElementById("modal");
   const card = m.querySelector(".modal-card");
   card.innerHTML = "";
-  const close = () => { m.hidden = true; card.innerHTML = ""; };
+  const close = () => {
+    m.hidden = true; card.innerHTML = "";
+    if (queuedWelcome) { const d = queuedWelcome; queuedWelcome = null; setTimeout(() => welcome(d), 300); }
+  };
   build(card, close);
   m.hidden = false;
-  m.onclick = (e) => { if (e.target === m) close(); };
+  // a sticky card does not close on a tap outside (on a phone that is also how the keyboard is hidden)
+  m.onclick = (e) => { if (e.target === m && !sticky) close(); };
   return close;
 }
 

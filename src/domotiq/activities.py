@@ -10,6 +10,7 @@ same way and respects the same cool-down.
 from __future__ import annotations
 
 import asyncio
+import re
 import logging
 import random
 import time
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
+PLACEHOLDER = re.compile(r"\{(name|room|room_in|count|temp|rh|time)\}")
 VERBOSITY_RANK = {"silent": 0, "normal": 1, "chatty": 2}
 
 LANG_WORDS = {"it": {"it": "Italiano", "en": "Italian"}, "en": {"it": "English", "en": "English"}}
@@ -62,10 +64,9 @@ class Actions:
             "rh": f"{ctx['rh']:.0f}" if isinstance(ctx.get("rh"), (int, float)) else "",
             "time": time.strftime("%H:%M"),
         }
-        try:
-            return template.format(**values)
-        except (KeyError, IndexError, ValueError):
-            return template
+        # Only the exact placeholders, never str.format: names typed by visitors end up in these
+        # sentences, and "{name:>999999999}" would build a gigabyte string.
+        return PLACEHOLDER.sub(lambda m: str(values[m.group(1)]), template)
 
     def speaks(self, level: str = "normal") -> bool:
         current = VERBOSITY_RANK.get(self.ctx.settings.get("voice.verbosity", "normal"), 1)

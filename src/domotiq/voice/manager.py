@@ -9,6 +9,8 @@
   registers a new character.
 - **Questions of the house**: when the house is unsure who someone is, it
   asks aloud and on the web app; the next answer settles it.
+- **Small talk** (chatter.py): the welcome of a new phone, and the questions
+  of chatty mode, answered without pressing Talk.
 
 Only one conversation at a time; pressing Talk while the house speaks
 interrupts it.
@@ -30,7 +32,8 @@ from ..identities import NameTaken
 from ..model import CATEGORY_NAMES
 from ..scenes import scene_name
 from . import answers
-from .intents import Intent, find_name, find_room, normalize, parse
+from .chatter import WELCOME, Chatter
+from .intents import Intent, find_name, find_room, name_from_speech, normalize, parse
 from .llm import LanguageModel
 from .stt import Listener
 from .tts import Speaker
@@ -53,6 +56,8 @@ FREQUENT = {
            "Let's dance!", "The party is over!", "Lighting the barbecue!", "English", "What's the name?",
            "Which room did you put it in?"],
 }
+for _lang in ("it", "en"):
+    FREQUENT[_lang].append(WELCOME[_lang])
 
 
 class Voice:
@@ -75,6 +80,9 @@ class Voice:
         self.question: dict[str, Any] | None = None           # a confirmation asked aloud
         self._last_comment = 0.0
         self._last_proposal = 0.0
+        self.last_chatter = float("-inf")      # monotonic: the last chatty line, comment or question
+        self.in_flight = 0                     # sentences being synthesized or played now
+        self.voice_end = float("-inf")         # monotonic: when the last one ended
         self._tasks: set[asyncio.Task] = set()
         bus = ctx.bus
         bus.subscribe("confirm", self._on_confirm)
@@ -83,6 +91,7 @@ class Voice:
         bus.subscribe("track_appear", self._on_track_appear)
         bus.subscribe("registered", self._on_registered)
         bus.subscribe("count_changed", self._on_count)
+        self.chatter = Chatter(self)
 
     # ================================================================ lifecycle
     @property
@@ -133,13 +142,18 @@ class Voice:
     # ================================================================ speaking
     async def speak(self, text: str, lang: str | None = None) -> None:
         lang = lang or self.lang
-        samples = await self.speaker.synth(text, lang)
-        if samples is None:
-            return
-        if self.ctx.audio is not None and not (self.ctx.sim.enabled and self.ctx.sim.mute):
-            await self.ctx.audio.play_voice(samples)
-        else:
-            await asyncio.sleep(len(samples) / 22050)
+        self.in_flight += 1
+        try:
+            samples = await self.speaker.synth(text, lang)
+            if samples is None:
+                return
+            if self.ctx.audio is not None and not (self.ctx.sim.enabled and self.ctx.sim.mute):
+                await self.ctx.audio.play_voice(samples)
+            else:
+                await asyncio.sleep(len(samples) / 22050)
+        finally:
+            self.in_flight -= 1
+            self.voice_end = time.monotonic()
 
     async def say(self, text: str, level: str = "normal") -> None:
         await self.ctx.actions.say(text, level=level)
@@ -212,6 +226,7 @@ class Voice:
                 return
             if self.ctx.audio is not None:
                 self.ctx.audio.stop_voice()
+            await self.chatter.preempt()              # Talk comes before the small talk
             self._talk_stop = asyncio.Event()
             self._talk_task = self._spawn(self._talk(self._talk_stop))
         elif self._talk_stop is not None:
@@ -370,6 +385,7 @@ class Voice:
 
     # ================================================================ intercom
     async def intercom(self) -> None:
+        await self.chatter.preempt()                  # the doorbell comes before the small talk
         if self.busy.locked():
             return
         self._spawn(self._intercom())
@@ -413,9 +429,7 @@ class Voice:
                 return known
             if allow_new and audio:
                 free, _ = await self._recognize(audio, None)
-                words = [w for w in normalize(free).split() if w not in
-                         ("sono", "io", "mi", "chiamo", "e", "il", "la", "i", "am", "it", "s", "is", "my", "name", "this")]
-                candidate = " ".join(words[:2]).strip().title()
+                candidate = name_from_speech(free)
                 if candidate:
                     if await self._yes_no(f"Ho capito {candidate}, giusto?", f"I heard {candidate}, right?"):
                         return candidate
@@ -561,6 +575,7 @@ class Voice:
         if not name or now - self._last_comment < 20 or self.busy.locked():
             return
         self._last_comment = now
+        self.last_chatter = time.monotonic()
         where = answers.room(self.ctx, ev.get("room"), "it")
         where_en = answers.room(self.ctx, ev.get("room"), "en")
         self._spawn(self.ctx.actions.say({"it": f"{name} è {where}.", "en": f"{name} is {where_en}."}, level="chatty"))

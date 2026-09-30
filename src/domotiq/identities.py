@@ -26,9 +26,11 @@ class NameTaken(ValueError):
         self.existing = existing
 
 
-def clean_name(name: str) -> str:
-    name = re.sub(r"\s+", " ", (name or "").strip())
-    return name[:40]
+def clean_name(name: str, limit: int = 40) -> str:
+    """One line of plain text: no control characters, no braces (names end up in spoken sentences)."""
+    name = re.sub(r"[\x00-\x1f\x7f{}]", " ", name or "")
+    name = re.sub(r"\s+", " ", name).strip()
+    return name[:limit]
 
 
 def name_key(name: str) -> str:

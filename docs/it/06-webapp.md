@@ -7,6 +7,7 @@ Ogni casa serve la propria webapp direttamente dalla scheda. Non ha bisogno di i
 - **In fiera**: inquadra i due QR del cartello accanto alla casa. Il primo fa entrare nel Wi-Fi `DomotiQ-CasaN`, il secondo apre `http://10.42.N.1/`. Funzionano anche i nomi `http://casaN.lan/` e `http://casaN.local/`, ma l'indirizzo numerico funziona sempre.
 - **In laboratorio**: `http://casaN.local/`, con la scheda sul tuo Wi-Fi.
 - Sui telefoni la pagina si può aggiungere alla schermata Home; da lì si apre come un'app.
+- La prima volta che un telefono la apre, la casa lo saluta a voce e compare una scheda che chiede il nome e invita ad aggiungere un personaggio (vedi il [capitolo 8](08-voce.md#parlare-senza-premere-parla)).
 - La webapp usa il semplice `http://`. Non ci sono notifiche di sistema (richiederebbero HTTPS); le foto si scattano con la fotocamera del telefono attraverso il normale selettore dei file, che funziona anche senza HTTPS.
 
 ## Chi può fare cosa
@@ -126,6 +127,7 @@ Personaggi virtuali da trascinare sulla piantina al posto delle statuine vere, s
 
 - **Casa**: il nome della casa in italiano e in inglese; **Tasti montati al contrario**, per un totem montato al rovescio.
 - **Luci · Festa · Barbecue · Clima**: *Luminosità massima (%)*, *Limite di corrente dei Pixels (mA)*, *Luminosità delle luci che seguono*, *Spegnimento dopo (s)*, *Colore delle luci che seguono*, la *Durata (s)* della festa (10–60), *Durata della ventola (s)* (5–120), *Caldo: aumento sul riferimento (°C)*, *Doccia: aumento di umidità (%)*. Poi **Salva**. Luminosità e limite di corrente arrivano subito al microcontrollore.
+- **Voce**: **Saluta i telefoni nuovi**, **Domande ai personaggi (modalità chiacchierona)** e *Una domanda ogni (s)* (vedi il [capitolo 8](08-voce.md#parlare-senza-premere-parla)).
 - **PIN · Ora**: *PIN attuale* e *Nuovo PIN (4-8 cifre)*; un PIN nuovo chiude tutte le altre sessioni dello staff. **Usa l'ora di questo telefono** imposta l'orologio della casa.
 - **Wi-Fi della casa**: il nome della rete e la *Password del Wi-Fi* (da 8 a 63 caratteri), confermata con il *PIN attuale*. **Salva** la scrive nell'hotspot; se l'hotspot è acceso riparte dopo un paio di secondi e tutti i telefoni, compreso quello dello staff, vanno ricollegati con la password nuova. Il cartello da stampare si aggiorna da solo: ristampalo.
 - **Backup**: **Scarica il backup** (uno zip con regole, personaggi con le loro foto e impostazioni; mai la rete, il nome della casa, il PIN o la calibrazione della webcam), **Ripristina da un backup** (sostituisce regole, personaggi e impostazioni), **Regole di partenza** (sostituisce tutte le regole con quelle con cui la casa è partita).

@@ -25,7 +25,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSock
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from ..identities import NameTaken
+from ..identities import NameTaken, clean_name
 from ..model import CATEGORIES, CATEGORY_NAMES, new_id
 from ..rules import RuleError
 from ..scenes import ORDER as SCENE_ORDER
@@ -53,27 +53,42 @@ def who(request: Request) -> Who:
     return Who(request)
 
 
+SAME_PHONE_S = 2 * 3600      # a new phone id from an address seen within this time is not greeted again
+
+
 class Hub:
-    """Fans out the house events to every connected phone."""
+    """Fans out the house events to every connected phone (and a few to one phone only)."""
 
     def __init__(self, ctx: "Context") -> None:
         self.ctx = ctx
         self.clients: set[asyncio.Queue] = set()
+        self.devices: dict[str, set[asyncio.Queue]] = {}      # phone id -> its open connections
+        self.addresses: dict[str, float] = {}                 # address on the hotspot -> last phone seen there
         self._tracks_pending = False
         self._last_tracks = 0.0
         for t in ("tracks_changed", "lights_changed", "sensor", "count_changed", "alerts_changed",
                   "confirm", "confirm_closed", "notify", "say", "identities_changed", "rules_changed",
                   "scene", "party", "grill", "registration", "status", "language", "verbosity",
                   "volume", "car", "visitor", "distance", "rule_fired", "climate", "shower",
-                  "modules", "listening", "heard", "clock", "sim", "follow"):
+                  "modules", "listening", "clock", "sim", "follow", "welcome"):
             ctx.bus.subscribe(t, self.on_event)
 
-    def send(self, msg: dict[str, Any]) -> None:
+    def send(self, msg: dict[str, Any], to: set[asyncio.Queue] | None = None) -> None:
         data = json.dumps(msg, ensure_ascii=False, default=str)
-        for q in list(self.clients):
+        for q in list(self.clients if to is None else to):
             if q.qsize() > 200:
                 continue          # a stuck phone must not grow the memory
             q.put_nowait(data)
+
+    def attach(self, device: str, q: asyncio.Queue) -> None:
+        self.devices.setdefault(device, set()).add(q)
+
+    def detach(self, device: str, q: asyncio.Queue) -> None:
+        qs = self.devices.get(device)
+        if qs is not None:
+            qs.discard(q)
+            if not qs:
+                self.devices.pop(device, None)
 
     def on_event(self, ev) -> None:
         h = self.ctx.house
@@ -100,7 +115,7 @@ class Hub:
             self.send({"type": "alerts", "data": list(h.alerts.values())})
         elif t in ("confirm", "confirm_closed"):
             self.send({"type": "confirmations", "data": h.snapshot()["confirmations"]})
-        elif t in ("notify", "say", "rule_fired", "listening", "heard"):
+        elif t in ("notify", "say", "rule_fired", "listening"):
             self.send({"type": t, "data": ev.data, "ts": ev.ts})
         elif t == "identities_changed":
             self.send({"type": "identities", "data": self.ctx.identities.to_list()})
@@ -120,6 +135,11 @@ class Hub:
             self.send({"type": "clock", "data": self.ctx.clock.to_dict()})
         elif t == "follow":
             self.send({"type": "follow", "data": {"on": ev.get("on")}})
+        elif t == "welcome":
+            # the welcome of a new phone goes to that phone only
+            qs = self.devices.get(ev.get("device") or "")
+            if qs:
+                self.send({"type": "welcome", "data": ev.data}, to=qs)
 
     def _flush_tracks(self) -> None:
         self._tracks_pending = False
@@ -159,6 +179,7 @@ def create_app(ctx: "Context") -> FastAPI:
     app = FastAPI(title="DomotiQ", docs_url=None, redoc_url=None, openapi_url=None)
     hub = Hub(ctx)
     app.state.hub = hub
+    ctx.hub_clients = hub.clients          # Diagnostics counts the phones with the web app open
 
     def staff(request: Request) -> None:
         if not ctx.auth.check(request.headers.get("x-staff")):
@@ -221,12 +242,38 @@ def create_app(ctx: "Context") -> FastAPI:
     # ============================================================ websocket
     @app.websocket("/ws")
     async def ws(socket: WebSocket):
+        # a browser cannot add headers to a websocket: the phone says who it is in the address
+        # (the booth display connects without an id, and is not a phone)
+        device = (socket.query_params.get("device") or "")[:40]
+        nick = clean_name(socket.query_params.get("nick") or "", 30)
         await socket.accept()
         q: asyncio.Queue = asyncio.Queue()
         hub.clients.add(q)
+        if device:
+            hub.attach(device, q)
         try:
             await socket.send_text(json.dumps({"type": "hello", "data": full_state(ctx)},
                                               ensure_ascii=False, default=str))
+            if device:
+                try:
+                    new = ctx.store.see_device(device, nick or None)
+                except Exception:  # noqa: BLE001 - a greeting is not worth a broken connection
+                    log.exception("recording the phone failed")
+                    new = False
+                # each phone has its own address on the hotspot: a new id from an address seen lately is
+                # the same phone in another context (home-screen app, private window, casaN.lan)
+                address = socket.client.host if socket.client else ""
+                now = time.time()
+                if address and now - hub.addresses.get(address, 0.0) < SAME_PHONE_S:
+                    new = False
+                if address:
+                    hub.addresses[address] = now
+                    if len(hub.addresses) > 2000:
+                        hub.addresses = {a: t for a, t in hub.addresses.items() if now - t < SAME_PHONE_S}
+                if new:
+                    ctx.bus.publish("phone_new", device=device, nickname=nick or None)
+                else:
+                    ctx.bus.publish("phone_back", device=device, nickname=nick or None)
 
             async def pump():
                 while True:
@@ -244,6 +291,23 @@ def create_app(ctx: "Context") -> FastAPI:
             pass
         finally:
             hub.clients.discard(q)
+            if device:
+                hub.detach(device, q)
+
+    @app.post("/api/welcome")
+    async def welcome(body: dict, w: Who = Depends(who)):
+        """The name typed on the welcome card of a new phone ({"later": true}: no name for now)."""
+        if not w.device:
+            raise HTTPException(400, "no phone id")
+        if body.get("later"):
+            ctx.bus.publish("phone_later", device=w.device)
+            return {"ok": True}
+        name = clean_name(str(body.get("name", "")), 30)
+        if not name:
+            raise HTTPException(400, "empty name")
+        ctx.store.name_device(w.device, name)
+        ctx.bus.publish("phone_named", device=w.device, name=name)
+        return {"ok": True, "name": name}
 
     # ============================================================ live view
     @app.get("/api/snapshot.jpg")

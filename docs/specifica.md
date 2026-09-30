@@ -331,9 +331,11 @@ Piper (`piper1-gpl`, GPL-3.0) **come programma separato**: un processo per lingu
 |---|---|
 | Silenziosa | non parla mai; restano campanello e suoni brevi; risposte solo sulla webapp |
 | Normale | eventi importanti, allarmi e avvisi, citofono, risposte |
-| Chiacchierona | commenta spostamenti, temperatura e umidità, propone di fare festa, grigliare o controllare l'auto |
+| Chiacchierona | commenta spostamenti, temperatura e umidità, propone di fare festa, grigliare o controllare l'auto; ogni due minuti circa fa una domanda a un personaggio con un nome, adatta alla stanza, e ascolta la risposta senza il tasto Parla (D-18) |
 
 Ogni frase detta compare anche come testo nella webapp.
+
+**Benvenuto ai telefoni nuovi (D-18).** La prima volta che un telefono apre la webapp la casa lo saluta, chiede il nome (a voce, senza il tasto Parla, o scritto sul telefono) e invita a entrare in casa con un personaggio. Un saluto a voce ogni 45 secondi al massimo; più telefoni insieme, un saluto solo; i telefoni si dimenticano dopo 7 giorni. In modalità silenziosa resta solo la scheda sul telefono.
 
 ### 10.7 Lingua
 Italiano all'avvio. Il tasto **lingua**, la webapp o la voce la cambiano. LED acceso = inglese. Al cambio tutte le luci lampeggiano per un secondo in verde (italiano) o in rosso (inglese) e la casa dice "Italiano" o "English" (R2).
