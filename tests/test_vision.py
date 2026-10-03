@@ -264,3 +264,70 @@ def test_whole_house_changed_is_reported(engine, renderer):
     frames = [([], {"brightness": 0.45, "cast": (1.6, 0.8, 0.6)})] * 70
     run(engine, renderer, frames, t0=10)
     assert engine.status()["flooded"]
+
+
+# ------------------------------------------------------------------ camera settings
+class FakeWebcam:
+    """Controls and pictures of a webcam like the C270: in automatic mode it reports its last manual values,
+    and under a warm, greenish light no colour temperature gives the neutral colours of its automatic mode."""
+
+    def __init__(self, light: float) -> None:
+        self.light = light                 # brightness per unit of exposure
+        self.values = {"exposure": 48, "wb": 0, "gain": 8}
+        self.auto = True
+
+    def automatic(self) -> None:
+        self.auto = True
+
+    def manual(self) -> None:
+        self.auto = False
+
+    def limits(self, key: str):
+        return (0, 10000)
+
+    def set(self, values: dict) -> bool:
+        self.values.update(values)
+        return True
+
+    def measure(self, balance=(1.0, 1.0, 1.0)):
+        if self.auto:
+            return 120.0, (118.0, 120.0, 122.0)     # what its automatic modes reach: neutral grey
+        e, g, wb = self.values["exposure"], self.values["gain"], self.values["wb"]
+        luma = min(255.0, self.light * e * (1 + g / 32))
+        t = wb / 10000.0                            # 0: bluest, 1: reddest; green always too strong
+        bgr = (luma * (0.55 - 0.45 * t), luma * 1.3, luma * (0.6 + 0.8 * t))
+        bgr = tuple(c * k for c, k in zip(bgr, balance))
+        return 0.114 * bgr[0] + 0.587 * bgr[1] + 0.299 * bgr[2], bgr
+
+
+def test_the_webcam_settings_are_found_on_the_pictures():
+    from domotiq.vision.camera import tune
+
+    for light, gain_needed in ((1.0, False), (0.05, True)):
+        cam = FakeWebcam(light)
+        values = tune(cam, cam.measure, settle=0)
+        cam.values.update({k: v for k, v in values.items() if k != "balance"})
+        luma, (b, g, r) = cam.measure(values["balance"])
+        assert 55 <= luma <= 110, (light, values, luma)              # about a quarter darker than 120
+        assert abs(b / g - 118 / 120) < 0.05 and abs(r / g - 122 / 120) < 0.05, values   # neutral again
+        assert (values["gain"] > 0) == gain_needed
+        assert values["exposure"] != 36
+
+
+def test_a_broken_camera_lock_is_not_applied():
+    from domotiq.vision.camera import valid_lock
+
+    assert not valid_lock({"exposure": 36, "wb": 0, "gain": 8})      # saved by the old adjustment
+    assert not valid_lock(None) and not valid_lock({})
+    assert valid_lock({"exposure": 625, "wb": 0, "gain": 32, "balance": [1.8, 1.0, 1.2]})
+
+
+def test_the_colour_gains_are_applied_to_every_picture():
+    from domotiq.vision.camera import Camera
+
+    cam = Camera("none")
+    cam.set_balance([2.0, 1.0, 0.5])
+    frame = np.full((4, 4, 3), (50, 100, 200), np.uint8)
+    assert cv2.LUT(frame, cam._lut)[0, 0].tolist() == [100, 100, 100]
+    cam.set_balance([1.0, 1.0, 1.0])
+    assert cam._lut is None

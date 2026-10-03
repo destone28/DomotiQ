@@ -152,3 +152,14 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
 - la 8, la 9 e la 10 (35 cm) coprono il percorso con meno di 1 cm di margine.
 
 Le lunghezze vere si misurano sulla casa montata e poi entrano nel capitolo dei collegamenti.
+
+## 4 ottobre 2026 — Casa montata, webcam e hotspot
+
+**Hotspot all'avvio (4/10, notte).** Con l'hardware montato nella scocca, Pixels, Buttons, Thermo e relè rispondono tutti. L'hotspot però non c'era: il 30/9 l'avevo acceso a mano, senza la modalità di avvio, e dopo il riavvio la scheda era tornata sulla Wi-Fi del laboratorio. Ora parte da solo a ogni avvio (`scripts/hotspot.sh boot`), come in fiera.
+
+**Immagine nera dopo "Regola di nuovo la luce" (4/10, notte).** Dopo la calibrazione la diretta era quasi nera e la casa vuota non si era salvata. La C270, quando esposizione e bilanciamento del bianco sono in automatico, non dice i valori che sta usando: restituisce gli ultimi impostati a mano (il bilanciamento addirittura 0), e la casa bloccava quelli, cioè esposizione 36 invece di qualche centinaio e bilanciamento al minimo. Ora la casa misura le immagini:
+- lascia regolare la webcam in automatico e misura luminosità e colori;
+- cerca l'esposizione manuale che dà la stessa luminosità meno un quarto, e aggiunge guadagno solo se non basta;
+- prova tutta la scala del bilanciamento del bianco.
+
+Misure sulla scheda con la luce calda del laboratorio: in automatico la C270 arriva a colori neutri (blu/verde 0,97), mentre nessuna temperatura manuale ci riesce (al meglio 0,53, con il verde dominante). Per questo la casa sceglie la temperatura che lascia meno da correggere e corregge il resto in software, con un guadagno fisso su ogni canale calcolato in modo da non cambiare la luminosità. I valori bloccati con la vecchia procedura vengono scartati all'avvio. Inoltre la webcam non abbassa più da sola i fotogrammi al secondo quando l'esposizione è lunga.

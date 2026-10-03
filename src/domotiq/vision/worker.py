@@ -42,7 +42,7 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
     import cv2  # noqa: F401  (imported here: the parent does not need it)
 
     from ..layout import Layout
-    from .camera import Camera, Controls
+    from .camera import Camera, Controls, picture_stats, tune, valid_lock
     from .engine import Engine
 
     cv2.setNumThreads(2)
@@ -62,10 +62,12 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
             stored = json.loads(lock_file.read_text())
         except (OSError, ValueError):
             stored = None
-        if stored:
+        if valid_lock(stored):
             cam.controls.lock(stored)
+            cam.set_balance(stored.get("balance"))
         else:
             cam.controls.automatic()
+            cam.set_balance(None)
 
     camera.on_connect = apply_controls
 
@@ -92,14 +94,21 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
         c: Controls | None = camera.controls
         if c is None:
             return {"ok": False, "error": "no camera"}
-        c.automatic()
-        time.sleep(3.0)
-        c.refresh()
-        values = c.lock()
-        # some room for the lights of the house, so the floor under them does not saturate
-        if values.get("exposure"):
-            values["exposure"] = max(1, int(values["exposure"] * 0.75))
-            c.set({"exposure": values["exposure"]})
+
+        def measure() -> tuple[float, float]:
+            camera.flush(frames=3)
+            stats = [picture_stats(f) for f in grab(2) if f is not None]
+            if not stats:
+                raise RuntimeError("no frames from the camera")
+            return sum(x[0] for x in stats) / len(stats), sum(x[1] for x in stats) / len(stats)
+
+        camera.set_balance(None)
+        try:
+            values = tune(c, measure)
+        except RuntimeError as e:
+            c.automatic()
+            return {"ok": False, "error": str(e)}
+        camera.set_balance(values["balance"])
         lock_file.write_text(json.dumps(values))
         camera.flush()
         result = engine.take_empty()

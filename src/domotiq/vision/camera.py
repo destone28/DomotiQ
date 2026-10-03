@@ -64,6 +64,8 @@ class Controls:
         "flicker": ["power_line_frequency"],
         "backlight": ["backlight_compensation"],
         "focus_auto": ["focus_automatic_continuous", "focus_auto"],
+        # a long exposure may slow the frames down: the tracking wants them steady
+        "dyn_fps": ["exposure_dynamic_framerate", "exposure_auto_priority"],
     }
 
     def __init__(self, device: str) -> None:
@@ -91,6 +93,10 @@ class Controls:
     def get(self, key: str) -> int | None:
         n = self.name(key)
         return self.available.get(n, {}).get("value") if n else None
+
+    def limits(self, key: str) -> tuple[int, int] | None:
+        info = self.available.get(self.name(key) or "", {})
+        return (info["min"], info["max"]) if "min" in info and "max" in info else None
 
     def set(self, values: dict[str, int]) -> bool:
         parts = []
@@ -122,14 +128,112 @@ class Controls:
     def automatic(self) -> None:
         self.set({"auto_exposure": 3, "wb_auto": 1, "flicker": 1, "backlight": 0})
 
-    def lock(self, stored: dict | None = None) -> dict:
-        """Freeze exposure, white balance and gain at the stored values, or at the current ones."""
-        stored = stored or {}
-        cur = {"exposure": self.get("exposure"), "wb": self.get("wb"), "gain": self.get("gain")}
-        values = {k: stored.get(k) if stored.get(k) is not None else v for k, v in cur.items()}
-        self.set({"auto_exposure": 1, "wb_auto": 0, "flicker": 1, "backlight": 0})
-        self.set({k: v for k, v in values.items() if v is not None})
+    def manual(self) -> None:
+        self.set({"auto_exposure": 1, "wb_auto": 0, "dyn_fps": 0, "flicker": 1, "backlight": 0})
+
+    def lock(self, stored: dict) -> dict:
+        """Freeze exposure, white balance and gain at the values found by tune()."""
+        values = {k: stored.get(k) for k in ("exposure", "wb", "gain") if stored.get(k) is not None}
+        self.manual()
+        self.set(values)
         return values
+
+
+# The C270 does not report what its automatic modes chose: while they are on, the exposure and the white
+# balance it gives back are the last manual values (the white balance even 0), and locking those left the
+# picture almost black. So the values are found on the pictures: the brightness and the colours the
+# automatic modes reach are measured, then reproduced in manual mode. Under some lights (the warm, greenish
+# ones of the lab) no colour temperature of the webcam gives neutral colours, while its automatic mode does:
+# what the temperature cannot correct, a fixed gain on each colour channel does, in software.
+EXPOSURES = (3, 5, 8, 10, 15, 20, 30, 39, 50, 78, 100, 156, 200, 312, 400, 625)   # 0.1 ms
+GAINS = (0, 16, 32, 64, 96, 128, 192, 255)
+WB_STEPS = 9             # colour temperatures tried, across the whole range of the webcam
+DARKER = 0.75            # some room for the lights of the house: the floor under them must not saturate
+LUMA_MIN, LUMA_MAX = 50.0, 130.0
+BALANCE_MIN, BALANCE_MAX = 0.4, 2.5
+
+
+def valid_lock(stored: dict | None) -> bool:
+    """Only a lock measured on the pictures: an older one could hold the white balance at 0."""
+    return bool(stored and stored.get("exposure") and stored.get("balance"))
+
+
+def picture_stats(frame: np.ndarray) -> tuple[float, tuple[float, float, float]]:
+    """Brightness (0-255) and the mean of each channel (blue, green, red) of a picture."""
+    small = cv2.resize(frame, (160, 120), interpolation=cv2.INTER_AREA).astype(np.float32)
+    b, g, r = (float(small[:, :, i].mean()) for i in range(3))
+    return 0.114 * b + 0.587 * g + 0.299 * r, (b, g, r)
+
+
+def _cast(bgr: tuple[float, float, float]) -> tuple[float, float]:
+    b, g, r = (c + 1.0 for c in bgr)
+    return float(np.log(b / g)), float(np.log(r / g))
+
+
+def tune(controls, measure, settle: float = 3.0) -> dict:
+    """Let the automatic modes settle, then find the manual exposure, gain and white balance that give the
+    same picture (a quarter darker), and the gains that make its colours match. `measure()` waits for
+    fresh pictures and returns picture_stats()."""
+    controls.automatic()
+    time.sleep(settle)
+    luma_auto, bgr_auto = measure()
+    target = min(LUMA_MAX, max(LUMA_MIN, luma_auto * DARKER))
+    lo_wb, hi_wb = controls.limits("wb") or (2800, 6500)
+    controls.manual()
+    controls.set({"gain": GAINS[0], "wb": (lo_wb + hi_wb) // 2})
+
+    def luma_at(exposure: int) -> float:
+        controls.set({"exposure": exposure})
+        return measure()[0]
+
+    # the longest exposure that is not brighter than the target (the pictures grow brighter along the list)
+    lo, hi = 0, len(EXPOSURES) - 1
+    seen: dict[int, float] = {}
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        seen[mid] = luma_at(EXPOSURES[mid])
+        if seen[mid] <= target:
+            lo = mid
+        else:
+            hi = mid - 1
+    best = lo
+    if best + 1 < len(EXPOSURES):
+        below = seen[best] if best in seen else luma_at(EXPOSURES[best])
+        above = seen[best + 1] if best + 1 in seen else luma_at(EXPOSURES[best + 1])
+        if abs(above - target) < abs(below - target):
+            best += 1
+    exposure = EXPOSURES[best]
+    luma = luma_at(exposure)
+    gain = GAINS[0]
+    # a dark hall even at the longest exposure: some gain, as little as needed
+    if luma < target * 0.85:
+        for g in GAINS[1:]:
+            controls.set({"gain": g})
+            gain, luma = g, measure()[0]
+            if luma >= target * 0.9:
+                break
+    # the colour temperature that leaves the smallest correction to the worse of blue and red
+    want = _cast(bgr_auto)
+    wb, error, bgr = lo_wb, float("inf"), bgr_auto
+    for k in range(WB_STEPS):
+        temp = int(round((lo_wb + (hi_wb - lo_wb) * k / (WB_STEPS - 1)) / 10.0)) * 10
+        controls.set({"wb": temp})
+        stats = measure()[1]
+        got = _cast(stats)
+        e = max(abs(got[0] - want[0]), abs(got[1] - want[1]))
+        if e < error:
+            wb, error, bgr = temp, e, stats
+    controls.set({"wb": wb})
+    # and what is left, as gains on the three channels that keep the brightness found above
+    gb = (bgr_auto[0] + 1.0) / (bgr_auto[1] + 1.0) * (bgr[1] + 1.0) / (bgr[0] + 1.0)
+    gr = (bgr_auto[2] + 1.0) / (bgr_auto[1] + 1.0) * (bgr[1] + 1.0) / (bgr[2] + 1.0)
+    before = 0.114 * bgr[0] + 0.587 * bgr[1] + 0.299 * bgr[2]
+    after = 0.114 * gb * bgr[0] + 0.587 * bgr[1] + 0.299 * gr * bgr[2]
+    k = before / after if after > 0 else 1.0
+    balance = [round(min(BALANCE_MAX, max(BALANCE_MIN, x * k)), 3) for x in (gb, 1.0, gr)]
+    values = {"exposure": exposure, "wb": wb, "gain": gain, "balance": balance}
+    log.info("camera tuned: %s (brightness %.0f for %.0f, automatic %.0f)", values, luma, target, luma_auto)
+    return values
 
 
 class Camera:
@@ -151,6 +255,15 @@ class Camera:
         self.errors = 0
         self.reconnects = 0
         self.on_connect = None            # called after every (re)connection, to re-apply settings
+        self._lut: np.ndarray | None = None   # the fixed colour gains found by tune(), if any
+
+    def set_balance(self, gains: list[float] | None) -> None:
+        """Multiply blue, green and red by fixed gains (None: the pictures as they come)."""
+        if not gains or all(abs(g - 1.0) < 1e-3 for g in gains):
+            self._lut = None
+            return
+        ramp = np.arange(256, dtype=np.float32)
+        self._lut = np.dstack([np.clip(ramp * g, 0, 255) for g in gains]).astype(np.uint8).reshape(256, 1, 3)
 
     # ------------------------------------------------------------ opening
     def _open(self) -> bool:
@@ -221,6 +334,9 @@ class Camera:
             ok, frame = self._cap.read()
             if ok and self._raw:
                 frame = self._decode(frame)
+            lut = self._lut
+            if ok and frame is not None and lut is not None:
+                frame = cv2.LUT(frame, lut)
             if not ok or frame is None:
                 self.errors += 1
                 if self.errors % 10 == 0:
