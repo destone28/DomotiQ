@@ -14,6 +14,7 @@ export function mount(root) {
     root.innerHTML = `
       <h1>${t("more.title")}</h1>
       <div class="card"><ul class="list">
+        ${item("events", "📜", t("more.events"))}
         ${item("rules", "📏", t("more.rules"))}
         ${item("identities", "🧍", t("more.identities"))}
         ${item("sim", "🕹️", t("more.sim"))}

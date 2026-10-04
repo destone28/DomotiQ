@@ -4,7 +4,7 @@
 
 const T = {
   it: {
-    "nav.home": "Casa", "nav.live": "Diretta", "nav.commands": "Comandi", "nav.events": "Eventi", "nav.more": "Altro",
+    "nav.home": "Casa", "nav.live": "Diretta", "nav.commands": "Comandi", "nav.events": "Eventi", "nav.identities": "Personaggi", "nav.more": "Altro",
     "common.save": "Salva", "common.cancel": "Annulla", "common.delete": "Elimina", "common.close": "Chiudi",
     "common.yes": "Sì", "common.no": "No", "common.ok": "OK", "common.add": "Aggiungi", "common.edit": "Modifica",
     "common.back": "Indietro", "common.on": "Acceso", "common.off": "Spento", "common.none": "Nessuno",
@@ -44,7 +44,7 @@ const T = {
     "audit.restore": "ha ripristinato", "audit.reset": "ha ripristinato i valori di partenza",
     "audit.rule": "la regola", "audit.identity": "il personaggio", "audit.settings": "le impostazioni",
     "audit.calibration": "la calibrazione", "audit.backup": "il backup", "audit.someone": "Un telefono",
-    "more.title": "Altro", "more.rules": "Regole", "more.identities": "Personaggi e oggetti",
+    "more.title": "Altro", "more.events": "Eventi", "more.rules": "Regole", "more.identities": "Personaggi e oggetti",
     "more.sim": "Simulazione", "more.calibration": "Calibrazione", "more.diagnostics": "Diagnostica",
     "more.settings": "Impostazioni", "more.sign": "Cartello da stampare", "more.board": "Tabellone per lo stand",
     "more.about": "Informazioni", "more.staff_in": "Accesso staff", "more.staff_out": "Esci dallo staff",
@@ -124,7 +124,7 @@ const T = {
     "reg.from_voice": "Registrazione a voce da completare", "reg.choose": "Scegli",
   },
   en: {
-    "nav.home": "House", "nav.live": "Live", "nav.commands": "Controls", "nav.events": "Events", "nav.more": "More",
+    "nav.home": "House", "nav.live": "Live", "nav.commands": "Controls", "nav.events": "Events", "nav.identities": "Characters", "nav.more": "More",
     "common.save": "Save", "common.cancel": "Cancel", "common.delete": "Delete", "common.close": "Close",
     "common.yes": "Yes", "common.no": "No", "common.ok": "OK", "common.add": "Add", "common.edit": "Edit",
     "common.back": "Back", "common.on": "On", "common.off": "Off", "common.none": "None",
@@ -164,7 +164,7 @@ const T = {
     "audit.restore": "restored", "audit.reset": "reset to the defaults",
     "audit.rule": "the rule", "audit.identity": "the character", "audit.settings": "the settings",
     "audit.calibration": "the calibration", "audit.backup": "the backup", "audit.someone": "A phone",
-    "more.title": "More", "more.rules": "Rules", "more.identities": "Characters and objects",
+    "more.title": "More", "more.events": "Events", "more.rules": "Rules", "more.identities": "Characters and objects",
     "more.sim": "Simulation", "more.calibration": "Calibration", "more.diagnostics": "Diagnostics",
     "more.settings": "Settings", "more.sign": "Printable sign", "more.board": "Booth display",
     "more.about": "About", "more.staff_in": "Staff login", "more.staff_out": "Leave staff mode",

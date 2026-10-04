@@ -372,7 +372,7 @@ const SCREENS = {
   identities: "./screens/identities.js", sim: "./screens/sim.js", calibration: "./screens/calibration.js",
   diagnostics: "./screens/diagnostics.js", settings: "./screens/settings.js", about: "./screens/about.js",
 };
-const NAV_OF = { rules: "more", identities: "more", sim: "more", calibration: "more", diagnostics: "more", settings: "more", about: "more" };
+const NAV_OF = { rules: "more", events: "more", sim: "more", calibration: "more", diagnostics: "more", settings: "more", about: "more" };
 
 let current = null;
 
