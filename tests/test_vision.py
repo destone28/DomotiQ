@@ -102,6 +102,16 @@ def test_signature_distance():
 
 
 # ------------------------------------------------------------ segmentation
+def test_the_analysed_area_is_the_house_with_real_calibrations(layout):
+    # the corners tapped on casa1 on 4 October: the pole, raised to the camera, used to cover everything
+    for corners in ([[72.0, 434.7], [560.0, 430.7], [584.0, 72.7], [58.0, 96.7]],
+                    [[44.0, 419.8], [590.0, 413.8], [608.0, 35.8], [42.0, 45.8]]):
+        cal = Calibration.from_corners([[u / 640, v / 480] for u, v in corners], 640, 480, layout.camera)
+        seg = Segmenter(layout, cal)
+        share = np.count_nonzero(seg.mask) / np.count_nonzero(seg.view_mask)
+        assert share > 0.6, share
+
+
 def test_segmenter_finds_figurines_under_changing_light(layout, renderer):
     seg = Segmenter(layout, renderer.calib)
     seg.set_reference([renderer.render() for _ in range(3)])
@@ -146,7 +156,7 @@ def test_car_and_hand_are_told_apart(layout, renderer):
 
 # ------------------------------------------------------------ tracking and identities
 def test_track_follows_a_figurine_through_a_door(engine, renderer):
-    path = [(120.0, 110.0)] + [(120.0 + i * 12.0, 110.0) for i in range(1, 16)]
+    path = [(120.0, 110.0)] * 15 + [(120.0 + i * 12.0, 110.0) for i in range(1, 16)]
     rooms = []
     for i, (x, y) in enumerate(path):
         tracks = engine.feed(renderer.render([Thing(x, y, "#d03030")]), i * 0.1)
@@ -161,7 +171,7 @@ def test_track_follows_a_figurine_through_a_door(engine, renderer):
 
 def test_registered_identities_are_recognized(engine, renderer):
     red, blue = Thing(300, 100, "#d03030"), Thing(520, 150, "#3050d0")
-    run(engine, renderer, [([red, blue], {})] * 3)
+    run(engine, renderer, [([red, blue], {})] * 15)
     by_pos = {round(t.x / 100): t.id for t in engine.tracks}
     sig_red = engine.track_signature(by_pos[3])[0]
     sig_blue = engine.track_signature(by_pos[5])[0]
@@ -170,7 +180,7 @@ def test_registered_identities_are_recognized(engine, renderer):
     # a fresh start: the house recognizes them by colour alone
     engine.tracker.tracks.clear()
     engine.rescan()
-    tracks = run(engine, renderer, [([Thing(100, 60, "#d03030"), Thing(560, 300, "#3050d0")], {})] * 8, t0=10)
+    tracks = run(engine, renderer, [([Thing(100, 60, "#d03030"), Thing(560, 300, "#3050d0")], {})] * 15, t0=10)
     names = {t.identity: t.room for t in tracks}
     assert names.get("id-marco") == "kitchen"
     assert names.get("id-sofia") == "garage"
@@ -179,22 +189,24 @@ def test_registered_identities_are_recognized(engine, renderer):
 
 def test_carried_by_hand_keeps_identity(engine, renderer):
     red = Thing(300, 100, "#d03030")
-    run(engine, renderer, [([red], {})] * 3)
+    run(engine, renderer, [([red], {})] * 15)
     tid = engine.tracks[0].id
     engine.tracker.assign(tid, "id-marco")
     # a hand comes down on it and takes it away
     frames = [([red], {"hands": [Hand(300, 100)]})] * 3 + [([], {"hands": [Hand(450, 200)]})] * 3
-    tracks = run(engine, renderer, frames, t0=1)
+    tracks = run(engine, renderer, frames, t0=2)
     assert any(t.carried and t.identity == "id-marco" for t in tracks)
     # put down in the bedroom
-    tracks = run(engine, renderer, [([Thing(520, 150, "#d03030")], {})] * 4, t0=2)
+    moved = Thing(520, 150, "#d03030")
+    run(engine, renderer, [([], {"hands": [Hand(520, 150)]})] * 3 + [([moved], {"hands": [Hand(520, 150)]})] * 2, t0=3)
+    tracks = run(engine, renderer, [([moved], {})] * 10, t0=4)
     mine = [t for t in tracks if t.identity == "id-marco"]
     assert len(mine) == 1 and mine[0].room == "bedroom" and not mine[0].carried
 
 
 def test_same_colour_twins_are_followed_and_doubted(engine, renderer):
     a, b = Thing(250, 100, "#e0c020"), Thing(560, 100, "#e0c020")
-    run(engine, renderer, [([a, b], {})] * 3)
+    run(engine, renderer, [([a, b], {})] * 15)
     left = min(engine.tracks, key=lambda t: t.x)
     right = max(engine.tracks, key=lambda t: t.x)
     sig = engine.track_signature(left.id)[0]
@@ -211,17 +223,20 @@ def test_same_colour_twins_are_followed_and_doubted(engine, renderer):
     assert ids["id-leo"].x < ids["id-ada"].x
     # Leo alone is taken and put down: Ada stayed in sight, so it can only be Leo
     frames = [([Thing(186, 100, "#e0c020"), Thing(536, 164, "#e0c020")], {"hands": [Hand(186, 100)]})] * 2 + \
-             [([Thing(536, 164, "#e0c020")], {"hands": [Hand(300, 60)]})] * 3 + \
-             [([Thing(330, 60, "#e0c020"), Thing(536, 164, "#e0c020")], {})] * 4
+             [([Thing(536, 164, "#e0c020")], {"hands": [Hand(330, 60)]})] * 3 + \
+             [([Thing(330, 60, "#e0c020"), Thing(536, 164, "#e0c020")], {"hands": [Hand(330, 60)]})] * 2 + \
+             [([Thing(330, 60, "#e0c020"), Thing(536, 164, "#e0c020")], {})] * 12
     tracks = run(engine, renderer, frames, t0=7)
     ids = {t.identity: t for t in tracks}
     assert ids["id-leo"].x == pytest.approx(330, abs=12) and not any(t.uncertain for t in tracks)
     # both are taken at once and put down: now each could be either of them
     frames = [([Thing(330, 60, "#e0c020"), Thing(536, 164, "#e0c020")],
                {"hands": [Hand(330, 60), Hand(536, 164, side="top")]})] * 2 + \
-             [([], {"hands": [Hand(300, 150), Hand(500, 250, side="top")]})] * 3 + \
-             [([Thing(90, 60, "#e0c020"), Thing(560, 120, "#e0c020")], {})] * 5
-    tracks = run(engine, renderer, frames, t0=9)
+             [([], {"hands": [Hand(90, 60), Hand(560, 120, side="top")]})] * 3 + \
+             [([Thing(90, 60, "#e0c020"), Thing(560, 120, "#e0c020")],
+               {"hands": [Hand(90, 60), Hand(560, 120, side="top")]})] * 2 + \
+             [([Thing(90, 60, "#e0c020"), Thing(560, 120, "#e0c020")], {})] * 12
+    tracks = run(engine, renderer, frames, t0=10)
     assert len(tracks) == 2
     assert all(t.uncertain and sorted(t.candidates) == ["id-ada", "id-leo"] for t in tracks)
     assert asked
@@ -319,7 +334,7 @@ def test_a_figurine_put_down_by_hand_appears_when_the_hand_leaves(engine, render
             first = i * 0.1
     assert len(tracks) == 1 and tracks[0].room == "living"
     assert np.hypot(tracks[0].x - 300, tracks[0].y - 100) < 12
-    assert first is not None and first <= 1.2               # ready as soon as the hand has settled
+    assert first is not None and first <= 1.8               # told as soon as it stands still
 
 
 def test_a_change_with_no_hand_is_not_a_presence(engine, renderer):

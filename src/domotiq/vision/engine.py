@@ -50,6 +50,8 @@ SCAN_S = 3.0             # after a start or a new empty house, what is in sight 
 LIGHT_SHARE = 0.20       # this much of the house changed at once with no hand: the light of the hall changed
 LIGHT_FREEZE_S = 4.0     # ...the house waits this long for the light to be measured again
 GHOST_FRAMES = 25        # a change explained by nothing for this many frames joins the empty house
+LIGHT_BLOCK_S = 2.5      # after the house changes the light of a room, its glow on walls and floor is no presence
+SCAN_CHROMA, SCAN_DARKER = 10.0, 8.0   # at a start, only what clearly stands out: another colour, or darker
 COCO_CLASSES = ["person", "dog", "cat", "animal", "car", "object"]
 
 
@@ -89,6 +91,8 @@ class Engine:
         self._light_since = 0.0
         self._ghost: np.ndarray | None = None      # frames of unexplained change, per pixel
         self.absorbed = 0
+        self._light_block: dict[str, float] = {}  # room -> until when a change of its light hides births
+        self._clipped_since = 0.0                  # since when the light is beyond what the rooms can correct
         # before the calibration the house does not know where the bathroom is: it assumes the
         # camera is mounted as in the model, with a wide margin
         self._nominal_privacy = Privacy(layout, Calibration.synthetic(*ANALYSIS, layout.camera), margin_mm=45.0)
@@ -102,6 +106,25 @@ class Engine:
     @property
     def ready(self) -> bool:
         return self.calibrated and self.segmenter.reference is not None and self.light_ok
+
+    def lights_changed(self, rooms: list[str], now: float) -> None:
+        """The house changed the light of these rooms: measure it again, and its glow is no presence."""
+        if self.segmenter:
+            self.segmenter.light_changed(rooms, now)
+        for room in rooms:
+            self._light_block[room] = now + LIGHT_BLOCK_S
+
+    def _may_be_born(self, o: Observation, scan: bool, births_open: bool, now: float) -> bool:
+        x, y, w, h = o.bbox
+        room = self.layout.locate(*o.centroid_mm)
+        if self._light_block.get(room or "", 0.0) > now:
+            return False
+        if scan:
+            # at a start the empty house may be old (other lights on, the hall light changed): only what
+            # clearly stands out, not a glow or a reflection
+            chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
+            return chroma_d >= SCAN_CHROMA or light_d <= -SCAN_DARKER
+        return births_open and bool(self._zone[y:y + h, x:x + w].any())
 
     def rescan(self) -> None:
         """Take what is in sight as it is (after a start, or a new empty house)."""
@@ -239,6 +262,16 @@ class Engine:
         else:
             self._light_since = 0.0
         light_event = bool(self._light_since) and now - self._light_since < LIGHT_FREEZE_S
+        # a light beyond what the correction of the rooms can follow (gains at their limits in most rooms):
+        # wait, and then learn the empty house again from what is seen, around the tracks
+        g = seg._prev_gains
+        clipped = g is not None and float(np.mean(np.any((g <= 0.31) | (g >= 2.95), axis=1))) >= 0.5
+        if clipped:
+            self._clipped_since = self._clipped_since or now
+        else:
+            self._clipped_since = 0.0
+        relearn = clipped and now - self._clipped_since >= LIGHT_FREEZE_S
+        light_event = light_event or clipped
         # most of the house different from the empty one for long: the camera was covered or knocked,
         # or the light changed beyond what the house can follow (a covered camera is just dark: the light
         # correction of the rooms ends at its limit)
@@ -255,13 +288,15 @@ class Engine:
         births_open = self._zone is not None and SETTLE_S <= quiet <= SETTLE_S + BIRTH_S and not light_event
         for o in obs:
             if not o.hand:
-                x, y, w, h = o.bbox
-                o.extra["birth"] = scan or (births_open and bool(self._zone[y:y + h, x:x + w].any()))
+                o.extra["birth"] = self._may_be_born(o, scan, births_open, now)
         if self._zone is not None and quiet > SETTLE_S + BIRTH_S:
             self._zone = None
         self.observations = obs
         self.tracks = self.tracker.update(obs, now, frozen=frozen, quiet_s=quiet)
-        self._absorb_ghosts(small, fg, obs, hands, frozen or scan or share > 0.35)
+        if relearn:
+            self._relearn(small, fg, obs)
+        else:
+            self._absorb_ghosts(small, fg, obs, hands, frozen or scan or share > 0.35)
         # the hall light drifts slowly: follow it on the free floor, when nothing moves
         if now - self._last_ref_update > 5.0 and not frozen and not any(o.hand for o in obs):
             self._last_ref_update = now
@@ -301,6 +336,21 @@ class Engine:
             seg.absorb(small, ripe)
             g[ripe] = 0
             self.absorbed += 1
+
+    def _relearn(self, small: np.ndarray, fg: np.ndarray, obs: list[Observation]) -> None:
+        """The empty house again, from this frame, except where the tracks are."""
+        seg = self.segmenter
+        keep = np.zeros(fg.shape, bool)
+        tracked = [o.extra["label"] for o in obs if o.extra.get("track")]
+        if tracked and seg.labels is not None:
+            lut = np.zeros(int(seg.labels.max()) + 1, bool)
+            lut[tracked] = True
+            keep = cv2.dilate(lut[seg.labels].astype(np.uint8), np.ones((15, 15), np.uint8)) > 0
+        seg.absorb(small, (seg.mask > 0) & ~keep)
+        seg.light_changed(seg.region_names, self.frame_at, 1.0)
+        self._clipped_since = 0.0
+        self._zone = None
+        self.absorbed += 1
 
     def _check_moved(self, small: np.ndarray, now: float) -> None:
         """A bumped camera no longer sees the walls where the reference has them."""

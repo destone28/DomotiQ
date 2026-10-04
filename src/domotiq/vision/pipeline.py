@@ -100,9 +100,14 @@ class Segmenter:
         self._changed: dict[int, float] = {}          # region -> until when its light is changing
         self._g: np.ndarray | None = None              # gains of every pixel, kept between two estimates
         self._g_at = 0.0
-        self.gain_period = 0.33                        # the light is measured three times a second
+        # the light is measured once a second, and at once when the house changes a light or much of the
+        # house changes (the measure is the most expensive step on the board)
+        self.gain_period = 1.0
         self._crowded: dict[int, float] = {}          # region -> since when it is all foreground
-        self.params = {"dc": 11.0, "dl": 20.0, "shadow_dc": 7.0, "min_px": 80, "hand_mm2": 3500.0}
+        # measured on casa1 in the dim light of the lab: a dark brown figurine on the grey floor is 14 points
+        # darker and 8.5 apart in colour, the empty house stays well below these. What differs with no hand
+        # around never becomes a presence (engine), so the comparison can be this sensitive.
+        self.params = {"dc": 8.0, "dl": 12.0, "shadow_dc": 4.0, "min_px": 120, "hand_mm2": 3500.0}
         self.labels: np.ndarray | None = None          # the blobs of the last frame, by number
         self.hand_mask: np.ndarray | None = None       # where the hands of the last frame are
         self.scene = StaticScene(layout, calib)
@@ -126,9 +131,13 @@ class Segmenter:
         b = lay.base
         self.view_mask = self._poly_mask([cal.image_of(rect_pts([b.x0 - 5, b.x1 + 5, b.y0 - 5, b.y1 + 5]))])
         self.base_mask = self._poly_mask([cal.image_of(rect_pts([b.x0, b.x1, b.y0, b.y1]))])
-        heights = {"pole": (0.0, 900.0), "tree-canopy": (95.0, 170.0)}
+        heights = {"tree-canopy": (95.0, 170.0)}
         polys = []
         for raw, shape in zip(lay.raw.get("excluded", []), lay.excluded):
+            if raw["id"] == "pole":
+                # the pole rises almost to the camera: raised that high its outline goes to infinity and, with
+                # some calibrations, wrapped around the whole picture. The scene below draws it as it is seen.
+                continue
             h0, h1 = heights.get(raw["id"], (100.0, 135.0))         # wall lights sit 100-135 mm up
             pts = circle_pts(shape.cx, shape.cy, shape.r) if isinstance(shape, Circle) \
                 else rect_pts([shape.x0, shape.x1, shape.y0, shape.y1])
@@ -139,6 +148,8 @@ class Segmenter:
         pole = (scene.kind == StaticScene.KINDS["pole"]).astype(np.uint8) * 255
         excluded |= cv2.dilate(wall_tops, np.ones((3, 3), np.uint8)) | cv2.dilate(pole, np.ones((5, 5), np.uint8))
         self.mask = cv2.bitwise_and(self.view_mask, cv2.bitwise_not(excluded))
+        if np.count_nonzero(self.mask) < 0.5 * np.count_nonzero(self.view_mask):
+            raise ValueError("the masked zones cover most of the house: check the calibration")
         # the rim of what is analysed: arms reach the house across it, the car only at its gate
         inner = cv2.erode(self.view_mask, np.ones((7, 7), np.uint8))
         self.rim = (self.view_mask > 0) & (inner == 0)
@@ -175,13 +186,24 @@ class Segmenter:
         self._g = None
         self.gains = {}
 
-    def _reference_changed(self) -> None:
-        self.reference = cv2.cvtColor(self.reference_bgr / 255.0, cv2.COLOR_BGR2LAB)
-        # the comparison itself runs on 8-bit Lab, which OpenCV converts many times faster
-        self._ref_lab8 = cv2.cvtColor(np.clip(self.reference_bgr, 0, 255).astype(np.uint8), cv2.COLOR_BGR2LAB)
-        self._ref_l = self._ref_lab8[..., 0].astype(np.int16)
-        self._ref_a = self._ref_lab8[..., 1].astype(np.float32)
-        self._ref_b = self._ref_lab8[..., 2].astype(np.float32)
+    def _reference_changed(self, box: tuple[int, int, int, int] | None = None) -> None:
+        """Convert the reference again, all of it or only a box of it (x0, y0, x1, y1)."""
+        if box is None or getattr(self, "_ref_lab8", None) is None:
+            self.reference = cv2.cvtColor(self.reference_bgr / 255.0, cv2.COLOR_BGR2LAB)
+            # the comparison itself runs on 8-bit Lab, which OpenCV converts many times faster
+            self._ref_lab8 = cv2.cvtColor(np.clip(self.reference_bgr, 0, 255).astype(np.uint8), cv2.COLOR_BGR2LAB)
+            self._ref_l = self._ref_lab8[..., 0].astype(np.int16)
+            self._ref_a = self._ref_lab8[..., 1].astype(np.float32)
+            self._ref_b = self._ref_lab8[..., 2].astype(np.float32)
+        else:
+            x0, y0, x1, y1 = box
+            bgr = self.reference_bgr[y0:y1, x0:x1]
+            self.reference[y0:y1, x0:x1] = cv2.cvtColor(bgr / 255.0, cv2.COLOR_BGR2LAB)
+            lab8 = cv2.cvtColor(np.clip(bgr, 0, 255).astype(np.uint8), cv2.COLOR_BGR2LAB)
+            self._ref_lab8[y0:y1, x0:x1] = lab8
+            self._ref_l[y0:y1, x0:x1] = lab8[..., 0]
+            self._ref_a[y0:y1, x0:x1] = lab8[..., 1]
+            self._ref_b[y0:y1, x0:x1] = lab8[..., 2]
         self._ref_sat = None
 
     def absorb(self, frame_bgr: np.ndarray, where: np.ndarray) -> None:
@@ -191,7 +213,8 @@ class Segmenter:
             return
         cur = self.corrected(self._fit(frame_bgr), update=False)
         self.reference_bgr[where] = cur[where]
-        self._reference_changed()
+        ys, xs = np.nonzero(where)
+        self._reference_changed((int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1))
 
     def update_reference(self, frame_bgr: np.ndarray, fg: np.ndarray, rate: float = 0.02) -> None:
         """Follow slow changes of the hall light where nothing stands."""
@@ -363,6 +386,9 @@ class Segmenter:
             # keep the pixels that differ most from the floor: the edges of a blob mix both
             dcol = np.hypot(sub[:, 1] - ref[:, 1], sub[:, 2] - ref[:, 2]) + np.abs(sub[:, 0] - ref[:, 0]) * 0.3
             keep = sub[dcol >= np.percentile(dcol, 35)] if len(sub) > 20 else sub
+            # how clearly it stands out: the colour apart from the floor, and whether it is darker or lighter
+            chroma_d = float(np.median(np.hypot(sub[:, 1] - ref[:, 1], sub[:, 2] - ref[:, 2])))
+            light_d = float(np.median(sub[:, 0] - ref[:, 0]))
             r_near, r_far = float(r.min()), float(r.max())
             h_est = None
             if r_far > 130:
@@ -384,6 +410,7 @@ class Segmenter:
                             (float(far[0]), float(far[1])), area_mm2, width, elong, signature(keep),
                             border, hand, int(area), h_est, guess)
             o.extra["label"] = i
+            o.extra["contrast"] = (chroma_d, light_d)
             obs.append(o)
         self.hand_mask = self._join_hands(obs, labels)
         return obs

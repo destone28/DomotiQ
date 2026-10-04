@@ -158,8 +158,8 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                         conn.send(("taught", {msg[2]: sig[0]}))
                 elif kind == "forget" and engine.tracker:
                     engine.tracker.forget(msg[1])
-                elif kind == "lights" and engine.segmenter:
-                    engine.segmenter.light_changed(msg[1], time.time())
+                elif kind == "lights":
+                    engine.lights_changed(msg[1], time.time())
                 elif kind == "privacy":
                     engine.set_privacy(bool(msg[1]))
                 elif kind == "want":
@@ -198,7 +198,7 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                 logging.exception("frame failed")
                 tracks = []
             conn.send(("tracks", [t.to_dict() for t in tracks], {"camera": camera.connected, "fps": engine.fps}))
-            if now - last_jpeg >= 0.1:
+            if now - last_jpeg >= 0.2:                # the live view asks 5 pictures a second
                 for overlay in (False, True):
                     if now - want[overlay] < 3.0:
                         jpg = engine.jpeg(overlay=overlay)

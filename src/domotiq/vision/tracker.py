@@ -46,6 +46,8 @@ ID_ACCEPT = 0.30            # colour distance under which an identity is recogni
 ID_MARGIN = 0.07            # the second best must be this much worse
 CONFIRM_FRAMES = 2          # frames of agreement before an identity is given
 UNKNOWN_ASK_S = 2.0         # in sight this long and recognized as nobody: the house asks who it is
+NEW_S, NEW_HITS = 1.0, 6    # something new is told to the house once it has stood this long: a reflection
+                            # of the arm that has just left lasts less
 
 
 @dataclass
@@ -112,8 +114,8 @@ class Tracker:
         self._ask_unknown(now)
         out = []
         for t in self.tracks.values():
-            if t.hits < 2 and not t.identity:
-                continue                   # a blob seen once may be noise
+            if not t.identity and (t.hits < NEW_HITS or now - t.since < NEW_S):
+                continue                   # not yet: it may be a reflection, or noise
             tr = t.to_track(self.layout, self._rooms.get(t.id))
             self._rooms[t.id] = tr.room
             out.append(tr)
@@ -134,8 +136,9 @@ class Tracker:
                 for j, o in enumerate(things):
                     sd = distance(t.sig, o.sig)
                     if t.carried:
-                        # put down somewhere: only the colour tells, and a track in sight is preferred
-                        if sd < 0.45:
+                        # put down somewhere: only the colour tells, and a track in sight is preferred. Only
+                        # once the hands have left and where they were: under an arm, a piece of it would do
+                        if births and o.extra.get("birth", True) and sd < 0.45:
                             cost[i, j] = 0.8 + 1.5 * sd
                         continue
                     unseen = min(now - t.last_seen, 1.0)
