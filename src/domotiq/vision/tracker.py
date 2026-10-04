@@ -304,9 +304,9 @@ class Tracker:
         if t.carried:
             return False
         if t.identity:
-            return not t.uncertain and (t.locked or t.confidence >= 0.5)
-        return t.shown and now - t.since >= SURE_S and t.presence >= PRESENCE_MIN and \
-            not any(now - j <= JITTER_WINDOW_S for j in t.jumps)
+            return bool(not t.uncertain and (t.locked or t.confidence >= 0.5))
+        return bool(t.shown and now - t.since >= SURE_S and t.presence >= PRESENCE_MIN and
+                    not any(now - j <= JITTER_WINDOW_S for j in t.jumps))
 
     def presence(self, t: VTrack, now: float) -> float:
         """How sure the house is that something is really there, 0-1."""
@@ -362,13 +362,16 @@ class Tracker:
             best = min(best, dk)
         return best
 
-    def recognizable(self, sig: np.ndarray, area: float = 0.0) -> bool:
-        """Looks like a registered character (closely, or much more than like anybody else)."""
+    def recognizable(self, sig: np.ndarray, area: float = 0.0, strict: bool = False) -> bool:
+        """Looks like a registered character (closely, or much more than like anybody else); `strict`: closely, and
+        more than like anybody else."""
         order = self._looks()[0]
         row = self._unlike_all(sig, area)
         ds = sorted(float(row[k]) for k, i in enumerate(order) if len(i.signature))
         if not ds:
             return False
+        if strict:
+            return ds[0] < ID_ACCEPT and (len(ds) == 1 or ds[1] - ds[0] >= ID_MARGIN)
         return ds[0] < ID_ACCEPT or ds[0] < ID_ACCEPT_LOOSE and (len(ds) == 1 or ds[1] - ds[0] >= ID_MARGIN_LOOSE)
 
     def _position(self, o: Observation, category: str | None) -> tuple[float, float]:
@@ -678,8 +681,8 @@ class Tracker:
             unseen = now - t.last_seen
             if unseen <= LOST_S or frozen:
                 continue
-            # never told to the house, or followed only for a moment: it was noise
-            young = (t.last_seen - t.since < YOUNG_S or not t.shown) and not t.identity and not t.locked
+            # never told to the house, or followed only for a moment (even if it took a name): it was noise
+            young = (t.last_seen - t.since < YOUNG_S or not t.shown and not t.identity) and not t.locked
             if young or unseen > (HIDDEN_KNOWN_S if t.identity else HIDDEN_S):
                 del self.tracks[tid]
                 self._rooms.pop(tid, None)

@@ -812,3 +812,14 @@ def test_two_figurines_touching_are_both_there(layout):
     assert sorted(x.identity for x in out) == ["id-a", "id-b"]
     assert {round(x.x) for x in out} == {round(t.x)}          # in the same place, one hidden behind the other
     assert sum(x.hidden for x in out) == 1
+
+
+def test_tracks_go_out_as_plain_json(layout):
+    import json
+    a = _look(45, 50, 30)
+    tr = _tracker(layout, [])
+    out = []
+    for k in range(40):
+        out = tr.update([_blob(300, 60, a)], now=100 + 0.2 * k, quiet_s=100, frozen=False)
+    assert out and json.dumps([t.to_dict() for t in out])        # no numpy type left in a track
+    assert all(type(t.sure) is bool for t in out)

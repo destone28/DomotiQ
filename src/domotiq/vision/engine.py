@@ -54,6 +54,7 @@ LIGHT_BLOCK_S = 2.5      # after the house changes the light of a room, its glow
 LIGHT_GLOW_S = 15.0      # ...and nothing there is taken late: the glow joins the empty house instead. A figurine
                          # put down there is born before: it is what turns the light on
 SCAN_CHROMA, SCAN_DARKER = 10.0, 8.0   # at a start, only what clearly stands out: another colour, or darker
+SCAN_WAIT_S = 20.0       # a start waits for the lights of the house to settle (they are sent again), at most this long
 HAND_STILL_S = 8.0       # a "hand" that does not move for this long is something lying on the edge of the base
 LATE_S = 2.0             # something that clearly stands out and stays this long, within LATE_WINDOW_S of a
 LATE_WINDOW_S = 20.0     # hand, is a presence even if the house was waiting when it was put down
@@ -114,6 +115,7 @@ class Engine:
         self._zone: np.ndarray | None = None       # where the hands have been since the last births
         self._scan_pending = True
         self._scan_until = 0.0
+        self._scan_since = 0.0
         self._light_since = 0.0
         self._ghost: np.ndarray | None = None      # frames of unexplained change, per pixel
         self.absorbed = 0
@@ -290,14 +292,14 @@ class Engine:
             return False
         if scan:
             # at a start the empty house may be old (other lights on, modules moved meanwhile): the house takes
-            # the characters it knows and the car; anything else joins the empty house, and a new figurine
-            # that was already there shows up as soon as somebody moves it
+            # the characters it knows closely, shaped like figurines, and the car; anything else joins the empty
+            # house, and a figurine that was already there shows up as soon as somebody moves it
             chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
             if chroma_d < SCAN_CHROMA and light_d > -SCAN_DARKER:
                 return False
             if o.area_mm2 > 6000:
                 return True
-            return self._known(o)
+            return self._figurine_like(o) and bool(self.tracker) and self.tracker.recognizable(o.sig, o.area_mm2, strict=True)
         if not births_open or not self._zone[y:y + h, x:x + w].any():
             return False
         # brought by the hand: it was not there before the hand came, and it is not the place a hand has just
@@ -426,7 +428,15 @@ class Engine:
             self.tracks, self.observations = [], []
             return []
         if self._scan_pending:
-            self._scan_pending, self._scan_until = False, now + SCAN_S
+            # what is in sight is taken as it is only once the lights stand still: the microcontroller sends them
+            # again at a start, and their glow is no character
+            self._scan_since = self._scan_since or now
+            settled = all(now - t >= LIGHT_BLOCK_S for t in self._light_at.values())
+            if settled or now - self._scan_since >= SCAN_WAIT_S:
+                self._scan_pending, self._scan_until, self._scan_since = False, now + SCAN_S, 0.0
+            else:
+                self.tracks = self.tracker.update([], now, frozen=True, quiet_s=float("inf"), animated=self._animated)
+                return self.tracks
         seg = self.segmenter
         obs, fg, _lab = seg.process(small, now)
         t_seg = time.perf_counter()

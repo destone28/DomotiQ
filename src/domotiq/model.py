@@ -94,7 +94,11 @@ class Track:
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
-        d["x"] = round(self.x, 1)
-        d["y"] = round(self.y, 1)
-        d["confidence"] = round(self.confidence, 2)
+        # plain numbers and booleans: what the vision computes with numpy must still go out as JSON
+        d["x"] = round(float(self.x), 1)
+        d["y"] = round(float(self.y), 1)
+        d["confidence"] = round(float(self.confidence), 2)
+        d["presence"] = round(float(self.presence), 2)
+        for key in ("uncertain", "carried", "moving", "virtual", "hidden", "sure"):
+            d[key] = bool(d[key])
         return d
