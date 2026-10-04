@@ -170,7 +170,9 @@ def test_car_and_hand_are_told_apart(layout, renderer):
 
 # ------------------------------------------------------------ tracking and identities
 def test_track_follows_a_figurine_through_a_door(engine, renderer):
-    bring(engine, renderer, [Thing(120.0, 110.0, "#d03030")])
+    tracks = bring(engine, renderer, [Thing(120.0, 110.0, "#d03030")])
+    # a known character: something unknown moving with no hand around would be a reflection
+    engine.tracker.assign(tracks[0].id, "id-marco")
     path = [(120.0, 110.0)] * 5 + [(120.0 + i * 12.0, 110.0) for i in range(1, 16)]
     rooms = []
     for i, (x, y) in enumerate(path):
@@ -399,8 +401,9 @@ def test_an_unknown_figurine_is_asked_about(engine, renderer):
     settle(engine, renderer, [red, blue, green], 13)
     newcomer = [t for t in engine.tracks if t.room == "kitchen"]
     assert len(newcomer) == 1 and newcomer[0].identity is None
-    # the red and blue ones are recognized as Marco and Sofia: only Luca can be the newcomer
-    assert asked and asked[0][0] is None and asked[0][1] == ["id-luca"]
+    # the red and blue ones are recognized as Marco and Sofia; a new person is asked the name, with no
+    # registered one proposed (Luca, said aloud, would be recognized anyway)
+    assert asked and asked[0][0] is None and asked[0][1] == []
 
 
 # ------------------------------------------------------------------ camera settings
@@ -512,3 +515,100 @@ def test_an_arm_reaching_over_the_totem_is_a_hand(layout, renderer):
     # a figurine waiting by the totem is no hand
     obs, _, _ = seg.process(renderer.render([Thing(300, -20, "#d03030")]), now=0.2)
     assert obs and not any(o.hand for o in obs)
+
+
+def test_something_that_keeps_jumping_with_no_hand_is_no_presence(engine, renderer):
+    settle(engine, renderer, [], 0)
+    # a reflection where a hand has just been: it shakes by a few millimetres many times a second
+    run(engine, renderer, [([], {"hands": [Hand(300, 100)]})] * 4, t0=5)
+    seen = []
+    for i in range(60):
+        shaking = Thing(300 + (8 if i % 2 else 0), 100, "#d03030")
+        seen.append(engine.feed(renderer.render([shaking]), 5.4 + i * 0.1))
+    assert not any(seen)                                    # never on the map, never asked about
+    assert engine.status()["jittery"] >= 1
+
+
+def test_a_figurine_standing_still_or_moved_by_hand_is_never_taken_for_a_jumping_one(engine, renderer):
+    red = Thing(300, 100, "#d03030")
+    assert len(bring(engine, renderer, [red])) == 1
+    # carried across the room by hand, in small steps: the hand explains every move
+    for i in range(10):
+        moved = Thing(300 + 6 * i, 100, "#d03030")
+        engine.feed(renderer.render([moved], hands=[Hand(300 + 6 * i, 100)]), 10 + i * 0.1)
+    tracks = settle(engine, renderer, [Thing(354, 100, "#d03030")], 11)
+    assert len(tracks) == 1 and np.hypot(tracks[0].x - 354, tracks[0].y - 100) < 12
+    assert engine.status()["jittery"] == 0
+
+
+def test_figurines_may_shake_under_an_animated_light(engine, renderer):
+    settle(engine, renderer, [], 0)
+    engine.lights_changed(["living"], 4.0, animated=["living"])
+    run(engine, renderer, [([], {"hands": [Hand(300, 100)]})] * 4, t0=5)
+    tracks = []
+    for i in range(40):
+        shaking = Thing(300 + (8 if i % 2 else 0), 100, "#d03030")
+        tracks = engine.feed(renderer.render([shaking]), 5.4 + i * 0.1)
+    assert len(tracks) == 1 and tracks[0].room == "living"
+
+
+def test_nothing_there_said_by_a_visitor_is_forgotten(engine, renderer):
+    red = Thing(300, 100, "#d03030")
+    tracks = bring(engine, renderer, [red])
+    assert len(tracks) == 1
+    engine.dismiss(tracks[0].id, 10.0)
+    seen = [engine.feed(renderer.render([red]), 10.1 + i * 0.1) for i in range(30)]
+    assert not any(seen)                                    # gone, and not born again there
+    assert not engine.observations                          # what it was is part of the empty house now
+
+
+def test_newcomers_are_proposed_registered_ones_of_their_own_kind_only(engine, renderer):
+    from domotiq.vision.tracker import _group
+    assert _group("dog") == _group("cat") == "animal" and _group("person") == "person"
+    red = Thing(300, 100, "#d03030")
+    bring(engine, renderer, [red])
+    engine.set_identities([Identity("id-viola", "Viola", category="person"),
+                           Identity("id-fido", "Fido", category="dog")])
+    asked = []
+    engine.on_question = lambda tr, cands: asked.append((tr.category, cands))
+    for t in engine.tracker.tracks.values():
+        t.asked_new, t.category = float("-inf"), "person"
+    engine.tracker._ask_unknown(20.0)
+    assert asked and asked[-1] == ("person", [])            # a person is asked the name
+    for t in engine.tracker.tracks.values():
+        t.asked_new, t.category = float("-inf"), "dog"
+    engine.tracker._ask_unknown(21.0)
+    assert asked[-1] == ("dog", ["id-fido"])                # an animal: only the animals
+
+
+def test_a_shadow_appearing_with_no_hand_is_never_a_presence(engine, renderer):
+    red = Thing(300, 100, "#d03030")
+    assert len(bring(engine, renderer, [red])) == 1
+    # a hand passes elsewhere, then, with no hand around, a lamp at the side casts a shadow on the floor
+    run(engine, renderer, [([red], {"hands": [Hand(520, 150)]})] * 3, t0=10)
+    run(engine, renderer, [([red], {})] * 25, t0=10.3)
+    seen = []
+    for i in range(60):
+        frame = renderer.render([red])
+        y0, x0 = 300, 380
+        frame[y0:y0 + 40, x0:x0 + 60] = (frame[y0:y0 + 40, x0:x0 + 60] * 0.55).astype(frame.dtype)
+        seen.append(engine.feed(frame, 12.8 + i * 0.1))
+    assert all(len(t) == 1 for t in seen)                   # the figurine stays, nothing is added
+
+
+def test_the_webcam_is_set_again_when_the_hall_gets_dark_and_nothing_moves(engine, renderer):
+    red = Thing(300, 100, "#d03030")
+    tracks = bring(engine, renderer, [red])
+    engine.tracker.assign(tracks[0].id, "id-marco")
+    engine.light_ok = True
+    t, wanted = 10.0, None
+    for i in range(80):                                     # the hall light goes down, no hand around
+        tracks = engine.feed(renderer.render([red], brightness=0.45), t + i * 0.1)
+        if wanted is None and engine.retune_wanted(t + i * 0.1):
+            wanted = i * 0.1
+    assert wanted is not None and 5.0 <= wanted <= 6.5      # after five seconds of a darker hall
+    assert [x.identity for x in tracks] == ["id-marco"]     # nobody left meanwhile
+    engine.light_retuned(18.0)                              # the webcam found its light again
+    assert not engine.retune_wanted(18.1)
+    tracks = run(engine, renderer, [([red], {})] * 60, t0=18.0)
+    assert [x.identity for x in tracks] == ["id-marco"] and engine.status()["retunes"] == 1

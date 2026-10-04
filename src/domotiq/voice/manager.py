@@ -8,7 +8,8 @@
   to the next figurine that comes in through the front door; a new name
   registers a new character.
 - **Questions of the house**: when the house is unsure who someone is, it
-  asks aloud and on the web app; the next answer settles it.
+  asks aloud and on the web app; the next answer settles it. Who a newcomer
+  is becomes a short dialogue (who.py) that understands any answer.
 - **Small talk** (chatter.py): the welcome of a new phone, and the questions
   of chatty mode, answered without pressing Talk.
 
@@ -37,6 +38,7 @@ from .chatter import NAME_CONFIDENCE, WELCOME, Chatter, yes_no_grammar, yes_or_n
 from .narrator import Narrator
 from .stories import StoryTeller
 from .intents import Intent, find_name, find_room, name_from_speech, normalize, parse
+from .who import GIVE_UP, LATER, NOTHING, THINKING, WAITING, WHAT_IS_IT, Dialogue
 from .llm import LanguageModel
 from .stt import Listener
 from .tts import Speaker
@@ -59,8 +61,9 @@ FREQUENT = {
            "Let's dance!", "The party is over!", "Lighting the barbecue!", "English", "What's the name?",
            "Which room did you put it in?"],
 }
-for _lang in ("it", "en"):
+for _i, _lang in enumerate(("it", "en")):
     FREQUENT[_lang].append(WELCOME[_lang])
+    FREQUENT[_lang] += [THINKING[_lang]] + [p[_i] for p in (GIVE_UP, LATER, NOTHING, WAITING, WHAT_IS_IT)]
 
 
 class Voice:
@@ -97,6 +100,7 @@ class Voice:
         bus.subscribe("count_changed", self._on_count)
         self.chatter = Chatter(self)
         self.narrator = Narrator(self)
+        self.who = Dialogue(self)
         self.stories = StoryTeller(self)
         # a story in one language stops when the house changes language, rather than go on in the old one
         bus.subscribe("language", lambda ev: self._spawn(self.stories.preempt()) if self.stories.active else None)
@@ -640,6 +644,9 @@ class Voice:
                 if not self.ctx.actions.speaks("normal") or not (self.listener and self.listener.ok) \
                         or not self.mic.available:
                     return                            # silent mode or no microphone: the phones answer
+                if (ev.get("context") or {}).get("kind") == "who" and ev.get("allow_name"):
+                    await self.who.run(ev, stop)      # a newcomer: a dialogue that understands any answer
+                    return
                 labels = [((o.get("label") or {}).get(self.lang) or "") for o in ev.get("options") or []]
                 grammar = [w for w in labels if w] + yes_no_grammar(self.lang)
                 for attempt in range(2):

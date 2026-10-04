@@ -38,6 +38,9 @@ class VisionLink:
     def forget_identity(self, identity: str) -> None:
         pass
 
+    def dismiss(self, track_id: str) -> None:
+        """Nothing is there (a reflection, a hand): the vision forgets what it saw."""
+
     def category_guess(self, track_id: str) -> str | None:
         return None
 
@@ -45,8 +48,9 @@ class VisionLink:
         """Warnings about how well this track can be recognized, as {"it": ..., "en": ...}."""
         return []
 
-    def lights_changed(self, rooms: list[str]) -> None:
-        """The house changed the light of these rooms (the pipeline measures them again)."""
+    def lights_changed(self, rooms: list[str], animated: list[str] | None = None) -> None:
+        """The house changed the light of these rooms (the pipeline measures them again); `animated`: the
+        rooms whose light is animated now, where figurines may seem to shake."""
 
     def status(self) -> dict[str, Any]:
         return {"available": self.available}

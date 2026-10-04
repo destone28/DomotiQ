@@ -36,6 +36,7 @@ class Narrator:
         self.ctx = voice.ctx
         self._moves: dict[str, dict[str, Any]] = {}      # track -> the move waiting to settle
         self._lines: list[tuple[float, str, dict[str, str]]] = []   # (when, track, line)
+        self._hushed: set[str] = set()     # newcomers just named aloud: the dialogue already said it
         bus = self.ctx.bus
         bus.subscribe("room_enter", self._on_enter)
         bus.subscribe("room_exit", self._on_exit)
@@ -63,9 +64,17 @@ class Narrator:
         self._moves[track] = {"from": ev.get("room"), "to": None, "at": time.monotonic(),
                               "name": ev.get("name"), "category": ev.get("category")}
 
+    def hush(self, track: str | None) -> None:
+        """The newcomer of this track has just been named in a dialogue: no "Ecco Marco!" after it."""
+        if track:
+            self._hushed.add(track)
+
     def _on_identity(self, ev) -> None:
         """Somebody said who a newcomer is, or the house recognized it late: now it can be named."""
         track, name = ev.get("track"), ev.get("name")
+        if track in self._hushed:
+            self._hushed.discard(track)
+            return
         if not track or not name or ev.get("before"):
             return
         t = self.ctx.house.tracks.get(track)

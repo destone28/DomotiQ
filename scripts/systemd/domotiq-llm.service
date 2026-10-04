@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
 # SPDX-License-Identifier: MIT
-# llama-server with Qwen2.5-0.5B-Instruct, loopback only, lower priority than vision and voice.
+# llama-server with Qwen2.5-0.5B-Instruct, loopback only, lower priority than vision and voice. Two slots:
+# the commands of the house and the answers to "who is it?", each keeping its instructions in its cache.
 [Unit]
 Description=DomotiQ language model (llama.cpp)
 After=network.target
@@ -10,7 +11,7 @@ Type=simple
 User=arduino
 Group=arduino
 WorkingDirectory=/home/arduino/domotiq
-ExecStart=/home/arduino/domotiq/llama.cpp/build/bin/llama-server -m /home/arduino/domotiq/models/llm/qwen2.5-0.5b-instruct-q4_k_m.gguf --host 127.0.0.1 --port 8081 -c 2048 -t 3 -np 1
+ExecStart=/home/arduino/domotiq/llama.cpp/build/bin/llama-server -m /home/arduino/domotiq/models/llm/qwen2.5-0.5b-instruct-q4_k_m.gguf --host 127.0.0.1 --port 8081 -c 4096 -t 3 -np 2
 Nice=10
 Restart=always
 RestartSec=5

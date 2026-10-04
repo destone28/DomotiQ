@@ -96,16 +96,35 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
 
     engine.on_question = ask
 
+    def measure() -> tuple[float, tuple[float, float, float]]:
+        camera.flush(frames=3)
+        return average_stats(grab(2))
+
+    def retune() -> None:
+        """The light of the hall changed beyond what the correction of the rooms can follow: the webcam is set
+        again on what it sees now. The calibration, the empty house and the presences stay as they are."""
+        c: Controls | None = camera.controls
+        if c is None:
+            return
+        logging.info("the light of the hall changed: setting the webcam again")
+        camera.set_balance(None)
+        try:
+            values = tune(c, measure)
+        except RuntimeError as e:
+            logging.warning("setting the webcam again failed: %s", e)
+            apply_controls(camera)                # back to the light it had
+            engine.light_retuned(time.time())
+            return
+        camera.set_balance(values["balance"])
+        lock_file.write_text(json.dumps(values))
+        camera.flush()
+        engine.light_retuned(time.time())
+
     def adjust() -> dict[str, Any]:
         """Let the camera find exposure and white balance on the empty house, then freeze them."""
         c: Controls | None = camera.controls
         if c is None:
             return {"ok": False, "error": "no camera"}
-
-        def measure() -> tuple[float, tuple[float, float, float]]:
-            camera.flush(frames=3)
-            return average_stats(grab(2))
-
         camera.set_balance(None)
         try:
             values = tune(c, measure)
@@ -156,10 +175,12 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                     sig = engine.track_signature(msg[1]) if msg[2] else None
                     if sig:
                         conn.send(("taught", {msg[2]: sig[0]}))
+                elif kind == "dismiss":
+                    engine.dismiss(msg[1], time.time())
                 elif kind == "forget" and engine.tracker:
                     engine.tracker.forget(msg[1])
                 elif kind == "lights":
-                    engine.lights_changed(msg[1], time.time())
+                    engine.lights_changed(msg[1], time.time(), msg[2] if len(msg) > 2 else None)
                 elif kind == "privacy":
                     engine.set_privacy(bool(msg[1]))
                 elif kind == "want":
@@ -198,6 +219,8 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                 logging.exception("frame failed")
                 tracks = []
             conn.send(("tracks", [t.to_dict() for t in tracks], {"camera": camera.connected, "fps": engine.fps}))
+            if camera.controls is not None and engine.retune_wanted(now):
+                retune()
             if now - last_jpeg >= 0.2:                # the live view asks 5 pictures a second
                 for overlay in (False, True):
                     if now - want[overlay] < 3.0:
@@ -389,8 +412,11 @@ class VisionProcess(VisionLink):
     def forget_identity(self, identity: str) -> None:
         self._send("forget", identity)
 
-    def lights_changed(self, rooms: list[str]) -> None:
-        self._send("lights", rooms)
+    def dismiss(self, track_id: str) -> None:
+        self._send("dismiss", track_id)
+
+    def lights_changed(self, rooms: list[str], animated: list[str] | None = None) -> None:
+        self._send("lights", rooms, animated)
 
     def set_privacy(self, blur_private: bool) -> None:
         self.cfg["blur_private"] = bool(blur_private)

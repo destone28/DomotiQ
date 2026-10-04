@@ -59,6 +59,14 @@ LATE_S = 2.0             # something that clearly stands out and stays this long
 LATE_WINDOW_S = 20.0     # hand, is a presence even if the house was waiting when it was put down
 MIN_FLOOR = 0.35         # share of a new thing seen over floor or furniture: a reflection on a wall has none
 EDGE_MM, EDGE_MM2 = 12.0, 600.0   # small things right on the edge of the base are cables and sleeves
+FORGET_S, FORGET_MM = 3.0, 30.0   # "there is nothing there": what is seen there now joins the empty house
+# The light of the hall: the webcam is set again on what it sees when the picture stays this much darker or
+# brighter than the empty house for RETUNE_S, with no hand and no light of the house just changed. The
+# empty house and the presences stay as they are: nothing moved, so nothing is born and nothing leaves.
+RETUNE_DARK, RETUNE_BRIGHT = 0.55, 1.8
+RETUNE_S = 5.0
+RETUNE_EVERY_S = 60.0
+NO_HAND_S = 1.0          # a difference that appeared this long after the last hand is light, never a presence
 COCO_CLASSES = ["person", "dog", "cat", "animal", "car", "object"]
 
 
@@ -100,6 +108,14 @@ class Engine:
         self.absorbed = 0
         self._light_block: dict[str, float] = {}  # room -> until when a change of its light hides births
         self._light_at: dict[str, float] = {}     # room -> when the house last changed its light
+        self._animated: set[str] = set()           # rooms whose light is animated now
+        self._forget: list[tuple[float, float, float]] = []   # (x, y, until): somebody said nothing is there
+        self._fg_since: np.ndarray | None = None   # per pixel: since when it differs from the empty house
+        self._ratio = 1.0                          # brightness of the picture / of the empty house
+        self._off_since = 0.0                      # since when that ratio is beyond RETUNE_DARK..RETUNE_BRIGHT
+        self._settle_until = 0.0                   # the webcam has just been set again: the house waits
+        self._retuned_at = float("-inf")
+        self.retunes = 0
         self._clipped_since = 0.0                  # since when the light is beyond what the rooms can correct
         self._hand_since: np.ndarray | None = None # since when each pixel has been part of a hand (0: not)
         # before the calibration the house does not know where the bathroom is: it assumes the
@@ -116,10 +132,57 @@ class Engine:
     def ready(self) -> bool:
         return self.calibrated and self.segmenter.reference is not None and self.light_ok
 
-    def lights_changed(self, rooms: list[str], now: float) -> None:
-        """The house changed the light of these rooms: measure it again, and its glow is no presence."""
+    def retune_wanted(self, now: float) -> bool:
+        """The picture has stayed much darker or brighter than the empty house, with no hand and no light of
+        the house just changed: the webcam must be set again."""
+        return (self.ready and self.light_ok and bool(self._off_since) and now - self._off_since >= RETUNE_S
+                and now - self._hand_at >= RETUNE_S and now - self._retuned_at >= RETUNE_EVERY_S
+                and not self._animated and all(now - t >= LIGHT_GLOW_S for t in self._light_at.values()))
+
+    def light_retuned(self, now: float) -> None:
+        """The webcam has been set again: the light of every room is measured afresh, and the house waits a
+        moment. The empty house, the presences and who they are do not change."""
+        self.retunes += 1
+        self._retuned_at = now
+        self._off_since = self._clipped_since = 0.0
+        self._settle_until = now + LIGHT_FREEZE_S
+        if self.segmenter:
+            self.segmenter.light_changed(self.segmenter.region_names, now, LIGHT_FREEZE_S)
+
+    def dismiss(self, track_id: str, now: float | None = None) -> None:
+        """Somebody said there is nothing there (a reflection, a hand): the track goes, what it was joins the
+        empty house, and nothing is born there for a while."""
+        now = time.time() if now is None else now
+        where = self.tracker.dismiss(track_id, now) if self.tracker else None
+        if where:
+            self._forget.append((where[0], where[1], now + FORGET_S))
+
+    def _forget_dismissed(self, small: np.ndarray, obs: list[Observation], now: float) -> list[Observation]:
+        self._forget = [f for f in self._forget if f[2] > now]
+        seg = self.segmenter
+        if not self._forget or seg.labels is None:
+            return obs
+        keep, where = [], np.zeros(seg.labels.shape, bool)
+        for o in obs:
+            cx, cy = o.centroid_mm
+            if not o.hand and any(np.hypot(cx - x, cy - y) < FORGET_MM for x, y, _ in self._forget):
+                x, y, w, h = o.bbox
+                where[y:y + h, x:x + w] |= seg.labels[y:y + h, x:x + w] == o.extra["label"]
+            else:
+                keep.append(o)
+        if where.any():
+            where = cv2.dilate(where.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+            seg.absorb(small, where & (seg.mask > 0))
+            self.absorbed += 1
+        return keep
+
+    def lights_changed(self, rooms: list[str], now: float, animated: list[str] | None = None) -> None:
+        """The house changed the light of these rooms: measure it again, and its glow is no presence.
+        `animated`: the rooms whose light is animated now (a party, breathing): figurines there may shake."""
         if self.segmenter:
             self.segmenter.light_changed(rooms, now)
+        if animated is not None:
+            self._animated = set(animated)
         for room in rooms:
             self._light_block[room] = now + LIGHT_BLOCK_S
             self._light_at[room] = now
@@ -271,6 +334,7 @@ class Engine:
             self._scan_pending, self._scan_until = False, now + SCAN_S
         seg = self.segmenter
         obs, fg, _lab = seg.process(small, now)
+        obs = self._forget_dismissed(small, obs, now)
         self._still_hands(small, obs, now)
         hands = seg.hand_mask if seg.hand_mask is not None else np.zeros(fg.shape, bool)
         active = bool(hands.any())
@@ -297,7 +361,7 @@ class Engine:
         else:
             self._clipped_since = 0.0
         relearn = clipped and now - self._clipped_since >= LIGHT_FREEZE_S
-        light_event = light_event or clipped
+        light_event = light_event or clipped or now < self._settle_until
         # most of the house different from the empty one for long: the camera was covered or knocked,
         # or the light changed beyond what the house can follow (a covered camera is just dark: the light
         # correction of the rooms ends at its limit)
@@ -308,6 +372,18 @@ class Engine:
             self._flooded_since = self._flooded_since or now
         else:
             self._flooded_since = 0.0
+        self._ratio = ratio
+        if (ratio < RETUNE_DARK or ratio > RETUNE_BRIGHT or clipped) and not active:
+            self._off_since = self._off_since or now
+        else:
+            self._off_since = 0.0
+        # since when each pixel differs from the empty house: what appeared with no hand around is light
+        since = self._fg_since
+        if since is None or since.shape != fg.shape:
+            since = self._fg_since = np.zeros(fg.shape, np.float64)
+        diff = fg > 0
+        since[diff & (since == 0)] = now
+        since[~diff] = 0
         scan = now < self._scan_until
         frozen = (active or quiet < SETTLE_S or light_event) and not scan
         # new things only where the hands were, once they have left
@@ -318,7 +394,7 @@ class Engine:
         if self._zone is not None and quiet > SETTLE_S + BIRTH_S:
             self._zone = None
         self.observations = obs
-        self.tracks = self.tracker.update(obs, now, frozen=frozen, quiet_s=quiet)
+        self.tracks = self.tracker.update(obs, now, frozen=frozen, quiet_s=quiet, animated=self._animated)
         if relearn:
             self._relearn(small, fg, obs)
         else:
@@ -416,6 +492,10 @@ class Engine:
                     continue                  # the glow of a light the house has just changed
                 x, y, w, h = o.bbox
                 blob = seg.labels[y:y + h, x:x + w] == o.extra["label"]
+                if self._fg_since is not None:
+                    appeared = float(np.median(self._fg_since[y:y + h, x:x + w][blob]))
+                    if appeared and appeared - self._hand_at > SETTLE_S + NO_HAND_S:
+                        continue              # it appeared with no hand around: a lamp, a shadow
                 if float(np.median(g[y:y + h, x:x + w][blob])) >= late:
                     self.tracker.adopt(o, now)
                     g[y:y + h, x:x + w][blob] = 0
@@ -520,6 +600,9 @@ class Engine:
             "light_ok": self.light_ok,
             "hand": bool(self.frame_at - self._hand_at < SETTLE_S),
             "absorbed": self.absorbed,
+            "jittery": self.tracker.jittery if self.tracker else 0,
+            "brightness": round(self._ratio, 2),
+            "retunes": self.retunes,
             "shift_px": self._moved["shift"],
             "gains": self.segmenter.gains if self.segmenter else {},
             "recording": bool(self._record),

@@ -13,6 +13,10 @@ On the board the model reads about 11 tokens per second and writes about 6,
 so everything is kept short: the instructions and the examples are always
 the same text at the start of the conversation, which llama-server keeps in
 its cache, and each request adds only the sentence and the known names.
+
+The same model also tells what an answer to "who is it?" means (who.py).
+Those instructions stay in a second slot of llama-server (-np 2), so neither
+kind of request pushes the other out of the cache.
 """
 
 from __future__ import annotations
@@ -25,11 +29,14 @@ import re
 import urllib.request
 from typing import Iterable
 
+from . import who
 from .intents import Intent, find_name, find_room
 
 log = logging.getLogger(__name__)
 
 URL = "http://127.0.0.1:8081"
+COMMANDS_SLOT, ANSWERS_SLOT = 0, 1      # each kind of request keeps its instructions in its own slot
+ANSWER_TIMEOUT_S = 12.0                 # the instructions not read yet (just started): the house asks again
 
 ROOMS = ["kitchen", "living", "bedroom", "bathroom", "utility", "garage", "garden", "driveway", "house"]
 COLORS = ["red", "green", "blue", "yellow", "orange", "purple", "pink", "white", "cyan", "warm"]
@@ -174,14 +181,23 @@ class LanguageModel:
 
     def _ask(self, sentence: str, names: list[str], timeout: float | None = None) -> tuple[str, float]:
         """The command, and how sure the model was of its first word (0..1)."""
+        return self._chat(messages(sentence, names), grammar(names), COMMANDS_SLOT, 12, timeout)
+
+    def _classify(self, sentence: str, timeout: float | None = None) -> tuple[str, float]:
+        """What kind of answer to "who is it?" the sentence is, as a form of who.GRAMMAR."""
+        return self._chat(who.messages(sentence), who.GRAMMAR, ANSWERS_SLOT, 10, timeout)
+
+    def _chat(self, msgs: list[dict[str, str]], gbnf: str, slot: int, max_tokens: int,
+              timeout: float | None) -> tuple[str, float]:
         body = {
-            "messages": messages(sentence, names),
+            "messages": msgs,
             "temperature": 0,
-            "max_tokens": 12,
+            "max_tokens": max_tokens,
             "cache_prompt": True,
-            "grammar": grammar(names),
+            "grammar": gbnf,
             "logprobs": True,
             "top_logprobs": 1,
+            "id_slot": slot,
         }
         req = urllib.request.Request(self.url + "/v1/chat/completions", data=json.dumps(body).encode(),
                                      headers={"Content-Type": "application/json"})
@@ -197,10 +213,11 @@ class LanguageModel:
 
         On the board this takes a couple of minutes, once after each start.
         """
-        try:
-            self._ask("ciao", [], timeout=600)
-        except (OSError, ValueError, KeyError):
-            pass
+        for ask in (lambda: self._ask("ciao", [], timeout=600), lambda: self._classify("ciao", timeout=600)):
+            try:
+                ask()
+            except (OSError, ValueError, KeyError):
+                pass
 
     async def understand(self, sentence: str, names: Iterable[str]) -> Intent | None:
         names = list(names)
@@ -227,6 +244,22 @@ class LanguageModel:
                 return Intent("where_is", {"name": name}, confidence, "llm")
         intent.confidence = confidence
         return intent
+
+
+    async def classify(self, sentence: str, names: Iterable[str]) -> who.Reply | None:
+        """What an answer to "who is it?" means, when the rules of who.py could not tell."""
+        names = list(names)
+        sentence = re.sub(r"\s+", " ", sentence).strip()
+        try:
+            text, confidence = await asyncio.get_running_loop().run_in_executor(
+                None, self._classify, sentence, ANSWER_TIMEOUT_S)
+            self.ok = True
+        except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
+            log.info("language model not available: %s", e)
+            return None
+        reply = who.parse(text, sentence, names, confidence)
+        log.info("language model, answer: %r (%.2f) -> %s", text, confidence, reply)
+        return reply
 
 
 def _plain(text: str) -> str:

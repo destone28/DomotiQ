@@ -157,18 +157,6 @@ def _wire(ctx: Context) -> None:
     _wire_vision(ctx)
 
 
-# a newcomer of each kind: (it, en) noun, question with names, question without names
-NEWCOMER = {
-    "person": ("una persona nuova", "a new person", "chi è?", "who is it?", "come si chiama?", "what's the name?"),
-    "dog": ("un cane nuovo", "a new dog", "chi è?", "who is it?", "come si chiama?", "what's the name?"),
-    "cat": ("un gatto nuovo", "a new cat", "chi è?", "who is it?", "come si chiama?", "what's the name?"),
-    "animal": ("un animale nuovo", "a new animal", "chi è?", "who is it?", "come si chiama?", "what's the name?"),
-    "car": ("un'auto nuova", "a new car", "che auto è?", "which car is it?", "come la chiamo?", "what shall I call it?"),
-    "object": ("qualcosa di nuovo", "something new", "che cos'è?", "what is it?", "come lo chiamo?",
-               "what shall I call it?"),
-}
-
-
 def _wire_vision(ctx: Context) -> None:
     """Questions of the vision about who is who, and the lights it must know about."""
     bus = ctx.bus
@@ -179,6 +167,7 @@ def _wire_vision(ctx: Context) -> None:
 
     def ask_who(ev: Event) -> None:
         from .voice.answers import join, room as room_phrase
+        from .voice.who import ASK_NAME, NEWCOMER
         track = ev.get("track") or {}
         cands = [c for c in ev.get("candidates") or [] if ctx.identities.get(c)]
         unknown = not track.get("identity")          # recognized as nobody, rather than as two look-alikes
@@ -197,26 +186,31 @@ def _wire_vision(ctx: Context) -> None:
         options = [{"value": c, "label": {"it": n, "en": n}} for c, n in zip(cands, names)]
         category = track.get("category") or "object"
         if unknown:
-            # a newcomer: who it is, among the registered characters not in the house, or a new name
+            # a newcomer: what the house thinks it is, to be confirmed or corrected, and its name; registered
+            # ones of the same kind not in the house may be proposed (never a person: a new person is asked
+            # the name, and a registered name said aloud is recognized anyway)
             noun = NEWCOMER.get(category, NEWCOMER["object"])
+            ask_it, ask_en = ASK_NAME.get(category, ASK_NAME["object"])
             if names:
-                ask_it, ask_en = noun[2] + " " + join(names, "it").replace(" e ", " o ") + "?", \
-                    noun[3] + " " + join(names, "en").replace(" and ", " or ") + "?"
-                options.append({"value": "", "label": {"it": "Nessuno di questi", "en": "None of these"}})
-            else:
-                ask_it, ask_en = noun[4], noun[5]
-            question = {"it": f"C'è {noun[0]} {where_it}: {ask_it}", "en": f"There's {noun[1]} {where_en}: {ask_en}"}
+                ask_it = f"È {join(names, 'it').replace(' e ', ' o ')}, o come si chiama?"
+                ask_en = f"Is it {join(names, 'en').replace(' and ', ' or ')}, or what's its name?"
+            question = {"it": f"{where_it[0].upper()}{where_it[1:]} vedo {noun[0]}, giusto? {ask_it}",
+                        "en": f"I see {noun[1]} {where_en}, right? {ask_en}"}
         else:
             question = {"it": f"{where_it[0].upper()}{where_it[1:]} c'è {' o '.join(names)}?",
                         "en": f"Is it {' or '.join(names)} {where_en}?"}
         ctx.house.ask(question, options, {"kind": "who", "track": track["id"], "category": category,
-                                          "color": track.get("color")},
+                                          "color": track.get("color"), "room": track.get("room")},
                       timeout_s=120, allow_name=unknown)
 
     def answered(ev: Event) -> None:
         c = ev.get("context") or {}
         value = ev.get("value")
         if c.get("kind") != "who" or not value:
+            return
+        if isinstance(value, dict) and value.get("nothing"):
+            # nothing there: the house saw wrong (a reflection, a hand), and forgets it
+            ctx.vision.dismiss(c["track"])
             return
         if isinstance(value, dict):
             # a new name: the character is registered with what the house sees, and its colours are learned
@@ -225,14 +219,16 @@ def _wire_vision(ctx: Context) -> None:
                 return
             ident = ctx.identities.by_name(name)
             if ident is None:
-                category = c.get("category") if c.get("category") in CATEGORIES else "object"
+                category = value.get("category") if value.get("category") in CATEGORIES else \
+                    c.get("category") if c.get("category") in CATEGORIES else "object"
                 color = c.get("color") if isinstance(c.get("color"), str) and c["color"].startswith("#") else "#888888"
                 try:
                     ident = ctx.identities.add(name, category, color=color, nickname=ev.get("by"))
                 except ValueError:
                     return
+                # said aloud by the dialogue that asked, not again by the welcome of new characters
                 bus.publish("registered", identity=ident.id, name=ident.name, category=ident.category,
-                            origin=ev.get("by") or "web")
+                            origin="question")
             value = ident.id
         ctx.vision.assign(c["track"], value)
 
@@ -240,15 +236,17 @@ def _wire_vision(ctx: Context) -> None:
 
     def lights(ev: Event) -> None:
         state = ev.get("lights") or {}
-        rooms = []
+        rooms, animated = [], []
         for lid, st in state.items():
+            light = ctx.layout.lights.get(lid)
+            if light and (st.get("party") or st.get("effect") not in ("solid", "off", None)):
+                animated.append(light.room)
             if last.get(lid) != st:
-                light = ctx.layout.lights.get(lid)
                 if light:
                     rooms.append(light.room)
             last[lid] = st
         if rooms:
-            ctx.vision.lights_changed(rooms)
+            ctx.vision.lights_changed(rooms, animated)
 
     def gone(ev: Event) -> None:
         # a "who is it?" about something that has disappeared (a reflection, taken away) is withdrawn

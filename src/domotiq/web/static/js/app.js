@@ -313,10 +313,14 @@ export function renderBanners() {
     }
   }
   for (const c of s.confirmations || []) {
+    // a newcomer: a registered one, a new name with what it really is, or nothing there at all
+    const cats = ["person", "dog", "cat", "animal", "car", "object"];
     html += `<div class="banner ask" data-cid="${c.id}"><span class="grow">${esc(tr(c.question))}</span>` +
       c.options.map((o, i) => `<button data-i="${i}">${esc(tr(o.label))}</button>`).join("") +
       (c.allow_name ? `<input class="newname" maxlength="40" placeholder="${esc(t("ask.new_name"))}">` +
-        `<button data-new="1">${esc(t("ask.add"))}</button>` : "") + `</div>`;
+        (c.who ? `<select class="newcat">${cats.map(k => `<option value="${k}"${k === c.category ? " selected" : ""}>${esc(t("cat." + k))}</option>`).join("")}</select>` : "") +
+        `<button data-new="1">${esc(t("ask.add"))}</button>` : "") +
+      (c.who ? `<button data-nothing="1">${esc(t("ask.nothing"))}</button>` : "") + `</div>`;
   }
   el.innerHTML = html;
   el.querySelectorAll("button[data-reg]").forEach(b => { b.onclick = () => go("identities", { reg: b.dataset.reg }); });
@@ -327,10 +331,13 @@ export function renderBanners() {
       const c = s.confirmations.find(x => x.id === cid);
       if (!c) return;
       let value;
-      if (b.dataset.new) {
+      if (b.dataset.nothing) {
+        value = { nothing: true };
+      } else if (b.dataset.new) {
         const name = banner.querySelector(".newname").value.trim();
         if (!name) return;
-        value = { name };
+        const cat = banner.querySelector(".newcat");
+        value = cat ? { name, category: cat.value } : { name };
       } else {
         value = c.options[+b.dataset.i].value;
       }

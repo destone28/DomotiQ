@@ -48,6 +48,22 @@ CONFIRM_FRAMES = 2          # frames of agreement before an identity is given
 UNKNOWN_ASK_S = 1.0         # in sight this long and recognized as nobody: the house asks who it is
 NEW_S, NEW_HITS = 1.0, 6    # something new is told to the house once it has stood this long: a reflection
                             # of the arm that has just left lasts less
+# Figurines are moved by hand: with no hand around they stand still. Measured on casa1, the middle of the blob
+# of a figurine standing still moves 0.3-0.4 mm from a frame to the next (2 mm at most); a reflection or a
+# flickering LED jumps by 4-11 mm, or vanishes and comes back. Something that jumps more than JITTER_MM, or
+# blinks, at least JITTER_COUNT times within JITTER_WINDOW_S, with no hand around and no animated light in
+# its room, is no figurine.
+JITTER_MM = 4.0
+JITTER_WINDOW_S = 1.5
+JITTER_COUNT = 3
+SUPPRESS_S, SUPPRESS_MM = 30.0, 25.0   # where one was found, nothing new is born for a while
+
+
+def _group(category: str | None) -> str:
+    """Cars, animals, objects and persons: what can be proposed for what."""
+    if category == CAR or category == OBJECT:
+        return category
+    return "animal" if category in ANIMALS else PERSON
 
 
 @dataclass
@@ -75,6 +91,10 @@ class VTrack:
     history: list[tuple[float, float, float]] = field(default_factory=list)
     asked: float = float("-inf")          # when the house last asked about two look-alikes
     asked_new: float = float("-inf")      # when it asked who this newcomer is
+    raw: tuple[float, float] | None = None   # the middle of its blob in the last frame, before any smoothing
+    jumps: list[float] = field(default_factory=list)   # when it jumped with no hand around
+    shown: bool = False                    # already told to the house
+    frame: int = 0                         # the last frame it was seen in
 
     def to_track(self, layout, previous_room: str | None) -> Track:
         room = layout.locate(self.x, self.y, previous_room)
@@ -92,6 +112,11 @@ class Tracker:
         self.identities: dict[str, Identity] = {}
         self._rooms: dict[str, str] = {}
         self.on_question = None          # callback(track, candidates): ask who this is
+        self._frozen = False
+        self._animated: set[str] = set()                      # rooms whose light is animated now
+        self._suppressed: list[tuple[float, float, float]] = []  # (x, y, until): no births there
+        self.jittery = 0                 # false presences found by their jumps (for the diagnostics)
+        self.frame = 0
 
     def set_identities(self, identities: list[Identity]) -> None:
         self.identities = {i.id: i for i in identities}
@@ -101,22 +126,31 @@ class Tracker:
 
     # ------------------------------------------------------------ update
     def update(self, observations: list[Observation], now: float | None = None, frozen: bool = False,
-               quiet_s: float = float("inf")) -> list[Track]:
+               quiet_s: float = float("inf"), animated: set[str] | None = None) -> list[Track]:
         """`frozen`: a hand at work or the light changing, nothing is born or lost; `quiet_s`: seconds since
-        the last hand. An observation may start a new track only if its extra["birth"] allows it."""
+        the last hand; `animated`: rooms whose light is animated (a party). An observation may start a new
+        track only if its extra["birth"] allows it."""
         now = time.time() if now is None else now
+        self._frozen = frozen
+        self.frame += 1
+        if animated is not None:
+            self._animated = set(animated)
+        self._suppressed = [s for s in self._suppressed if s[2] > now]
         hands = [o for o in observations if o.hand]
         things = [o for o in observations if not o.hand]
         self.hands = hands
         self._associate(things, now, births=not frozen)
         self._carry(hands, now)
+        self._drop_jittery(now)
         self._drop_lost(now, frozen, quiet_s)
         self._recognize(now)
         self._ask_unknown(now)
         out = []
         for t in self.tracks.values():
-            if not t.identity and (t.hits < NEW_HITS or now - t.since < NEW_S):
-                continue                   # not yet: it may be a reflection, or noise
+            if not t.shown and not t.identity and (t.hits < NEW_HITS or now - t.since < NEW_S
+                                                   or any(now - j < NEW_S for j in t.jumps)):
+                continue                   # not yet: it may be a reflection, or noise, until it stands still
+            t.shown = True
             tr = t.to_track(self.layout, self._rooms.get(t.id))
             self._rooms[t.id] = tr.room
             out.append(tr)
@@ -158,6 +192,7 @@ class Tracker:
                     t.carried = False
                     t.x, t.y = self._position(o, t.category)
                     t.vx = t.vy = 0.0
+                    t.raw, t.jumps = None, []
                     self._apply(t, o, now)
                     # same-colour characters may have been swapped by the hand
                     if t.identity and self._twins(t):
@@ -169,6 +204,8 @@ class Tracker:
         for j, o in enumerate(things):
             if j in matched or not births or not o.extra.get("birth", True):
                 continue
+            if self.suppressed(*self._position(o, o.category_guess), now):
+                continue
             t = VTrack(new_id("t"), *self._position(o, o.category_guess), o, o.sig, o.category_guess,
                        last_seen=now, since=now)
             self.tracks[t.id] = t
@@ -177,6 +214,14 @@ class Tracker:
 
     def _apply(self, t: VTrack, o: Observation, now: float) -> None:
         x, y = self._position(o, t.category)
+        cx, cy = o.centroid_mm
+        if t.raw is not None and not self._frozen and (np.hypot(cx - t.raw[0], cy - t.raw[1]) > JITTER_MM
+                                                       or self.frame - t.frame > 1) \
+                and self.layout.locate(cx, cy) not in self._animated:
+            t.jumps.append(now)            # jumped, or seen again after a frame without it
+        t.raw, t.frame = (cx, cy), self.frame
+        if t.jumps and now - t.jumps[0] > JITTER_WINDOW_S:
+            t.jumps = [j for j in t.jumps if now - j <= JITTER_WINDOW_S]
         dt = max(now - t.last_seen, 1e-3)
         if t.hits:
             vx, vy = (x - t.x) / dt, (y - t.y) / dt
@@ -212,6 +257,37 @@ class Tracker:
                     t.moving = True
                     break
 
+    def dismiss(self, track_id: str, now: float) -> tuple[float, float] | None:
+        """Nothing there, somebody said: the track goes and nothing is born there for a while. Returns the middle
+        of what was seen (where the engine forgets it)."""
+        t = self.tracks.pop(track_id, None)
+        if t is None:
+            return None
+        self._rooms.pop(track_id, None)
+        self._suppressed.append((t.x, t.y, now + SUPPRESS_S))
+        return t.raw or (t.x, t.y)
+
+    def suppressed(self, x: float, y: float, now: float) -> bool:
+        return any(until > now and np.hypot(x - sx, y - sy) < SUPPRESS_MM for sx, sy, until in self._suppressed)
+
+    def _jittery(self, t: VTrack, now: float) -> bool:
+        if t.carried or self._frozen:
+            return False
+        return sum(1 for j in t.jumps if now - j <= JITTER_WINDOW_S) >= JITTER_COUNT
+
+    def _drop_jittery(self, now: float) -> None:
+        """Something unknown that keeps jumping with no hand around is a reflection or a flickering light:
+        it goes, nothing is born where it was for a while, and its blob joins the empty house as any change
+        with no hand does. A character the house knows is only hidden while it shakes."""
+        for tid, t in list(self.tracks.items()):
+            if t.identity or t.locked or t.obs is None or not self._jittery(t, now):
+                continue
+            del self.tracks[tid]
+            self._rooms.pop(tid, None)
+            self._suppressed.append((t.x, t.y, now + SUPPRESS_S))
+            t.obs.extra.pop("track", None)
+            self.jittery += 1
+
     def _drop_lost(self, now: float, frozen: bool = False, quiet_s: float = float("inf")) -> None:
         for tid, t in list(self.tracks.items()):
             if t.carried:
@@ -224,7 +300,8 @@ class Tracker:
             unseen = now - t.last_seen
             if unseen <= LOST_S or frozen:
                 continue
-            young = t.last_seen - t.since < YOUNG_S and not t.identity and not t.locked
+            # never told to the house, or followed only for a moment: it was noise
+            young = (t.last_seen - t.since < YOUNG_S or not t.shown) and not t.identity and not t.locked
             if young or unseen > HIDDEN_S:
                 del self.tracks[tid]
                 self._rooms.pop(tid, None)
@@ -331,6 +408,8 @@ class Tracker:
 
     def adopt(self, o: Observation, now: float) -> None:
         """A new track for something that stands out and stays, though no hand was seen putting it down."""
+        if self.suppressed(*self._position(o, o.category_guess), now):
+            return
         t = VTrack(new_id("t"), *self._position(o, o.category_guess), o, o.sig, o.category_guess,
                    last_seen=now, since=now)
         self.tracks[t.id] = t
@@ -351,10 +430,10 @@ class Tracker:
                 continue
             if any(v > 0 for v in t.votes.values()):
                 continue                       # being recognized right now
-            # proposed by kind: cars for a car, objects for an object, characters for a character (a name
-            # can always be said or typed instead)
-            kind = CAR if t.obs.area_mm2 > 6000 or t.category == CAR else OBJECT if t.category == OBJECT else PERSON
-            fit = [i for i in free if (CAR if i.category == CAR else OBJECT if i.category == OBJECT else PERSON) == kind]
+            # proposed by kind: cars for a car, animals for an animal, objects for an object; a new person is
+            # asked the name (a registered name said aloud or typed is recognized anyway)
+            kind = CAR if t.obs.area_mm2 > 6000 or t.category == CAR else _group(t.category)
+            fit = [] if kind == PERSON else [i for i in free if _group(i.category) == kind]
             trained = sorted((i for i in fit if len(i.signature)), key=lambda i: distance(t.sig, i.signature))
             cands = [i.id for i in trained[:3] + [i for i in fit if not len(i.signature)]][:4]
             # asked even with no candidate: the answer may be a new name

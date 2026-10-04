@@ -379,7 +379,10 @@ class House:
             "cars": {k: v.state for k, v in self.cars.items()},
             "car": self.car_state(),
             "alerts": list(self.alerts.values()),
-            "confirmations": [{k: v for k, v in c.items() if k != "context"}
+            # of the context the phones only need what a "who is it?" is about
+            "confirmations": [{**{k: v for k, v in c.items() if k != "context"},
+                               "who": c["context"].get("kind") == "who" and c.get("allow_name", False),
+                               "category": c["context"].get("category")}
                               for c in self.confirmations.values()],
             "lights": self.lights.state(),
             "status": self.status,
