@@ -14,8 +14,8 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
 - Un processo Linux che non è un'app di App Lab può ricevere le notifiche della MCU registrando il nome sul router con `$/register`.
 - Il collegamento seriale fra i due lati va a 115200 baud, con messaggi di al massimo 256 byte e circa 7 ms per chiamata. Troppo poco per mandare animazioni di luce da Linux: gli effetti devono girare sulla MCU.
 - Su UNO Q le brick di App Lab non offrono riconoscimento né sintesi vocale offline (esistono solo per VENTUNO Q); il Python delle app gira in Docker e installa le dipendenze da internet al primo avvio. Si usano quindi servizi systemd nativi.
-- La libreria Arduino_Modulino 0.9.1 (17/9/2026) ha ancora comportamenti che su UNO Q nascondono i guasti: `begin()` con indirizzo esplicito non tocca il bus, `write()` risponde sempre `true`, il driver del VL53L4CD ritenta all'infinito. Le transazioni I2C si scrivono a mano nello sketch.
-- Indirizzi dai sorgenti e dai datasheet: Hub TCA9548A 0x70, Latch Relay 0x02, Buttons 0x3E, Thermo 0x44, Distance 0x29, Pixels 0x36 (valori a 7 bit).
+- La libreria Arduino_Modulino 0.9.1 (17/9/2026) ha ancora comportamenti che su UNO Q nascondono i guasti: `begin()` con indirizzo esplicito non tocca il bus, `write()` risponde sempre `true`. Le transazioni I2C si scrivono a mano nello sketch.
+- Indirizzi dai sorgenti e dai datasheet: Hub TCA9548A 0x70, Latch Relay 0x02, Buttons 0x3E, Thermo 0x44, Pixels 0x36 (valori a 7 bit).
 - Un Pixels a bianco pieno assorbe fino a 264 mA dal 3,3 V del Qwiic: cinque moduli superano il limite del connettore. Serve un limite di corrente nel firmware.
 - La C270 ha fuoco fisso. Il CAD usa i 55° in diagonale del costruttore sul 16:9; una calibrazione pubblicata indica che il 720p è un ritaglio del sensore 4:3. Da misurare sulla camera vera: in 4:3 la base intera ci sta con margine.
 - Il Wi-Fi (WCN3980) funziona da access point con NetworkManager, quasi certamente solo a 2,4 GHz.
@@ -105,7 +105,7 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
 - Nuovo metodo `bus` dello sketch; la casa mostra l'avviso "Il bus dei Modulino è bloccato", *Diagnostica* e `bench_mcu.py` indicano quale linea è bassa. Guide aggiornate con il controllo dei cavi.
 
 **Collaudo al banco con tutti i moduli (29/9, sera).** Il bus bloccato veniva dalle prolunghe: i quattro Pixels sui percorsi lunghi erano allungati con cavetti Dupont e una prolunga, e con quelli la SCL restava a massa; con cavi Qwiic da 5 cm (provvisori) rispondono tutti. Prove fatte dalla scheda, senza ventola e con la webcam appoggiata sul tavolo:
-- Scansione: Hub a 0x70, Latch Relay a 0x02 (l'indirizzo della libreria, non quello del datasheet), cinque Pixels, due Thermo, Buttons e Distance ai canali previsti. Il collaudo al banco non ripete più sotto ogni canale i moduli del bus principale.
+- Scansione: Hub a 0x70, Latch Relay a 0x02 (l'indirizzo della libreria, non quello del datasheet), cinque Pixels, due Thermo e Buttons ai canali previsti. Il collaudo al banco non ripete più sotto ogni canale i moduli del bus principale.
 - Un minuto di luci animate su tutte e cinque le stanze a 25 immagini al secondo, con i LED dei tasti che lampeggiano: nessun modulo perso, nessuna transazione rifiutata, il microcontrollore risponde sempre entro 100 ms.
 - I due Thermo leggono 24-25 °C e 53-56 % ogni 2 secondi; il relè segue i comandi della casa (stato letto dal microcontrollore: 1 durante il barbecue, 0 dopo).
 - Audio: la US205 teneva l'uscita a 38 % (-23 dB) e la casa non la toccava, quindi la voce era debolissima. Ora la casa, a ogni apertura della scheda, mette l'uscita a 0 dB, spegne il ritorno del microfono sulle casse e regola il guadagno del microfono. La scelta della scheda salta le schede USB senza uscita: anche la C270 è una scheda audio USB, con il solo microfono, e dopo un riavvio poteva venire prima della US205.
@@ -168,7 +168,7 @@ Misure sulla scheda con la luce calda del laboratorio: in automatico la C270 arr
 - **La casa non vedeva niente.** Con la calibrazione delle 10:25 la zona esclusa del palo, proiettata fino a quasi l'altezza della webcam, copriva tutta l'immagine. Il palo è già nella geometria della scena; un controllo ora ferma una maschera che copre la casa, e un test usa gli angoli veri.
 - **La webcam in automatico.** La regolazione della luce non era mai partita con valori validi, quindi la webcam ricalcolava la luce a ogni mano. Ora finché la luce non è regolata la casa non riconosce niente, e la calibrazione la regola da sola dopo gli angoli.
 - **Il braccio diventava molte presenze; riflessi e cambi di luce diventavano oggetti.** Nasce la regola "niente si muove da solo" (D-20). Con quella le soglie si sono potute alzare in sensibilità, misurandole sulle immagini vere: Mister Braun, marrone scuro sul pavimento grigio, prima veniva preso per un'ombra.
-- **La casa ferma ad aspettare.** Le schedine dei tasti e del sensore di distanza, sciolte sul vialetto con il loro cavo sul bordo della base, venivano prese per una mano ferma, e per questo Viola e Rosaria in soggiorno non venivano notate. Ora una mano deve essere grande come un braccio, e una "mano" ferma per 8 secondi è un oggetto. Il totem è escluso dall'analisi, perché i LED dei tasti si accendono e spengono.
+- **La casa ferma ad aspettare.** La schedina dei tasti, sciolta sul vialetto con il suo cavo sul bordo della base, veniva presa per una mano ferma, e per questo Viola e Rosaria in soggiorno non venivano notate. Ora una mano deve essere grande come un braccio, e una "mano" ferma per 8 secondi è un oggetto. Il totem è escluso dall'analisi, perché i LED dei tasti si accendono e spengono.
 - **Lentezza.** Con l'area analizzata finalmente piena, sulla scheda un'immagine costava fino a 250 ms. Diventa da 110 a 125 ms (da 7 a 8 immagini al secondo) con questi interventi: la luce si misura una volta al secondo invece di tre, la casa vuota si aggiorna solo dove cambia, la diretta va a 5 immagini al secondo.
 - **"Webcam non collegata".** La pagina della diretta leggeva lo stato della webcam una sola volta all'apertura. Ora lo segue. I reset USB della C270 coincidono con i riavvii e con gli accessi ssh (la sessione del desktop interroga la webcam), quindi da qui in avanti uso una sola connessione ssh tenuta aperta.
 - **Regolazione premuta sette volte.** Senza un segnale di avanzamento non si capiva se la casa stava lavorando. Ora la pagina di calibrazione mostra una finestra con una rotellina e blocca i pulsanti fino al risultato.
@@ -207,11 +207,3 @@ Nella prima prova la casa ha chiesto dell'auto e ha capito "Honda Civic", ma non
 - **"Mister Blu" e la Honda Civic.** Ora conta anche la dimensione: l'auto non è mai una statuina.
 - **Notifiche non chiudibili.** Nello screenshot di Emilio la barra mostrava "nav.identities": il telefono teneva i vecchi script e prendeva solo l'HTML nuovo. Ora i file della webapp si caricano sotto una versione che cambia a ogni aggiornamento, e anche le domande hanno la loro ✕.
 - **Niente si muove da solo, storico, pose** (D-24). La registrazione delle 15:31 mostrava due tracce che si scambiavano di posto senza mani, e un "oggetto" chiesto in giardino che era solo un secondo pezzo di Viola, sdraiata sul tronco dell'albero. Dopo le correzioni zero domande, i quattro personaggi seguiti ovunque, e le prime pose imparate da sole: Viola e Rosaria sdraiate in giardino.
-
-**Via il sensore Distance (4/10, sera).** Su richiesta di Emilio il Modulino Distance esce dal progetto (D-25):
-- il firmware non lo cerca più e non lo legge più 20 volte al secondo;
-- la casa non ha più la distanza e il visitatore al citofono;
-- le regole perdono il loro trigger, la webapp il pallino sul totem e il cursore della simulazione;
-- dal collaudo al banco, dalla documentazione e dagli schemi di cablaggio è sparito, e dai file di stampa la sua placca `33_Placca_Totem_Distance`.
-
-Sulla scheda la regola salvata "Visitatore al citofono" viene saltata all'avvio. Restano da decidere il totem `37`, che ha ancora la finestrella del sensore, e i render che lo mostrano.

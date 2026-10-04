@@ -14,7 +14,7 @@ Ogni decisione ha la data, il contesto, la scelta e il motivo. Quando una decisi
 
 ### D-03 — I2C scritto a mano (28/9)
 **Scelta:** nessuna libreria Modulino nello sketch. Ogni transazione ha un'attesa limitata e un esito verificato.
-**Perché:** la libreria ufficiale, su UNO Q, rende indistinguibili i moduli assenti da quelli presenti e può bloccare la MCU per sempre se il sensore di distanza non risponde.
+**Perché:** la libreria ufficiale, su UNO Q, rende indistinguibili i moduli assenti da quelli presenti e non limita l'attesa delle transazioni.
 
 ### D-04 — Limite di corrente sui Pixels (28/9)
 **Scelta:** il firmware stima la corrente di ogni fotogramma e riduce le luci oltre 450 mA totali; luminosità massima iniziale 30 %.
@@ -130,12 +130,3 @@ Con le nuove regole la stessa registrazione dà zero domande inutili, e tutti e 
 - "Mister Blu" scambiato per la Honda Civic, blu anche lei.
 
 Nella registrazione delle 15:31, poi, due tracce si scambiavano di posto senza nessuna mano. Con queste regole la registrazione dà zero domande e i quattro personaggi sono seguiti e riconosciuti in ogni spostamento. Le pose sono la forma di apprendimento sul posto che la scheda regge senza un modello neurale: confrontare con le pose note costa una frazione di millisecondo per macchia, mentre una rete per le immagini avrebbe chiesto dati etichettati e un processore più libero.
-
-### D-25 — Niente sensore Distance (4/10)
-**Scelta:** il Modulino Distance esce dal progetto. Non è più nel totem, nel cablaggio, nel firmware, nello stato della casa, nelle regole e nella webapp. Il canale 6 dell'Hub porta solo il Thermo della credenza e il Buttons del totem. Spariscono:
-- il trigger "qualcuno è al citofono" e la regola di partenza "Visitatore al citofono", che era disattivata;
-- il pallino sul totem nella piantina;
-- il sensore virtuale nella simulazione.
-
-Una regola salvata con quel trigger viene saltata all'avvio, con un avviso nel registro. Il campanello resta il tasto **Citofono**.
-**Perché:** lo ha chiesto Emilio.

@@ -84,7 +84,7 @@ Aggiornamenti dopo il 7 ottobre (D3), giornata accelerata (D80), riconoscimento 
 - Nessun cambio di indirizzo per il Buttons: è uno solo.
 
 ### 3.3 Totem (da ristampare, R1)
-Dentro: Buttons; lavalier nel tappo (il sensore Distance è stato tolto, D-25). Tasti visti dal visitatore, da sinistra: **parla**, **citofono**, **lingua**. I LED del Buttons sono gialli, accanto ai tasti: il nuovo totem prevede una finestra anche per loro.
+Dentro: Buttons; lavalier nel tappo. Tasti visti dal visitatore, da sinistra: **parla**, **citofono**, **lingua**. I LED del Buttons sono gialli, accanto ai tasti: il nuovo totem prevede una finestra anche per loro.
 
 ### 3.4 Alimentazione dei Pixels
 Ogni Pixels a bianco pieno assorbe fino a 264 mA dal 3,3 V del Qwiic; il connettore regge 1 A e il regolatore della UNO Q (2 A) è condiviso con MCU e Wi-Fi. Il firmware:
@@ -173,7 +173,6 @@ Effetti: `off`, `solid`, `breathe`, `blink` (≤ 3 Hz), `wave`, `rainbow`, `spar
 | Notifica | Contenuto | Quando |
 |---|---|---|
 | `btn` | tasto 0-2, premuto 0/1 | a ogni cambio |
-| `dist` | mm (-1 = niente) | a ogni cambio di oltre 10 mm, al massimo 10 al secondo |
 | `thermo` | sensore 0/1, °C×100, %UR×100 | a ogni lettura |
 | `mods` | maschera moduli | a ogni cambio |
 

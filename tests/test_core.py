@@ -203,17 +203,17 @@ def test_invalid_rule_rejected(env):
         env.rules.upsert({"name": "x", "when": {"type": "button"}, "then": []})
 
 
-def test_a_saved_rule_of_the_removed_distance_sensor_is_dropped(env):
+def test_a_saved_rule_with_an_unknown_trigger_is_skipped(env):
     import json
     from domotiq.rules import RuleEngine
     saved = [r for r in env.rules.to_list()] + [{
-        "id": "r-visitor", "name": {"it": "Visitatore al citofono", "en": "Visitor at the doorbell"},
-        "enabled": True, "when": {"type": "visitor", "distance_cm": 30, "seconds": 2},
+        "id": "r-old", "name": {"it": "Regola vecchia", "en": "Old rule"},
+        "enabled": True, "when": {"type": "no_such_trigger"},
         "then": [{"type": "sound", "name": "chime"}]}]
     env.rules.path.write_text(json.dumps(saved))
     rules = RuleEngine(env.paths, env.bus, env.house, env.lights, env.store, env.executor)
     ids = [r["id"] for r in rules.to_list()]
-    assert "r-visitor" not in ids and len(ids) == len(saved) - 1      # the others are all there
+    assert "r-old" not in ids and len(ids) == len(saved) - 1          # the others are all there
 
 
 def test_placeholders(env):
