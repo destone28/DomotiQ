@@ -476,3 +476,13 @@ def test_something_lying_on_the_edge_is_not_a_hand_for_ever(engine, renderer):
     tracks = run(engine, renderer, [([red], {"hands": [cable]})] * 120, t0=9)
     assert not engine.status()["hand"]                      # still for 8 s: part of the empty house
     assert len(tracks) == 1 and tracks[0].room == "living"  # and the figurine put down meanwhile is seen
+
+
+def test_the_glow_of_a_house_light_is_never_taken_late(engine, renderer):
+    settle(engine, renderer, [], 0)
+    # a hand passes, then the house turns on the living room light: its glow stays on the wall
+    run(engine, renderer, [([], {"hands": [Hand(300, 100)]})] * 3, t0=5)
+    engine.lights_changed(["living"], 6.0)
+    glow = {"lights": {"living": ("#ff40ff", 1.0)}}
+    seen = [engine.feed(renderer.render([], **glow), 6 + i * 0.1) for i in range(80)]
+    assert not any(seen)

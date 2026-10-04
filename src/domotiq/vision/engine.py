@@ -51,6 +51,8 @@ LIGHT_SHARE = 0.20       # this much of the house changed at once with no hand: 
 LIGHT_FREEZE_S = 4.0     # ...the house waits this long for the light to be measured again
 GHOST_FRAMES = 25        # a change explained by nothing for this many frames joins the empty house
 LIGHT_BLOCK_S = 2.5      # after the house changes the light of a room, its glow on walls and floor is no presence
+LIGHT_GLOW_S = 15.0      # ...and nothing there is taken late: the glow joins the empty house instead. A figurine
+                         # put down there is born before: it is what turns the light on
 SCAN_CHROMA, SCAN_DARKER = 10.0, 8.0   # at a start, only what clearly stands out: another colour, or darker
 HAND_STILL_S = 8.0       # a "hand" that does not move for this long is something lying on the edge of the base
 LATE_S = 2.0             # something that clearly stands out and stays this long, within LATE_WINDOW_S of a
@@ -97,6 +99,7 @@ class Engine:
         self._ghost: np.ndarray | None = None      # frames of unexplained change, per pixel
         self.absorbed = 0
         self._light_block: dict[str, float] = {}  # room -> until when a change of its light hides births
+        self._light_at: dict[str, float] = {}     # room -> when the house last changed its light
         self._clipped_since = 0.0                  # since when the light is beyond what the rooms can correct
         self._hand_since: np.ndarray | None = None # since when each pixel has been part of a hand (0: not)
         # before the calibration the house does not know where the bathroom is: it assumes the
@@ -119,6 +122,7 @@ class Engine:
             self.segmenter.light_changed(rooms, now)
         for room in rooms:
             self._light_block[room] = now + LIGHT_BLOCK_S
+            self._light_at[room] = now
 
     def _plausible(self, o: Observation, now: float) -> bool:
         """Could this be something standing in the house (whatever put it there)?"""
@@ -403,6 +407,8 @@ class Engine:
                 chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
                 if (chroma_d < SCAN_CHROMA and light_d > -SCAN_DARKER) or not self._plausible(o, now):
                     continue
+                if now - self._light_at.get(self.layout.locate(*o.centroid_mm) or "", float("-inf")) < LIGHT_GLOW_S:
+                    continue                  # the glow of a light the house has just changed
                 x, y, w, h = o.bbox
                 blob = seg.labels[y:y + h, x:x + w] == o.extra["label"]
                 if float(np.median(g[y:y + h, x:x + w][blob])) >= late:
