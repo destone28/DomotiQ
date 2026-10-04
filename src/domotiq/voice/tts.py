@@ -9,6 +9,10 @@ Nothing of Piper is imported here.
 
 Sentences that the house says often are synthesized once and kept in memory,
 so "Who is it?" plays at once even while the processor is busy.
+
+A few phrases are given to Piper as phonemes, where the Italian voice would
+swallow a vowel: "Come si chiama?" came out as "Cme s chiama?", because
+the phonemizer reads "si" as a reduced vowel.
 """
 
 from __future__ import annotations
@@ -34,7 +38,8 @@ URL = "http://127.0.0.1:5010/synthesize"
 UNITS = {
     "it": [(r"(\d+)[.,](\d)\s*°\s*C?", r"\1 virgola \2 gradi"), (r"(\d+)\s*°\s*C?", r"\1 gradi"),
            (r"(\d+)\s*%", r"\1 per cento"), (r"\bWC\b", "vi ci"), (r"\bDomotiQ\b", "Dòmotik"),
-           (r"\bUNO Q\b", "uno kiu"), (r"\bOK\b", "okèi")],
+           (r"\bUNO Q\b", "uno kiu"), (r"\bOK\b", "okèi"),
+           (r"\b[Cc]ome si chiama\?", "[[ kˈome si kjˈaːma? ]]"), (r"\b[Cc]ome si chiama\b", "[[ kˈome si kjˈaːma ]]")],
     "en": [(r"(\d+)[.,](\d)\s*°\s*C?", r"\1 point \2 degrees"), (r"(\d+)\s*°\s*C?", r"\1 degrees"),
            (r"(\d+)\s*%", r"\1 percent"), (r"\bDomotiQ\b", "Domotic"), (r"\bUNO Q\b", "Uno Q")],
 }

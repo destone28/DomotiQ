@@ -47,7 +47,7 @@ def hear(ctx, answers):
     queue = list(answers)
     last = {"text": ""}
 
-    async def listen(grammar_words, *, stop=None, max_s=5.0, auto_end=True):
+    async def listen(grammar_words, *, stop=None, max_s=5.0, auto_end=True, **_):
         item = queue.pop(0) if queue else ""
         if callable(item):
             item = await item(stop)
@@ -259,4 +259,70 @@ def test_a_long_answer_is_understood_by_the_language_model(ctx):
         assert Model.sentences and ctx.said[1] == "Si chiama Romeo, giusto?"
         romeo = ctx.identities.by_name("Romeo")
         assert romeo is not None and romeo.category == "cat"
+    asyncio.run(scenario())
+
+
+# ------------------------------------------------------------------ the buttons and the voice
+def test_the_buttons_light_up_while_listening_and_breathe_while_thinking(ctx, monkeypatch):
+    from domotiq import activities
+    monkeypatch.setattr(activities, "BREATH_STEP_S", 0.01)
+    sent = []
+
+    async def leds(mask, blink=0):
+        sent.append((mask, blink))
+    ctx.mcu.leds = leds
+    a = ctx.actions
+
+    async def scenario():
+        await a.update_leds(listening=True)
+        assert sent[-1] == (7, 0)                           # all three while the house listens
+        await a.thinking(True)
+        await asyncio.sleep(0.08)
+        breath = [m for m, _ in sent[1:]]
+        assert set(breath) <= {0b010, 0b111, 0b000} and {0b010, 0b111} <= set(breath)
+        await a.thinking(False)                             # it speaks: back to the language LED
+        assert sent[-1] == (0, 0)
+        n = len(sent)
+        await asyncio.sleep(0.05)
+        assert len(sent) == n                               # and the breath has stopped
+    asyncio.run(scenario())
+
+
+def test_come_si_chiama_is_said_with_every_vowel():
+    from domotiq.voice import tts
+    assert tts.normalize("Ah, un gatto! Come si chiama?", "it") == "Ah, un gatto! [[ kˈome si kjˈaːma? ]]"
+    assert tts.normalize("E il nuovo arrivato: come si chiama?", "it").endswith("[[ kˈome si kjˈaːma? ]]")
+    assert tts.normalize("What's the name?", "en") == "What's the name?"
+
+
+def test_a_name_already_in_the_house_means_the_newcomer_was_nothing(ctx):
+    from domotiq.model import Track
+
+    async def scenario():
+        dismissed = []
+        ctx.vision.dismiss = dismissed.append
+        viola = ctx.identities.add("Viola", "person")
+        ctx.house.tracks["t-viola"] = Track("t-viola", 300, 100, "person", viola.id, "living")
+        hear(ctx, ["è viola"])
+        newcomer(ctx, room="bathroom")
+        await settle(ctx)
+        assert dismissed == ["t-new"] and ctx.assigned == []
+        assert ctx.said[-1] == "Viola è già in soggiorno: allora qui ho visto male, scusate!"
+        # hidden for a moment there, she may well be the newcomer: then the name moves
+        ctx.house.tracks["t-viola"].hidden = True
+        hear(ctx, ["è viola"])
+        newcomer(ctx, room="bathroom")
+        await settle(ctx)
+        assert ctx.assigned == [("t-new", viola.id)]
+    asyncio.run(scenario())
+
+
+def test_the_house_asks_the_time_and_hears_it_with_no_talk(ctx):
+    async def scenario():
+        ctx.clock.source = "unknown"                     # the board started with no network and no phone yet
+        hear(ctx, ["sono le tre e mezza"])
+        await ctx.voice.ask_time()
+        assert ctx.said[0] == "Non so che ore sono: che ore sono adesso?"
+        assert ctx.said[-1] == "Grazie! Allora sono le 3 e 30."
+        assert ctx.clock.known
     asyncio.run(scenario())

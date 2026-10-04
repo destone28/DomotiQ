@@ -25,7 +25,7 @@ import random
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 
@@ -34,10 +34,10 @@ from ..identities import NameTaken
 from ..model import CATEGORY_NAMES
 from ..scenes import scene_name
 from . import answers, memory
-from .chatter import NAME_CONFIDENCE, WELCOME, Chatter, yes_no_grammar, yes_or_no
+from .chatter import ECHO_S, NAME_CONFIDENCE, WELCOME, Chatter, yes_no_grammar, yes_or_no
 from .narrator import Narrator
 from .stories import StoryTeller
-from .intents import Intent, find_name, find_room, name_from_speech, normalize, parse
+from .intents import Intent, find_name, find_room, name_from_speech, normalize, parse, parse_time
 from .who import GIVE_UP, LATER, NOTHING, THINKING, WAITING, WHAT_IS_IT, Dialogue
 from .llm import LanguageModel
 from .stt import Listener
@@ -53,6 +53,7 @@ NO = {"it": ["no", "sbagliato"], "en": ["no", "wrong", "nope"]}
 # what the language model may propose that changes the house (asked first unless it is sure)
 ACTIONS = ("lights_on", "lights_off", "scene", "party", "grill", "grill_stop", "language", "volume", "register")
 SURE = 0.9
+HOLD_MAX_S = 6.0      # the microphone waits at most this long for the house to finish speaking
 
 FREQUENT = {
     "it": ["Chi è?", "Scusa, non ho capito. Chi sei?", "Vediamo...", "Non ho capito.", "Si balla!",
@@ -90,6 +91,7 @@ class Voice:
         self.last_chatter = float("-inf")      # monotonic: the last chatty line, comment or question
         self.in_flight = 0                     # sentences being synthesized or played now
         self.voice_end = float("-inf")         # monotonic: when the last one ended
+        self.opened_at = 0.0                   # monotonic: when the last listening began to count
         self._tasks: set[asyncio.Task] = set()
         bus = ctx.bus
         bus.subscribe("confirm", self._on_confirm)
@@ -156,6 +158,7 @@ class Voice:
     async def speak(self, text: str, lang: str | None = None) -> None:
         lang = lang or self.lang
         self.in_flight += 1
+        await self.ctx.actions.thinking(False)             # it knows what to say: the buttons stop breathing
         try:
             samples = await self.speaker.synth(text, lang)
             if samples is None:
@@ -192,35 +195,57 @@ class Voice:
 
     # ================================================================ listening
     async def _listen(self, grammar: list[str] | None, *, stop: asyncio.Event | None = None,
-                      max_s: float = 5.0, auto_end: bool = True) -> tuple[str, float, bytes]:
-        """Record and recognize. With `auto_end`, stop after a pause following speech."""
+                      max_s: float = 5.0, auto_end: bool = True, hold: Callable[[], bool] | None = None,
+                      echo: float = 0.0) -> tuple[str, float, bytes]:
+        """Record and recognize. With `auto_end`, stop after a pause following speech.
+
+        With `hold` (the house is still speaking) the microphone is already open while the house ends its
+        question, and what it hears is dropped until `echo` seconds after the last word: an answer said at
+        once ("sì") is not lost while the recorder starts. `max_s` counts from then.
+        """
+        self.opened_at = 0.0
         if not (self.listener and self.listener.ok):
             return "", 0.0, b""
         loop = asyncio.get_running_loop()
         lang = self.lang
         session = await loop.run_in_executor(self.pool, self.listener.session, lang, grammar)
         stop = stop or asyncio.Event()
-        state = {"speech": False, "quiet": 0.0}
+        started = loop.time()
+        state = {"speech": False, "quiet": 0.0, "opened": None, "held": started}
+        kept = bytearray()
         feeds: list[asyncio.Future] = []
 
         def on_chunk(chunk: bytes) -> None:
+            now = loop.time()
+            if state["opened"] is None:
+                if hold is not None and now - started < HOLD_MAX_S and hold():
+                    state["held"] = now                # the house itself: not an answer
+                    return
+                if now - state["held"] < echo:
+                    return
+                state["opened"] = now
+                self.opened_at = time.monotonic()
+            kept.extend(chunk)
             feeds.append(loop.run_in_executor(self.pool, session.feed, chunk))
-            if auto_end:
-                level = self.mic.last_level
-                if level > 0.02:
-                    state["speech"], state["quiet"] = True, 0.0
-                elif state["speech"]:
-                    state["quiet"] += 0.1
-                    if state["quiet"] >= 0.8:
-                        stop.set()
+            if self.mic.last_level > 0.02:
+                state["speech"], state["quiet"] = True, 0.0
+            elif state["speech"]:
+                state["quiet"] += 0.1
+                if auto_end and state["quiet"] >= 0.8:
+                    stop.set()
+            if now - state["opened"] >= max_s:
+                stop.set()
 
         self.ctx.bus.publish("listening", on=True)
         await self.ctx.actions.update_leds(listening=True)
         try:
-            audio = await self.mic.listen(stop, on_chunk, max_s=max_s)
+            await self.mic.listen(stop, on_chunk, max_s=max_s + (HOLD_MAX_S + echo if hold else echo))
         finally:
             self.ctx.bus.publish("listening", on=False)
             await self.ctx.actions.update_leds()
+        audio = bytes(kept)
+        if state["speech"]:
+            await self.ctx.actions.thinking(True)          # something was said: the house works on it
         if feeds:
             await asyncio.gather(*feeds, return_exceptions=True)
         text, conf = await loop.run_in_executor(self.pool, session.result)
@@ -266,19 +291,22 @@ class Voice:
         if self.busy.locked() and self.question is None:
             return
         async with self.busy:
-            await self._beep("beep_start")
-            grammar = None
-            if self.question:
-                grammar = self._question_grammar()
-            text, conf, audio = await self._listen(grammar, stop=stop, max_s=120, auto_end=False)
-            await self._beep("beep_end")
-            if self.question and not text and audio:
-                text, conf = await self._recognize(audio, None)
-            if not text:
-                if audio and len(audio) > MIC_RATE:      # spoke for more than half a second
-                    await self.say(answers.not_understood(self.lang))
-                return
-            await self.handle(text)
+            try:
+                await self._beep("beep_start")
+                grammar = None
+                if self.question:
+                    grammar = self._question_grammar()
+                text, conf, audio = await self._listen(grammar, stop=stop, max_s=120, auto_end=False)
+                await self._beep("beep_end")
+                if self.question and not text and audio:
+                    text, conf = await self._recognize(audio, None)
+                if not text:
+                    if audio and len(audio) > MIC_RATE:      # spoke for more than half a second
+                        await self.say(answers.not_understood(self.lang))
+                    return
+                await self.handle(text)
+            finally:
+                await self.ctx.actions.thinking(False)
 
     # ================================================================ understanding
     async def handle(self, text: str) -> None:
@@ -290,7 +318,7 @@ class Voice:
         if intent is None and self.stories.knows(text):
             intent = Intent("other", {}, 0.8, "rules")      # bills, insurance, chores...: the life of the house
         if intent is None and self.llm is not None:
-            filler = asyncio.create_task(self.say("Vediamo..." if lang == "it" else "Let me see..."))
+            filler = asyncio.create_task(self._filler("Vediamo..." if lang == "it" else "Let me see..."))
             intent = await self.llm.understand(text, names)
             await filler
             # the small model may misunderstand: questions are answered at once (at worst the right
@@ -308,6 +336,38 @@ class Voice:
         log.info("intent %s %s (%s)", intent.name, intent.args, intent.source)
         intent.args.setdefault("text", text)
         await self.execute(intent)
+
+    async def ask_time(self) -> None:
+        """The house does not know the time: it asks, and listens for the answer at once."""
+        if self.busy.locked() or self.ctx.clock.known:
+            return
+        async with self.busy:
+            await self.reply("Non so che ore sono: che ore sono adesso?", "I don't know the time: what time is it now?")
+            await self._hear_time()
+
+    async def _hear_time(self) -> bool:
+        if not (self.listener and self.listener.ok and self.mic.available):
+            return False
+        for attempt in range(2):
+            text, _, _, spoke = await self.chatter._listen(None, max_s=6.0)
+            if spoke or not text:
+                return False
+            hm = parse_time(text)
+            if hm and self.ctx.clock.set_hm(hm[0], hm[1], "voice"):
+                self.ctx.bus.publish("clock", **self.ctx.clock.to_dict())
+                it = "è l'una" if hm[0] == 1 else f"sono le {hm[0]}"
+                it += f" e {hm[1]}" if hm[1] else ""
+                await self.reply(f"Grazie! Allora {it}.", f"Thanks! So it's {hm[0]}:{hm[1]:02d}.")
+                return True
+            if attempt == 0:
+                await self.reply("Non ho capito l'ora: per esempio, sono le tre e mezza.",
+                                 "I didn't get the time: for example, it's half past three.")
+        return False
+
+    async def _filler(self, text: str) -> None:
+        """A word while the language model thinks, then the buttons breathe until the answer."""
+        await self.say(text)
+        await self.ctx.actions.thinking(True)
 
     def _describe(self, intent: Intent) -> tuple[str, str]:
         """The action as a yes/no question, in both languages."""
@@ -352,6 +412,8 @@ class Voice:
             await self.say(answers.humidity(ctx, a.get("room"), lang))
         elif name == "time_now":
             await self.say(answers.time_now(ctx, lang))
+            if not ctx.clock.known:
+                await self._hear_time()               # the answer comes with no need to press Talk
         elif name == "set_time":
             ok = ctx.clock.set_hm(int(a["hour"]), int(a["minute"]), "voice")
             ctx.bus.publish("clock", **ctx.clock.to_dict())
@@ -497,7 +559,8 @@ class Voice:
         """Listen for a name; a known one through the grammar, a new one from free speech."""
         names = self._names()
         for attempt in range(2):
-            text, conf, audio = await self._listen(names + YES[self.lang] if names else None, max_s=5.0)
+            text, conf, audio = await self._listen(names + YES[self.lang] if names else None, max_s=5.0,
+                                                   hold=self.chatter._speaking, echo=ECHO_S)
             known = find_name(normalize(text), names, 0.8) if text else None
             if known:
                 return known
@@ -513,7 +576,8 @@ class Voice:
 
     async def _yes_no(self, it: str, en: str) -> bool:
         await self.reply(it, en)
-        text, _, _ = await self._listen(YES[self.lang] + NO[self.lang], max_s=4.0)
+        text, _, _ = await self._listen(YES[self.lang] + NO[self.lang], max_s=4.0, hold=self.chatter._speaking,
+                                        echo=ECHO_S)
         t = normalize(text)
         return any(t.startswith(normalize(y)) for y in YES[self.lang])
 
@@ -552,7 +616,7 @@ class Voice:
         await self.reply("In che stanza l'hai messo?", "Which room did you put it in?")
         rooms = ["cucina", "soggiorno", "camera", "bagno", "garage", "giardino", "vialetto", "tecnico"] \
             if self.lang == "it" else ["kitchen", "living room", "bedroom", "bathroom", "garage", "garden", "driveway", "utility room"]
-        text, _, _ = await self._listen(rooms, max_s=4.0)
+        text, _, _ = await self._listen(rooms, max_s=4.0, hold=self.chatter._speaking, echo=ECHO_S)
         room = find_room(normalize(text))
         await self._register_named(name, origin="voice", room=room)
 
@@ -665,6 +729,7 @@ class Voice:
                         await self.reply("Non ho capito: puoi ripetere?", "Sorry, could you say that again?")
         finally:
             self._asking_stop.pop(cid, None)
+            await self.ctx.actions.thinking(False)
 
     async def _new_name(self, cid: str, text: str, conf: float, stop: asyncio.Event) -> bool:
         """The answer to "who is it?" is a name the house does not know yet: check it, then use it."""

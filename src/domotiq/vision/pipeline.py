@@ -26,12 +26,26 @@ from dataclasses import dataclass, field
 import cv2
 import numpy as np
 
-from ..layout import Circle, Layout
+from ..layout import Circle, Layout, Rect
 from .geometry import Calibration
 from .scene import StaticScene, circle_pts, rect_pts
 from .signature import signature
 
 CATEGORY_HEIGHT = {"person": 90.0, "dog": 35.0, "cat": 35.0, "animal": 35.0, "car": 70.0, "object": 40.0}
+# what a figurine can stand on besides the floor: the bed, the sofa, a table... (not inside the shower, nor on the
+# totem, the pole or the tree)
+NOT_SURFACES = ("shower", "totem", "pole", "tree")
+
+
+def surfaces(layout: Layout) -> list[tuple[Rect | Circle, float]]:
+    """The tops of the furniture, (footprint, height), highest first."""
+    out = []
+    for f in layout.raw.get("furniture", []):
+        if f["id"] in NOT_SURFACES:
+            continue
+        shape = Circle(*f["circle"]) if "circle" in f else Rect.of(f["rect"])
+        out.append((shape, float(f["height"])))
+    return sorted(out, key=lambda s: -s[1])
 
 
 @dataclass
@@ -52,29 +66,46 @@ class Observation:
     category_guess: str = "object"
     extra: dict = field(default_factory=dict)
 
-    def position(self, calib: Calibration, category: str | None) -> tuple[float, float]:
-        """Where it stands on the floor.
+    def standing_on(self, calib: Calibration, tops: list[tuple[Rect | Circle, float]]) -> float:
+        """The height of what it stands on: the feet, brought up to the top of a piece of furniture, are on it
+        (on the floor they would be elsewhere, where the floor is hidden by that furniture)."""
+        cx, cy, hc = calib.camera
+        nx, ny = self.near_mm
+        for shape, height in tops:
+            s = (hc - height) / hc
+            if shape.contains(cx + (nx - cx) * s, cy + (ny - cy) * s, 3.0):
+                return height
+        return 0.0
+
+    def position(self, calib: Calibration, category: str | None,
+                 tops: list[tuple[Rect | Circle, float]] | None = None) -> tuple[float, float]:
+        """Where it stands, on the floor or on a piece of furniture (`tops`, from surfaces()).
 
         A figurine seen from above shows its top and the side facing the
         camera: the closest point of the blob is the front of its feet, the
         farthest is the back of its head. Brought down by its height, the
         head gives the feet too. The two estimates agree unless the feet
-        are hidden behind a wall; then the head alone counts.
+        are hidden behind a wall; then the head alone counts. On the bed or
+        a table everything is measured from that height, as if the camera
+        were that much lower.
         """
         h = CATEGORY_HEIGHT.get(category or self.category_guess, 50.0)
         if (category or self.category_guess) == "car" or self.area_mm2 > 6000:
             # a box, not a figurine: the middle of what is seen, at half its height
             x, y = calib.lowered(np.array([self.centroid_mm]), h / 2)[0]
             return float(x), float(y)
-        cx, cy, hc = calib.camera
+        cx, cy, hc0 = calib.camera
+        z0 = self.standing_on(calib, tops) if tops else 0.0
+        s = (hc0 - z0) / hc0                       # what is seen on the floor, brought up to that height
+        hc = hc0 - z0
         k = hc / max(hc - h, 1.0)
         c = np.array([cx, cy])
-        cen = np.array(self.centroid_mm) - c
+        cen = (np.array(self.centroid_mm) - c) * s
         rc = float(np.hypot(*cen))
         u = cen / rc if rc > 1e-6 else np.array([1.0, 0.0])
-        rho = min(self.width_mm / (2 * k), 40.0)
-        r_near = float(np.hypot(*(np.array(self.near_mm) - c)))
-        r_far = float(np.hypot(*(np.array(self.far_mm) - c)))
+        rho = min(self.width_mm * s / (2 * k), 40.0)
+        r_near = float(np.hypot(*(np.array(self.near_mm) - c))) * s
+        r_far = float(np.hypot(*(np.array(self.far_mm) - c))) * s
         from_feet = r_near + rho
         from_head = r_far / k - rho
         if rc < rho * 1.5:
@@ -139,7 +170,8 @@ class Segmenter:
                 # the pole rises almost to the camera: raised that high its outline goes to infinity and, with
                 # some calibrations, wrapped around the whole picture. The scene below draws it as it is seen.
                 continue
-            h0, h1 = heights.get(raw["id"], (100.0, 135.0))         # wall lights sit 100-135 mm up
+            # wall lights sit 100-135 mm up; the boards on the walls of the utility room say how high they are
+            h0, h1 = raw.get("z") or heights.get(raw["id"], (100.0, 135.0))
             pts = circle_pts(shape.cx, shape.cy, shape.r) if isinstance(shape, Circle) \
                 else rect_pts([shape.x0, shape.x1, shape.y0, shape.y1])
             polys.append(self._raised_hull(pts, h0, h1))

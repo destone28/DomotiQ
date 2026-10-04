@@ -124,8 +124,8 @@ def humidity(ctx: "Context", room_id: str | None, lang: str) -> str:
 
 def time_now(ctx: "Context", lang: str) -> str:
     if not ctx.clock.known:
-        return ("Non so che ore sono: dimmelo tu, per esempio: sono le tre e mezza."
-                if lang == "it" else "I don't know the time: tell me, for example: it's half past three.")
+        return ("Non so che ore sono: me lo dici tu? Per esempio: sono le tre e mezza."
+                if lang == "it" else "I don't know the time: will you tell me? For example: it's half past three.")
     lt = time.localtime()
     if lang == "it":
         if lt.tm_hour == 1:

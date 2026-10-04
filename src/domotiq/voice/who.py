@@ -434,6 +434,15 @@ LISTEN_S = 6.0
 THINKING_S = 0.8            # the language model takes longer than this: a sound, so the visitor knows
 
 
+def elsewhere(ctx, identity: str, track: str | None):
+    """The track of this character somewhere else in the house, in sight (hidden or carried ones may well be
+    the newcomer), or None."""
+    t = ctx.house.where_is(identity)
+    if t is None or t.id == track or t.hidden or t.carried:
+        return None
+    return t
+
+
 class Dialogue:
     """Asking aloud who a newcomer is, until the house knows, the visitor gives up or a phone answers.
 
@@ -458,6 +467,7 @@ class Dialogue:
         done, _ = await asyncio.wait({task}, timeout=THINKING_S)
         if not done:
             await voice.say(THINKING[voice.lang])
+            await self.ctx.actions.thinking(True)          # still working on it
         return await task or Reply("other")
 
     async def run(self, ev: dict, stop: asyncio.Event) -> None:
@@ -538,6 +548,14 @@ class Dialogue:
                 ident = self.ctx.identities.by_name(r.name)
                 if ident is not None:
                     voice.narrator.hush(context.get("track"))
+                    there = elsewhere(self.ctx, ident.id, context.get("track"))
+                    if there is not None:
+                        # nobody can be in two places: what the house saw here is nothing
+                        if house.answer(cid, {"nothing": True}, by="voice"):
+                            w_it, w_en = answers.room(self.ctx, there.room, "it"), answers.room(self.ctx, there.room, "en")
+                            await voice.reply(f"{ident.name} è già {w_it}: allora qui ho visto male, scusate!",
+                                              f"{ident.name} is already {w_en}: so I saw wrong here, sorry!")
+                        return
                     if house.answer(cid, ident.id, by="voice"):
                         await voice.reply(f"Ah, è {ident.name}! Grazie.", f"Oh, it's {ident.name}! Thanks.")
                     return

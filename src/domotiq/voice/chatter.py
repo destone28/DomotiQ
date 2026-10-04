@@ -45,7 +45,7 @@ log = logging.getLogger(__name__)
 GROUP_S = 3.0          # phones opening the web app within this time are greeted together
 GREET_GAP_S = 45.0     # at most one spoken welcome (or thanks) in this time; the others get the card only
 THANK_GROUP_S = 4.0    # names typed within this time are thanked together
-ECHO_S = 0.5           # pause after the house has spoken before listening
+ECHO_S = 0.35          # what the microphone hears this long after the house has spoken is still its echo
 ANSWER_S = 6.0         # how long the house waits for an answer
 RETRY_S = 15.0         # a question is due but the house is busy or nobody is there
 MIN_EVERY_S = 45.0
@@ -323,20 +323,18 @@ class Chatter:
 
     async def _listen(self, grammar_words: list[str] | None, stop: asyncio.Event | None = None,
                       max_s: float = ANSWER_S) -> tuple[str, float, bytes, bool]:
-        """Listen once the house is silent; the last value is True if the house spoke meanwhile.
+        """Listen as soon as the house is silent (the microphone opens while it ends the question, so a
+        quick answer is not lost); the last value is True if the house spoke meanwhile.
 
         With a list of words the recogniser fits any sound to the nearest one, and says it is
         sure ("mai" out of a noise, at 1.00): a word from the list counts only if a free
         recognition of the same audio has it too. Otherwise the free text is returned.
         """
         v = self.voice
-        end = time.monotonic() + 5.0
-        while self._speaking() and time.monotonic() < end:
-            await asyncio.sleep(0.1)
-        await asyncio.sleep(ECHO_S)
         start = time.monotonic()
-        text, conf, audio = await v._listen(grammar_words, stop=stop, max_s=max_s)
-        spoke = v.in_flight > 0 or v.voice_end > start
+        text, conf, audio = await v._listen(grammar_words, stop=stop, max_s=max_s, hold=self._speaking,
+                                            echo=ECHO_S)
+        spoke = v.in_flight > 0 or v.voice_end > max(start, v.opened_at)
         if grammar_words and audio and not spoke:
             free, free_conf = await v._recognize(audio, None)
             words = set(normalize(free).split())

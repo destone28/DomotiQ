@@ -85,6 +85,8 @@ class Track:
     moving: bool = False
     since: float = field(default_factory=time.time)
     virtual: bool = False                # created by the simulation
+    hidden: bool = False                 # not seen for a moment, kept where it was
+    presence: float = 1.0                # how sure the house is that something is really there (0-1)
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)

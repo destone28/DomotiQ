@@ -55,7 +55,7 @@ def script(ctx, answers, free=None):
     queue = list(answers)
     last = {"text": ""}
 
-    async def listen(grammar_words, *, stop=None, max_s=5.0, auto_end=True):
+    async def listen(grammar_words, *, stop=None, max_s=5.0, auto_end=True, **_):
         item = queue.pop(0) if queue else ""
         if callable(item):
             item = await item(stop)
@@ -519,3 +519,41 @@ def test_clean_names_and_forgotten_phones(tmp_path):
     st.purge(now=1000.0 + EVENT_RETENTION_S + 20)
     assert st.device("p-old") is None and st.device("p-new")["nickname"] == "Luca"
     st.close()
+
+
+def test_a_quick_answer_is_heard_while_the_house_ends_its_question(ctx):
+    """The microphone is open before the house has finished: its own voice is dropped, and an answer said
+    right after the last word is kept."""
+    v = ctx.voice
+    fed = []
+
+    class Session:
+        def feed(self, chunk):
+            fed.append(chunk)
+
+        def result(self):
+            return ("sì" if fed else ""), 1.0
+
+    v.listener = SimpleNamespace(ok=True, session=lambda lang, grammar: Session())
+    speaking = {"on": True}
+
+    class Mic:
+        available, last_level = True, 0.0
+
+        async def listen(self, stop, on_chunk, max_s=60.0, min_s=0.0):
+            for i in range(60):                      # 0.1 s chunks: the house speaks for 0.5 s more
+                if stop.is_set():
+                    break
+                speaking["on"] = i < 5
+                self.last_level = 0.3 if 9 <= i < 12 else 0.001    # "sì", 0.4 s after the house ended
+                on_chunk(bytes([i]) * 4)
+                await asyncio.sleep(0.1)
+            return b""
+    v.mic = Mic()
+
+    async def scenario():
+        return await v._listen(None, max_s=3.0, hold=lambda: speaking["on"], echo=0.3)
+    text, _, audio = asyncio.run(scenario())
+    assert text == "sì"
+    # the house (chunks 0-4) and its echo (0.3 s after) are not in what is recognized; the answer is
+    assert fed and fed[0][0] == 7 and audio[0] == 7 and 9 in audio

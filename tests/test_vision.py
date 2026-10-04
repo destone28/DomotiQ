@@ -49,15 +49,15 @@ def run(engine, renderer, frames, t0=0.0, dt=0.1):
 
 def bring(engine, renderer, things, t0=0.0):
     """Put the figurines into the empty house one by one, by hand, as a visitor does; returns the tracks
-    once they stand still. Takes 4 s for the start and 2.5 s per figurine."""
+    once they stand still and the house is sure of them. Takes 4 s for the start and 4 s per figurine."""
     run(engine, renderer, [([], {})] * 40, t0=t0)               # the start: the house is empty
     placed, t = [], t0 + 4.0
     for thing in things:
         hand = {"hands": [Hand(thing.x, thing.y)]}
         run(engine, renderer, [(placed, hand)] * 3 + [(placed + [thing], hand)] * 2, t0=t)
         placed.append(thing)
-        run(engine, renderer, [(placed, {})] * 20, t0=t + 0.5)
-        t += 2.5
+        run(engine, renderer, [(placed, {})] * 35, t0=t + 0.5)
+        t += 4.0
     return engine.tracks
 
 
@@ -351,17 +351,35 @@ def test_a_figurine_put_down_by_hand_appears_when_the_hand_leaves(engine, render
             first = i * 0.1
     assert len(tracks) == 1 and tracks[0].room == "living"
     assert np.hypot(tracks[0].x - 300, tracks[0].y - 100) < 12
-    assert first is not None and first <= 1.8               # told as soon as it stands still
+    assert first is not None and first <= 3.0               # told once it stands still and is surely there
 
 
 def test_a_change_with_no_hand_is_not_a_presence(engine, renderer):
     settle(engine, renderer, [], 0)
-    # a patch of the floor changes on its own (a reflection, a light): never a track, and it is learned
+    # something appears on its own (a reflection, a light), even looking like a figurine: never a track
     ghost = Thing(390, 60, "#30a0d0", "object", 15, 20)
     seen = [engine.feed(renderer.render([ghost]), 5 + i * 0.1) for i in range(60)]
     assert all(not tracks for tracks in seen)
-    assert engine.status()["absorbed"] >= 1
-    assert not engine.observations                          # part of the empty house now
+    # and when a hand takes it away, its place is no presence either
+    run(engine, renderer, [([ghost], {"hands": [Hand(390, 60)]})] * 3 + [([], {"hands": [Hand(390, 60)]})] * 3,
+        t0=11)
+    seen = [engine.feed(renderer.render([]), 11.6 + i * 0.1) for i in range(50)]
+    assert all(not tracks for tracks in seen)
+
+
+def test_the_place_of_a_figurine_taken_into_the_empty_house_is_no_presence(engine, renderer):
+    settle(engine, renderer, [], 0)
+    # an unrecognized figurine that had joined the empty house (as before this rule, or after the light
+    # changed beyond the correction): a hand takes it away, and its place matches the empty house as saved
+    red = Thing(300, 100, "#d03030")
+    frame = renderer.render([red])
+    engine.segmenter.absorb(frame, np.ones(engine.segmenter.mask.shape, bool) & (engine.segmenter.mask > 0))
+    run(engine, renderer, [([red], {})] * 10, t0=5)
+    run(engine, renderer, [([red], {"hands": [Hand(300, 100)]})] * 3 + [([], {"hands": [Hand(300, 100)]})] * 3,
+        t0=6)
+    seen = [engine.feed(renderer.render([]), 6.6 + i * 0.1) for i in range(50)]
+    assert all(not tracks for tracks in seen)
+    assert engine.status()["holes"] >= 1
 
 
 def test_a_figurine_taken_away_leaves_soon_after_the_hand(engine, renderer):
@@ -612,3 +630,11 @@ def test_the_webcam_is_set_again_when_the_hall_gets_dark_and_nothing_moves(engin
     assert not engine.retune_wanted(18.1)
     tracks = run(engine, renderer, [([red], {})] * 60, t0=18.0)
     assert [x.identity for x in tracks] == ["id-marco"] and engine.status()["retunes"] == 1
+
+
+def test_a_figurine_on_the_bed_is_seen_on_the_bed(engine, renderer):
+    # on the bed (46.5 mm high, x 487-567, y 122-219.5): drawn from the floor up, the bed hides the part below
+    viola = Thing(527, 170, "#7030c0", height=46.5 + 90.0)
+    tracks = bring(engine, renderer, [viola])
+    assert len(tracks) == 1 and tracks[0].room == "bedroom"
+    assert np.hypot(tracks[0].x - 527, tracks[0].y - 170) < 6

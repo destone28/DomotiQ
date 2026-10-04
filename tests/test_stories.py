@@ -205,7 +205,7 @@ def test_talk_stops_a_story(ctx):
         v = ctx.voice
         ctx.play_s = 0.2
 
-        async def listen(grammar, *, stop=None, max_s=5.0, auto_end=True):
+        async def listen(grammar, *, stop=None, max_s=5.0, auto_end=True, **_):
             return "", 0.0, b""
         v._listen = listen
         v._talk_task = v._spawn(v.execute(Intent("story", {"names": ["Marco"]})))
@@ -345,7 +345,7 @@ def test_a_chatty_question_is_answered_and_remembered(ctx):
         ctx.voice.mic.device = "test"
         answers = iter(["sì"])
 
-        async def listen(grammar, *, stop=None, max_s=5.0, auto_end=True):
+        async def listen(grammar, *, stop=None, max_s=5.0, auto_end=True, **_):
             text = next(answers, "")
             return text, 1.0, b"x" if text else b""
 

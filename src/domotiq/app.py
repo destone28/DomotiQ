@@ -212,6 +212,12 @@ def _wire_vision(ctx: Context) -> None:
             # nothing there: the house saw wrong (a reflection, a hand), and forgets it
             ctx.vision.dismiss(c["track"])
             return
+        from .voice.who import elsewhere
+        named = ctx.identities.get(value) if isinstance(value, str) else \
+            ctx.identities.by_name(clean_name(str(value.get("name") or ""))) if isinstance(value, dict) else None
+        if named is not None and elsewhere(ctx, named.id, c["track"]) is not None:
+            ctx.vision.dismiss(c["track"])            # already in the house, in sight: the newcomer was nothing
+            return
         if isinstance(value, dict):
             # a new name: the character is registered with what the house sees, and its colours are learned
             name = clean_name(str(value.get("name") or ""))
@@ -385,8 +391,9 @@ async def periodic(ctx: Context) -> None:
                 ctx.bus.publish("status", **ctx.house.status)
             if not clock_warned and not ctx.clock.known and now - ctx.started > 120:
                 clock_warned = True
-                await ctx.actions.say({"it": "Non so che ore sono: premi Parla e dimmelo.",
-                                       "en": "I don't know what time it is: press Talk and tell me."})
+                voice = getattr(ctx, "voice", None)
+                if voice is not None:
+                    voice._spawn(voice.ask_time())    # asked aloud, answered with no need to press Talk
             if mono - last_purge > 3600:
                 last_purge = mono
                 ctx.store.purge(now)

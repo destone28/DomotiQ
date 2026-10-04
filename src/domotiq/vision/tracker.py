@@ -33,13 +33,14 @@ import numpy as np
 from ..model import ANIMALS, CAR, OBJECT, PERSON, Identity, Track, new_id
 from .assignment import linear_sum_assignment
 from .geometry import Calibration
-from .pipeline import Observation
+from .pipeline import Observation, surfaces
 from .signature import blend, distance, to_hex
 
 MAX_JUMP_MM = 90.0          # farther than this between frames: not the same thing
 LOST_S = 1.5                # a young track unseen for longer was noise
 YOUNG_S = 2.5               # ...young: followed for less than this, with no identity
 HIDDEN_S = 120.0            # a track followed for longer stays where it was, unseen, up to this
+HIDDEN_KNOWN_S = 900.0      # ...a known character (behind another one it touches) much longer: it moves only by hand
 CARRIED_GONE_S = 2.5        # carried and not put down this long after the hands left: out of the house
 CARRIED_MAX_S = 120.0       # carried this long, hands or not: dropped
 ID_ACCEPT = 0.30            # colour distance under which an identity is recognized
@@ -57,6 +58,19 @@ JITTER_MM = 4.0
 JITTER_WINDOW_S = 1.5
 JITTER_COUNT = 3
 SUPPRESS_S, SUPPRESS_MM = 30.0, 25.0   # where one was found, nothing new is born for a while
+# Something new is told to the house only when it is surely there, twice: its presence (0-1: seen in almost every
+# frame, still, standing out from the floor, compact) over the threshold, and again CHECK_GAP_S later with nothing
+# below it in between. In a room where somebody has just said there was nothing, for DOUBT_S, the bar is higher.
+PRESENCE_MIN, CHECK_GAP_S = 0.8, 1.0
+PRESENCE_DOUBTED, CHECK_GAP_DOUBTED_S, DOUBT_S = 0.92, 2.5, 120.0
+HIDDEN_FLAG_S = 1.0         # not seen for longer: told to the house as hidden
+# A character lying down, or on the bed, does not look quite as when it was registered: much closer to it than to
+# anybody else is enough, after a few more frames
+ID_ACCEPT_LOOSE, ID_MARGIN_LOOSE, CONFIRM_LOOSE = 0.45, 0.15, 4
+FROZEN_JUMP_MM = 30.0       # while a hand is at work, a figurine it does not hold stays where it is: farther is
+                            # another blob (the hand took it, and it is carried)
+MERGED_GROWTH = 1.4         # a figurine put down against another: their blobs are one, this much bigger
+MERGED_SIG = 0.75           # ...and coloured partly like it
 
 
 def _group(category: str | None) -> str:
@@ -95,6 +109,10 @@ class VTrack:
     jumps: list[float] = field(default_factory=list)   # when it jumped with no hand around
     shown: bool = False                    # already told to the house
     frame: int = 0                         # the last frame it was seen in
+    born: int = 0                          # the frame it was first seen in
+    area: float = 0.0                      # how big its blob usually is, measured with no hand around
+    presence: float = 0.0
+    checked_at: float = 0.0                # when its presence was first over the threshold
 
     def to_track(self, layout, previous_room: str | None) -> Track:
         room = layout.locate(self.x, self.y, previous_room)
@@ -107,6 +125,7 @@ class Tracker:
     def __init__(self, layout, calib: Calibration) -> None:
         self.layout = layout
         self.calib = calib
+        self.tops = surfaces(layout)          # the bed, the sofa, the tables: figurines stand on them too
         self.tracks: dict[str, VTrack] = {}
         self.hands: list[Observation] = []
         self.identities: dict[str, Identity] = {}
@@ -115,8 +134,10 @@ class Tracker:
         self._frozen = False
         self._animated: set[str] = set()                      # rooms whose light is animated now
         self._suppressed: list[tuple[float, float, float]] = []  # (x, y, until): no births there
+        self._doubted: dict[str, float] = {}  # room -> until when something new there must be surer
         self.jittery = 0                 # false presences found by their jumps (for the diagnostics)
         self.frame = 0
+        self._quiet_s = float("inf")
 
     def set_identities(self, identities: list[Identity]) -> None:
         self.identities = {i.id: i for i in identities}
@@ -132,6 +153,7 @@ class Tracker:
         track only if its extra["birth"] allows it."""
         now = time.time() if now is None else now
         self._frozen = frozen
+        self._quiet_s = quiet_s
         self.frame += 1
         if animated is not None:
             self._animated = set(animated)
@@ -147,17 +169,55 @@ class Tracker:
         self._ask_unknown(now)
         out = []
         for t in self.tracks.values():
-            if not t.shown and not t.identity and (t.hits < NEW_HITS or now - t.since < NEW_S
-                                                   or any(now - j < NEW_S for j in t.jumps)):
-                continue                   # not yet: it may be a reflection, or noise, until it stands still
+            if not t.shown and not t.identity and not self._confirmed(t, now):
+                continue                   # not yet: it may be a reflection, or noise
             t.shown = True
             tr = t.to_track(self.layout, self._rooms.get(t.id))
+            tr.hidden = now - t.last_seen > HIDDEN_FLAG_S
+            tr.presence = round(t.presence if not t.identity else 1.0, 2)
             self._rooms[t.id] = tr.room
             out.append(tr)
         return out
 
+    def presence(self, t: VTrack, now: float) -> float:
+        """How sure the house is that something is really there, 0-1."""
+        o = t.obs
+        if o is None:
+            return 0.0
+        seen = t.hits / max(1, self.frame - t.born + 1)
+        f_seen = min(1.0, max(0.0, (seen - 0.5) / 0.45))
+        jumps = sum(1 for j in t.jumps if now - j <= JITTER_WINDOW_S)
+        f_still = min(1.0, max(0.0, 1.0 - jumps / JITTER_COUNT))
+        chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
+        f_contrast = min(1.0, max(chroma_d / 30.0, -light_d / 25.0, light_d / 40.0, 0.0) / 0.6)
+        f_shape = 1.0 if o.area_mm2 >= 6000 else min(1.0, max(0.0, (4.0 - o.elongation) / 1.5))
+        return f_seen * f_still * f_contrast * f_shape
+
+    def _confirmed(self, t: VTrack, now: float) -> bool:
+        """The double check before something new is told to the house."""
+        if t.hits < NEW_HITS or now - t.since < NEW_S or any(now - j < NEW_S for j in t.jumps):
+            t.checked_at = 0.0
+            return False
+        t.presence = self.presence(t, now)
+        doubted = self._doubted.get(self.layout.locate(t.x, t.y) or "", 0.0) > now
+        need, gap = (PRESENCE_DOUBTED, CHECK_GAP_DOUBTED_S) if doubted else (PRESENCE_MIN, CHECK_GAP_S)
+        if t.presence < need:
+            t.checked_at = 0.0
+            return False
+        if not t.checked_at:
+            t.checked_at = now                 # first check passed
+            return False
+        return now - t.checked_at >= gap       # and the second
+
+    def recognizable(self, sig: np.ndarray) -> bool:
+        """Looks like a registered character (closely, or much more than like anybody else)."""
+        ds = sorted(distance(sig, i.signature) for i in self.identities.values() if len(i.signature))
+        if not ds:
+            return False
+        return ds[0] < ID_ACCEPT or ds[0] < ID_ACCEPT_LOOSE and (len(ds) == 1 or ds[1] - ds[0] >= ID_MARGIN_LOOSE)
+
     def _position(self, o: Observation, category: str | None) -> tuple[float, float]:
-        return o.position(self.calib, category)
+        return o.position(self.calib, category, self.tops)
 
     def _associate(self, things: list[Observation], now: float, births: bool = True) -> None:
         """One assignment for all: the tracks in sight by position and colour, the carried ones by colour."""
@@ -173,7 +233,8 @@ class Tracker:
                     if t.carried:
                         # put down somewhere: only the colour tells, and a track in sight is preferred. Only
                         # once the hands have left and where they were: under an arm, a piece of it would do
-                        if births and o.extra.get("birth", True) and sd < 0.45:
+                        # (or never moved, the hand only passed over it: "place", not "birth")
+                        if births and o.extra.get("place", o.extra.get("birth", True)) and sd < 0.45:
                             cost[i, j] = 0.8 + 1.5 * sd
                         continue
                     unseen = min(now - t.last_seen, 1.0)
@@ -181,6 +242,8 @@ class Tracker:
                     x, y = self._position(o, t.category)
                     d = float(np.hypot(x - t.x - t.vx * dt, y - t.y - t.vy * dt))
                     if d > MAX_JUMP_MM * (1 + 2 * unseen) or (sd > 0.6 and d > 25):
+                        continue
+                    if self._frozen and d > FROZEN_JUMP_MM:
                         continue
                     cost[i, j] = d / MAX_JUMP_MM + 1.5 * sd
             rows, cols = linear_sum_assignment(cost)
@@ -207,7 +270,7 @@ class Tracker:
             if self.suppressed(*self._position(o, o.category_guess), now):
                 continue
             t = VTrack(new_id("t"), *self._position(o, o.category_guess), o, o.sig, o.category_guess,
-                       last_seen=now, since=now)
+                       last_seen=now, since=now, born=self.frame)
             self.tracks[t.id] = t
             self._apply(t, o, now)
             o.extra["track"] = t.id
@@ -241,6 +304,8 @@ class Tracker:
         t.history.append((now, x, y))
         if len(t.history) > 50:
             del t.history[:10]
+        if self._quiet_s > 5.0:
+            t.area = o.area_mm2 if not t.area else 0.8 * t.area + 0.2 * o.area_mm2
 
     def _carry(self, hands: list[Observation], now: float) -> None:
         """A track that vanished under a hand is carried, not gone."""
@@ -265,7 +330,38 @@ class Tracker:
             return None
         self._rooms.pop(track_id, None)
         self._suppressed.append((t.x, t.y, now + SUPPRESS_S))
+        self._doubt(t, now)
         return t.raw or (t.x, t.y)
+
+    def _doubt(self, t: VTrack, now: float) -> None:
+        """Nothing was there: in that room something new must be surer for a while."""
+        room = self.layout.locate(t.x, t.y)
+        if room:
+            self._doubted[room] = now + DOUBT_S
+
+    def _put_against(self, t: VTrack, now: float) -> bool:
+        """A carried figurine that was not seen put down: if a blob grew as much as a figurine and is coloured
+        partly like it, the two touch. It stays there, hidden behind the other, until they part."""
+        best, growth = None, 0.0
+        for u in self.tracks.values():
+            if u is t or u.carried or u.obs is None or distance(t.sig, u.obs.sig) >= MERGED_SIG:
+                continue
+            # grown since before the hands came, or (just put down too) bigger than one more figurine like this
+            if u.area:
+                g = u.obs.area_mm2 / u.area / MERGED_GROWTH
+            elif t.area:
+                g = u.obs.area_mm2 / t.area / (1.0 + MERGED_GROWTH)
+            else:
+                continue
+            if g >= 1.0 and g > growth:
+                best, growth = u, g
+        if best is None:
+            return False
+        t.carried = False
+        t.x, t.y, t.vx, t.vy = best.x, best.y, 0.0, 0.0
+        t.raw, t.jumps = None, []
+        t.last_seen = now
+        return True
 
     def suppressed(self, x: float, y: float, now: float) -> bool:
         return any(until > now and np.hypot(x - sx, y - sy) < SUPPRESS_MM for sx, sy, until in self._suppressed)
@@ -285,14 +381,18 @@ class Tracker:
             del self.tracks[tid]
             self._rooms.pop(tid, None)
             self._suppressed.append((t.x, t.y, now + SUPPRESS_S))
+            self._doubt(t, now)
             t.obs.extra.pop("track", None)
             self.jittery += 1
 
     def _drop_lost(self, now: float, frozen: bool = False, quiet_s: float = float("inf")) -> None:
         for tid, t in list(self.tracks.items()):
             if t.carried:
-                # the hands left without putting it down: taken out of the house
+                # the hands left without putting it down: taken out of the house, unless it was put down against
+                # another figurine and the two are seen as one
                 gone = not frozen and quiet_s > CARRIED_GONE_S and now - t.carried_since > CARRIED_GONE_S
+                if gone and self._put_against(t, now):
+                    continue
                 if gone or now - t.carried_since > CARRIED_MAX_S:
                     del self.tracks[tid]
                     self._rooms.pop(tid, None)
@@ -302,7 +402,7 @@ class Tracker:
                 continue
             # never told to the house, or followed only for a moment: it was noise
             young = (t.last_seen - t.since < YOUNG_S or not t.shown) and not t.identity and not t.locked
-            if young or unseen > HIDDEN_S:
+            if young or unseen > (HIDDEN_KNOWN_S if t.identity else HIDDEN_S):
                 del self.tracks[tid]
                 self._rooms.pop(tid, None)
 
@@ -381,19 +481,20 @@ class Tracker:
             j = best_of.get(i)
             d = cost[i, j] if j is not None else 1.0
             close = [free_ids[k].id for k in np.argsort(cost[i]) if cost[i, k] < ID_ACCEPT]
-            if j is None or d >= ID_ACCEPT:
+            others = sorted(cost[i, k] for k in range(len(free_ids)) if k != j) if j is not None else []
+            margin = (others[0] - d) if others else 1.0
+            loose = d >= ID_ACCEPT
+            if j is None or d >= ID_ACCEPT_LOOSE or loose and margin < ID_MARGIN_LOOSE:
                 t.identity, t.confidence, t.uncertain, t.candidates = None, 0.0, False, []
                 t.votes.clear()
                 continue
             ident = free_ids[j]
-            others = sorted(cost[i, k] for k in range(len(free_ids)) if k != j)
-            margin = (others[0] - d) if others else 1.0
             conf = max(0.0, min(1.0, (ID_ACCEPT - d) / ID_ACCEPT * 0.6 + min(margin, 0.3) / 0.3 * 0.4))
             t.votes[ident.id] = t.votes.get(ident.id, 0) + 1
             for k in list(t.votes):
                 if k != ident.id:
                     t.votes[k] = max(0, t.votes[k] - 1)
-            if t.votes[ident.id] < CONFIRM_FRAMES and t.identity != ident.id:
+            if t.votes[ident.id] < (CONFIRM_LOOSE if loose else CONFIRM_FRAMES) and t.identity != ident.id:
                 continue
             ambiguous = margin < ID_MARGIN and len(close) > 1
             if ambiguous and t.identity != ident.id:
@@ -411,7 +512,7 @@ class Tracker:
         if self.suppressed(*self._position(o, o.category_guess), now):
             return
         t = VTrack(new_id("t"), *self._position(o, o.category_guess), o, o.sig, o.category_guess,
-                   last_seen=now, since=now)
+                   last_seen=now, since=now, born=self.frame)
         self.tracks[t.id] = t
         self._apply(t, o, now)
         o.extra["track"] = t.id
@@ -426,8 +527,8 @@ class Tracker:
         free = [i for i in self.identities.values() if i.id not in held]
         for t in self.tracks.values():
             if t.identity or t.obs is None or t.carried or t.asked_new >= t.since or now - t.since < UNKNOWN_ASK_S \
-                    or t.hits < NEW_HITS:
-                continue
+                    or t.hits < NEW_HITS or not t.shown:
+                continue                       # asked only about what the house is sure is there
             if any(v > 0 for v in t.votes.values()):
                 continue                       # being recognized right now
             # proposed by kind: cars for a car, animals for an animal, objects for an object; a new person is

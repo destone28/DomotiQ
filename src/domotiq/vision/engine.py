@@ -60,6 +60,14 @@ LATE_WINDOW_S = 20.0     # hand, is a presence even if the house was waiting whe
 MIN_FLOOR = 0.35         # share of a new thing seen over floor or furniture: a reflection on a wall has none
 EDGE_MM, EDGE_MM2 = 12.0, 600.0   # small things right on the edge of the base are cables and sleeves
 FORGET_S, FORGET_MM = 3.0, 30.0   # "there is nothing there": what is seen there now joins the empty house
+# What a hand brings: something that was not there before the hand came, compact, and clearly standing out from
+# the floor. Measured on casa1, the figurines stand out by 16-53 in colour (or are 15-20 darker) and are at most
+# 2.2 times longer than wide; what the light does to the foot of a wall or the edge of the sofa is a thin strip
+# (4.5-19 times longer than wide) or a faint patch (9-12 in colour).
+BIRTH_ELONGATION = 3.5
+BIRTH_CHROMA, BIRTH_DARKER, BIRTH_LIGHTER = 14.0, 12.0, 25.0
+BEFORE_HAND_S = 0.5      # different from the empty house since before the hand came: it was already there
+HOLE_DIFF = 30.0         # as close as this to the empty house as it was saved (sum over the channels): a hole
 # The light of the hall: the webcam is set again on what it sees when the picture stays this much darker or
 # brighter than the empty house for RETUNE_S, with no hand and no light of the house just changed. The
 # empty house and the presences stay as they are: nothing moved, so nothing is born and nothing leaves.
@@ -111,11 +119,14 @@ class Engine:
         self._animated: set[str] = set()           # rooms whose light is animated now
         self._forget: list[tuple[float, float, float]] = []   # (x, y, until): somebody said nothing is there
         self._fg_since: np.ndarray | None = None   # per pixel: since when it differs from the empty house
+        self._session_at = float("-inf")          # when the hands now at work came
+        self._empty0: np.ndarray | None = None     # the empty house as it was saved, before anything joined it
         self._ratio = 1.0                          # brightness of the picture / of the empty house
         self._off_since = 0.0                      # since when that ratio is beyond RETUNE_DARK..RETUNE_BRIGHT
         self._settle_until = 0.0                   # the webcam has just been set again: the house waits
         self._retuned_at = float("-inf")
         self.retunes = 0
+        self.holes = 0
         self._clipped_since = 0.0                  # since when the light is beyond what the rooms can correct
         self._hand_since: np.ndarray | None = None # since when each pixel has been part of a hand (0: not)
         # before the calibration the house does not know where the bathroom is: it assumes the
@@ -191,12 +202,66 @@ class Engine:
         """Could this be something standing in the house (whatever put it there)?"""
         if o.extra.get("floor", 1.0) < MIN_FLOOR:
             return False                      # all on a wall: a reflection
+        if o.area_mm2 < 6000 and not self._known(o):
+            if o.elongation > BIRTH_ELONGATION:
+                return False                  # a thin strip: the foot of a wall, the edge of the furniture
+            chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
+            if chroma_d < BIRTH_CHROMA and -BIRTH_DARKER < light_d < BIRTH_LIGHTER:
+                return False                  # a faint patch: the light, not a figurine
         b = self.layout.base
         cx, cy = o.centroid_mm
         if min(cx - b.x0, b.x1 - cx, cy - b.y0, b.y1 - cy) < EDGE_MM and o.area_mm2 < EDGE_MM2:
             return False
         room = self.layout.locate(cx, cy)
         return self._light_block.get(room or "", 0.0) <= now
+
+    def _known(self, o: Observation) -> bool:
+        """Looks like a registered character."""
+        return bool(self.tracker) and self.tracker.recognizable(o.sig)
+
+    def _figurine_like(self, o: Observation) -> bool:
+        """Compact and clearly standing out from the floor, as a figurine is (whether a hand brought it or not)."""
+        if o.hand or not 150 <= o.area_mm2 <= 6000 or o.elongation > BIRTH_ELONGATION:
+            return False
+        if o.extra.get("floor", 1.0) < MIN_FLOOR:
+            return False
+        chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
+        return chroma_d >= BIRTH_CHROMA or light_d <= -BIRTH_DARKER or light_d >= BIRTH_LIGHTER
+
+    def _fill_hole(self, o: Observation) -> bool:
+        """What is seen there is the empty house as it was saved: something that had joined the empty house (a
+        figurine the house did not recognize) has been taken away, and left its place behind. The empty house
+        gets its place back; it is no presence."""
+        seg = self.segmenter
+        if self._empty0 is None or seg.labels is None or self.frame is None:
+            return False
+        x, y, w, h = o.bbox
+        blob = seg.labels[y:y + h, x:x + w] == o.extra["label"]
+        if not blob.any():
+            return False
+        cur = seg.corrected(self.frame, update=False)[y:y + h, x:x + w][blob]
+        empty = self._empty0[y:y + h, x:x + w][blob]
+        now_ref = seg.reference_bgr[y:y + h, x:x + w][blob]
+        d_empty = float(np.median(np.abs(cur - empty).sum(axis=1)))
+        d_ref = float(np.median(np.abs(cur - now_ref).sum(axis=1)))
+        if d_empty >= HOLE_DIFF or d_empty >= 0.5 * d_ref:
+            return False
+        region = np.zeros(seg.labels.shape, bool)
+        region[y:y + h, x:x + w] = blob
+        region = cv2.dilate(region.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+        seg.reference_bgr[region] = self._empty0[region]
+        ys, xs = np.nonzero(region)
+        seg._reference_changed((int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1))
+        self.holes += 1
+        return True
+
+    def _appeared(self, o: Observation) -> float:
+        """Since when what it covers differs from the empty house (0 if unknown)."""
+        if self._fg_since is None or self.segmenter.labels is None:
+            return 0.0
+        x, y, w, h = o.bbox
+        blob = self.segmenter.labels[y:y + h, x:x + w] == o.extra["label"]
+        return float(np.median(self._fg_since[y:y + h, x:x + w][blob])) if blob.any() else 0.0
 
     def _may_be_born(self, o: Observation, scan: bool, births_open: bool, now: float) -> bool:
         x, y, w, h = o.bbox
@@ -211,8 +276,16 @@ class Engine:
                 return False
             if o.area_mm2 > 6000:
                 return True
-            return any(len(i.signature) and distance(o.sig, i.signature) < ID_ACCEPT for i in self.identities)
-        return births_open and bool(self._zone[y:y + h, x:x + w].any())
+            return self._known(o)
+        if not births_open or not self._zone[y:y + h, x:x + w].any():
+            return False
+        o.extra["place"] = True               # where the hands were: a figurine they held may be here
+        # brought by the hand: it was not there before the hand came, and it is not the place a hand has just
+        # emptied
+        appeared = self._appeared(o)
+        if appeared and appeared < self._session_at - BEFORE_HAND_S:
+            return False
+        return not self._fill_hole(o)
 
     def rescan(self) -> None:
         """Take what is in sight as it is (after a start, or a new empty house)."""
@@ -227,6 +300,7 @@ class Engine:
             ref = cv2.imread(str(self.dir / "reference.png"))
             if ref is not None and ref.shape[1::-1] == ANALYSIS:
                 self.segmenter.set_reference([ref])
+                self._empty0 = self.segmenter.reference_bgr.copy()
                 self._backgrounds()
 
     def _setup(self, calib: Calibration) -> None:
@@ -297,6 +371,7 @@ class Engine:
         if len(frames) < 3:
             return {"ok": False, "error": "no frames from the camera"}
         self.segmenter.set_reference(frames)
+        self._empty0 = self.segmenter.reference_bgr.copy()
         cv2.imwrite(str(self.dir / "reference.png"), np.clip(self.segmenter.reference_bgr, 0, 255).astype(np.uint8))
         self._backgrounds()
         self._moved.update(shift=0.0, count=0)
@@ -340,6 +415,8 @@ class Engine:
         active = bool(hands.any())
         if active:
             self._hand_at = now
+            if self._zone is None:
+                self._session_at = now        # a hand comes: what differs from now on may be what it brings
             self._zone = hands.copy() if self._zone is None else (self._zone | hands)
         quiet = now - self._hand_at
         # much of the house changed at once, with no hand: the light of the hall
@@ -474,14 +551,21 @@ class Engine:
             lut[tracked] = True
             # a piece of a figurine cut off from its blob still belongs to it
             explained |= cv2.dilate(lut[seg.labels].astype(np.uint8), np.ones((15, 15), np.uint8)) > 0
+        # what looks like a figurine never joins the empty house: if it is one the house did not recognize, its
+        # place would look like a new presence once it is taken away
+        keep = [o.extra["label"] for o in obs if not o.extra.get("track") and self._figurine_like(o)
+                and not (self._zone is None and self._fill_hole(o))]
+        if keep and seg.labels is not None:
+            lut = np.zeros(int(seg.labels.max()) + 1, bool)
+            lut[keep] = True
+            explained |= lut[seg.labels]
         if self._zone is not None:
             explained |= self._zone
         unexplained = (fg > 0) & ~explained
         g = self._ghost
         np.add(g, 1, out=g, where=unexplained & (g < 60000))
         g[~unexplained] = 0
-        late = max(3, int(round(LATE_S * max(self.fps, 1.0))))
-        if steady and now - self._hand_at < LATE_WINDOW_S and seg.labels is not None:
+        if steady and now - self._hand_at < LATE_WINDOW_S and seg.labels is not None and self._fg_since is not None:
             for o in obs:
                 if o.hand or o.extra.get("track") or not 150 <= o.area_mm2 <= 20000:
                     continue
@@ -492,13 +576,17 @@ class Engine:
                     continue                  # the glow of a light the house has just changed
                 x, y, w, h = o.bbox
                 blob = seg.labels[y:y + h, x:x + w] == o.extra["label"]
-                if self._fg_since is not None:
-                    appeared = float(np.median(self._fg_since[y:y + h, x:x + w][blob]))
-                    if appeared and appeared - self._hand_at > SETTLE_S + NO_HAND_S:
-                        continue              # it appeared with no hand around: a lamp, a shadow
-                if float(np.median(g[y:y + h, x:x + w][blob])) >= late:
-                    self.tracker.adopt(o, now)
-                    g[y:y + h, x:x + w][blob] = 0
+                appeared = self._appeared(o)
+                if not appeared or now - appeared < LATE_S:
+                    continue                  # not standing there long enough yet
+                if appeared - self._hand_at > SETTLE_S + NO_HAND_S:
+                    continue                  # it appeared with no hand around: a lamp, a shadow
+                if appeared < self._session_at - BEFORE_HAND_S:
+                    continue                  # it was there before the hand came
+                if self._fill_hole(o):
+                    continue                  # the place of something a hand took away
+                self.tracker.adopt(o, now)
+                g[y:y + h, x:x + w][blob] = 0
         if frozen:
             return
         ripe = g >= GHOST_FRAMES
@@ -602,6 +690,7 @@ class Engine:
             "absorbed": self.absorbed,
             "jittery": self.tracker.jittery if self.tracker else 0,
             "brightness": round(self._ratio, 2),
+            "holes": self.holes,
             "retunes": self.retunes,
             "shift_px": self._moved["shift"],
             "gains": self.segmenter.gains if self.segmenter else {},

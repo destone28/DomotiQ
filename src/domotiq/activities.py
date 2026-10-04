@@ -30,6 +30,10 @@ PLACEHOLDER = re.compile(r"\{(name|room|room_in|count|temp|rh|time)\}")
 VERBOSITY_RANK = {"silent": 0, "normal": 1, "chatty": 2}
 
 LANG_WORDS = {"it": {"it": "Italiano", "en": "Italian"}, "en": {"it": "English", "en": "English"}}
+# the three buttons while the house works out what to say: lit from the middle out and back, as a breath
+BREATH = (0b010, 0b111, 0b111, 0b010, 0b000, 0b000)
+BREATH_STEP_S = 0.2
+BREATH_MAX_S = 20.0
 
 
 class Actions:
@@ -39,6 +43,7 @@ class Actions:
         self._grill_cooldown_until = 0.0
         self._grill_task: asyncio.Task | None = None
         self._party_task: asyncio.Task | None = None
+        self._breath: asyncio.Task | None = None
 
     # ================================================================ helpers
     @property
@@ -227,8 +232,11 @@ class Actions:
         self.ctx.bus.publish("volume", volume=volume)
 
     async def update_leds(self, listening: bool = False, waiting: bool = False) -> None:
-        """LED 0 talk (on while listening), 1 intercom (blinks while waiting), 2 language (on = English)."""
-        on = (1 if listening else 0) | (4 if self.lang == "en" else 0)
+        """All three on while the house listens; otherwise LED 1 intercom (blinks while waiting) and LED 2
+        language (on = English)."""
+        if listening:
+            self._stop_breath()
+        on = 7 if listening else (4 if self.lang == "en" else 0)
         blink = 2 if waiting else 0
         if self.ctx.settings.get("buttons.reversed"):
             on = ((on & 1) << 2) | (on & 2) | ((on & 4) >> 2)
@@ -237,6 +245,35 @@ class Actions:
             await self.ctx.mcu.leds(on, blink)
         except Exception:  # noqa: BLE001
             pass
+
+    async def thinking(self, on: bool) -> None:
+        """The buttons breathe while the house works out what to say, until it speaks."""
+        if on:
+            if self._breath is None or self._breath.done():
+                self._breath = asyncio.create_task(self._breathe())
+        elif self._stop_breath():
+            await self.update_leds()
+
+    def _stop_breath(self) -> bool:
+        task, self._breath = self._breath, None
+        if task is None or task.done():
+            return False
+        task.cancel()
+        return True
+
+    async def _breathe(self) -> None:
+        loop = asyncio.get_running_loop()
+        end = loop.time() + BREATH_MAX_S
+        step = 0
+        while loop.time() < end:
+            try:
+                await self.ctx.mcu.leds(BREATH[step % len(BREATH)], 0)
+            except Exception:  # noqa: BLE001 - the microcontroller may be missing
+                pass
+            step += 1
+            await asyncio.sleep(BREATH_STEP_S)
+        self._breath = None
+        await self.update_leds()
 
     # ================================================================ lights on demand
     async def light(self, room: str, color: str = "#ffffff", effect: str = "solid",

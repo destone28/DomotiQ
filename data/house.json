@@ -95,10 +95,12 @@
     {"id": "light-garage",   "rect": [440, 500, 348, 362]},
     {"id": "light-bedroom",  "rect": [497, 557, 208, 222]},
     {"id": "light-kitchen",  "rect": [153, 168, 155, 215]},
-    {"id": "light-living",   "rect": [413, 428, 73, 133]},
+    {"id": "light-living",   "rect": [413, 428, 65, 155]},
     {"id": "light-bathroom", "rect": [273, 288, 295, 355]},
     {"id": "tree-canopy",    "circle": [35, 340, 28]},
-    {"id": "pole",           "rect": [307, 343, 323.5, 359.5]}
+    {"id": "pole",           "rect": [307, 343, 323.5, 359.5]},
+    {"id": "uno-q",          "rect": [425, 435, 280, 356], "z": [10, 140]},
+    {"id": "hub-relay",      "rect": [306, 364, 220, 230], "z": [5, 75]}
   ],
   "parking": [452, 632, 262, 342],
   "entrance": {"door": "entrance", "outside": "driveway", "inside": "living"}
