@@ -324,6 +324,8 @@ export function renderBanners() {
     const cats = ["person", "dog", "cat", "animal", "car", "object"];
     html += `<div class="banner ask" data-cid="${c.id}"><span class="grow">${esc(tr(c.question))}</span>` +
       c.options.map((o, i) => `<button data-i="${i}">${esc(tr(o.label))}</button>`).join("") +
+      // two figurines touching are one blob: "both of them" is an answer too
+      (c.options.length >= 2 ? `<button data-both="1">${esc(t(c.options.length > 2 ? "ask.all" : "ask.both"))}</button>` : "") +
       (c.allow_name ? `<input class="newname" maxlength="40" placeholder="${esc(t("ask.new_name"))}">` +
         (c.who ? `<select class="newcat">${cats.map(k => `<option value="${k}"${k === c.category ? " selected" : ""}>${esc(t("cat." + k))}</option>`).join("")}</select>` : "") +
         `<button data-new="1">${esc(t("ask.add"))}</button>` : "") +
@@ -354,6 +356,8 @@ export function renderBanners() {
       }
       if (b.dataset.nothing) {
         value = { nothing: true };
+      } else if (b.dataset.both) {
+        value = { together: c.options.map(o => o.value) };
       } else if (b.dataset.new) {
         const name = banner.querySelector(".newname").value.trim();
         if (!name) return;

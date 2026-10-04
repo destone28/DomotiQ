@@ -9,6 +9,7 @@ driver does not take the house down: the child is started again.
 Parent and child talk over a pipe:
 
     parent -> child   ("identities", [...]) ("assign", track, identity) ("forget", identity)
+                      ("dismiss", track) ("together", track, [identities])
                       ("lights", [rooms]) ("want", overlay) ("cmd", id, name, params) ("stop",)
     child -> parent   ("tracks", [...], status) ("jpeg", overlay, bytes) ("reply", id, result)
                       ("question", track, candidates) ("learn", {identity: signature}) ("log", text)
@@ -172,16 +173,21 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                 elif kind == "assign" and engine.tracker:
                     engine.tracker.assign(msg[1], msg[2])
                     # someone said who it is: its colours as seen now teach the house at once, and this look is
-                    # one of its poses
+                    # one of its poses. Only if it looks like that character, though: an answer about the wrong
+                    # blob (a light, another figurine) must not change what the character looks like
                     vt = engine.tracker.track(msg[1]) if msg[2] else None
                     ident = engine.tracker.identities.get(msg[2] or "")
-                    if vt is not None and vt.obs is not None and ident is not None:
+                    fits = ident is not None and vt is not None and (
+                        not len(ident.signature) or engine.tracker.fits_pose(ident, vt.sig))
+                    if fits and vt.obs is not None and len(ident.signature):
                         engine.tracker.add_pose(ident, vt.sig, vt.obs.area_mm2, vt.obs.elongation)
-                    sig = engine.track_signature(msg[1]) if msg[2] else None
+                    sig = engine.track_signature(msg[1]) if fits else None
                     if sig:
                         conn.send(("taught", {msg[2]: sig[0]}, engine.learned_sizes(msg[2])))
                 elif kind == "dismiss":
                     engine.dismiss(msg[1], time.time())
+                elif kind == "together":
+                    engine.together(msg[1], list(msg[2]), time.time())
                 elif kind == "forget" and engine.tracker:
                     engine.tracker.forget(msg[1])
                 elif kind == "lights":
@@ -434,6 +440,9 @@ class VisionProcess(VisionLink):
 
     def dismiss(self, track_id: str) -> None:
         self._send("dismiss", track_id)
+
+    def together(self, track_id: str, identities: list[str]) -> None:
+        self._send("together", track_id, list(identities))
 
     def lights_changed(self, rooms: list[str], animated: list[str] | None = None) -> None:
         self._send("lights", rooms, animated)

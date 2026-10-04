@@ -37,6 +37,23 @@ def test_short_answers_are_understood_by_the_rules(lang, text, meaning):
     assert said(who.by_rules(text, lang, NAMES)) == meaning
 
 
+@pytest.mark.parametrize("lang,text,names", [
+    ("it", "entrambi", ()), ("it", "tutti e due", ()), ("it", "ci sono tutte e due", ()), ("it", "sono in due", ()),
+    ("it", "sia Viola che Rosaria", ("Viola", "Rosaria")), ("it", "Viola e Rosaria", ("Viola", "Rosaria")),
+    ("it", "ci sono Rosaria e Mister Braun insieme", ("Rosaria", "Mister Braun")),
+    ("en", "both of them", ()), ("en", "Viola and Rosaria", ("Viola", "Rosaria")),
+])
+def test_both_of_them_are_there(lang, text, names):
+    r = who.by_rules(text, lang, NAMES)
+    assert r.kind == "both" and r.names == names
+
+
+def test_one_or_the_other_is_not_both():
+    assert who.by_rules("nessuno dei due", "it", NAMES).kind == "none_of"
+    assert who.by_rules("Viola o Rosaria", "it", NAMES) is None or who.by_rules("Viola o Rosaria", "it", NAMES).kind != "both"
+    assert who.by_rules("non è Viola è Rosaria", "it", NAMES).name == "Rosaria"
+
+
 def test_long_or_tangled_answers_are_left_to_the_language_model():
     assert who.by_rules("allora praticamente quello che vedi è il gatto del vicino", "it", NAMES) is None
     assert who.by_rules("macché persona, è il mio cane Fido", "it", NAMES) is None

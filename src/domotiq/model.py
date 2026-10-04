@@ -90,6 +90,7 @@ class Track:
     hidden: bool = False                 # not seen for a moment, kept where it was
     on: str | None = None                # the furniture it stands on (an id of the layout), None on the floor
     presence: float = 1.0                # how sure the house is that something is really there (0-1)
+    sure: bool = True                    # sure enough to raise an alarm (a known character, or there for a while)
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)

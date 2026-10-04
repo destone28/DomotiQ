@@ -134,7 +134,7 @@ class House:
 
     def _who(self, t: Track) -> dict[str, Any]:
         return {"track": t.id, "identity": t.identity, "category": t.category,
-                "name": self.identities.name_of(t.identity)}
+                "name": self.identities.name_of(t.identity), "sure": t.sure}
 
     def _emit_room(self, kind: str, t: Track, room: str | None, other: str | None) -> None:
         if not room:
@@ -151,15 +151,19 @@ class House:
             c = counts.setdefault(t.room or OUTSIDE, _empty_count())
             c[_group(t.category)] += 1
             c["total"] += 1
+            c["sure"] += int(t.sure)           # alarms count only these: a change wakes them up
         for room, c in counts.items():
             if c != self.counts.get(room):
                 self._pub("count_changed", room=room, **c)
         self.counts = counts
 
-    def count(self, room: str | None = None, category: str | None = None) -> int:
-        """How many tracks of a category (or group) are in a room, or in the whole house."""
+    def count(self, room: str | None = None, category: str | None = None, sure: bool = False) -> int:
+        """How many tracks of a category (or group) are in a room, or in the whole house; with `sure`, only those
+        sure enough for an alarm."""
         n = 0
         for t in self.tracks.values():
+            if sure and not t.sure:
+                continue
             if room and room != "house" and t.room != room:
                 continue
             if room == "house" and (t.room == OUTSIDE or t.room == "driveway"):
@@ -385,7 +389,7 @@ class House:
 
 
 def _empty_count() -> dict[str, int]:
-    return {"persons": 0, "animals": 0, "cars": 0, "objects": 0, "total": 0}
+    return {"persons": 0, "animals": 0, "cars": 0, "objects": 0, "total": 0, "sure": 0}
 
 
 def _group(category: str | None) -> str:

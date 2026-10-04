@@ -129,6 +129,15 @@ ELSEWHERE = [
     ("Ma {name} è {where}! Allora qui non c'è nessuno.", "But {name} is {where}! So nobody is here."),
     ("{name} è {where}, non qui: ho visto male.", "{name} is {where}, not here: I saw wrong."),
 ]
+TOGETHER = [
+    ("Ah, sono in due: {names}!", "Oh, there are two of them: {names}!"),
+    ("Capito: {names}, insieme {where}.", "Got it: {names}, together {where}."),
+    ("Ah, {names}, vicini vicini {where}!", "Oh, {names}, side by side {where}!"),
+]
+WHICH_ONES = [
+    ("Chi sono, allora? Dimmi i nomi.", "Who are they, then? Tell me the names."),
+    ("Quali? Dimmi i loro nomi.", "Which ones? Tell me their names."),
+]
 LATER = [
     ("Va bene, nessun problema: se vuoi me lo dici dalla webapp.",
      "All right, no problem: you can tell me later in the web app."),

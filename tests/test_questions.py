@@ -112,6 +112,45 @@ def test_a_newcomer_is_one_of_the_registered_characters(ctx):
     asyncio.run(scenario())
 
 
+def test_both_of_them_when_two_figurines_touch(ctx):
+    async def scenario():
+        viola, rosaria = ctx.identities.add("Viola", "person"), ctx.identities.add("Rosaria", "person")
+        together = []
+        ctx.vision.together = lambda track, ids: together.append((track, list(ids)))
+        # a newcomer: "sono Viola e Rosaria", the blob is the two of them
+        hear(ctx, ["sono viola e rosaria"])
+        newcomer(ctx)
+        await settle(ctx)
+        assert together == [("t-new", [viola.id, rosaria.id])]
+        assert ctx.said[-1] == "Ah, sono in due: Viola e Rosaria!"
+        # two look-alikes: "È Viola o Rosaria?" "Tutti e due!"
+        hear(ctx, ["tutti e due"])
+        ctx.bus.publish("vision_question", track={"id": "t-twin", "identity": viola.id, "room": "living",
+                                                  "category": "person", "color": "#7030c0"},
+                        candidates=[viola.id, rosaria.id])
+        await settle(ctx)
+        assert together[-1] == ("t-twin", [viola.id, rosaria.id])
+        assert ctx.said[-1] == "Ah, sono in due: Viola e Rosaria!"
+        assert not ctx.house.confirmations
+    asyncio.run(scenario())
+
+
+def test_both_but_one_is_seen_somewhere_else(ctx):
+    async def scenario():
+        from domotiq.model import Track
+        viola, rosaria = ctx.identities.add("Viola", "person"), ctx.identities.add("Rosaria", "person")
+        together = []
+        ctx.vision.together = lambda track, ids: together.append((track, list(ids)))
+        ctx.house.update_tracks([Track("t-v", *KITCHEN, category="person", identity=viola.id)])
+        hear(ctx, ["sia viola che rosaria"])
+        newcomer(ctx)
+        await settle(ctx)
+        # Viola is in the kitchen, in sight: here there is only Rosaria
+        assert together == [] and ctx.assigned == [("t-new", rosaria.id)]
+        assert ctx.said[-1] == "Ah, è Rosaria! Grazie."
+    asyncio.run(scenario())
+
+
 def test_the_first_answer_wins_a_phone_before_the_voice(ctx):
     async def scenario():
         viola = ctx.identities.add("Viola", "person")

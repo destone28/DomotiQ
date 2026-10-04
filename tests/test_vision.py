@@ -14,7 +14,7 @@ from domotiq.model import Identity  # noqa: E402
 from domotiq.vision.assignment import linear_sum_assignment  # noqa: E402
 from domotiq.vision.engine import ANALYSIS, Engine  # noqa: E402
 from domotiq.vision.geometry import BASE_CORNERS_MM, Calibration  # noqa: E402
-from domotiq.vision.pipeline import Segmenter  # noqa: E402
+from domotiq.vision.pipeline import Observation, Segmenter  # noqa: E402
 from domotiq.vision.privacy import Privacy  # noqa: E402
 from domotiq.vision.signature import distance, signature  # noqa: E402
 from domotiq.vision.synthetic import Hand, Renderer, Thing  # noqa: E402
@@ -704,13 +704,16 @@ def test_a_new_pose_is_learned_and_then_recognized(engine, renderer):
     vt = engine.tracker.track(tracks[0].id)
     engine.tracker.add_pose(viola, vt.sig, vt.obs.area_mm2, vt.obs.elongation)
     assert len(viola.poses) == 1 and engine.learned_poses() == {"id-viola": viola.poses}
-    # later, lying again somewhere else, she is recognized from that pose, with no question
-    engine.tracker.tracks.clear()
+    # a hand takes her out of the house...
+    run(engine, renderer, [([lying], {"hands": [Hand(300, 100)]})] * 3 + [([], {"hands": [Hand(300, 100)]})] * 3,
+        t0=16)
+    assert run(engine, renderer, [([], {})] * 40, t0=16.6) == []
+    # ...and later, lying again somewhere else, she is recognized from that pose, with no question
     asked = []
     engine.on_question = lambda tr, c: asked.append(tr.id)
     other = Thing(120, 80, "#7030c0", kind="animal", length=70.0, width=16.0, height=45.0)
-    run(engine, renderer, [([], {"hands": [Hand(120, 80)]})] * 3 + [([other], {"hands": [Hand(120, 80)]})] * 3, t0=20)
-    tracks = run(engine, renderer, [([other], {})] * 35, t0=20.6)
+    run(engine, renderer, [([], {"hands": [Hand(120, 80)]})] * 3 + [([other], {"hands": [Hand(120, 80)]})] * 3, t0=21)
+    tracks = run(engine, renderer, [([other], {})] * 35, t0=21.6)
     assert [t.identity for t in tracks] == ["id-viola"] and not asked
 
 
@@ -728,3 +731,84 @@ def test_the_closest_pose_counts(layout, renderer):
     marco.poses = [{"sig": list(pink.sig), "size": pink.area_mm2, "elong": pink.elongation}]
     near = Tracker._unlike(pink.sig, pink.area_mm2, marco, pink.elongation)
     assert far > 0.45 and near < 0.05            # seen like that before: it is Marco
+
+
+# ------------------------------------------------------------ names move only with a hand
+def _look(L, a, b):
+    rng = np.random.default_rng(0)
+    px = np.column_stack([np.full(400, L), np.full(400, a), np.full(400, b)]) + rng.normal(0, 3.0, (400, 3))
+    return signature(px.astype(np.float32))
+
+
+def _blob(x, y, sig, area=700.0, hand=False):
+    o = Observation((0.0, 0.0), (0, 0, 640, 480) if hand else (0, 0, 1, 1), (x, y), (x, y), (x, y), area, 20.0, 1.2,
+                    sig, hand=hand, category_guess="person")
+    o.extra.update(contrast=(40.0, -20.0), floor=1.0, label=1)
+    return o
+
+
+def _tracker(layout, identities):
+    from domotiq.vision.tracker import Tracker
+    tr = Tracker(layout, Calibration.synthetic(640, 480, layout.camera))
+    tr.tops = []
+    tr.set_identities(identities)
+    return tr
+
+
+def test_names_do_not_swap_with_no_hand(layout):
+    a, b = _look(45, 50, 30), _look(45, 40, 40)
+    tr = _tracker(layout, [Identity("id-a", "A", signature=list(a)), Identity("id-b", "B", signature=list(b))])
+    for k in range(6):
+        tr.update([_blob(200, 60, a), _blob(450, 60, b)], now=100 + 0.1 * k, quiet_s=100)
+    names = {round(t.x): t.identity for t in tr.tracks.values()}
+    assert sorted(names.values()) == ["id-a", "id-b"]
+    # a change of light: each now looks a little more like the other one (still close to its own), and no hand
+    # came by: nobody swapped them, the names stay where they are
+    a2, b2 = _look(45, 44, 36), _look(45, 46, 34)
+    for k in range(20):
+        tr.update([_blob(200, 60, a2), _blob(450, 60, b2)], now=101 + 0.1 * k, quiet_s=100)
+    assert {round(t.x): t.identity for t in tr.tracks.values()} == names
+
+
+def test_a_name_does_not_jump_far_without_a_hand(layout):
+    a = _look(45, 50, 30)
+    tr = _tracker(layout, [Identity("id-a", "A", signature=list(a))])
+    for k in range(6):
+        tr.update([_blob(200, 60, a)], now=100 + 0.1 * k, quiet_s=100)
+    assert [t.identity for t in tr.tracks.values()] == ["id-a"]
+    # lost for good where it stood (it joined the empty house); something like it far away, and no hand anywhere:
+    # nothing moves by itself, so that is not A
+    tr.tracks.clear()
+    for k in range(20):
+        tr.update([_blob(450, 60, a)], now=101 + 0.1 * k, quiet_s=100)
+    assert [t.identity for t in tr.tracks.values()] == [None]
+    # a hand has been over the place where A stood: now that one may well be A, carried there
+    tr.update([_blob(200, 60, a, area=6000.0, hand=True), _blob(450, 60, a)], now=103.5, quiet_s=0.0)
+    for k in range(10):
+        tr.update([_blob(450, 60, a)], now=104 + 0.1 * k, quiet_s=5.0)
+    assert [t.identity for t in tr.tracks.values()] == ["id-a"]
+
+
+def test_poses_of_another_colour_are_forgotten(layout):
+    red, green, red_lying = _look(45, 50, 30), _look(60, -40, 30), _look(48, 46, 30)
+    a = Identity("id-a", "A", signature=list(red), poses=[{"sig": list(green), "size": 700.0, "elong": 1.2},
+                                                           {"sig": list(red_lying), "size": 900.0, "elong": 4.0}])
+    tr = _tracker(layout, [a, Identity("id-b", "B", signature=list(green))])
+    assert [p["elong"] for p in tr.identities["id-a"].poses] == [4.0] and "id-a" in tr.posed
+    # a look of another colour is never learned as a pose either
+    assert not tr.add_pose(tr.identities["id-a"], green, 700.0, 1.2)
+    assert tr.add_pose(tr.identities["id-a"], _look(46, 48, 31), 650.0, 1.5)
+
+
+def test_two_figurines_touching_are_both_there(layout):
+    a, b = _look(45, 50, 30), _look(60, -40, 30)
+    tr = _tracker(layout, [Identity("id-a", "A", signature=list(a)), Identity("id-b", "B", signature=list(b))])
+    blob = _look(50, 10, 30)                     # one blob, coloured partly like each of them
+    for k in range(4):
+        tr.update([_blob(300, 60, blob, area=1400.0)], now=100 + 0.1 * k, quiet_s=100)
+    [t] = tr.tracks.values()
+    tr.together(t.id, ["id-b", "id-a"], 100.5)
+    out = tr.update([_blob(300, 60, blob, area=1400.0)], now=102, quiet_s=100)
+    assert sorted(x.identity for x in out) == ["id-a", "id-b"]
+    assert {round(x.x) for x in out} == {round(t.x)}          # in the same place, one hidden behind the other
+    assert sum(x.hidden for x in out) == 1

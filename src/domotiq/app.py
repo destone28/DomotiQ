@@ -218,6 +218,16 @@ def _wire_vision(ctx: Context) -> None:
             ctx.vision.dismiss(c["track"])
             return
         from .voice.who import elsewhere
+        if isinstance(value, dict) and isinstance(value.get("together"), list):
+            # "both of them": the blob is these characters touching each other; one seen in sight somewhere
+            # else is not here
+            ids = [i for i in value["together"] if isinstance(i, str) and ctx.identities.get(i)
+                   and elsewhere(ctx, i, c["track"]) is None]
+            if len(ids) == 1:
+                ctx.vision.assign(c["track"], ids[0])
+            elif ids:
+                ctx.vision.together(c["track"], ids)
+            return
         named = ctx.identities.get(value) if isinstance(value, str) else \
             ctx.identities.by_name(clean_name(str(value.get("name") or ""))) if isinstance(value, dict) else None
         if named is not None and elsewhere(ctx, named.id, c["track"]) is not None:

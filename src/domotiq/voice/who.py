@@ -41,11 +41,12 @@ ANIMAL_KINDS = ("dog", "cat", "animal")
 
 @dataclass
 class Reply:
-    kind: str                       # name, kind, yes, no, none_of, nobody, unknown, wait, other, silence
+    kind: str                       # name, kind, yes, no, none_of, both, nobody, unknown, wait, other, silence
     category: str | None = None     # what it is, when the answer says so
     name: str | None = None
     source: str = "rules"
     intent: Intent | None = None    # a command of the house said instead of an answer
+    names: tuple[str, ...] = ()     # "both": the registered names said, if any
 
 
 # ------------------------------------------------------------------ rules
@@ -107,6 +108,14 @@ OTHER_INTENTS = {"time_now", "set_time", "story", "joke", "party", "grill", "lig
                  "humidity", "car_where", "where_is", "who_in", "count", "recall", "remember", "fact"}
 NONE_OF = {"it": ["nessuno di questi", "nessuno dei due", "nessuno di loro", "un altro", "un altra"],
            "en": ["none of these", "none of them", "neither", "another one", "someone else", "something else"]}
+# all of them are there, touching each other: one blob for two figurines
+BOTH = {"it": ["entrambi", "entrambe", "tutti e due", "tutte e due", "tutti e 2", "tutte e 2", "tutti e tre",
+               "tutte e tre", "tutti e 3", "sono due", "sono in due", "ci sono tutti", "ci sono tutte", "insieme",
+               "tutti quanti", "tutte quante", "sono tutti", "sono tutte", "ambedue", "l uno e l altro",
+               "l una e l altra"],
+        "en": ["both", "both of them", "the two of them", "all of them", "all three", "the two", "together",
+               "two of them", "they re both"]}
+OR = {"o", "oppure", "or", "either"}
 # there is nothing there: a reflection, a shadow, a hand
 NOBODY = {"it": ["non c e nessuno", "non c e niente", "non c e nulla", "non ce nessuno", "non ce niente",
                  "non c e nessun", "non c e nessuna", "non vedo niente", "non vedo nessuno",
@@ -254,6 +263,9 @@ def by_rules(text: str, lang: str, names: list[str]) -> Reply | None:
     known, kinds = _known(words, names), _kinds(words)
     if any(_has(t, p) for p in NONE_OF[lang]) and not known and not kinds:
         return Reply("none_of")
+    if len(known) >= 2 and not any(w in NEGATIONS or w in OR for w in words) or \
+            any(_has(t, p) for p in BOTH[lang]) and not any(_has(t, p) for p in NOBODY[lang]):
+        return Reply("both", names=tuple(known))         # "entrambi", "sia Viola che Rosaria", "both"
     if any(_has(t, p) for p in NOBODY[lang]) and not known and (not kinds or kinds == ["object"]):
         return Reply("nobody")
     if not known and not kinds and any(w in ("nessun", "nessuna", "nessuno") and i + 1 < len(words)
@@ -376,6 +388,8 @@ def parse(form: str, sentence: str, names: list[str], confidence: float = 1.0) -
     if any(" ".join(words).startswith(p + " ") for p in TO_THE_HOUSE):
         return Reply("other", source="llm")             # "sei bellissima": said to the house
     known, kinds = _known(words, names), _kinds(words)
+    if len(known) >= 2 and not any(w in NEGATIONS or w in OR for w in words):
+        return Reply("both", names=tuple(known), source="llm")   # two registered names: both are there
     given = _title(normalize(" ".join(out[2 if head == "kind" else 1:])).split()) or None
     if given and (not _in_sentence(given, sentence) or any(w in NOT_NAMES or _kind_of(w) or w in QUALITIES
                                                           for w in normalize(given).split())):
@@ -535,6 +549,14 @@ class Dialogue:
                 sure, prompt = False, pick("who.what", V.WHAT_IS_IT)
             elif r.kind == "none_of":
                 prompt = said_each("who.none_of", V.NONE_OF_ASK, {"ask": ask[0]}, {"ask": ask[1]})
+            elif r.kind == "both":
+                ids = self._both(r, ev)
+                if len(ids) < 2:
+                    prompt = pick("who.which", V.WHICH_ONES)   # "sono in due": but who are they?
+                    continue
+                voice.narrator.hush(context.get("track"))
+                await self._together(cid, ids, context, room)
+                return
             elif r.kind in ("kind", "name"):
                 if r.category in KINDS:
                     category, sure = r.category, True
@@ -568,6 +590,39 @@ class Dialogue:
                                        {"Noun": capital(noun[0]), "noun": noun[0], "name": pending},
                                        {"Noun": capital(noun[1]), "noun": noun[1], "name": pending})
         await voice.reply(*pick("who.give_up", V.GIVE_UP))
+
+    def _both(self, r: Reply, ev: dict) -> list[str]:
+        """Who "both" are: the registered names said, or else the ones the question proposed."""
+        said_ids = [i.id for i in (self.ctx.identities.by_name(n) for n in r.names) if i is not None]
+        if len(said_ids) >= 2:
+            return said_ids
+        offered = [o.get("value") for o in ev.get("options") or [] if isinstance(o.get("value"), str)]
+        return offered if len(offered) >= 2 else said_ids
+
+    async def _together(self, cid: str, ids: list[str], context: dict, room: str | None) -> None:
+        """They are all there, touching each other; one seen somewhere else, in sight, is not."""
+        house, ctx = self.ctx.house, self.ctx
+        here = [i for i in ids if elsewhere(ctx, i, context.get("track")) is None]
+        if not here:
+            first = ctx.identities.get(ids[0])
+            there = elsewhere(ctx, ids[0], context.get("track"))
+            if house.answer(cid, {"nothing": True}, by="voice") and first is not None and there is not None:
+                await self.voice.reply(*said_each(
+                    "who.elsewhere", V.ELSEWHERE,
+                    {"name": first.name, "where": answers.room(ctx, there.room, "it")},
+                    {"name": first.name, "where": answers.room(ctx, there.room, "en")}))
+            return
+        if not house.answer(cid, {"together": here}, by="voice"):
+            return
+        names = [ctx.identities.name_of(i) for i in here]
+        if len(here) == 1:
+            await self.voice.reply(*said("who.known", V.KNOWN, name=names[0]))
+            return
+        where_it = answers.room(ctx, room, "it") if room else "in casa"
+        where_en = answers.room(ctx, room, "en") if room else "in the house"
+        await self.voice.reply(*said_each("who.together", V.TOGETHER,
+                                          {"names": answers.join(names, "it"), "where": where_it},
+                                          {"names": answers.join(names, "en"), "where": where_en}))
 
     async def _new(self, cid: str, name: str, category: str, context: dict) -> None:
         """Registered with what the house sees, its colours learned at once."""

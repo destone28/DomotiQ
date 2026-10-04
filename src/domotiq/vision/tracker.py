@@ -34,7 +34,7 @@ from ..model import ANIMALS, CAR, OBJECT, PERSON, Identity, Track, new_id
 from .assignment import linear_sum_assignment
 from .geometry import Calibration
 from .pipeline import Observation, surfaces
-from .signature import blend, distance, to_hex
+from .signature import SIG_LEN, blend, distance, distances, to_hex
 
 MAX_JUMP_MM = 90.0          # farther than this between frames: not the same thing
 LOST_S = 1.5                # a young track unseen for longer was noise
@@ -80,6 +80,14 @@ SIZE_FREE, SIZE_WEIGHT = 2.5, 0.2
 # the house follows with confidence (or that somebody has just named) looks unlike all the poses it knows.
 MAX_POSES, NEW_POSE, POSE_STEADY_S = 6, 0.16, 2.0
 ELONG_WEIGHT = 0.04
+# A pose shows the same figurine from another side, not another colour: it must be coloured like the character as
+# registered, and more like it than like anybody else. A look learned on the wrong blob (the LEDs of a board, another
+# character standing close) would make the house see that character everywhere.
+POSE_MAX_SIG, POSE_MARGIN = 0.45, 0.05
+# Names move only with a hand: a character is never recognized this far from where it was last seen, unless a hand
+# has been over that place since (or carried it); and a named figurine keeps its name while no hand is around.
+PLACE_JUMP_MM = 50.0
+SURE_S = 6.0                # something unknown counts for an alarm only after standing there this long
 CARRIED_SIG = 0.45          # put down: coloured like it
 PUT_DOWN_SIG = 0.7          # ...or the one new thing the hands left, even looking a little different (lying down)
 FROZEN_JUMP_MM = 30.0       # a figurine stays where it is unless a hand carries it: farther is another blob (with a
@@ -165,12 +173,90 @@ class Tracker:
         self.places: dict[str, tuple[float, float, float]] = {}
         self._touched: set[str] = set()
         self.posed: set[str] = set()      # identities with new poses, to be kept by the house
+        # every look of every character in one table, so that a blob is compared with all of them at once; and the
+        # comparisons of this frame, which several steps ask for
+        self._looks_table: tuple | None = None
+        self._unlike_memo: dict[int, tuple[np.ndarray, float, float, np.ndarray]] = {}
 
     def set_identities(self, identities: list[Identity]) -> None:
         self.identities = {i.id: i for i in identities}
+        self._looks_changed()
+        self._forget_wrong_poses()
         for t in self.tracks.values():
             if t.identity and t.identity not in self.identities:
                 t.identity, t.locked, t.confidence = None, False, 0.0
+
+    # ------------------------------------------------------------ looks
+    def _looks_changed(self) -> None:
+        self._looks_table = None
+        self._unlike_memo.clear()
+
+    def _looks(self) -> tuple:
+        """(identities in order, signatures of all their looks, owner of each look, sizes, elongations, is a car)."""
+        if self._looks_table is None:
+            order = list(self.identities.values())
+            sigs, owner, sizes, elongs = [], [], [], []
+            for k, ident in enumerate(order):
+                looks = [(ident.signature, ident.size, 0.0)] + [(p["sig"], p.get("size", 0.0), p.get("elong", 0.0))
+                                                                 for p in ident.poses if p.get("sig")]
+                for sig, size, elong in looks:
+                    if len(sig) == SIG_LEN:
+                        sigs.append(sig)
+                        owner.append(k)
+                        sizes.append(size or 0.0)
+                        elongs.append(elong or 0.0)
+            self._looks_table = (order, np.asarray(sigs, np.float32).reshape(-1, SIG_LEN), np.asarray(owner, int),
+                                 np.asarray(sizes, np.float64), np.asarray(elongs, np.float64),
+                                 np.array([i.category == CAR for i in order], bool))
+        return self._looks_table
+
+    def _unlike_all(self, sig: np.ndarray, area: float = 0.0, elong: float = 0.0) -> np.ndarray:
+        """`_unlike` against every identity at once, in the order of `_looks()[0]`."""
+        order, sigs, owner, sizes, elongs, is_car = self._looks()
+        memo = self._unlike_memo.get(id(sig))
+        if memo is not None and memo[0] is sig and memo[1] == area and memo[2] == elong:
+            return memo[3]
+        out = np.full(len(order), 1e6)
+        if len(sigs) and len(sig) == SIG_LEN:
+            d = distances(np.asarray(sig, np.float32), sigs)[0].astype(np.float64)
+            if area:
+                has = sizes > 0
+                d[has] += SIZE_WEIGHT * np.maximum(0.0, np.abs(np.log(area / sizes[has])) - np.log(SIZE_FREE))
+            if elong:
+                has = elongs > 0
+                d[has] += ELONG_WEIGHT * np.abs(elong - elongs[has])
+            np.minimum.at(out, owner, d)
+            if area:
+                out[(is_car != (area >= CAR_MIN_MM2)) & (is_car | (area > FIGURINE_MAX_MM2))] = 1e6
+        self._unlike_memo[id(sig)] = (sig, area, elong, out)
+        return out
+
+    def _unlike_of(self, sig: np.ndarray, area: float, ident: Identity, elong: float = 0.0) -> float:
+        order = self._looks()[0]
+        for k, i in enumerate(order):
+            if i is ident:
+                return float(self._unlike_all(sig, area, elong)[k])
+        return self._unlike(sig, area, ident, elong)
+
+    def fits_pose(self, ident: Identity, sig: np.ndarray, limit: float = POSE_MAX_SIG) -> bool:
+        """Can this look be a pose of this character? Coloured like it as registered (within `limit`), more than like
+        anybody else."""
+        if len(ident.signature) != SIG_LEN or len(sig) != SIG_LEN:
+            return False
+        own = distance(sig, ident.signature)
+        if own > limit:
+            return False
+        return not any(o is not ident and len(o.signature) == SIG_LEN and distance(sig, o.signature) < own + POSE_MARGIN
+                       for o in self.identities.values())
+
+    def _forget_wrong_poses(self) -> None:
+        """Poses learned on the wrong blob before this check existed are forgotten (and the house keeps the rest)."""
+        for ident in self.identities.values():
+            kept = [p for p in ident.poses if p.get("sig") and self.fits_pose(ident, np.asarray(p["sig"], np.float32))]
+            if len(kept) != len(ident.poses):
+                ident.poses = kept
+                self.posed.add(ident.id)
+                self._looks_changed()
 
     # ------------------------------------------------------------ update
     def update(self, observations: list[Observation], now: float | None = None, frozen: bool = False,
@@ -206,9 +292,21 @@ class Tracker:
             tr.hidden = now - t.last_seen > HIDDEN_FLAG_S
             tr.on = t.on
             tr.presence = round(t.presence if not t.identity else 1.0, 2)
+            tr.sure = self._sure(t, now)
             self._rooms[t.id] = tr.room
             out.append(tr)
+        self._unlike_memo.clear()          # the blobs of the next frame are new ones
         return out
+
+    def _sure(self, t: VTrack, now: float) -> bool:
+        """Sure enough for an alarm: a character the house knows (confirmed, or recognized closely), or something
+        unknown that has stood there, still and clearly seen, for SURE_S."""
+        if t.carried:
+            return False
+        if t.identity:
+            return not t.uncertain and (t.locked or t.confidence >= 0.5)
+        return t.shown and now - t.since >= SURE_S and t.presence >= PRESENCE_MIN and \
+            not any(now - j <= JITTER_WINDOW_S for j in t.jumps)
 
     def presence(self, t: VTrack, now: float) -> float:
         """How sure the house is that something is really there, 0-1."""
@@ -250,27 +348,34 @@ class Tracker:
             return 1e6                        # the car for a figurine, a figurine for the car
         looks = [(ident.signature, ident.size, 0.0)] + [(p["sig"], p.get("size", 0.0), p.get("elong", 0.0))
                                                          for p in ident.poses if p.get("sig")]
+        looks = [lk for lk in looks if len(lk[0]) == SIG_LEN]
+        if not looks or len(sig) != SIG_LEN:
+            return 1e6
+        d = distances(np.asarray(sig, np.float32), np.asarray([lk[0] for lk in looks], np.float32))[0]
         best = 1e6
-        for look_sig, size, look_elong in looks:
-            if not len(look_sig):
-                continue
-            d = distance(sig, np.asarray(look_sig, np.float32))
+        for k, (_, size, look_elong) in enumerate(looks):
+            dk = float(d[k])
             if area and size:
-                d += SIZE_WEIGHT * max(0.0, abs(float(np.log(area / size))) - float(np.log(SIZE_FREE)))
+                dk += SIZE_WEIGHT * max(0.0, abs(float(np.log(area / size))) - float(np.log(SIZE_FREE)))
             if elong and look_elong:
-                d += ELONG_WEIGHT * abs(elong - look_elong)
-            best = min(best, d)
+                dk += ELONG_WEIGHT * abs(elong - look_elong)
+            best = min(best, dk)
         return best
 
     def recognizable(self, sig: np.ndarray, area: float = 0.0) -> bool:
         """Looks like a registered character (closely, or much more than like anybody else)."""
-        ds = sorted(self._unlike(sig, area, i) for i in self.identities.values() if len(i.signature))
+        order = self._looks()[0]
+        row = self._unlike_all(sig, area)
+        ds = sorted(float(row[k]) for k, i in enumerate(order) if len(i.signature))
         if not ds:
             return False
         return ds[0] < ID_ACCEPT or ds[0] < ID_ACCEPT_LOOSE and (len(ds) == 1 or ds[1] - ds[0] >= ID_MARGIN_LOOSE)
 
     def _position(self, o: Observation, category: str | None) -> tuple[float, float]:
-        return o.position(self.calib, category, self.tops)
+        key = ("pos", category or o.category_guess)        # asked for every track it might be: once is enough
+        if key not in o.extra:
+            o.extra[key] = o.position(self.calib, category, self.tops)
+        return o.extra[key]
 
     def _associate(self, things: list[Observation], now: float, births: bool = True) -> None:
         """One assignment for all: the tracks in sight by position and colour, the carried ones by colour."""
@@ -280,9 +385,10 @@ class Tracker:
         matched: set[int] = set()
         if tracks and things:
             cost = np.full((len(tracks), len(things)), 1e6)
+            sds = distances(np.asarray([t.sig for t in tracks], np.float32), np.asarray([o.sig for o in things], np.float32))
             for i, t in enumerate(tracks):
                 for j, o in enumerate(things):
-                    sd = distance(t.sig, o.sig)
+                    sd = float(sds[i, j])
                     if t.carried:
                         # put down somewhere: only the colour tells, and a track in sight is preferred. Only
                         # once the hands have left and where they were: under an arm, a piece of it would do
@@ -382,6 +488,8 @@ class Tracker:
                 if bx - 8 <= px[0] <= bx + bw + 8 and by - 8 <= px[1] <= by + bh + 8:
                     t.carried, t.carried_since = True, now
                     t.moving = True
+                    if t.identity:
+                        self._touched.add(t.identity)      # in a hand: it may be put down anywhere
                     break
 
     def _learn_poses(self, now: float) -> None:
@@ -396,11 +504,14 @@ class Tracker:
                 continue
             if t.area and o.area_mm2 > 1.5 * t.area:
                 continue                       # against another figurine: not its own look
-            if self._unlike(t.sig, o.area_mm2, ident, o.elongation) <= NEW_POSE:
+            if self._unlike_of(t.sig, o.area_mm2, ident, o.elongation) <= NEW_POSE:
                 continue
             self.add_pose(ident, t.sig, o.area_mm2, o.elongation)
 
-    def add_pose(self, ident: Identity, sig: np.ndarray, area: float, elong: float) -> None:
+    def add_pose(self, ident: Identity, sig: np.ndarray, area: float, elong: float) -> bool:
+        """One more look of this character, if it can be one (see fits_pose)."""
+        if not self.fits_pose(ident, np.asarray(sig, np.float32)):
+            return False
         pose = {"sig": [round(float(v), 5) for v in sig], "size": round(float(area), 1),
                 "elong": round(float(elong), 2)}
         poses = list(ident.poses) + [pose]
@@ -412,6 +523,8 @@ class Tracker:
             poses.pop(min(range(len(poses) - 1), key=nearest))
         ident.poses = poses
         self.posed.add(ident.id)
+        self._looks_changed()
+        return True
 
     def _drop_fragments(self) -> None:
         """A figurine lying across something (a tree trunk, the edge of the bed) can be seen as two blobs: the
@@ -446,6 +559,14 @@ class Tracker:
                 if bx - 8 <= px[0] <= bx + bw + 8 and by - 8 <= px[1] <= by + bh + 8:
                     self._touched.add(ident)
                     break
+
+    def _elsewhere(self, identity: str, t: VTrack) -> bool:
+        """This character was last seen far from this track, and no hand has been over that place since: nothing
+        moves by itself, so this cannot be it (it is still there, maybe hidden)."""
+        p = self.places.get(identity)
+        if p is None or identity in self._touched:
+            return False
+        return float(np.hypot(t.x - p[0], t.y - p[1])) > PLACE_JUMP_MM
 
     def was_here(self, t: VTrack) -> str | None:
         """The character that stood right here, now not in sight anywhere, with no hand over its place since:
@@ -603,11 +724,34 @@ class Tracker:
         if ident:
             t.category = ident.category
 
+    def together(self, track_id: str, identities: list[str], now: float) -> None:
+        """Somebody said these characters are all there, touching each other: one blob for all of them. The one
+        that looks most like the blob takes the track; the others stand at the same place, hidden behind it,
+        until a hand parts them."""
+        t = self.tracks.get(track_id)
+        ids = [i for i in dict.fromkeys(identities) if i in self.identities]
+        if t is None or not ids:
+            return
+        ids.sort(key=lambda i: self._unlike_of(t.sig, 0.0, self.identities[i]))
+        self.assign(track_id, ids[0])
+        for ident in ids[1:]:
+            for tid in [k for k, u in self.tracks.items() if u is not t and u.identity == ident]:
+                del self.tracks[tid]              # it was not where the house thought: it is here
+                self._rooms.pop(tid, None)
+            hidden = VTrack(new_id("t"), t.x, t.y, None, np.array(t.sig, np.float32), self.identities[ident].category,
+                            identity=ident, locked=True, confidence=1.0, last_seen=now, since=now, born=self.frame,
+                            hits=NEW_HITS, shown=True)
+            self.tracks[hidden.id] = hidden
+            self.places[ident] = (t.x, t.y, now)
+            self._touched.discard(ident)
+
     def forget(self, identity: str) -> None:
         for t in self.tracks.values():
             if t.identity == identity:
                 t.identity, t.locked, t.confidence = None, False, 0.0
         self.identities.pop(identity, None)
+        self.places.pop(identity, None)
+        self._looks_changed()
 
     def _recognize(self, now: float) -> None:
         """Names for the tracks in sight that are not confirmed. A name is never in two places: one held by a
@@ -619,18 +763,30 @@ class Tracker:
         free_tracks = [t for t in visible if not t.locked and not t.carried and t.hits >= 2]
         if not free_tracks:
             return
+        order = self._looks()[0]
+        index = {ident.id: k for k, ident in enumerate(order)}
+        rows = {t.id: self._unlike_all(t.sig, t.obs.area_mm2 if t.obs is not None else 0.0,
+                                       t.obs.elongation if t.obs is not None else 0.0) for t in free_tracks}
+        if not (self._frozen or self._quiet_s <= HAND_RECENT_S):
+            # no hand around: names do not move. A figurine with a name keeps it while it still looks like that
+            # character (two of the same colour do not swap names because of a shadow)
+            free_tracks = [t for t in free_tracks if not (t.identity in index and
+                                                          rows[t.id][index[t.identity]] < ID_ACCEPT_LOOSE)]
+            if not free_tracks:
+                return
         taken = {t.identity for t in self.tracks.values() if t.identity and t not in free_tracks}
         cands = [i for i in ids if i.id not in taken]
         raw = np.ones((len(free_tracks), max(len(cands), 1)))     # how much it looks like each one
         for i, t in enumerate(free_tracks):
             for j, ident in enumerate(cands):
-                raw[i, j] = self._unlike(t.sig, t.obs.area_mm2 if t.obs is not None else 0.0, ident,
-                                         t.obs.elongation if t.obs is not None else 0.0)
+                raw[i, j] = rows[t.id][index[ident.id]]
         cost = raw.copy()
         for i, t in enumerate(free_tracks):
             for j, ident in enumerate(cands):
                 if any(u.identity == ident.id for u in free_tracks if u is not t):
                     cost[i, j] = 1e6          # held by another track in sight
+                elif t.identity != ident.id and self._elsewhere(ident.id, t):
+                    cost[i, j] = 1e6          # last seen somewhere else, and no hand has been there since
         best_of = dict(zip(*linear_sum_assignment(cost))) if cands else {}
         for i, t in enumerate(free_tracks):
             j = best_of.get(i)

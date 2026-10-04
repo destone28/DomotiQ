@@ -101,6 +101,7 @@ class Engine:
         self.tracks: list[Track] = []
         self.fps = 0.0
         self.proc_ms = 0.0
+        self.stage_ms = {"segment": 0.0, "tracker": 0.0, "rest": 0.0}   # where the time of a frame goes
         self.on_question: Callable[[Track, list[str]], None] | None = None
         self._record: dict[str, Any] | None = None
         self._last_ref_update = 0.0
@@ -188,6 +189,11 @@ class Engine:
             seg.absorb(small, where & (seg.mask > 0))
             self.absorbed += 1
         return keep
+
+    def together(self, track_id: str, identities: list[str], now: float | None = None) -> None:
+        """Somebody said that what the house sees there is these characters, touching: all of them are there."""
+        if self.tracker:
+            self.tracker.together(track_id, identities, time.time() if now is None else now)
 
     def lights_changed(self, rooms: list[str], now: float, animated: list[str] | None = None) -> None:
         """The house changed the light of these rooms: measure it again, and its glow is no presence.
@@ -423,6 +429,7 @@ class Engine:
             self._scan_pending, self._scan_until = False, now + SCAN_S
         seg = self.segmenter
         obs, fg, _lab = seg.process(small, now)
+        t_seg = time.perf_counter()
         obs = self._forget_dismissed(small, obs, now)
         self._still_hands(small, obs, now)
         hands = seg.hand_mask if seg.hand_mask is not None else np.zeros(fg.shape, bool)
@@ -485,7 +492,9 @@ class Engine:
         if self._zone is not None and quiet > SETTLE_S + BIRTH_S:
             self._zone = None
         self.observations = obs
+        t_rules = time.perf_counter()
         self.tracks = self.tracker.update(obs, now, frozen=frozen, quiet_s=quiet, animated=self._animated)
+        t_track = time.perf_counter()
         if relearn:
             self._relearn(small, fg, obs)
         else:
@@ -501,7 +510,11 @@ class Engine:
             self._check_moved(small, now)
         if self._record:
             self._record_frame(small, now)
-        self.proc_ms = 0.9 * self.proc_ms + 0.1 * (time.perf_counter() - t0) * 1000.0
+        t_end = time.perf_counter()
+        self.proc_ms = 0.9 * self.proc_ms + 0.1 * (t_end - t0) * 1000.0
+        for key, spent in (("segment", t_seg - t0), ("tracker", t_track - t_rules),
+                           ("rest", (t_rules - t_seg) + (t_end - t_track))):
+            self.stage_ms[key] = 0.9 * self.stage_ms[key] + 0.1 * spent * 1000.0
         return self.tracks
 
     def _still_hands(self, small: np.ndarray, obs: list[Observation], now: float) -> None:
@@ -679,13 +692,20 @@ class Engine:
                 break
         return out
 
+    def _learnable(self, vt) -> bool:
+        """Seen with confidence and looking closely like its character as registered: what it looks like now may
+        teach the house (a blob that took the name by mistake must not)."""
+        ident = self.tracker.identities.get(vt.identity or "") if self.tracker else None
+        return bool(ident is not None and not vt.uncertain and vt.confidence > 0.6 and vt.obs is not None
+                    and not vt.carried and self.tracker.fits_pose(ident, vt.sig, ID_ACCEPT))
+
     def learned(self) -> dict[str, list[float]]:
         """Signatures of the identities seen with confidence, to update their gallery slowly."""
         out = {}
         if not self.tracker:
             return out
         for vt in self.tracker.tracks.values():
-            if vt.identity and not vt.uncertain and vt.confidence > 0.6 and vt.obs is not None and not vt.carried:
+            if self._learnable(vt):
                 out[vt.identity] = [round(float(v), 5) for v in vt.sig]
         return out
 
@@ -701,8 +721,8 @@ class Engine:
         """How big the identities seen with confidence look from above (measured with no hand around)."""
         out = {}
         for vt in (self.tracker.tracks.values() if self.tracker else []):
-            if vt.identity and vt.area and not vt.carried and (identity is None and not vt.uncertain
-                                                               and vt.confidence > 0.6 or vt.identity == identity):
+            if vt.identity and vt.area and not vt.carried and (identity is None and self._learnable(vt)
+                                                               or vt.identity == identity):
                 out[vt.identity] = round(float(vt.area), 1)
         return out
 
@@ -712,6 +732,8 @@ class Engine:
             "reference": bool(self.ready),
             "fps": round(self.fps, 1),
             "proc_ms": round(self.proc_ms, 1),
+            "stage_ms": {k: round(v, 1) for k, v in self.stage_ms.items()},
+            "observations": len(self.observations),
             "tracks": len(self.tracks),
             "hands": len(self.tracker.hands) if self.tracker else 0,
             "moved": self.moved,

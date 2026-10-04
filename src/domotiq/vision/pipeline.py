@@ -69,13 +69,19 @@ class Observation:
     def standing_on(self, calib: Calibration, tops: list[tuple[Rect | Circle, float, str]]) -> tuple[float, str | None]:
         """What it stands on (height, furniture id; 0 and None for the floor): the feet, brought up to the top of
         a piece of furniture, are on it (on the floor they would be elsewhere, where the floor is hidden by it)."""
+        key = ("on", id(tops))
+        if key in self.extra:
+            return self.extra[key]
         cx, cy, hc = calib.camera
         nx, ny = self.near_mm
+        found: tuple[float, str | None] = (0.0, None)
         for shape, height, fid in tops:
             s = (hc - height) / hc
             if shape.contains(cx + (nx - cx) * s, cy + (ny - cy) * s, 3.0):
-                return height, fid
-        return 0.0, None
+                found = (height, fid)
+                break
+        self.extra[key] = found
+        return found
 
     def position(self, calib: Calibration, category: str | None,
                  tops: list[tuple[Rect | Circle, float, str]] | None = None) -> tuple[float, float]:
@@ -281,6 +287,8 @@ class Segmenter:
         return frame
 
     # ------------------------------------------------------------ light correction
+    FRESH_EVERY_S = 0.3
+
     def light_changed(self, rooms: list[str], now: float, seconds: float = 1.5) -> None:
         """The house changed the light of these rooms: their gain is measured afresh."""
         for room in rooms:
@@ -351,7 +359,9 @@ class Segmenter:
 
     def corrected(self, frame_bgr: np.ndarray, update: bool = True, now: float = 0.0) -> np.ndarray:
         cur = frame_bgr.astype(np.float32)
-        fresh = any(until > now for until in self._changed.values())
+        # right after the house changed a light the measure is repeated, but not at every frame: it is the most
+        # expensive step, and lights that go on and off often would slow the whole house down
+        fresh = any(until > now for until in self._changed.values()) and now - self._g_at >= self.FRESH_EVERY_S
         if self._g is None or (update and (now - self._g_at >= self.gain_period or fresh or now < self._g_at)):
             gains = self._gains(cur, True, now)
             lut = np.ones((256, 1, 3), np.float32)

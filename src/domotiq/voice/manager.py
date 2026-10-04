@@ -39,7 +39,7 @@ from .narrator import Narrator
 from .stories import StoryTeller
 from .intents import Intent, find_name, find_room, name_from_speech, normalize, parse, parse_time
 from . import variants as V
-from .who import Dialogue
+from .who import BOTH, OR, Dialogue
 from .llm import LanguageModel
 from .stt import Listener
 from .tts import Speaker
@@ -66,7 +66,7 @@ FREQUENT = {
 for _i, _lang in enumerate(("it", "en")):
     FREQUENT[_lang].append(WELCOME[_lang])
     FREQUENT[_lang] += V.fixed_lines(V.THINKING, V.GIVE_UP, V.LATER, V.NOTHING, V.WAITING, V.WHAT_IS_IT,
-                                     V.NAME_AGAIN, V.CAR_PARKED)[_lang]
+                                     V.NAME_AGAIN, V.CAR_PARKED, V.WHICH_ONES)[_lang]
 
 
 class Voice:
@@ -715,6 +715,9 @@ class Voice:
                     return
                 labels = [((o.get("label") or {}).get(self.lang) or "") for o in ev.get("options") or []]
                 grammar = [w for w in labels if w] + yes_no_grammar(self.lang)
+                if len([w for w in labels if w]) >= 2:
+                    # "tutti e due", "sia Viola che Rosaria": all of them are there
+                    grammar += BOTH[self.lang] + (["e", "sia", "che"] if self.lang == "it" else ["and"])
                 for attempt in range(2):
                     text, conf, _, spoke = await self.chatter._listen(grammar, stop=stop, max_s=6.0)
                     if cid not in house.confirmations:
@@ -723,7 +726,8 @@ class Voice:
                         if attempt == 0 and not spoke:
                             continue
                         return
-                    if await self._answer_question(text, {"id": cid, "options": ev.get("options") or []}):
+                    if await self._answer_question(text, {"id": cid, "options": ev.get("options") or [],
+                                                          "room": (ev.get("context") or {}).get("room")}):
                         return
                     if ev.get("allow_name") and await self._new_name(cid, text, conf, stop):
                         return
@@ -766,6 +770,20 @@ class Voice:
         if not q:
             return False
         t = f" {normalize(text)} "
+        said = [o for o in q["options"] if any(w and f" {normalize(w)} " in t for w in (o.get("label") or {}).values())]
+        both = len(said) >= 2 and not any(f" {w} " in t for w in OR) or \
+            len(q["options"]) >= 2 and any(f" {normalize(p)} " in t for p in BOTH[self.lang])
+        if both:
+            chosen = said if len(said) >= 2 else q["options"]
+            ids = [o.get("value") for o in chosen if isinstance(o.get("value"), str)]
+            if self.ctx.house.answer(q["id"], {"together": ids}, by="voice"):
+                names = [self.ctx.identities.name_of(i) for i in ids]
+                room = q.get("room")
+                await self.reply(*V.said_each(
+                    "who.together", V.TOGETHER,
+                    {"names": answers.join(names, "it"), "where": answers.room(self.ctx, room, "it") if room else "lì"},
+                    {"names": answers.join(names, "en"), "where": answers.room(self.ctx, room, "en") if room else "there"}))
+            return True
         for o in q["options"]:
             label = o.get("label") or {}
             for word in label.values():

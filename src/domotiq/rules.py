@@ -222,6 +222,8 @@ class RuleEngine:
         w = rule["when"]
         t = w["type"]
         d = ev.data
+        if rule["alert"] and ev.type in ("room_enter", "room_exit") and d.get("sure") is False and t != "dwell":
+            return                            # an alarm only for what the house is sure of
         if t == "enter_room" and ev.type == "room_enter":
             if self._room_ok(w.get("room"), d.get("room")) and _who_ok(w.get("who"), d):
                 self.fire(rule, dict(d), now)
@@ -239,7 +241,7 @@ class RuleEngine:
             if d.get("room") != w.get("room"):
                 return
             key = f"{rule['id']}|{w.get('room')}"
-            n = self.house.count(w.get("room"), (w.get("who") or {}).get("category"))
+            n = self.house.count(w.get("room"), (w.get("who") or {}).get("category"), sure=rule["alert"])
             value = float(w.get("value", 0))
             active = n > value if t == "count_above" else n < value
             if active and not self.latched.get(key) and key not in self.timers:
@@ -311,8 +313,12 @@ class RuleEngine:
                 if not track or track.room != w.get("room"):
                     self._release(key)
                     continue
+                if rule["alert"] and not track.sure:
+                    # not sure yet that somebody is really there: look again in a moment
+                    self.timers[key] = Timer(rule["id"], key, now + 1.0, timer.ctx)
+                    continue
             if w["type"] in ("count_above", "count_below"):
-                n = self.house.count(w.get("room"), (w.get("who") or {}).get("category"))
+                n = self.house.count(w.get("room"), (w.get("who") or {}).get("category"), sure=rule["alert"])
                 value = float(w.get("value", 0))
                 if not (n > value if w["type"] == "count_above" else n < value):
                     continue

@@ -41,6 +41,9 @@ class VisionLink:
     def dismiss(self, track_id: str) -> None:
         """Nothing is there (a reflection, a hand): the vision forgets what it saw."""
 
+    def together(self, track_id: str, identities: list[str]) -> None:
+        """What the vision sees there is these characters, touching each other: all of them are there."""
+
     def category_guess(self, track_id: str) -> str | None:
         return None
 

@@ -154,6 +154,29 @@ def test_utility_room_grace_and_alarm(env):
     assert not h.alerts
 
 
+def test_alarms_wait_until_the_house_is_sure(env):
+    h, rules = env.house, env.rules
+    # something just born in the utility room, not yet sure: no alarm, however long the rule waits
+    h.update_tracks([T("p", 360, 300, category="person", sure=False)], now=1000)
+    rules.tick(now=1005.5)
+    rules.tick(now=1008)
+    assert "say" not in env.executor.kinds() and not h.alerts
+    # still there and now sure: the alarm comes at the next look
+    h.update_tracks([T("p", 360, 300, category="person", sure=True)], now=1008.5)
+    rules.tick(now=1009.5)
+    assert "say" in env.executor.kinds() and h.alerts
+
+
+def test_two_in_the_bathroom_only_if_both_are_sure(env):
+    h, rules = env.house, env.rules
+    h.update_tracks([T("a", 200, 300, category="person"), T("b", 220, 320, category="person", sure=False)], now=1000)
+    rules.tick(now=1003)
+    assert "say" not in env.executor.kinds()
+    h.update_tracks([T("a", 200, 300, category="person"), T("b", 220, 320, category="person", sure=True)], now=1004)
+    rules.tick(now=1006.5)
+    assert "say" in env.executor.kinds()
+
+
 def test_crossing_utility_to_garage_is_fine(env):
     h, rules = env.house, env.rules
     h.update_tracks([T("p", 380, 250, category="person")], now=1000)

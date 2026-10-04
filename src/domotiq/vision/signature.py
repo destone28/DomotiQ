@@ -51,6 +51,21 @@ def distance(s1: np.ndarray, s2: np.ndarray) -> float:
     return 0.55 * bhatta + 0.45 * min(de / 30.0, 1.0)
 
 
+def distances(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """`distance` between every row of `a` and every row of `b` (signatures), in one go: a few dozen
+    comparisons cost about as much as one."""
+    a = np.asarray(a, np.float32).reshape(-1, SIG_LEN)
+    b = np.asarray(b, np.float32).reshape(-1, SIG_LEN)
+    bc = np.sqrt(np.maximum(a[:, :-3], 0.0)) @ np.sqrt(np.maximum(b[:, :-3], 0.0)).T
+    bhatta = np.sqrt(np.maximum(0.0, 1.0 - bc))
+    ma, mb = a[:, -3:], b[:, -3:]
+    c = 0.5 * (np.hypot(ma[:, 1], ma[:, 2])[:, None] + np.hypot(mb[:, 1], mb[:, 2])[None, :])
+    wl = 0.15 + 0.6 * (1.0 - np.minimum(c / 15.0, 1.0))
+    d = ma[:, None, :] - mb[None, :, :]
+    de = np.sqrt(wl * d[..., 0] ** 2 + d[..., 1] ** 2 + d[..., 2] ** 2)
+    return 0.55 * bhatta + 0.45 * np.minimum(de / 30.0, 1.0)
+
+
 def blend(old: np.ndarray, new: np.ndarray, weight: float = 0.1) -> np.ndarray:
     old, new = np.asarray(old, np.float32), np.asarray(new, np.float32)
     if len(old) != SIG_LEN:
