@@ -89,8 +89,7 @@
   ],
   "sensors": [
     {"id": "thermostat", "type": "thermo",   "index": 0, "channel": 6, "room": "living",   "pos": [405, 50]},
-    {"id": "bathroom",   "type": "thermo",   "index": 1, "channel": 4, "room": "bathroom", "pos": [280, 262]},
-    {"id": "doorbell",   "type": "distance", "index": 0, "channel": 6, "room": "driveway", "pos": [255, -40]}
+    {"id": "bathroom",   "type": "thermo",   "index": 1, "channel": 4, "room": "bathroom", "pos": [280, 262]}
   ],
   "excluded": [
     {"id": "light-garage",   "rect": [440, 500, 348, 362]},

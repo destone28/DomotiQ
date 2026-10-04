@@ -8,7 +8,7 @@ import { t } from "../i18n.js";
 const MODULE_NAMES = {
   hub: "Hub", relay: "Latch Relay", pixels_garage: "Pixels · garage", pixels_bedroom: "Pixels · camera / bedroom",
   pixels_kitchen: "Pixels · cucina / kitchen", pixels_living: "Pixels · soggiorno / living", thermo_bathroom: "Thermo · bagno / bathroom",
-  pixels_bathroom: "Pixels · bagno / bathroom", thermo_thermostat: "Thermo · credenza / sideboard", buttons: "Buttons", distance: "Distance",
+  pixels_bathroom: "Pixels · bagno / bathroom", thermo_thermostat: "Thermo · credenza / sideboard", buttons: "Buttons",
 };
 
 function dur(s) {

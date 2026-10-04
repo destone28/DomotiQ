@@ -5,7 +5,7 @@
 A rule has one trigger ("when"), any number of conditions that must all be
 true ("if"), and a list of actions ("then"). Rules are plain JSON so the web
 app can edit them and anyone can read them. Timers (someone staying in a
-room, a room staying crowded, a visitor standing at the doorbell) are kept
+room, a room staying crowded) are kept
 here and advanced by `tick()`, so tests can drive them with a fake clock.
 """
 
@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 
 TRIGGERS = ("enter_room", "exit_room", "dwell", "count_above", "count_below",
             "identity_appear", "identity_disappear", "time", "sensor_above", "sensor_below",
-            "climate", "shower", "button", "visitor", "car", "scene", "grill", "party")
+            "climate", "shower", "button", "car", "scene", "grill", "party")
 CONDITIONS = ("room_occupied", "room_empty", "count", "identity_present", "identity_absent",
               "time_between", "sensor", "scene_is", "grill_is", "car_is", "climate_is")
 ACTIONS = ("light", "light_off", "sound", "say", "relay", "notify", "scene", "party",
@@ -143,7 +143,7 @@ class RuleEngine:
         self._minute = ""
         self._tasks: set[asyncio.Task] = set()
         for t in ("room_enter", "room_exit", "track_disappear", "count_changed", "identity_appear",
-                  "identity_disappear", "sensor", "climate", "shower", "button", "distance",
+                  "identity_disappear", "sensor", "climate", "shower", "button",
                   "car", "scene", "grill", "party"):
             bus.subscribe(t, self.on_event)
 
@@ -281,15 +281,6 @@ class RuleEngine:
         elif t == "button" and ev.type == "button":
             if d.get("pressed") and w.get("button") in (None, d.get("button")):
                 self.fire(rule, dict(d), now)
-        elif t == "visitor" and ev.type == "distance":
-            key = f"{rule['id']}|visitor"
-            mm = d.get("mm")
-            near = mm is not None and mm < float(w.get("distance_cm", 30)) * 10
-            if near and not self.latched.get(key) and key not in self.timers:
-                self.timers[key] = Timer(rule["id"], key, now + float(w.get("seconds", 2)), {"mm": mm})
-            elif not near:
-                self.timers.pop(key, None)
-                self.latched.pop(key, None)
         elif t == "car" and ev.type == "car":
             if w.get("state") in (None, d.get("state")):
                 self.fire(rule, dict(d), now)
@@ -326,8 +317,6 @@ class RuleEngine:
                 if not (n > value if w["type"] == "count_above" else n < value):
                     continue
                 timer.ctx["count"] = n
-                self.latched[key] = True
-            if w["type"] == "visitor":
                 self.latched[key] = True
             self.fire(rule, timer.ctx, now, key=key, bypass_cooldown=True)
             repeat = float(w.get("repeat_s", 0) or 0)

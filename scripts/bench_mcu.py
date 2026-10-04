@@ -10,7 +10,7 @@
 Every step prints what it expects to see, so it can be followed alone at the
 bench: each room lights red, green, blue and white in turn, the three LEDs
 of the buttons light one after the other, then the script prints every
-button press, distance and temperature the sketch reports.
+button press and temperature the sketch reports.
 """
 
 from __future__ import annotations
@@ -27,8 +27,8 @@ from domotiq.layout import Layout  # noqa: E402
 from domotiq.mcu import MODULES, Mcu, McuError, RouterClient, parse_bus  # noqa: E402
 
 HUB_CHANNELS = {0: "Pixels garage", 1: "Pixels camera", 2: "Pixels cucina", 3: "Pixels soggiorno",
-                4: "Thermo bagno", 5: "Pixels bagno", 6: "Thermo credenza, Buttons, Distance", 7: "libero"}
-KNOWN = {0x36: "Pixels", 0x44: "Thermo", 0x3E: "Buttons", 0x29: "Distance", 0x02: "Latch Relay",
+                4: "Thermo bagno", 5: "Pixels bagno", 6: "Thermo credenza, Buttons", 7: "libero"}
+KNOWN = {0x36: "Pixels", 0x44: "Thermo", 0x3E: "Buttons", 0x02: "Latch Relay",
          0x15: "Latch Relay", 0x10: "Latch Relay (moved)"}
 SOLID, OFF = 1, 0
 
@@ -109,7 +109,7 @@ async def main(args: argparse.Namespace) -> int:
         await asyncio.sleep(2.0)
         print(f"    off: {await mcu.relay(False)}")
 
-    print(f"\n[6] For {args.listen} s: press the buttons, move a hand in front of the totem, breathe on a Thermo")
+    print(f"\n[6] For {args.listen} s: press the buttons, breathe on a Thermo")
     events.clear()
     end = asyncio.get_running_loop().time() + args.listen
     shown = 0
@@ -119,8 +119,6 @@ async def main(args: argparse.Namespace) -> int:
         for name, params in events[shown:]:
             if name == "btn":
                 print(f"    button {params[0]} {'pressed' if params[1] else 'released'}")
-            elif name == "dist":
-                print(f"    distance {params[0]} mm")
             elif name == "thermo":
                 where = "bathroom" if params[0] == 1 else "thermostat"
                 print(f"    {where}: {params[1] / 100:.1f} °C, {params[2] / 100:.0f} %")

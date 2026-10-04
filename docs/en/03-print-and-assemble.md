@@ -59,7 +59,7 @@ Walls are 135 mm high; the three facade walls are 46 mm high, so the camera can 
 |---|---|---|
 | 32 | `32_Placca_UNO_Q` | the Arduino UNO Q |
 | 33 | `33_Placca_Hub`, `33_Placca_Relay` | the Modulino Hub and the Modulino Latch Relay |
-| 33 | `33_Placca_Totem_Distance`, `33_Placca_Totem_Tasti1` | the Distance sensor and the Buttons module inside the intercom totem |
+| 33 | `33_Placca_Totem_Tasti1` | the Buttons module inside the intercom totem |
 | 34 | `34_Placca_Thermo_Bagno` | the Thermo of the bathroom |
 | 39 | `39_Credenza_Termostato` | the living room sideboard, with the Thermo of the thermostat on top |
 | 40 | `40_Placca_Termostato` | the plate of the thermostat Thermo in the sideboard |
@@ -75,7 +75,7 @@ Walls are 135 mm high; the three facade walls are 46 mm high, so the camera can 
 
 | No. | Files | Part |
 |---|---|---|
-| 37 | `37_Totem_Citofono` | the intercom totem on the driveway, with the three buttons and the Distance sensor |
+| 37 | `37_Totem_Citofono` | the intercom totem on the driveway, with the three buttons |
 | 38 | `38_Tappo_Totem` | the cap of the totem, which holds the lavalier microphone |
 | 49 | `49_Fioriera_Cassa_Sx`, `_Dx` | the two planters that cover the speakers, left and right of the totem |
 
@@ -131,7 +131,7 @@ The renders in `docs/images/render/` show every step.
 
    ![The pole, exploded](../images/render/14_palo_esploso.png)
 
-6. **Totem and speakers.** Mount the Buttons and the Distance sensor in the totem `37` and the lavalier microphone in the cap `38`. Set the speakers in their places on the driveway and cover them with the planters `49`.
+6. **Totem and speakers.** Mount the Buttons in the totem `37` and the lavalier microphone in the cap `38`. Set the speakers in their places on the driveway and cover them with the planters `49`.
 
    ![Totem and planters over the speakers](../images/render/06_totem_e_casse_montaggio.png)
 

@@ -45,9 +45,9 @@ The virtual house: a plan drawn from the CAD model, with the driveway, where vis
 - Rooms, walls, doors and furniture; each room light glows in its current colour and effect.
 - The thermostat temperature (on the sideboard) and the bathroom humidity; a counter for each room with somebody in it.
 - Every character with the silhouette of its kind (person, dog, cat, animal, car, object) in its colour and with its name; a **?** marks a character the house is not sure about.
-- The car, flames on the barbecue while it is on, a dot at the totem when someone stands at the doorbell, red outlines for rooms with an alarm.
+- The car, flames on the barbecue while it is on, red outlines for rooms with an alarm.
 
-Below the plan, cards summarise the house: people inside, **Thermostat** (temperature, humidity, *Air conditioning on* or *Heating on*), **Bathroom** (humidity, *Shower running*), **Car** (*just arrived*, *parked*, *just left*, *not here*), **Scene**, and chips for **Party**, **Barbecue** and *Someone at the doorbell*.
+Below the plan, cards summarise the house: people inside, **Thermostat** (temperature, humidity, *Air conditioning on* or *Heating on*), **Bathroom** (humidity, *Shower running*), **Car** (*just arrived*, *parked*, *just left*, *not here*), **Scene**, and chips for **Party** and **Barbecue**.
 
 At the bottom, the list of everything the house sees, with name (or *Guest* for an unknown person, *Unknown* for anything else), kind and room. Tap a character, on the plan or in the list, to open its card: photo or silhouette, kind, room, and *I'm not sure who this is* when in doubt. An unknown one has a **Register** button that starts the registration with that figurine already chosen.
 
@@ -103,7 +103,7 @@ The list of registered characters, pets, cars and objects, with photo or silhoue
 
 <img src="../images/screens/en/sim.png" alt="Simulation" width="260">
 
-Virtual characters dragged on the plan instead of real figurines, virtual sensors (thermostat and bathroom temperature and humidity, distance from the doorbell) and the three buttons of the totem (**Talk** is held down as on the totem). Anyone can open the page; turning the simulation on or off needs the staff PIN. **Real lights and voice muted** keeps the real house quiet while you try. While the simulation is on, the house ignores the webcam. Drag a virtual character out of the house to remove it.
+Virtual characters dragged on the plan instead of real figurines, virtual sensors (thermostat and bathroom temperature and humidity) and the three buttons of the totem (**Talk** is held down as on the totem). Anyone can open the page; turning the simulation on or off needs the staff PIN. **Real lights and voice muted** keeps the real house quiet while you try. While the simulation is on, the house ignores the webcam. Drag a virtual character out of the house to remove it.
 
 ### Calibration
 

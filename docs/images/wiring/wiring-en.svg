@@ -55,7 +55,7 @@
 <rect x="750" y="440" width="340" height="50" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="920.0" y="470.0" text-anchor="middle" class="b">Pixels · bathroom</text>
 <path d="M700 537 L750 537" stroke="#00878f" stroke-width="2" fill="none"/>
 <text x="706" y="531" class="s" fill="#00878f" text-anchor="start">ch 6</text>
-<rect x="750" y="512" width="340" height="58" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="920.0" y="538.0" text-anchor="middle" class="b">Thermo · thermostat</text><text x="920.0" y="556.0" text-anchor="middle" class="s">→ Buttons → Distance (totem)</text>
+<rect x="750" y="512" width="340" height="58" rx="10" fill="#ffffff" stroke="#00878f" stroke-width="2"/><text x="920.0" y="538.0" text-anchor="middle" class="b">Thermo · thermostat</text><text x="920.0" y="556.0" text-anchor="middle" class="s">→ Buttons (totem)</text>
 <path d="M700 609 L750 609" stroke="#00878f" stroke-width="2" fill="none"/>
 <text x="706" y="603" class="s" fill="#00878f" text-anchor="start">ch 7</text>
 <rect x="750" y="584" width="150" height="50" rx="10" fill="#eceeee" stroke="#b0b6b9" stroke-width="2"/><text x="825.0" y="614.0" text-anchor="middle" class="b">free</text>

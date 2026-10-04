@@ -16,7 +16,7 @@
  *   UNO Q ── Hub (TCA9548A, 0x70..0x77) ── Latch Relay (0x02, 0x15 or 0x10, main bus)
  *   Hub ch0 Pixels garage     ch1 Pixels bedroom   ch2 Pixels kitchen
  *       ch3 Pixels living     ch4 Thermo bathroom  ch5 Pixels bathroom
- *       ch6 Thermo sideboard → Buttons (0x3E) → Distance (0x29)
+ *       ch6 Thermo sideboard → Buttons (0x3E)
  *   Every Pixels sits at the factory address 0x36 on its own channel.
  *
  * ── The light of the utility room ───────────────────────────────────────────
@@ -27,9 +27,9 @@
  *
  * ── No Modulino library ────────────────────────────────────────────────────
  * On the UNO Q core, Arduino_Modulino reports modules as present without
- * touching the bus, returns true from every write and retries forever in
- * the distance sensor driver. Every transaction here is written by hand,
- * bounded in time, and a module counts as present only after it answered.
+ * touching the bus and returns true from every write. Every transaction here
+ * is written by hand, bounded in time, and a module counts as present only
+ * after it answered.
  *
  * ── Threads ─────────────────────────────────────────────────────────────────
  * `io_thread` owns the bus from power-up: it switches the latching relay
@@ -57,7 +57,6 @@ static const int PROTOCOL = 1;
 static const uint8_t ADDR_PIXELS = 0x36;
 static const uint8_t ADDR_THERMO = 0x44;
 static const uint8_t ADDR_BUTTONS = 0x3E;
-static const uint8_t ADDR_TOF = 0x29;
 // The Latch Relay answers at 0x02 in the Modulino library (0x04 in 8-bit form), at 0x15 in the
 // datasheet of September 2026 (0x2A in 8-bit form), at 0x10 if moved with AddressChanger:
 // the firmware looks at all three.
@@ -69,12 +68,12 @@ static const uint8_t N_LED = 8;
 // light index (as Linux numbers them) -> hub channel
 static const uint8_t LIGHT_CH[N_LIGHTS] = {0, 1, 2, 3, 5};
 static const uint8_t CH_THERMO[2] = {6, 4};      // 0 sideboard (thermostat), 1 bathroom
-static const uint8_t CH_TOTEM = 6;               // buttons and distance
+static const uint8_t CH_TOTEM = 6;               // the buttons of the totem
 
 // module bits, in the order of domotiq.mcu.MODULES
 enum {
   M_HUB = 0, M_RELAY, M_PX_GARAGE, M_PX_BEDROOM, M_PX_KITCHEN, M_PX_LIVING,
-  M_THERMO_BATH, M_PX_BATH, M_THERMO_STAT, M_BUTTONS, M_DISTANCE
+  M_THERMO_BATH, M_PX_BATH, M_THERMO_STAT, M_BUTTONS
 };
 static const uint8_t LIGHT_BIT[N_LIGHTS] = {M_PX_GARAGE, M_PX_BEDROOM, M_PX_KITCHEN, M_PX_LIVING, M_PX_BATH};
 static const uint8_t THERMO_BIT[2] = {M_THERMO_STAT, M_THERMO_BATH};
@@ -87,7 +86,6 @@ enum { FX_OFF = 0, FX_SOLID, FX_BREATHE, FX_BLINK, FX_WAVE, FX_RAINBOW, FX_SPARK
 
 static const uint32_t FRAME_MS = 40;             // 25 frames per second
 static const uint32_t BUTTON_MS = 10;
-static const uint32_t TOF_MS = 50;
 static const uint32_t THERMO_PERIOD_MS = 2000;
 static const uint32_t THERMO_WAIT_MS = 40;
 static const uint32_t PROBE_MS = 5000;
@@ -116,7 +114,7 @@ struct PartyBeat {           // the party show at one moment: Pixels and matrix 
 };
 
 struct Event {
-  uint8_t kind;              // 1 btn, 2 dist, 3 thermo, 4 mods
+  uint8_t kind;              // 1 btn, 3 thermo, 4 mods
   int32_t a, b, c;
 };
 
@@ -157,9 +155,6 @@ static bool mx_valid = false;
 static uint8_t led3[3], led3_sent[3];
 static bool led3_valid = false;
 static uint8_t btn_raw[3], btn_stable[3], btn_count[3];
-static int32_t tof_last = -1;
-static uint32_t tof_last_sent = 0;
-static bool tof_started = false;
 static int thermo_phase[2] = {0, 0};
 static uint32_t thermo_at[2] = {0, 0};
 
@@ -176,32 +171,6 @@ static volatile uint32_t scan_result = 0;
 
 static K_THREAD_STACK_DEFINE(io_stack, 4096);
 static struct k_thread io_thread_data;
-
-// VL53L4CD registers (16-bit addresses)
-static const uint16_t R_ID = 0x010F;               // 0xEBAA
-static const uint16_t R_FW_STATUS = 0x00E5;         // 0x03 = booted
-static const uint16_t R_GPIO_MUX = 0x0030;
-static const uint16_t R_GPIO_STATUS = 0x0031;
-static const uint16_t R_VHV_BOUND = 0x0008;
-static const uint16_t R_RANGE_A = 0x005E;
-static const uint16_t R_RANGE_B = 0x0061;
-static const uint16_t R_INTERMEASUREMENT = 0x006C;
-static const uint16_t R_CLEAR_INT = 0x0086;
-static const uint16_t R_START = 0x0087;
-static const uint16_t R_RANGE_STATUS = 0x0089;
-static const uint16_t R_SPADS = 0x008C;
-static const uint16_t R_DISTANCE = 0x0096;
-// Default configuration of registers 0x2D..0x87, from the VL53L4CD
-// ultra-lite driver by STMicroelectronics (BSD-3-Clause).
-static const uint8_t TOF_CONFIG[] = {
-  0x12, 0x00, 0x00, 0x11, 0x02, 0x00, 0x02, 0x08, 0x00, 0x08, 0x10, 0x01, 0x01,
-  0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20,
-  0x0b, 0x00, 0x00, 0x02, 0x14, 0x21, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00,
-  0xc8, 0x00, 0x00, 0x38, 0xff, 0x01, 0x00, 0x08, 0x00, 0x00, 0x01, 0xcc, 0x07,
-  0x01, 0xf1, 0x05, 0x00, 0xa0, 0x00, 0x80, 0x08, 0x38, 0x00, 0x00, 0x00, 0x00,
-  0x0f, 0x89, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x07, 0x05, 0x06,
-  0x06, 0x00, 0x00, 0x02, 0xc7, 0xff, 0x9b, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00
-};
 
 // ============================================================ bus health
 // SCL and SDA of I2C4 are PD12 and PD13 (pinctrl-0 of i2c4 in the UNO Q
@@ -682,122 +651,6 @@ static void write_leds(uint32_t now) {
   if (hub_select(CH_TOTEM)) bus_write(ADDR_BUTTONS, out, 3);
 }
 
-// ============================================================ distance (VL53L4CD)
-static bool tof_read(uint16_t reg, uint8_t *out, uint8_t len) {
-  uint8_t a[2] = {(uint8_t)(reg >> 8), (uint8_t)(reg & 0xFF)};
-  k_mutex_lock(&bus_lock, K_FOREVER);
-  if (!bus_idle()) { k_mutex_unlock(&bus_lock); return false; }
-  Wire1.beginTransmission(ADDR_TOF);
-  Wire1.write(a[0]); Wire1.write(a[1]);
-  bool ok = Wire1.endTransmission() == 0 && (int)Wire1.requestFrom((int)ADDR_TOF, (int)len) == (int)len;
-  if (ok) for (uint8_t i = 0; i < len; i++) out[i] = (uint8_t)Wire1.read();
-  k_mutex_unlock(&bus_lock);
-  return ok;
-}
-static bool tof_r8(uint16_t reg, uint8_t *v) { return tof_read(reg, v, 1); }
-static bool tof_r16(uint16_t reg, uint16_t *v) {
-  uint8_t b[2];
-  if (!tof_read(reg, b, 2)) return false;
-  *v = ((uint16_t)b[0] << 8) | b[1];
-  return true;
-}
-static bool tof_write(uint16_t reg, const uint8_t *d, uint8_t len) {
-  uint8_t buf[6];
-  buf[0] = (uint8_t)(reg >> 8); buf[1] = (uint8_t)(reg & 0xFF);
-  for (uint8_t i = 0; i < len && i < 4; i++) buf[2 + i] = d[i];
-  return bus_write(ADDR_TOF, buf, 2 + len);
-}
-static bool tof_w8(uint16_t reg, uint8_t v) { return tof_write(reg, &v, 1); }
-static bool tof_w16(uint16_t reg, uint16_t v) { uint8_t b[2] = {(uint8_t)(v >> 8), (uint8_t)v}; return tof_write(reg, b, 2); }
-static bool tof_w32(uint16_t reg, uint32_t v) {
-  uint8_t b[4] = {(uint8_t)(v >> 24), (uint8_t)(v >> 16), (uint8_t)(v >> 8), (uint8_t)v};
-  return tof_write(reg, b, 4);
-}
-
-static bool tof_ready(bool *ready) {
-  uint8_t t;
-  if (!tof_r8(R_GPIO_MUX, &t)) return false;
-  uint8_t polarity = ((t & 0x10) >> 4) == 1 ? 0 : 1;
-  if (!tof_r8(R_GPIO_STATUS, &t)) return false;
-  *ready = (t & 0x01) == polarity;
-  return true;
-}
-
-static bool tof_wait_ready(uint16_t max_ms) {
-  for (uint16_t i = 0; i < max_ms; i++) {
-    bool r = false;
-    if (!tof_ready(&r)) return false;
-    if (r) return true;
-    k_msleep(1);
-  }
-  return false;
-}
-
-static bool tof_start() {
-  uint8_t t;
-  uint16_t v16;
-  for (uint16_t i = 0; ; i++) {                 // boot of the chip: at most 200 ms
-    if (!tof_r8(R_FW_STATUS, &t)) return false;
-    if (t == 0x03) break;
-    if (i >= 200) return false;
-    k_msleep(1);
-  }
-  for (uint8_t i = 0; i < sizeof(TOF_CONFIG); i++)
-    if (!tof_w8((uint16_t)(0x2D + i), TOF_CONFIG[i])) return false;
-  if (!tof_w8(R_START, 0x40) || !tof_wait_ready(1000)) return false;   // VHV calibration
-  if (!tof_w8(R_CLEAR_INT, 0x01) || !tof_w8(R_START, 0x00)) return false;
-  if (!tof_w8(R_VHV_BOUND, 0x09) || !tof_w8(0x000B, 0x00) || !tof_w16(0x0024, 0x0500)) return false;
-  if (!tof_r16(0x0006, &v16) || v16 == 0) return false;               // oscillator frequency
-  uint32_t macro = (uint32_t)(((uint32_t)2304 * ((uint32_t)0x40000000 / (uint32_t)v16)) >> 6);
-  if (!tof_w32(R_INTERMEASUREMENT, 0)) return false;                   // continuous ranging
-  uint32_t budget = (50U * 1000U - 2500U) << 12;                         // 50 ms timing budget
-  for (uint8_t q = 0; q < 2; q++) {
-    uint32_t tmp = macro * (q == 0 ? 16U : 12U);
-    uint32_t lo = ((budget + ((tmp >> 6) >> 1)) / (tmp >> 6)) - 1U;
-    uint16_t hi = 0;
-    while ((lo & 0xFFFFFF00U) > 0U) { lo >>= 1; hi++; }
-    if (!tof_w16(q == 0 ? R_RANGE_A : R_RANGE_B, (uint16_t)((hi << 8) + (uint16_t)(lo & 0xFFU)))) return false;
-  }
-  if (!tof_w8(R_START, 0x21) || !tof_wait_ready(1000)) return false;
-  return tof_w8(R_CLEAR_INT, 0x01);
-}
-
-// -1 nothing in front, -2 sensor lost, -3 no new measurement
-static int32_t tof_measure() {
-  bool ready = false;
-  if (!tof_ready(&ready)) return -2;
-  if (!ready) return -3;
-  uint8_t status;
-  uint16_t spads, mm;
-  k_mutex_lock(&bus_lock, K_FOREVER);   // keep the four transactions of one measurement together
-  tof_w8(R_CLEAR_INT, 0x01);
-  bool ok = tof_r8(R_RANGE_STATUS, &status) && tof_r16(R_SPADS, &spads) && tof_r16(R_DISTANCE, &mm);
-  k_mutex_unlock(&bus_lock);
-  if (!ok) return -2;
-  if ((status & 0x1F) != 0x09 || spads == 0 || mm == 0) return -1;   // 0 mm means "nothing"
-  return (int32_t)mm;
-}
-
-static void poll_tof(uint32_t now) {
-  if (!(modules_mask & (1u << M_DISTANCE))) return;
-  if (!hub_select(CH_TOTEM)) return;
-  if (!tof_started) {
-    uint16_t id = 0;
-    tof_started = tof_r16(R_ID, &id) && id == 0xEBAA && tof_start();
-    if (!tof_started) { set_module(M_DISTANCE, false); return; }
-  }
-  int32_t m = tof_measure();
-  if (m == -2) { tof_started = false; set_module(M_DISTANCE, false); return; }
-  if (m == -3) return;
-  bool changed = (m < 0) != (tof_last < 0) || (m >= 0 && abs(m - tof_last) > 10);
-  if (changed && now - tof_last_sent >= 100) {
-    tof_last = m;
-    tof_last_sent = now;
-    Event ev = {2, m, 0, 0};
-    k_msgq_put(&events, &ev, K_NO_WAIT);
-  }
-}
-
 // ============================================================ thermo (HS3003)
 static void poll_thermo(uint8_t n, uint32_t now) {
   if (!(modules_mask & (1u << THERMO_BIT[n]))) return;
@@ -832,16 +685,13 @@ static void probe_totem_and_thermo() {
     bool had = modules_mask & (1u << M_BUTTONS);
     set_module(M_BUTTONS, bus_probe(ADDR_BUTTONS));
     if (!had && (modules_mask & (1u << M_BUTTONS))) req_leds_dirty = true;
-    bool tof = bus_probe(ADDR_TOF);
-    if (!tof) tof_started = false;
-    set_module(M_DISTANCE, tof);
   }
 }
 
 // ============================================================ io thread
 static void do_scan();
 static void io_thread(void *, void *, void *) {
-  uint32_t next_frame = 0, next_button = 0, next_tof = 0, next_probe = 0;
+  uint32_t next_frame = 0, next_button = 0, next_probe = 0;
   bool first = true;
   for (;;) {
     uint32_t now = k_uptime_get_32();
@@ -897,10 +747,6 @@ static void io_thread(void *, void *, void *) {
       next_button = now + BUTTON_MS;
       poll_buttons();
       write_leds(now);
-    }
-    if (now >= next_tof) {
-      next_tof = now + TOF_MS;
-      poll_tof(now);
     }
     poll_thermo(0, now);
     poll_thermo(1, now);
@@ -1091,7 +937,6 @@ void loop() {
   while (k_msgq_get(&events, &ev, K_NO_WAIT) == 0) {
     switch (ev.kind) {
       case 1: Bridge.notify("btn", (int)ev.a, (int)ev.b); break;
-      case 2: Bridge.notify("dist", (int)ev.a); break;
       case 3: Bridge.notify("thermo", (int)ev.a, (int)ev.b, (int)ev.c); break;
       case 4: Bridge.notify("mods", (int)ev.a); break;
     }

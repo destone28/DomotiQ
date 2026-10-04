@@ -32,7 +32,6 @@ export function mount(root) {
           ${slider("th-rh", t("home.thermostat") + " %", 20, 90, 1, 45)}
           ${slider("ba-t", t("home.bathroom") + " °C", 15, 35, 0.1, 24)}
           ${slider("ba-rh", t("home.bathroom") + " %", 20, 95, 1, 50)}
-          ${slider("dist", t("sim.distance"), 0, 130, 1, 130)}
         </div>
         <h2>${t("sim.buttons")}</h2>
         <div class="grid3">
@@ -76,11 +75,9 @@ export function mount(root) {
     const sendSensors = () => {
       clearTimeout(sensTimer);
       sensTimer = setTimeout(() => {
-        const d = +$("#dist").value;
         api("POST", "/api/sim/sensor", {
           thermostat: { t: +$("#th-t").value, rh: +$("#th-rh").value },
           bathroom: { t: +$("#ba-t").value, rh: +$("#ba-rh").value },
-          distance: d >= 130 ? null : d * 10,
         }).catch(() => {});
       }, 200);
     };
@@ -98,7 +95,7 @@ export function mount(root) {
   return {
     update(type) {
       if (type === "sim" || type === "staff") render();
-      else if (plan && ["tracks", "lights", "counts", "alerts", "house", "sensors", "totem"].includes(type)) plan.update(store.state);
+      else if (plan && ["tracks", "lights", "counts", "alerts", "house", "sensors"].includes(type)) plan.update(store.state);
     },
   };
 }

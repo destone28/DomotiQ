@@ -23,7 +23,6 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna qu
 | core `arduino:zephyr` | 1.0.0 | Apache-2.0 | base dello sketch |
 | Arduino_RouterBridge | 0.4.3 | MPL-2.0 | chiamate e notifiche verso Linux |
 | Arduino_LED_Matrix | 0.1.3 (inclusa nel core) | Apache-2.0, come il core | la matrice LED, luce del locale tecnico |
-| Configurazione di fabbrica del VL53L4CD | dai valori del costruttore | BSD-3-Clause (ST) | avvio del sensore di distanza |
 
 ## Python sulla scheda
 | Pacchetto | Licenza | Uso |

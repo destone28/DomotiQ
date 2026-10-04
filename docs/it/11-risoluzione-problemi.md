@@ -95,7 +95,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### Un modulo è rosso in *Diagnostica*
 **Causa.** Un cavo Qwiic allentato, il modulo sul canale sbagliato dell'Hub, oppure un modulo che non risponde.
 
-**Soluzione.** Lancia **Scansione I2C** e confronta con la tabella del [capitolo 5](05-collaudo.md#3-microcontrollore-e-moduli). Ogni canale dell'Hub deve mostrare gli indirizzi dei suoi moduli: 0x36 per un Pixels, 0x44 per un Thermo, 0x3E Buttons, 0x29 Distance. Il Latch Relay può essere a 0x02, a 0x15 o a 0x10 e l'Hub ovunque tra 0x70 e 0x77: vanno bene tutti. Un modulo ricollegato ricompare entro 5 secondi.
+**Soluzione.** Lancia **Scansione I2C** e confronta con la tabella del [capitolo 5](05-collaudo.md#3-microcontrollore-e-moduli). Ogni canale dell'Hub deve mostrare gli indirizzi dei suoi moduli: 0x36 per un Pixels, 0x44 per un Thermo, 0x3E per il Buttons. Il Latch Relay può essere a 0x02, a 0x15 o a 0x10 e l'Hub ovunque tra 0x70 e 0x77: vanno bene tutti. Un modulo ricollegato ricompare entro 5 secondi.
 
 ### Tutti i moduli sono rossi e c'è l'avviso "Il bus dei Modulino è bloccato"
 **Causa.** Una delle due linee del bus Qwiic (SCL o SDA) è tenuta a massa, e finché resta così nessun modulo può rispondere. Quasi sempre è un cavo con i fili invertiti: i cavi JST-SH a 4 poli si vendono anche in versione "inversa" (pin 1 collegato al pin 4), che sul Qwiic mette la massa di un modulo sulla linea dei dati. Sul tratto principale (UNO Q → Hub → Relay) blocca subito tutto; su un canale dell'Hub blocca il bus appena il firmware apre quel canale. Un segno tipico: i LED verdi di alimentazione dei moduli dopo quel cavo restano spenti o fiochi. Più di rado è un connettore danneggiato.

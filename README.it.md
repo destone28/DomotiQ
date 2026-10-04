@@ -26,7 +26,7 @@ English version: [README.md](https://github.com/destone28/DomotiQ/blob/main/READ
 
 # Come funziona
 
-La UNO Q ha due cervelli. Il processore Qualcomm fa girare Debian Linux e prende le decisioni; il microcontrollore STM32U585 governa il bus Qwiic e pilota tutti i Modulino (cinque Pixels, due Thermo, Buttons, Distance, Latch Relay e l'Hub che divide il bus in canali). I due si parlano attraverso il router della scheda con MessagePack-RPC: Linux decide, il microcontrollore esegue e riferisce tasti e sensori. Gli effetti di luce e l'animazione della festa girano sul microcontrollore, così restano fluidi qualunque cosa stia facendo Linux, e una guardia spegne la ventola se Linux tace.
+La UNO Q ha due cervelli. Il processore Qualcomm fa girare Debian Linux e prende le decisioni; il microcontrollore STM32U585 governa il bus Qwiic e pilota tutti i Modulino (cinque Pixels, due Thermo, Buttons, Latch Relay e l'Hub che divide il bus in canali). I due si parlano attraverso il router della scheda con MessagePack-RPC: Linux decide, il microcontrollore esegue e riferisce tasti e sensori. Gli effetti di luce e l'animazione della festa girano sul microcontrollore, così restano fluidi qualunque cosa stia facendo Linux, e una guardia spegne la ventola se Linux tace.
 
 Su Linux un'applicazione Python (FastAPI, asyncio) tiene lo stato della casa, fa girare il motore delle regole, la voce e la webapp. La visione gira in un processo separato, la sintesi vocale e il modello linguistico in servizi propri: un passaggio lento non blocca mai il resto.
 
@@ -52,7 +52,7 @@ I telefoni entrano nell'hotspot della casa (DomotiQ-Casa1 o DomotiQ-Casa2) dal Q
 # Hardware per una casa
 
 - Arduino UNO Q 4GB.
-- Modulino: cinque Pixels, due Thermo, un Buttons, un Distance, un Latch Relay, un Hub.
+- Modulino: cinque Pixels, due Thermo, un Buttons, un Latch Relay, un Hub.
 - Webcam Logitech C270 sul palo stampato.
 - Hub USB-C UGREEN Revodok 105 e alimentatore UGREEN da 65 W.
 - Scheda audio USB UGREEN US205, microfono lavalier con spina TRS da 3,5 mm, casse alimentate da USB con jack da 3,5 mm.

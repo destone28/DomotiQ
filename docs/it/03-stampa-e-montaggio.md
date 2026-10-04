@@ -59,7 +59,7 @@ Le pareti sono alte 135 mm; le tre pareti di facciata sono alte 46 mm, così la 
 |---|---|---|
 | 32 | `32_Placca_UNO_Q` | la Arduino UNO Q |
 | 33 | `33_Placca_Hub`, `33_Placca_Relay` | il Modulino Hub e il Modulino Latch Relay |
-| 33 | `33_Placca_Totem_Distance`, `33_Placca_Totem_Tasti1` | il sensore Distance e il modulo Buttons dentro il totem del citofono |
+| 33 | `33_Placca_Totem_Tasti1` | il modulo Buttons dentro il totem del citofono |
 | 34 | `34_Placca_Thermo_Bagno` | il Thermo del bagno |
 | 39 | `39_Credenza_Termostato` | la credenza del soggiorno, con sopra il Thermo del termostato |
 | 40 | `40_Placca_Termostato` | la placca del Thermo del termostato, dentro la credenza |
@@ -75,7 +75,7 @@ Le pareti sono alte 135 mm; le tre pareti di facciata sono alte 46 mm, così la 
 
 | N. | File | Pezzo |
 |---|---|---|
-| 37 | `37_Totem_Citofono` | il totem del citofono sul vialetto, con i tre tasti e il sensore Distance |
+| 37 | `37_Totem_Citofono` | il totem del citofono sul vialetto, con i tre tasti |
 | 38 | `38_Tappo_Totem` | il tappo del totem, che ospita il microfono lavalier |
 | 49 | `49_Fioriera_Cassa_Sx`, `_Dx` | le due fioriere che coprono le casse, a sinistra e a destra del totem |
 
@@ -131,7 +131,7 @@ I render in `docs/images/render/` mostrano ogni passaggio.
 
    ![Il palo, esploso](../images/render/14_palo_esploso.png)
 
-6. **Totem e casse.** Monta il modulo Buttons e il sensore Distance nel totem `37`, e il microfono lavalier nel tappo `38`. Sistema le casse al loro posto sul vialetto e coprile con le fioriere `49`.
+6. **Totem e casse.** Monta il modulo Buttons nel totem `37`, e il microfono lavalier nel tappo `38`. Sistema le casse al loro posto sul vialetto e coprile con le fioriere `49`.
 
    ![Totem e fioriere sopra le casse](../images/render/06_totem_e_casse_montaggio.png)
 

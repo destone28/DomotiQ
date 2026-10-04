@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 
 SOCKET = "/run/arduino-router.sock"
 PROTOCOL = 1
-NOTIFICATIONS = ("btn", "dist", "thermo", "mods")
+NOTIFICATIONS = ("btn", "thermo", "mods")
 
 # The reset line of the STM32U585, as the board's own router service drives it when it stops.
 RESET_CHIP = "/dev/gpiochip1"
@@ -35,7 +35,7 @@ RESET_LINE = 38
 # Bit order of `modules()`, the same as in the sketch.
 MODULES = ("hub", "relay", "pixels_garage", "pixels_bedroom", "pixels_kitchen",
            "pixels_living", "thermo_bathroom", "pixels_bathroom", "thermo_thermostat",
-           "buttons", "distance")
+           "buttons")
 
 Notify = Callable[[str, list[Any]], Awaitable[None] | None]
 

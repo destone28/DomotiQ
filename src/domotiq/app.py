@@ -276,9 +276,6 @@ async def on_mcu_notify(ctx: Context, name: str, params: list[Any]) -> None:
         return
     if name == "btn" and len(params) >= 2:
         ctx.house.on_button(int(params[0]), bool(params[1]))
-    elif name == "dist" and params:
-        if not ctx.sim.enabled:
-            ctx.house.on_distance(int(params[0]))
     elif name == "thermo" and len(params) >= 3:
         if not ctx.sim.enabled:
             ctx.house.on_thermo(int(params[0]), params[1] / 100.0, params[2] / 100.0)

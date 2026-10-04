@@ -126,7 +126,6 @@ function handle(msg) {
       s.scene = msg.data.scene; s.party = msg.data.party; s.grill = msg.data.grill; s.car = msg.data.car;
       s.language = msg.data.language; s.verbosity = msg.data.verbosity;
       break;
-    case "totem": s.distance = msg.data.distance; s.visitor = msg.data.visitor; break;
     case "status": s.status = msg.data; renderStatus(); break;
     case "sim": s.sim = msg.data; break;
     case "clock": s.clock = msg.data; break;

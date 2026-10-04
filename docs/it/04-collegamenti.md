@@ -14,7 +14,7 @@ Questo capitolo tratta tutto ciò che ha un cavo: la catena dei Modulino sul con
 | Microfono | Neewer lavalier, TRS da 3,5 mm | nel tappo del totem |
 | Casse | Goedch, alimentate da USB, jack da 3,5 mm | manopola al massimo: il volume lo gestisce la casa |
 | Ventola | 5 V, 40 × 40 × 10 mm | dentro il barbecue |
-| Modulino | 5 Pixels, 2 Thermo, 1 Buttons, 1 Distance, 1 Latch Relay, 1 Hub | |
+| Modulino | 5 Pixels, 2 Thermo, 1 Buttons, 1 Latch Relay, 1 Hub | |
 
 ## Schema generale
 
@@ -35,7 +35,7 @@ UNO Q Qwiic ──► Modulino Hub ──► Modulino Latch Relay          (main
                     ├── ch 3 ── Pixels living room
                     ├── ch 4 ── Thermo bathroom
                     ├── ch 5 ── Pixels bathroom
-                    ├── ch 6 ── Thermo sideboard ──► Buttons ──► Distance
+                    ├── ch 6 ── Thermo sideboard ──► Buttons
                     └── ch 7 ── free
 
 UNO Q 5 V ──► Latch Relay contact (normally open) ──► fan ──► GND
@@ -57,7 +57,7 @@ Il bus principale va dalla UNO Q al **Modulino Hub** e prosegue fino al **Latch 
 | 3 | Pixels | soggiorno, sulla parete verso la camera | 0x36 |
 | 4 | Thermo | bagno, sulla parete verso il locale tecnico | 0x44 |
 | 5 | Pixels | bagno, sulla parete verso il locale tecnico | 0x36 |
-| 6 | Thermo, poi Buttons, poi Distance | credenza del soggiorno, poi il totem sul vialetto | 0x44, 0x3E, 0x29 |
+| 6 | Thermo, poi Buttons | credenza del soggiorno, poi il totem sul vialetto | 0x44, 0x3E |
 | 7 | libero | | |
 
 La luce del **locale tecnico** non è un modulo: è la matrice di 13 × 8 LED della UNO Q stessa, comandata dal firmware come le altre luci (luce 5 per Linux). La matrice ha un solo colore e 8 livelli: prende effetti e luminosità; il colore si vede sul LED RGB della scheda accanto a lei (LED3).
@@ -67,13 +67,13 @@ Note:
 - **Stessi indirizzi, canali diversi.** I cinque Pixels rispondono tutti a 0x36 e i due Thermo a 0x44. Non è un problema: il firmware apre un solo canale dell'Hub alla volta.
 - **L'indirizzo dell'Hub.** L'Hub risponde a 0x70; la pagina del negozio dice 0x71. All'avvio il firmware cerca in tutto l'intervallo 0x70–0x77, quindi vanno bene tutti e due.
 - **L'indirizzo del Latch Relay.** La libreria Modulino gli dà 0x02, il datasheet aggiornato a settembre 2026 dà 0x15 (0x04 e 0x2A nella forma a 8 bit che usano i documenti), quindi dipende dal lotto. Si può anche spostare a 0x10 con il Modulino AddressChanger. Il firmware guarda tutti e tre gli indirizzi, quindi non cambia nient'altro; la **Scansione I2C** mostra quale usa il tuo.
-- **Il canale 6 è una catena.** Parte dal Thermo della credenza in soggiorno e prosegue fino al modulo Buttons e al sensore Distance dentro il totem, appena fuori dalla facciata del soggiorno. C'è un solo modulo Buttons, quindi non serve cambiare nessun indirizzo.
+- **Il canale 6 è una catena.** Parte dal Thermo della credenza in soggiorno e prosegue fino al modulo Buttons dentro il totem, appena fuori dalla facciata del soggiorno. C'è un solo modulo Buttons, quindi non serve cambiare nessun indirizzo.
 - **L'ordine dei canali.** I numeri delle luci nel firmware seguono i canali dell'Hub: 0 garage, 1 camera, 2 cucina, 3 soggiorno, 4 bagno (il Pixels del bagno sta sul canale 5 perché il canale 4 ospita il Thermo del bagno).
 - **Collegare un modulo dopo.** Il firmware cerca i moduli mancanti ogni 5 secondi, quindi un modulo collegato mentre la casa è accesa compare da solo. Un modulo conta come presente solo dopo aver risposto sul bus.
 
 ### Il totem
 
-Partendo dal basso, il totem ospita il modulo **Buttons** e, sopra, il sensore **Distance** rivolto verso i visitatori; il microfono lavalier sta nel tappo. Visti dal visitatore, i tasti sono, da sinistra: **Parla**, **Citofono**, **Lingua**. I LED gialli del modulo Buttons sono accanto ai tasti, e il totem ha una finestrella per vederli. Se il modulo finisce montato al contrario non serve ricablarlo: basta attivare *Tasti montati al contrario* nelle impostazioni dello staff (vedi il [capitolo 6](06-webapp.md#impostazioni)).
+Il totem ospita il modulo **Buttons**; il microfono lavalier sta nel tappo. Visti dal visitatore, i tasti sono, da sinistra: **Parla**, **Citofono**, **Lingua**. I LED gialli del modulo Buttons sono accanto ai tasti, e il totem ha una finestrella per vederli. Se il modulo finisce montato al contrario non serve ricablarlo: basta attivare *Tasti montati al contrario* nelle impostazioni dello staff (vedi il [capitolo 6](06-webapp.md#impostazioni)).
 
 ## Alimentazione dei Pixels
 

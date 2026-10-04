@@ -26,7 +26,7 @@ Italian version: [README.it.md](https://github.com/destone28/DomotiQ/blob/main/R
 
 # How it works
 
-The UNO Q has two brains. The Qualcomm processor runs Debian Linux and does the thinking; the STM32U585 microcontroller owns the Qwiic bus and drives every Modulino (five Pixels, two Thermo, Buttons, Distance, Latch Relay and the Hub that splits the bus into channels). The two talk through the board's router with MessagePack-RPC: Linux decides, the microcontroller executes and reports buttons and sensors. Light effects and the party animation run on the microcontroller, so they stay smooth whatever Linux is doing, and a watchdog switches the fan off if Linux goes silent.
+The UNO Q has two brains. The Qualcomm processor runs Debian Linux and does the thinking; the STM32U585 microcontroller owns the Qwiic bus and drives every Modulino (five Pixels, two Thermo, Buttons, Latch Relay and the Hub that splits the bus into channels). The two talk through the board's router with MessagePack-RPC: Linux decides, the microcontroller executes and reports buttons and sensors. Light effects and the party animation run on the microcontroller, so they stay smooth whatever Linux is doing, and a watchdog switches the fan off if Linux goes silent.
 
 On Linux a Python application (FastAPI, asyncio) holds the state of the house, runs the rule engine, the voice and the web app. Vision runs in a separate process, speech synthesis and the language model in their own services, so a slow step never blocks the rest.
 
@@ -52,7 +52,7 @@ Phones join the hotspot of the house (DomotiQ-Casa1 or DomotiQ-Casa2) from the Q
 # Hardware for one house
 
 - Arduino UNO Q 4GB.
-- Modulino: five Pixels, two Thermo, one Buttons, one Distance, one Latch Relay, one Hub.
+- Modulino: five Pixels, two Thermo, one Buttons, one Latch Relay, one Hub.
 - Logitech C270 webcam on the printed pole.
 - UGREEN Revodok 105 USB-C hub and UGREEN 65 W power supply.
 - UGREEN US205 USB sound card, a lavalier microphone with 3.5 mm TRS plug, USB-powered speakers with a 3.5 mm jack.

@@ -61,7 +61,7 @@ Aggiornamenti dopo il 7 ottobre (D3), giornata accelerata (D80), riconoscimento 
 | Microfono | Neewer lapel 3,5 mm TRS | nel tappo del totem; compatibile con l'ingresso TRS |
 | Casse | Goedch USB + jack 3,5 mm | manopola al massimo, volume gestito dalla casa |
 | Ventola | 5 V 40×40×10 | modello da confermare (D14) |
-| Modulino | 5 Pixels, 2 Thermo, 1 Buttons, 1 Distance, 1 Latch Relay, 1 Hub | |
+| Modulino | 5 Pixels, 2 Thermo, 1 Buttons, 1 Latch Relay, 1 Hub | |
 
 ### 3.2 Bus I2C
 - Il Qwiic della UNO Q è l'I2C4 dello STM32U585 (`Wire1`); lo usa solo la MCU. Velocità 100 kHz (la configurazione di fabbrica è 400 kHz: il firmware la abbassa).
@@ -76,7 +76,7 @@ Aggiornamenti dopo il 7 ottobre (D3), giornata accelerata (D80), riconoscimento 
 | 3 | Pixels soggiorno | 0x36 |
 | 4 | Thermo bagno | 0x44 |
 | 5 | Pixels bagno | 0x36 |
-| 6 | Thermo credenza → Buttons → Distance | 0x44, 0x3E, 0x29 |
+| 6 | Thermo credenza → Buttons | 0x44, 0x3E |
 | 7 | libero | |
 
 - Hub: TCA9548A, indirizzo 0x70 (il negozio dice 0x71: il firmware cerca fra 0x70 e 0x77). Un solo canale aperto alla volta.
@@ -84,7 +84,7 @@ Aggiornamenti dopo il 7 ottobre (D3), giornata accelerata (D80), riconoscimento 
 - Nessun cambio di indirizzo per il Buttons: è uno solo.
 
 ### 3.3 Totem (da ristampare, R1)
-Dal basso: Buttons, poi Distance rivolto ai visitatori; lavalier nel tappo. Tasti visti dal visitatore, da sinistra: **parla**, **citofono**, **lingua**. I LED del Buttons sono gialli, accanto ai tasti: il nuovo totem prevede una finestra anche per loro.
+Dentro: Buttons; lavalier nel tappo (il sensore Distance è stato tolto, D-25). Tasti visti dal visitatore, da sinistra: **parla**, **citofono**, **lingua**. I LED del Buttons sono gialli, accanto ai tasti: il nuovo totem prevede una finestra anche per loro.
 
 ### 3.4 Alimentazione dei Pixels
 Ogni Pixels a bianco pieno assorbe fino a 264 mA dal 3,3 V del Qwiic; il connettore regge 1 A e il regolatore della UNO Q (2 A) è condiviso con MCU e Wi-Fi. Il firmware:
@@ -148,7 +148,6 @@ Principi:
 | Attività | Frequenza |
 |---|---|
 | lettura tasti (canale 6) | 100 Hz, antirimbalzo su 2 letture |
-| Distance | 20 Hz |
 | Thermo (richiesta, lettura dopo 40 ms) | ogni 2 s per sensore |
 | disegno effetti | 50 Hz; si scrive un Pixels solo se il suo fotogramma cambia |
 | ricerca moduli mancanti | ogni 5 s |
@@ -374,7 +373,7 @@ Tutti generati dal codice: campanello, bip di inizio e fine ascolto, allarme, no
 ```
 
 ### 11.2 Quando (eventi)
-entra in una stanza, esce da una stanza, resta in una stanza per N s, conteggio sopra/sotto una soglia, identità compare/scompare, ora, temperatura o umidità oltre soglia, tasto, visitatore al totem (Distance sotto X cm per più di Y s; di partenza 30 cm e 2 s, D60), auto arriva/parte/parcheggiata/assente, scenario attivato.
+entra in una stanza, esce da una stanza, resta in una stanza per N s, conteggio sopra/sotto una soglia, identità compare/scompare, ora, temperatura o umidità oltre soglia, tasto, auto arriva/parte/parcheggiata/assente, scenario attivato.
 
 ### 11.3 Se (condizioni, tutte vere)
 stanza occupata o vuota, conteggio, identità presente o assente, fascia oraria, soglie di temperatura e umidità, scenario attivo, stato di griglia e auto. "Oppure" = due regole.
@@ -401,7 +400,6 @@ luci (stanza o tutte, colore, effetto, luminosità, durata), suono, frase (con s
 | Grigliata pronta | notifica, "La grigliata è pronta, tutti in giardino!" |
 | Party affollato | 4 o più persone in soggiorno → party (disattivata) |
 | Grigliata affollata | 2 o più persone in giardino per 10 s → grigliata (disattivata) |
-| Visitatore al totem | se c'è tempo: suono breve e animazione, al massimo ogni 2 minuti (disattivata) |
 
 ### 11.7 Precedenza
 Allarmi e vincoli → party → scenario → regole → luci che seguono. Il livello più alto attivo decide le luci di una stanza; quando finisce, torna quello sotto.
@@ -470,7 +468,7 @@ Barra in basso: **Casa**, **Diretta**, **Comandi**, **Eventi**, **Altro**.
    - stanze, pareti, porte, arredi;
    - luci col loro colore, temperature e umidità, conteggi per stanza;
    - personaggi con sagoma della categoria nel loro colore e nome, e con il segno "incerto" quando serve;
-   - auto, griglia accesa, allarmi (stanza bordata di rosso), visitatore al totem;
+   - auto, griglia accesa, allarmi (stanza bordata di rosso);
    - richieste di conferma in un riquadro in alto.
 2. **Diretta**: immagine della webcam col bagno sfocato; nomi e stanze sovrapponibili.
 3. **Regole**: elenco con interruttori; editor Quando/Se/Allora a moduli; scenari; cestino.
@@ -478,7 +476,7 @@ Barra in basso: **Casa**, **Diretta**, **Comandi**, **Eventi**, **Altro**.
 5. **Eventi**: eventi e notifiche, frasi dette dalla casa, registro delle modifiche, storico per identità.
 6. **Comandi**: party, grigliata, scenari, luci per stanza (colore ed effetto), lingua, loquacità, volume.
 7. **Calibrazione** (staff): quattro angoli, verifica delle sovrapposizioni, casa vuota, "regola di nuovo".
-8. **Simulazione**: personaggi virtuali da trascinare, sensori virtuali (temperature, umidità, tasti, Distance), interruttore per silenziare luci e voce vere. Sul PC gira senza alcun hardware.
+8. **Simulazione**: personaggi virtuali da trascinare, sensori virtuali (temperature, umidità, tasti), interruttore per silenziare luci e voce vere. Sul PC gira senza alcun hardware.
 9. **Diagnostica** (staff):
    - Modulino per canale dell'Hub e scansione I2C;
    - webcam, audio (suono di prova, registrazione di 3 s), Wi-Fi e client collegati;

@@ -14,7 +14,7 @@ This chapter covers everything that gets a cable: the Modulino chain on the Qwii
 | Microphone | Neewer lavalier, 3.5 mm TRS | in the cap of the totem |
 | Speakers | Goedch, USB powered, 3.5 mm jack | knob at maximum: the house manages the volume |
 | Fan | 5 V, 40 × 40 × 10 mm | inside the barbecue |
-| Modulino | 5 Pixels, 2 Thermo, 1 Buttons, 1 Distance, 1 Latch Relay, 1 Hub | |
+| Modulino | 5 Pixels, 2 Thermo, 1 Buttons, 1 Latch Relay, 1 Hub | |
 
 ## Overview
 
@@ -35,7 +35,7 @@ UNO Q Qwiic ──► Modulino Hub ──► Modulino Latch Relay          (main
                     ├── ch 3 ── Pixels living room
                     ├── ch 4 ── Thermo bathroom
                     ├── ch 5 ── Pixels bathroom
-                    ├── ch 6 ── Thermo sideboard ──► Buttons ──► Distance
+                    ├── ch 6 ── Thermo sideboard ──► Buttons
                     └── ch 7 ── free
 
 UNO Q 5 V ──► Latch Relay contact (normally open) ──► fan ──► GND
@@ -57,7 +57,7 @@ The main bus goes from the UNO Q to the **Modulino Hub** and on to the **Latch R
 | 3 | Pixels | living room, on the wall towards the bedroom | 0x36 |
 | 4 | Thermo | bathroom, on the wall towards the utility room | 0x44 |
 | 5 | Pixels | bathroom, on the wall towards the utility room | 0x36 |
-| 6 | Thermo, then Buttons, then Distance | sideboard in the living room, then the totem on the driveway | 0x44, 0x3E, 0x29 |
+| 6 | Thermo, then Buttons | sideboard in the living room, then the totem on the driveway | 0x44, 0x3E |
 | 7 | free | | |
 
 The light of the **utility room** is not a module: it is the 13 × 8 LED matrix of the UNO Q itself, driven by the firmware like the other lights (light 5 for Linux). The matrix has a single colour and 8 levels: it takes effects and brightness; the colour shows on the RGB LED of the board next to it (LED3).
@@ -67,13 +67,13 @@ Notes:
 - **Same addresses, different channels.** The five Pixels all answer at 0x36 and the two Thermo at 0x44. That is fine: the firmware opens only one Hub channel at a time.
 - **The Hub address.** The Hub answers at 0x70; the shop page says 0x71. The firmware searches the whole range 0x70–0x77 at boot, so either works.
 - **The Latch Relay address.** The Modulino library gives it 0x02, the datasheet updated in September 2026 gives 0x15 (0x04 and 0x2A in the 8-bit form the documents use), so it depends on the batch. It can also be moved to 0x10 with the Modulino AddressChanger. The firmware looks at all three addresses, so nothing else changes; **I2C scan** shows which one yours uses.
-- **Channel 6 is a chain.** It starts at the Thermo of the sideboard in the living room and continues to the Buttons and the Distance sensor inside the totem, just outside the front of the living room. There is only one Buttons module, so no address needs changing.
+- **Channel 6 is a chain.** It starts at the Thermo of the sideboard in the living room and continues to the Buttons inside the totem, just outside the front of the living room. There is only one Buttons module, so no address needs changing.
 - **Order of the channels.** The light numbers in the firmware follow the Hub channels: 0 garage, 1 bedroom, 2 kitchen, 3 living room, 4 bathroom (the bathroom Pixels is on channel 5 because channel 4 holds the bathroom Thermo).
 - **Plugging in later.** The firmware looks for missing modules every 5 seconds, so a module connected while the house runs shows up by itself. A module counts as present only after it has answered on the bus.
 
 ### The totem
 
-From the bottom, the totem holds the **Buttons** module and, above it, the **Distance** sensor facing the visitors; the lavalier microphone sits in the cap. Seen by the visitor, the buttons are, from the left: **Talk**, **Intercom**, **Language**. The yellow LEDs of the Buttons module sit next to the buttons, and the totem has a window for them. If the module ends up mounted the other way round, you do not need to rewire it: switch on *Buttons mounted upside down* in the staff settings (see [chapter 6](06-web-app.md#settings)).
+The totem holds the **Buttons** module; the lavalier microphone sits in the cap. Seen by the visitor, the buttons are, from the left: **Talk**, **Intercom**, **Language**. The yellow LEDs of the Buttons module sit next to the buttons, and the totem has a window for them. If the module ends up mounted the other way round, you do not need to rewire it: switch on *Buttons mounted upside down* in the staff settings (see [chapter 6](06-web-app.md#settings)).
 
 ## Power of the Pixels
 

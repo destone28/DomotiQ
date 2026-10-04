@@ -99,7 +99,7 @@ def test_calls_notifications_and_reconnection(tmp_path):
         client = RouterClient(path, on_notify=lambda n, p: got.append((n, p)))
         client.start()
         await asyncio.wait_for(client.connected.wait(), 5)
-        assert router.registered == ["btn", "dist", "thermo", "mods"]
+        assert router.registered == ["btn", "thermo", "mods"]
 
         mcu = Mcu(client)
         assert await mcu.check()
@@ -130,7 +130,7 @@ def test_calls_notifications_and_reconnection(tmp_path):
         router.registered.clear()
         await router.start()
         await asyncio.wait_for(client.connected.wait(), 8)
-        assert router.registered == ["btn", "dist", "thermo", "mods"]
+        assert router.registered == ["btn", "thermo", "mods"]
         assert await mcu.check()
         await client.stop()
         await router.stop()

@@ -21,7 +21,7 @@ export function mount(root) {
   render();
   return {
     update(type) {
-      if (["tracks", "lights", "sensors", "counts", "alerts", "house", "identities", "totem", "hello", "status"].includes(type)) render();
+      if (["tracks", "lights", "sensors", "counts", "alerts", "house", "identities", "hello", "status"].includes(type)) render();
     },
   };
 }
@@ -47,8 +47,7 @@ function renderCards(el) {
     <div class="card"><div class="pill-list">
       ${s.party ? `<span class="chip on">🎉 ${t("home.party")}</span>` : ""}
       ${s.grill ? `<span class="chip warn">🔥 ${t("home.grill")}</span>` : ""}
-      ${s.visitor ? `<span class="chip warn">🔔 ${t("home.visitor")}</span>` : ""}
-      ${!s.party && !s.grill && !s.visitor ? `<span class="muted small">—</span>` : ""}
+      ${!s.party && !s.grill ? `<span class="muted small">—</span>` : ""}
     </div></div>`;
 }
 

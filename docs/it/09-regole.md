@@ -56,7 +56,6 @@ Molti eventi e condizioni hanno un campo **Chi** con due scelte: il tipo (*chiun
 | **il termostato cambia** | Stato: caldo, freddo, normale | il clima virtuale cambia stato (vedi sotto). |
 | **la doccia** | Stato: inizia, finisce | l'umidità del bagno sale di 8 punti sopra la sua media recente (inizia), oppure torna entro 3 punti (finisce). |
 | **si preme un tasto** | Tasto: Parla, Citofono, Lingua | quel tasto del totem viene premuto. Il tasto continua comunque a fare il suo lavoro normale. |
-| **qualcuno è al citofono** | Distanza (cm), Secondi | qualcosa resta più vicino di *Distanza* al sensore Distance del totem per *Secondi*. Scatta di nuovo solo dopo che si è allontanato. |
 | **l'auto** | Stato: arriva, parcheggiata, parte, assente | l'auto entra in garage, sta ferma per 3 secondi nell'area di parcheggio, esce dal garage, oppure ne è fuori da 10 secondi. |
 | **cambia scenario** | Scenario | la casa passa a quello scenario. |
 | **il barbecue** | Stato: inizia, pronto | la ventola parte, oppure la grigliata è pronta (la ventola ha finito). |
@@ -164,7 +163,6 @@ Gli scenari si scelgono da **Comandi**, a voce ("Scenario cinema", "Good night")
 | **Intruso con la casa in modalità Via** | una persona entra in una qualsiasi stanza della casa, se lo scenario è Via | tutte le luci lampeggiano di rosso per 10 s, suono di allarme, "Intruso in casa! {name} è {room_in}.", notifica di allarme | attiva |
 | **Festa in soggiorno** | più di 3 persone in soggiorno per 3 s | avvia una festa | disattivata |
 | **Grigliata in compagnia** | più di 1 persona in giardino per 10 s | accende il barbecue | disattivata |
-| **Visitatore al citofono** | qualcosa a meno di 30 cm dal totem per 2 s | campanello breve e una luce gialla che respira in soggiorno | disattivata |
 
 Chi conta: le regole di partenza che riguardano le persone usano il tipo *persona*, quindi gli animali non fanno mai scattare l'allarme del locale tecnico o del bagno. La luce del garage per l'auto viene dalle luci che seguono le persone, non da una regola.
 

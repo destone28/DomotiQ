@@ -96,7 +96,7 @@ class Hub:
         for t in ("tracks_changed", "lights_changed", "sensor", "count_changed", "alerts_changed",
                   "confirm", "confirm_closed", "notify", "say", "identities_changed", "rules_changed",
                   "scene", "party", "grill", "registration", "status", "language", "verbosity",
-                  "volume", "car", "visitor", "distance", "rule_fired", "climate", "shower",
+                  "volume", "car", "rule_fired", "climate", "shower",
                   "modules", "listening", "clock", "sim", "follow", "welcome"):
             ctx.bus.subscribe(t, self.on_event)
 
@@ -148,10 +148,8 @@ class Hub:
             self.send({"type": "identities", "data": self.ctx.identities.to_list()})
         elif t == "rules_changed":
             self.send({"type": "rules", "data": self.ctx.rules.to_list()})
-        elif t in ("scene", "party", "grill", "car", "visitor", "language", "verbosity", "volume"):
+        elif t in ("scene", "party", "grill", "car", "language", "verbosity", "volume"):
             self.send({"type": "house", "data": _brief(self.ctx), "event": t, "detail": ev.data})
-        elif t == "distance":
-            self.send({"type": "totem", "data": {"distance": h.distance_mm, "visitor": h.visitor}})
         elif t == "registration":
             self.send({"type": "registration", "data": ev.data})
         elif t in ("status", "modules"):
@@ -177,7 +175,7 @@ class Hub:
 def _brief(ctx: "Context") -> dict[str, Any]:
     h = ctx.house
     return {"scene": h.scene, "party": h.party_on, "grill": h.grill_on, "car": h.car_state(),
-            "visitor": h.visitor, "language": ctx.settings.get("voice.language"),
+            "language": ctx.settings.get("voice.language"),
             "verbosity": ctx.settings.get("voice.verbosity"), "volume": ctx.settings.get("voice.volume")}
 
 
@@ -615,9 +613,6 @@ def create_app(ctx: "Context") -> FastAPI:
             if key in body:
                 v = body[key]
                 ctx.house.on_thermo(index, float(v.get("t", 24)), float(v.get("rh", 45)))
-        if "distance" in body:
-            d = body["distance"]
-            ctx.house.on_distance(None if d is None else int(d))
         return {"ok": True}
 
     @app.post("/api/sim/button")

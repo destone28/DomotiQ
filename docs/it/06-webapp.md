@@ -45,9 +45,9 @@ La casa virtuale: una piantina ricavata dal modello CAD, con in basso il vialett
 - Stanze, pareti, porte e arredi; ogni luce di stanza brilla con il suo colore e il suo effetto del momento.
 - La temperatura del termostato (sulla credenza) e l'umidità del bagno; un contatore per ogni stanza in cui c'è qualcuno.
 - Ogni personaggio con la sagoma del suo tipo (persona, cane, gatto, animale, auto, oggetto), nel suo colore e con il suo nome; un **?** segna un personaggio su cui la casa non è sicura.
-- L'auto, le fiamme sul barbecue quando è acceso, un pallino sul totem quando qualcuno è al citofono, i contorni rossi delle stanze in allarme.
+- L'auto, le fiamme sul barbecue quando è acceso, i contorni rossi delle stanze in allarme.
 
-Sotto la piantina, delle schede riassumono la casa: le persone presenti, **Termostato** (temperatura, umidità, *Climatizzatore acceso* o *Riscaldamento acceso*), **Bagno** (umidità, *Doccia in corso*), **Auto** (*appena arrivata*, *parcheggiata*, *appena uscita*, *non c'è*), **Scenario**, ed etichette per **Festa**, **Barbecue** e *Qualcuno al citofono*.
+Sotto la piantina, delle schede riassumono la casa: le persone presenti, **Termostato** (temperatura, umidità, *Climatizzatore acceso* o *Riscaldamento acceso*), **Bagno** (umidità, *Doccia in corso*), **Auto** (*appena arrivata*, *parcheggiata*, *appena uscita*, *non c'è*), **Scenario**, ed etichette per **Festa** e **Barbecue**.
 
 In fondo, l'elenco di tutto ciò che la casa vede, con nome (oppure *Ospite* per una persona sconosciuta, *Sconosciuto* per qualsiasi altra cosa), tipo e stanza. Tocca un personaggio, sulla piantina o nell'elenco, per aprire la sua scheda: foto o sagoma, tipo, stanza e, quando c'è un dubbio, *Non sono sicura di chi sia*. Un personaggio sconosciuto ha un pulsante **Registra** che avvia la registrazione con quella statuina già scelta.
 
@@ -103,7 +103,7 @@ L'elenco dei personaggi, degli animali, delle auto e degli oggetti registrati, c
 
 <img src="../images/screens/it/sim.png" alt="Simulazione" width="260">
 
-Personaggi virtuali da trascinare sulla piantina al posto delle statuine vere, sensori virtuali (temperatura e umidità del termostato e del bagno, distanza dal citofono) e i tre tasti del totem (**Parla** si tiene premuto come sul totem). Chiunque può aprire la pagina; per attivare o disattivare la simulazione serve il PIN dello staff. **Luci e voce vere in silenzio** tiene tranquilla la casa vera mentre fai le prove. Finché la simulazione è attiva, la casa ignora la webcam. Per togliere un personaggio virtuale, trascinalo fuori dalla casa.
+Personaggi virtuali da trascinare sulla piantina al posto delle statuine vere, sensori virtuali (temperatura e umidità del termostato e del bagno) e i tre tasti del totem (**Parla** si tiene premuto come sul totem). Chiunque può aprire la pagina; per attivare o disattivare la simulazione serve il PIN dello staff. **Luci e voce vere in silenzio** tiene tranquilla la casa vera mentre fai le prove. Finché la simulazione è attiva, la casa ignora la webcam. Per togliere un personaggio virtuale, trascinalo fuori dalla casa.
 
 ### Calibrazione
 

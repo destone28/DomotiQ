@@ -21,7 +21,6 @@ const TRIGGERS = {
   climate: [["state", "state:hot,cold,normal"]],
   shower: [["state", "state:start,stop"]],
   button: [["button", "button"]],
-  visitor: [["distance_cm", "num", 30], ["seconds", "num", 2]],
   car: [["state", "state:arrived,parked,departed,absent"]],
   scene: [["scene", "scene"]],
   grill: [["state", "state:started,ready"]],
@@ -140,7 +139,7 @@ async function ensureNickname() {
 
 function field(key, kind, value) {
   const s = store.state;
-  const lbl = t("f." + ({ repeat_s: "repeat", grace_s: "grace", distance_cm: "distance", duration_s: "duration", at: "at" }[key] || key));
+  const lbl = t("f." + ({ repeat_s: "repeat", grace_s: "grace", duration_s: "duration", at: "at" }[key] || key));
   const opt = (v, label, sel) => `<option value="${esc(v)}" ${sel ? "selected" : ""}>${esc(label)}</option>`;
   let input;
   if (kind === "room" || kind === "rooms" || kind === "room+") {

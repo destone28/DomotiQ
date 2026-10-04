@@ -27,26 +27,25 @@ Open the address of the house in a browser. At the top right, next to the house 
 Open **More → Diagnostics**.
 
 - The **Modulino** card shows a green dot and `v1`, the protocol version of the firmware. A red dot means Linux cannot talk to the microcontroller.
-- Below it, every module has a green or red dot: Hub, Latch Relay, the five Pixels (garage, bedroom, kitchen, living room, bathroom), the two Thermo (bathroom, sideboard), Buttons and Distance.
+- Below it, every module has a green or red dot: Hub, Latch Relay, the five Pixels (garage, bedroom, kitchen, living room, bathroom), the two Thermo (bathroom, sideboard) and Buttons.
 - **I2C scan** lists the addresses that answer on each Hub channel. Expected, besides the Hub (0x70–0x77) and the Latch Relay (0x02, 0x15 or 0x10), which sit on the main bus and answer on every channel:
 
   | Channel | Expected |
   |---|---|
   | ch0, ch1, ch2, ch3, ch5 | 0x36 (Pixels) |
   | ch4 | 0x44 (Thermo) |
-  | ch6 | 0x44, 0x3e, 0x29 (Thermo, Buttons, Distance) |
+  | ch6 | 0x44, 0x3e (Thermo, Buttons) |
   | ch7 | nothing |
 
 ## 4. Lights
 
-In **Controls → Lights**, choose a room, a colour and **On**; repeat for all five rooms, then choose *All rooms* and **Automatic** to give the lights back to the house. A light switched on by hand stays on for two minutes; **Off** keeps a room dark for one minute.
+In **Controls → Lights**, choose a room, a colour and **On**; repeat for all six rooms (in the utility room the light is the LED matrix of the UNO Q, with the colour on the RGB LED next to it), then choose *All rooms* and **Automatic** to give the lights back to the house. A light switched on by hand stays on for two minutes; **Off** keeps a room dark for one minute.
 
-## 5. Buttons, LEDs and the Distance sensor
+## 5. Buttons and LEDs
 
 - **Language**: all lights flash green (Italian) or red (English) for about a second, the house says "Italiano" or "English", and the LED of the Language button is on while the house speaks English. Press it again to go back to Italian.
-- **Talk**: hold it. A beep, its LED lights up while the house listens, another beep when you release it.
+- **Talk**: hold it. A beep, the three LEDs light up while the house listens, another beep when you release it; while the house works out its answer the LEDs breathe.
 - **Intercom**: a doorbell rings and the house asks "Chi è?" / "Who is it?"; its LED blinks during the conversation. Say nothing twice and the house lets you in as a guest.
-- **Distance**: keep a hand less than 30 cm from the front of the totem for 2 seconds. The **House** screen shows *Someone at the doorbell*.
 
 ## 6. Thermostat and bathroom
 

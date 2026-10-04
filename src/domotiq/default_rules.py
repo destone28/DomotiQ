@@ -161,15 +161,4 @@ def default_rules() -> list[dict[str, Any]]:
                      "who": {"category": "person"}},
             "then": [{"type": "grill"}],
         },
-        {
-            "id": "r-visitor",
-            "name": {"it": "Visitatore al citofono", "en": "Visitor at the doorbell"},
-            "enabled": False, "priority": 40, "cooldown_s": 120,
-            "when": {"type": "visitor", "distance_cm": 30, "seconds": 2},
-            "then": [
-                {"type": "sound", "name": "chime"},
-                {"type": "light", "room": "living", "effect": "breathe", "color": "#ffd020",
-                 "brightness": 50, "duration_s": 6},
-            ],
-        },
     ]

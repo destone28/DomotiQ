@@ -207,3 +207,11 @@ Nella prima prova la casa ha chiesto dell'auto e ha capito "Honda Civic", ma non
 - **"Mister Blu" e la Honda Civic.** Ora conta anche la dimensione: l'auto non è mai una statuina.
 - **Notifiche non chiudibili.** Nello screenshot di Emilio la barra mostrava "nav.identities": il telefono teneva i vecchi script e prendeva solo l'HTML nuovo. Ora i file della webapp si caricano sotto una versione che cambia a ogni aggiornamento, e anche le domande hanno la loro ✕.
 - **Niente si muove da solo, storico, pose** (D-24). La registrazione delle 15:31 mostrava due tracce che si scambiavano di posto senza mani, e un "oggetto" chiesto in giardino che era solo un secondo pezzo di Viola, sdraiata sul tronco dell'albero. Dopo le correzioni zero domande, i quattro personaggi seguiti ovunque, e le prime pose imparate da sole: Viola e Rosaria sdraiate in giardino.
+
+**Via il sensore Distance (4/10, sera).** Su richiesta di Emilio il Modulino Distance esce dal progetto (D-25):
+- il firmware non lo cerca più e non lo legge più 20 volte al secondo;
+- la casa non ha più la distanza e il visitatore al citofono;
+- le regole perdono il loro trigger, la webapp il pallino sul totem e il cursore della simulazione;
+- dal collaudo al banco, dalla documentazione e dagli schemi di cablaggio è sparito, e dai file di stampa la sua placca `33_Placca_Totem_Distance`.
+
+Sulla scheda la regola salvata "Visitatore al citofono" viene saltata all'avvio. Restano da decidere il totem `37`, che ha ancora la finestrella del sensore, e i render che lo mostrano.

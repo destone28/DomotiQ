@@ -27,26 +27,25 @@ Apri l'indirizzo della casa in un browser. In alto a destra, accanto al nome del
 Apri **Altro → Diagnostica**.
 
 - La scheda **Modulino** mostra un pallino verde e `v1`, la versione del protocollo del firmware. Un pallino rosso vuol dire che Linux non riesce a parlare con il microcontrollore.
-- Sotto, ogni modulo ha un pallino verde o rosso: Hub, Latch Relay, i cinque Pixels (garage, camera, cucina, soggiorno, bagno), i due Thermo (bagno, credenza), Buttons e Distance.
+- Sotto, ogni modulo ha un pallino verde o rosso: Hub, Latch Relay, i cinque Pixels (garage, camera, cucina, soggiorno, bagno), i due Thermo (bagno, credenza) e Buttons.
 - **Scansione I2C** elenca gli indirizzi che rispondono su ogni canale dell'Hub. Oltre all'Hub (0x70–0x77) e al Latch Relay (0x02, 0x15 o 0x10), che stanno sul bus principale e rispondono su tutti i canali, ci si aspetta:
 
   | Canale | Atteso |
   |---|---|
   | ch0, ch1, ch2, ch3, ch5 | 0x36 (Pixels) |
   | ch4 | 0x44 (Thermo) |
-  | ch6 | 0x44, 0x3e, 0x29 (Thermo, Buttons, Distance) |
+  | ch6 | 0x44, 0x3e (Thermo, Buttons) |
   | ch7 | niente |
 
 ## 4. Luci
 
-In **Comandi → Luci** scegli una stanza, un colore e **Accendi**; ripeti per tutte e cinque le stanze, poi scegli *Tutte le stanze* e **Automatico** per restituire le luci alla casa. Una luce accesa a mano resta accesa per due minuti; **Spegni** tiene una stanza al buio per un minuto.
+In **Comandi → Luci** scegli una stanza, un colore e **Accendi**; ripeti per tutte e sei le stanze (nel locale tecnico la luce è la matrice LED della UNO Q, con il colore sul LED RGB accanto), poi scegli *Tutte le stanze* e **Automatico** per restituire le luci alla casa. Una luce accesa a mano resta accesa per due minuti; **Spegni** tiene una stanza al buio per un minuto.
 
-## 5. Tasti, LED e sensore Distance
+## 5. Tasti e LED
 
 - **Lingua**: tutte le luci lampeggiano di verde (italiano) o di rosso (inglese) per circa un secondo, la casa dice "Italiano" o "English", e il LED del tasto Lingua resta acceso mentre la casa parla inglese. Premilo di nuovo per tornare all'italiano.
-- **Parla**: tienilo premuto. Un bip, il suo LED si accende mentre la casa ascolta, un altro bip quando lo rilasci.
+- **Parla**: tienilo premuto. Un bip, i tre LED si accendono mentre la casa ascolta, un altro bip quando lo rilasci; mentre la casa pensa alla risposta i LED respirano.
 - **Citofono**: suona un campanello e la casa chiede "Chi è?" / "Who is it?"; il suo LED lampeggia durante la conversazione. Se per due volte non dici niente, la casa ti fa entrare come ospite.
-- **Distance**: tieni una mano a meno di 30 cm dal davanti del totem per 2 secondi. La schermata **Casa** mostra *Qualcuno al citofono*.
 
 ## 6. Termostato e bagno
 

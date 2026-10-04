@@ -95,7 +95,7 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### A module is red in *Diagnostics*
 **Cause.** A loose Qwiic cable, the module on the wrong Hub channel, or a module that does not answer.
 
-**Fix.** Run **I2C scan** and compare with the table in [chapter 5](05-testing.md#3-microcontroller-and-modules). Each Hub channel must show the addresses of its modules: 0x36 for a Pixels, 0x44 for a Thermo, 0x3E Buttons, 0x29 Distance. The Latch Relay may be at 0x02, 0x15 or 0x10 and the Hub anywhere between 0x70 and 0x77: both are fine. A module plugged in again shows up within 5 seconds.
+**Fix.** Run **I2C scan** and compare with the table in [chapter 5](05-testing.md#3-microcontroller-and-modules). Each Hub channel must show the addresses of its modules: 0x36 for a Pixels, 0x44 for a Thermo, 0x3E for the Buttons. The Latch Relay may be at 0x02, 0x15 or 0x10 and the Hub anywhere between 0x70 and 0x77: both are fine. A module plugged in again shows up within 5 seconds.
 
 ### Every module is red and the alert "The Modulino bus is stuck" is shown
 **Cause.** One of the two lines of the Qwiic bus (SCL or SDA) is held low, and while it is no module can answer. It is almost always a cable with reversed wires: 4-pin JST-SH cables are also sold in a "reverse" version (pin 1 wired to pin 4), which on Qwiic puts the ground of a module on a data line. On the main run (UNO Q → Hub → Relay) it stops everything at once; on a Hub channel it stops the bus as soon as the firmware opens that channel. A typical sign: the green power LEDs of the modules after that cable stay off or dim. More rarely it is a damaged connector.

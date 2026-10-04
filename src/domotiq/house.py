@@ -58,9 +58,6 @@ class House:
             "thermostat": {"t": None, "rh": None, "ts": 0.0},
             "bathroom": {"t": None, "rh": None, "ts": 0.0},
         }
-        self.distance_mm: int | None = None
-        self.visitor = False
-        self._visitor_since: float | None = None
         self.scene = "normal"
         self.grill_on = False
         self.party_on = False
@@ -294,23 +291,6 @@ class House:
                 self.shower = state == "start"
                 self._pub("shower", state=state, rh=rh)
 
-    def on_distance(self, mm: int | None, now: float | None = None) -> None:
-        now = now or time.time()
-        self._now = now
-        self.distance_mm = None if mm is None or mm < 0 else int(mm)
-        self._pub("distance", mm=self.distance_mm)
-        near = self.distance_mm is not None and self.distance_mm < 300
-        if near and self._visitor_since is None:
-            self._visitor_since = now
-        if not near:
-            self._visitor_since = None
-            if self.visitor:
-                self.visitor = False
-                self._pub("visitor", present=False)
-        elif not self.visitor and now - self._visitor_since >= 2.0:
-            self.visitor = True
-            self._pub("visitor", present=True)
-
     def on_button(self, index: int, pressed: bool) -> None:
         self._now = None
         if self.settings.get("buttons.reversed"):
@@ -384,8 +364,6 @@ class House:
             "tracks": [t.to_dict() for t in self.tracks.values()],
             "counts": self.counts,
             "sensors": self.sensors,
-            "distance": self.distance_mm,
-            "visitor": self.visitor,
             "scene": self.scene,
             "grill": self.grill_on,
             "party": self.party_on,

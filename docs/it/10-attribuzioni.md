@@ -31,7 +31,6 @@ Le statuine e l'auto sono modelli di terze parti e non sono in questo repository
 |---|---|---|---|
 | [Arduino core for Zephyr](https://github.com/arduino/ArduinoCore-zephyr) (`arduino:zephyr`) | 1.0.0 | Apache-2.0 | base dello sketch |
 | [Arduino_RouterBridge](https://github.com/arduino-libraries/Arduino_RouterBridge) | 0.4.3 | MPL-2.0 | chiamate e notifiche da e verso Linux |
-| Configurazione predefinita del [VL53L4CD](https://www.st.com/en/imaging-and-photonics-solutions/vl53l4cd.html), dal driver ultra-lite di STMicroelectronics | valori del produttore | BSD-3-Clause | avvio del sensore Distance |
 
 ## Python sulla scheda
 

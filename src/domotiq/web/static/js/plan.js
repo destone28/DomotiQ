@@ -137,7 +137,6 @@ export class Plan {
       el("circle", { cx, cy, r: 13, class: "count-bg" }, this.dyn);
       el("text", { x: cx, y: cy + 5.5, "text-anchor": "middle", class: "count" }, this.dyn).textContent = String(c.total);
     }
-    if (s.visitor) el("circle", { cx: sx(255), cy: sy(-60), r: 10, class: "visitor" }, this.dyn);
     this.drawTracks(s.tracks || []);
   }
 

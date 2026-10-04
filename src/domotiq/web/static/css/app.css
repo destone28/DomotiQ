@@ -222,7 +222,6 @@ svg.plan { width: 100%; height: auto; display: block; touch-action: none; user-s
 .plan .track .name { font-size: 19px; font-weight: 700; fill: var(--text); paint-order: stroke; stroke: var(--surface); stroke-width: 5px; }
 .plan .track .ico { fill: #fff; pointer-events: none; }
 .plan .flame { fill: #ff8a1c; animation: flicker .5s infinite alternate; transform-box: fill-box; transform-origin: center bottom; }
-.plan .visitor { fill: var(--accent); animation: breathe 1.5s infinite; }
 .plan .pick { fill: none; stroke: var(--accent); stroke-width: 3; animation: breathe 1s infinite; }
 @keyframes breathe { 50% { opacity: .35; } }
 @keyframes blink { 50% { opacity: .15; } }

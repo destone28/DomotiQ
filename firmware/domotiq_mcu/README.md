@@ -32,7 +32,7 @@ Uploading from the board itself uses the local OpenOCD and needs no password. Te
 | 3 | Pixels, living room | 0x36 |
 | 4 | Thermo, bathroom | 0x44 |
 | 5 | Pixels, bathroom | 0x36 |
-| 6 | Thermo (sideboard thermostat) → Buttons → Distance | 0x44, 0x3E, 0x29 |
+| 6 | Thermo (sideboard thermostat) → Buttons | 0x44, 0x3E |
 
 Only one hub channel is open at a time. Modules are searched at power-up and every 5 seconds, so a module plugged in later shows up by itself. A module counts as present only after it answered on the bus.
 
@@ -42,7 +42,7 @@ Only one hub channel is open at a time. Modules are searched at power-up and eve
 |---|---|---|
 | `version` | – | protocol version (1) |
 | `ping` | – | milliseconds since start |
-| `light` | light 0-4, effect, r, g, b, brightness 0-100, speed 0-100, duration ms (0 = until changed) | true |
+| `light` | light 0-5, effect, r, g, b, brightness 0-100, speed 0-100, duration ms (0 = until changed) | true |
 | `party` | BPM × 10, seed, duration ms, start delay ms | true |
 | `relay` | 0 / 1 | the requested state |
 | `relay_state` | – | last state commanded (−1 unknown) |
@@ -51,14 +51,13 @@ Only one hub channel is open at a time. Modules are searched at power-up and eve
 | `modules` | – | bitmask, in the order of `domotiq.mcu.MODULES` |
 | `scan` | hub channel (8 = main bus), block 0-3 | addresses that answer, 32 per block |
 
-Lights: 0 garage, 1 bedroom, 2 kitchen, 3 living room, 4 bathroom. Effects: 0 off, 1 solid, 2 breathe, 3 blink, 4 wave, 5 rainbow, 6 sparkle, 7 fire, 8 alarm, 9 cool, 10 warm. No effect flashes more than 3 times per second.
+Lights: 0 garage, 1 bedroom, 2 kitchen, 3 living room, 4 bathroom, 5 utility room (the LED matrix of the board: one colour, 8 levels; the colour shows on its RGB LED3). Effects: 0 off, 1 solid, 2 breathe, 3 blink, 4 wave, 5 rainbow, 6 sparkle, 7 fire, 8 alarm, 9 cool, 10 warm. No effect flashes more than 3 times per second.
 
 ## Notifications sent to Linux
 
 | Name | Arguments | When |
 |---|---|---|
 | `btn` | button 0-2, pressed 0/1 | on every change, after two equal readings (buttons are read 100 times per second) |
-| `dist` | millimetres, −1 = nothing in front | on changes above 10 mm, at most 10 per second |
 | `thermo` | sensor (0 sideboard, 1 bathroom), °C × 100, %RH × 100 | every 2 seconds per sensor |
 | `mods` | module bitmask | when a module appears or disappears |
 
@@ -71,4 +70,3 @@ Linux receives them after registering the names with `$/register` on the router 
 - **Modules that reset.** Every 5 seconds the firmware sends every light frame and the button LEDs again, even if nothing changed: a module that lost power for a moment would otherwise stay dark.
 - **Stuck bus.** Before every transaction the firmware reads the levels of SCL (PD12) and SDA (PD13). With a line held low it does not start the transaction, which would otherwise wait the 500 ms timeout of the driver and freeze lights and buttons; every 5 seconds it tries to free the bus with nine clocks on SCL and a STOP, done by hand because the UNO Q devicetree gives `i2c_recover_bus()` no GPIOs to do it. The `bus` method reports the state (bit 0 SCL high, bit 1 SDA high, both seen at the last check with the bus idle, bit 2 held low at that check, bits 8-15 attempts to free it, bits 16-30 refused transactions); the house raises an alert and *Diagnostics* shows it. A line held low for good is almost always hardware: a Qwiic cable with reversed wires, a damaged connector, a module that is not powered.
 
-The default configuration of the VL53L4CD comes from the ultra-lite driver by STMicroelectronics (BSD-3-Clause).

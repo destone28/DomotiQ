@@ -56,7 +56,6 @@ Many events and conditions have a **Who** field with two choices: the kind (*any
 | **the thermostat changes** | State: hot, cold, normal | the virtual climate changes state (see below). |
 | **the shower** | State: starts, ends | the bathroom humidity rises 8 points above its recent average (starts), or comes back within 3 points (ends). |
 | **a button is pressed** | Button: Talk, Doorbell, Language | that button of the totem is pressed. The button also keeps doing its normal job. |
-| **someone is at the doorbell** | Distance (cm), Seconds | something stays closer than *Distance* to the Distance sensor of the totem for *Seconds*. It fires again only after it went away. |
 | **the car** | State: arrives, parked, leaves, away | the car enters the garage, stands still for 3 seconds in the parking area, leaves the garage, or has been out of it for 10 seconds. |
 | **the scene changes** | Scene | the house switches to that scene. |
 | **the barbecue** | State: starts, ready | the fan starts, or the barbecue is ready (the fan has finished). |
@@ -164,7 +163,6 @@ Scenes are chosen from **Controls**, by voice ("Scenario cinema", "Good night") 
 | **Intruder while Away** | a person enters any room of the house, if the scene is Away | all lights flash red for 10 s, alarm sound, "Intruder in the house! {name} is {room_in}.", alarm notification | on |
 | **Living room party** | more than 3 people in the living room for 3 s | throws a party | off |
 | **Barbecue with friends** | more than 1 person in the garden for 10 s | lights the barbecue | off |
-| **Visitor at the doorbell** | something within 30 cm of the totem for 2 s | short chime and a yellow breathing light in the living room | off |
 
 Who counts: the default rules about people use the kind *person*, so pets never trigger the utility room or the bathroom alarm. The garage light for the car comes from the follow-me lights, not from a rule.
 
