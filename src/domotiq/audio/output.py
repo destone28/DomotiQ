@@ -11,6 +11,16 @@ and the short effects.
 Writes are paced on the wall clock with a small lead, and the pipe towards
 aplay is shrunk, so what the mixer decides is heard within a fifth of a
 second: a pipe left at its default size would queue more than a second.
+
+The USB sound card can reset by itself (the US205 on casa1 did it several
+times a day, reappearing within the same second with its levels back to the
+factory ones). aplay does not always notice: it may stay alive on the card
+that is gone, and a blocking write towards it would stop the mixer, and with
+it every sentence of the house. So the writes never block, a stream that
+stops taking sound for a second is started again, a card that comes back as
+a new USB device is opened again with its levels set, and while there is no
+card the sound is consumed on the clock all the same, so the house never
+waits for a sentence that cannot be heard.
 """
 
 from __future__ import annotations
@@ -18,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import fcntl
 import logging
+import os
 import re
 import subprocess
 import threading
@@ -35,6 +46,8 @@ log = logging.getLogger(__name__)
 CHUNK = RATE // 50                 # 20 ms
 LEAD_S = 0.12                      # how far ahead of the clock the mixer may write
 F_SETPIPE_SZ = 1031
+STALL_S = 1.0                      # a stream that takes no sound for this long is started again
+CARD_CHECK_S = 2.0                 # how often the card is checked (a reset makes it a new USB device)
 
 
 def find_card(root: Path = Path("/proc/asound")) -> str | None:
@@ -52,6 +65,24 @@ def find_card(root: Path = Path("/proc/asound")) -> str | None:
         index, card_id, driver, _name = m.groups()
         if driver == "USB-Audio" and (root / f"card{index}" / "pcm0p").exists():
             return f"plughw:CARD={card_id},DEV=0"
+    return None
+
+
+def card_identity(device: str | None, root: Path = Path("/proc/asound")) -> str | None:
+    """Which USB device the card is now ("001/010"): it changes when the card resets and comes back."""
+    m = re.search(r"CARD=([^,]+)", device or "")
+    if not m:
+        return None
+    try:
+        cards = (root / "cards").read_text()
+    except OSError:
+        return None
+    for idx, card_id in re.findall(r"^\s*(\d+)\s+\[(\S+)\s*\]", cards, re.M):
+        if card_id == m.group(1):
+            try:
+                return (root / f"card{idx}" / "usbbus").read_text().strip() or f"card{idx}"
+            except OSError:
+                return f"card{idx}"
     return None
 
 
@@ -144,6 +175,9 @@ class Audio:
         self._volume = float(settings.get("voice.volume", 70)) / 100.0
         self.errors = 0
         self.last_error = ""
+        self.restarts = 0
+        self._identity: str | None = None          # the USB device the stream was opened on
+        self._pending = b""                        # sound not yet taken by aplay
 
     # ------------------------------------------------------------ lifecycle
     def start(self) -> None:
@@ -166,7 +200,7 @@ class Audio:
 
     def status(self) -> dict[str, Any]:
         return {"ok": self.ok, "device": self.device or "", "dry": self.dry,
-                "errors": self.errors, "last_error": self.last_error}
+                "errors": self.errors, "last_error": self.last_error, "restarts": self.restarts}
 
     # ------------------------------------------------------------ playing
     def _gain(self, key: str, default: int) -> float:
@@ -251,6 +285,12 @@ class Audio:
     def _open(self) -> bool:
         if self.dry:
             return True
+        device = find_card() or self.device
+        if device is None or card_identity(device) is None:
+            self.ok = False
+            return False
+        self.device = device
+        # the levels go back to the factory ones (-23 dB on the US205) at every reset of the card
         if not set_hardware_levels(self.device, int(self.settings.get("voice.mic_gain", 100))):
             log.warning("could not set the levels of %s", self.device)
         try:
@@ -258,10 +298,14 @@ class Audio:
                 ["aplay", "-q", "-D", self.device, "-t", "raw", "-f", "S16_LE",
                  "-r", str(RATE), "-c", "1", "--buffer-time=100000"],
                 stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+            fd = self._proc.stdin.fileno()
             try:
-                fcntl.fcntl(self._proc.stdin.fileno(), F_SETPIPE_SZ, 4096)
+                fcntl.fcntl(fd, F_SETPIPE_SZ, 4096)
             except OSError:
                 pass
+            os.set_blocking(fd, False)             # never wait for aplay: a stuck stream is noticed instead
+            self._identity = card_identity(self.device)
+            self._pending = b""
             self.ok = True
             return True
         except OSError as e:
@@ -271,48 +315,84 @@ class Audio:
 
     def _close(self) -> None:
         if self._proc:
+            proc, self._proc = self._proc, None
             try:
-                self._proc.stdin.close()
-                self._proc.terminate()
-                self._proc.wait(timeout=1)
-            except (OSError, subprocess.TimeoutExpired):
+                proc.stdin.close()
+            except OSError:
                 pass
-            self._proc = None
+            try:
+                proc.terminate()
+                proc.wait(timeout=1)
+            except (OSError, subprocess.TimeoutExpired):
+                try:
+                    proc.kill()                    # stuck on a card that is gone
+                    proc.wait(timeout=1)
+                except (OSError, subprocess.TimeoutExpired):
+                    pass
+        self._pending = b""
+
+    def _restart(self, why: str) -> None:
+        self.errors += 1
+        self.restarts += 1
+        self.ok = False
+        self.last_error = why[-200:]
+        log.warning("audio output restarted: %s", why)
+        self._close()
+
+    def _write(self, data: bytes, now: float) -> None:
+        """Hand the sound to aplay without ever blocking; a stream that takes nothing for STALL_S is stuck."""
+        self._pending += data
+        try:
+            n = os.write(self._proc.stdin.fileno(), self._pending)
+            self._pending = self._pending[n:]
+            self._taken = now
+        except BlockingIOError:
+            pass
+        except (BrokenPipeError, OSError, ValueError):
+            self._pending = b""
+            return
+        if now - self._taken > STALL_S:
+            self._restart("the sound card stopped taking sound")
+        elif len(self._pending) > RATE:            # half a second of sound waiting: drop the oldest
+            self._pending = self._pending[-RATE:]
 
     def _run(self) -> None:
         written = 0
         start = time.monotonic()
+        retry_at = 0.0
+        self._taken = start
         while self._running:
-            if self._waiting_card and time.monotonic() - self._card_checked > 5.0:
-                self._card_checked = time.monotonic()
+            now = time.monotonic()
+            if self._waiting_card and now - self._card_checked > 5.0:
+                self._card_checked = now
                 card = find_card()
                 if card:
                     self.device, self.dry, self._waiting_card = card, False, False
                     log.info("audio output: %s (plugged in)", card)
-            if not self.dry and (self._proc is None or self._proc.poll() is not None):
-                if self._proc is not None:
+            if not self.dry:
+                if self._proc is not None and self._proc.poll() is not None:
                     err = self._proc.stderr.read().decode(errors="replace") if self._proc.stderr else ""
-                    self.last_error = err.strip()[-200:]
-                    self.errors += 1
-                    self.ok = False
-                    log.warning("audio output stopped: %s", self.last_error)
-                    self._close()
-                    time.sleep(1.0)
-                    self.device = find_card() or self.device
-                if not self._open():
-                    time.sleep(2.0)
-                    continue
-                written, start = 0, time.monotonic()
+                    self._restart(err.strip() or "aplay stopped")
+                elif self._proc is not None and now - self._card_checked > CARD_CHECK_S:
+                    self._card_checked = now
+                    identity = card_identity(self.device)
+                    if identity != self._identity:
+                        self._restart(f"the sound card reset ({self._identity} -> {identity})")
+                if self._proc is None and now >= retry_at:
+                    if self._open():
+                        log.info("audio output: %s", self.device)
+                        self._taken = now
+                        written, start = 0, now
+                    else:
+                        retry_at = now + 2.0
             ahead = written / RATE - (time.monotonic() - start)
             if ahead > LEAD_S:
                 time.sleep(min(ahead - LEAD_S, 0.02))
                 continue
             if ahead < -0.5:           # we fell behind (a hiccup): restart the clock
                 written, start = 0, time.monotonic()
+            # the sound is mixed on the clock even with no card: sentences end, and the house goes on
             chunk = self._mix()
-            if not self.dry:
-                try:
-                    self._proc.stdin.write((chunk * 32767).astype("<i2").tobytes())
-                except (BrokenPipeError, OSError, ValueError):
-                    continue
+            if self._proc is not None:
+                self._write((chunk * 32767).astype("<i2").tobytes(), time.monotonic())
             written += CHUNK

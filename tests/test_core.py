@@ -278,3 +278,56 @@ def test_phone_sets_the_clock_only_when_unknown():
     assert c.set(time.time() + 3600, "phone") and c.source == "phone"
     assert not c.set(time.time() - 3600, "phone")          # a second phone with another time: ignored
     assert c.set(time.time() + 120, "staff") and c.source == "staff"
+
+
+# ------------------------------------------------------------------ a sound card that resets by itself
+def test_a_reset_of_the_sound_card_is_noticed(tmp_path):
+    from domotiq.audio.output import card_identity
+    root = tmp_path / "asound"
+    (root / "card0").mkdir(parents=True)
+    (root / "cards").write_text(" 0 [Device         ]: USB-Audio - USB Audio Device\n")
+    (root / "card0" / "usbbus").write_text("001/009\n")
+    assert card_identity("plughw:CARD=Device,DEV=0", root) == "001/009"
+    (root / "card0" / "usbbus").write_text("001/010\n")          # it came back as a new USB device
+    assert card_identity("plughw:CARD=Device,DEV=0", root) == "001/010"
+    (root / "cards").write_text("")                             # gone
+    assert card_identity("plughw:CARD=Device,DEV=0", root) is None
+
+
+def test_a_stream_that_takes_no_sound_is_started_again():
+    import os
+    import subprocess
+
+    from domotiq.audio.output import STALL_S, Audio
+    audio = Audio(type("S", (), {"get": lambda self, k, d=None: d})(), device="plughw:CARD=X,DEV=0")
+    import fcntl
+
+    from domotiq.audio.output import F_SETPIPE_SZ
+    proc = subprocess.Popen(["sleep", "5"], stdin=subprocess.PIPE)   # alive, but never reads: stuck
+    fcntl.fcntl(proc.stdin.fileno(), F_SETPIPE_SZ, 4096)            # as the house opens it
+    os.set_blocking(proc.stdin.fileno(), False)
+    audio._proc, audio._taken = proc, 0.0
+    now = 0.0
+    while audio._proc is not None and now < 5:
+        audio._write(b"\0" * 882, now)
+        now += 0.02
+    assert audio._proc is None and audio.restarts == 1 and STALL_S <= now < STALL_S + 0.5
+    assert proc.poll() is not None                              # the stuck aplay was stopped
+
+
+def test_with_no_sound_card_the_sentences_still_end():
+    import asyncio
+
+    import numpy as np
+
+    from domotiq.audio.output import Audio
+    audio = Audio(type("S", (), {"get": lambda self, k, d=None: d})(), device="plughw:CARD=Gone,DEV=0")
+    audio._open = lambda: False                                 # the card is not there
+    audio.start()
+
+    async def say():
+        await asyncio.wait_for(audio.play_voice(np.zeros(2205, np.float32)), 2.0)   # a tenth of a second
+    try:
+        asyncio.run(say())
+    finally:
+        audio.stop()
