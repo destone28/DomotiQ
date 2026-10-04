@@ -229,6 +229,13 @@ export function toast(text, level = "info", ms = 4000) {
   const el = document.createElement("div");
   el.className = `toast ${level}`;
   el.textContent = text;
+  // a tap closes it before its time
+  const close = document.createElement("button");
+  close.className = "close";
+  close.textContent = "✕";
+  close.setAttribute("aria-label", t("common.close"));
+  el.appendChild(close);
+  el.onclick = () => el.remove();
   document.getElementById("toasts").appendChild(el);
   if (level === "alarm" && navigator.vibrate) { try { navigator.vibrate([200, 100, 200]); } catch (e) { /* ignore */ } }
   setTimeout(() => el.remove(), ms);
@@ -304,7 +311,8 @@ export function renderBanners() {
   let html = "";
   if (!store.online) html += `<div class="banner ask"><span class="grow">${t("status.offline")}</span></div>`;
   for (const a of s.alerts || []) {
-    html += `<div class="banner alarm"><span>⚠️</span><span class="grow">${esc(tr(a.name))}${a.who ? " — " + esc(a.who) : ""}${a.room ? " · " + esc(roomName(a.room)) : ""}</span></div>`;
+    html += `<div class="banner alarm"><span>⚠️</span><span class="grow">${esc(tr(a.name))}${a.who ? " — " + esc(a.who) : ""}${a.room ? " · " + esc(roomName(a.room)) : ""}</span>` +
+      `<button class="close" data-alert="${esc(a.key)}" aria-label="${esc(t("common.close"))}">✕</button></div>`;
   }
   for (const r of s.registrations || []) {
     if (r.origin !== "web" && r.status === "choose") {
@@ -324,6 +332,13 @@ export function renderBanners() {
   }
   el.innerHTML = html;
   el.querySelectorAll("button[data-reg]").forEach(b => { b.onclick = () => go("identities", { reg: b.dataset.reg }); });
+  // an alarm closed on one phone disappears on all of them
+  el.querySelectorAll("button[data-alert]").forEach(b => {
+    b.onclick = async () => {
+      b.closest(".banner").remove();
+      try { await api("POST", `/api/alerts/${encodeURIComponent(b.dataset.alert)}/dismiss`, {}); } catch (e) { /* gone already */ }
+    };
+  });
   el.querySelectorAll(".banner[data-cid] button").forEach(b => {
     b.onclick = async () => {
       const banner = b.closest(".banner");

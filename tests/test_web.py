@@ -180,3 +180,17 @@ def test_admin_command_line(tmp_path):
     s = Settings(Paths(var))
     assert s.check_pin("7777") and not s.check_pin("0000")
     assert s.get("network.password") == "una-password-lunga"
+
+
+def test_an_alarm_closed_on_a_phone_stays_closed_until_it_happens_again(web):
+    ctx, c = web
+    h = ctx.house
+    h.set_alert("r-utility", name={"it": "Locale tecnico riservato", "en": "Utility room reserved"})
+    assert [a["key"] for a in c.get("/api/state").json()["alerts"]] == ["r-utility"]
+    assert c.post("/api/alerts/r-utility/dismiss").json()["ok"]
+    assert c.get("/api/state").json()["alerts"] == []
+    h.set_alert("r-utility", name={"it": "Locale tecnico riservato", "en": "Utility room reserved"})
+    assert c.get("/api/state").json()["alerts"] == []        # still the same alarm: it stays closed
+    h.clear_alert("r-utility")                                # over
+    h.set_alert("r-utility", name={"it": "Locale tecnico riservato", "en": "Utility room reserved"})
+    assert len(c.get("/api/state").json()["alerts"]) == 1     # it happens again: shown again

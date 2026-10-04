@@ -69,6 +69,7 @@ class House:
         self.cars: dict[str, CarState] = {}
         self.alerts: dict[str, dict[str, Any]] = {}
         self.confirmations: dict[str, dict[str, Any]] = {}
+        self.dismissed_alerts: set[str] = set()
         self.status = {"mcu": False, "camera": False, "audio": False, "llm": False,
                        "simulation": False, "modules": {}}
         self._follow_off_at: dict[str, float] = {}
@@ -317,14 +318,26 @@ class House:
 
     # ================================================================ alerts, confirmations
     def set_alert(self, key: str, **data: Any) -> None:
+        if key in self.dismissed_alerts:
+            return                      # closed on a phone: not again until what caused it is over
         fresh = key not in self.alerts
         self.alerts[key] = {"key": key, "since": self.alerts.get(key, {}).get("since", time.time()), **data}
         if fresh:
             self._pub("alerts_changed", alerts=list(self.alerts.values()))
 
     def clear_alert(self, key: str) -> None:
+        self.dismissed_alerts.discard(key)
         if self.alerts.pop(key, None) is not None:
             self._pub("alerts_changed", alerts=list(self.alerts.values()))
+
+    def dismiss_alert(self, key: str) -> bool:
+        """Closed on a phone: it disappears everywhere, and comes back only once it has ended and happens
+        again."""
+        self.dismissed_alerts.add(key)
+        if self.alerts.pop(key, None) is None:
+            return False
+        self._pub("alerts_changed", alerts=list(self.alerts.values()))
+        return True
 
     def ask(self, question: dict[str, str], options: list[dict[str, Any]],
             context: dict[str, Any] | None = None, timeout_s: float = 60.0, allow_name: bool = False) -> str:

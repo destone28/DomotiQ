@@ -174,6 +174,9 @@ input[type=color] { width: 56px; height: 40px; border: 1px solid var(--line); bo
 .toasts { position: fixed; left: 12px; right: 12px; bottom: calc(var(--nav-h) + 12px + env(safe-area-inset-bottom)); z-index: 30; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
 .toast { background: var(--text); color: var(--bg); border-radius: 12px; padding: 10px 14px; max-width: 520px; box-shadow: var(--shadow); pointer-events: auto; font-weight: 600; }
 .toast.alarm { background: var(--danger); color: #fff; }
+.toast { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.toast .close, .banner .close { background: transparent; border: 0; color: inherit; font: inherit; font-weight: 700; padding: 4px 8px; margin-left: auto; cursor: pointer; }
+.banner.alarm .close { background: rgba(255,255,255,.2); border-radius: 10px; }
 .toast.warning { background: var(--warning); color: #231a00; }
 .toast.success { background: var(--success); color: #fff; }
 

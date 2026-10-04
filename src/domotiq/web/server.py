@@ -465,6 +465,11 @@ def create_app(ctx: "Context") -> FastAPI:
             raise HTTPException(404, "already answered")
         return {"ok": True}
 
+    @app.post("/api/alerts/{key}/dismiss")
+    async def dismiss_alert(key: str):
+        ctx.house.dismiss_alert(key)
+        return {"ok": True}
+
     # ============================================================ commands
     @app.post("/api/commands/{name}")
     async def command(name: str, request: Request, w: Who = Depends(who)):
