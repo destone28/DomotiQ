@@ -27,6 +27,7 @@ export function mount(root) {
       </div>
       <p class="muted small" id="status"></p>
     </div>
+    <div class="loading" id="loading" hidden><div class="box"><div class="spinner"></div><p id="loading-text"></p></div></div>
     <h2>${t("cal.dataset")}</h2>
     <div class="card grid2">
       <button class="btn" id="cap">${t("cal.capture")}</button>
@@ -71,25 +72,33 @@ export function mount(root) {
   };
   $("#undo").onclick = () => { corners.pop(); marks(); };
   $("#ov").onchange = (e) => { overlay = e.target.checked; load(); };
+  // while the house works the page says so, and nothing can be pressed twice
+  const WORKING = { corners: "cal.working_corners", adjust: "cal.working", empty: "cal.working_empty",
+    capture: "cal.working_capture", record: "cal.working_record" };
+  let busy = false;
   const cmd = async (name, body) => {
+    if (busy) return null;
+    busy = true;
+    $("#loading-text").textContent = t(WORKING[name] || "cal.working_generic");
+    $("#loading").hidden = false;
+    root.querySelectorAll("button").forEach(b => { b.disabled = true; });
     try {
       const r = await api("POST", `/api/staff/vision/${name}`, body || {});
       const msg = (lang() === "en" && r.message_en) || r.message;
       $("#status").textContent = msg || (r.ok ? "OK" : (r.error || ""));
-      if (!r.ok && r.error) toast(r.error, "warning");
+      if (r.ok) toast(msg || t("common.done"), "success");
+      else if (r.error) toast(r.error, "warning");
       load();
       return r;
-    } catch (e) { toast(e.message, "alarm"); return null; }
-  };
-  // the light of the webcam and the empty house go together: right after the corners, and on request
-  const adjust = async () => {
-    $("#status").textContent = t("cal.working");
-    root.querySelectorAll("button").forEach(b => { b.disabled = true; });
-    try { return await cmd("adjust"); } finally {
+    } catch (e) { toast(e.message, "alarm"); return null; } finally {
+      busy = false;
+      $("#loading").hidden = true;
       root.querySelectorAll("button").forEach(b => { b.disabled = false; });
       marks();
     }
   };
+  // the light of the webcam and the empty house go together: right after the corners, and on request
+  const adjust = () => cmd("adjust");
   $("#use").onclick = async () => {
     const r = await cmd("corners", { points: corners.map(p => [p.u, p.v]) });
     if (r && r.ok) { corners.length = 0; marks(); await adjust(); }

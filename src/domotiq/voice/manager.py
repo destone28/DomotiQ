@@ -33,7 +33,8 @@ from ..identities import NameTaken
 from ..model import CATEGORY_NAMES
 from ..scenes import scene_name
 from . import answers, memory
-from .chatter import WELCOME, Chatter
+from .chatter import NAME_CONFIDENCE, WELCOME, Chatter, yes_no_grammar, yes_or_no
+from .narrator import Narrator
 from .stories import StoryTeller
 from .intents import Intent, find_name, find_room, name_from_speech, normalize, parse
 from .llm import LanguageModel
@@ -80,7 +81,8 @@ class Voice:
         self._talk_task: asyncio.Task | None = None
         self.expect_entrance: dict[str, Any] | None = None   # a name waiting for the front door
         self.question: dict[str, Any] | None = None           # a confirmation asked aloud
-        self._last_comment = 0.0
+        self._asking: asyncio.Task | None = None               # asking it and listening for the answer
+        self._asking_stop: dict[str, asyncio.Event] = {}       # confirmation -> stop listening (answered)
         self._last_proposal = 0.0
         self.last_chatter = float("-inf")      # monotonic: the last chatty line, comment or question
         self.in_flight = 0                     # sentences being synthesized or played now
@@ -94,6 +96,7 @@ class Voice:
         bus.subscribe("registered", self._on_registered)
         bus.subscribe("count_changed", self._on_count)
         self.chatter = Chatter(self)
+        self.narrator = Narrator(self)
         self.stories = StoryTeller(self)
         # a story in one language stops when the house changes language, rather than go on in the old one
         bus.subscribe("language", lambda ev: self._spawn(self.stories.preempt()) if self.stories.active else None)
@@ -105,6 +108,7 @@ class Voice:
 
     async def start(self) -> None:
         self._spawn(self._background())
+        self._spawn(self.narrator.run())
 
     async def stop(self) -> None:
         for t in list(self._tasks):
@@ -248,6 +252,7 @@ class Voice:
                 self.ctx.audio.stop_voice()
             await self.chatter.preempt()              # Talk comes before the small talk
             await self.stories.preempt()
+            await self._preempt_asking()              # the question stays open: Talk can answer it
             self._talk_stop = asyncio.Event()
             self._talk_task = self._spawn(self._talk(self._talk_stop))
         elif self._talk_stop is not None:
@@ -560,7 +565,6 @@ class Voice:
 
     def _on_room_enter(self, ev) -> None:
         self._maybe_assign(ev, "room_enter")
-        self._comment(ev)
 
     def _maybe_assign(self, ev, kind: str) -> None:
         exp = self.expect_entrance
@@ -604,13 +608,77 @@ class Voice:
 
     # ================================================================ questions of the house
     def _on_confirm(self, ev) -> None:
-        self.question = {"id": ev.get("id"), "options": ev.get("options") or []}
-        q = ev.get("question") or {}
-        self._spawn(self.ctx.actions.say(q))
+        self.question = {"id": ev.get("id"), "options": ev.get("options") or [],
+                         "allow_name": bool(ev.get("allow_name"))}
+        self._asking = self._spawn(self._ask_aloud(dict(ev.data)))
 
     def _on_confirm_closed(self, ev) -> None:
+        stop = self._asking_stop.pop(ev.get("id"), None)
+        if stop is not None:
+            stop.set()                                # answered on a phone: no need to listen any more
         if self.question and self.question["id"] == ev.get("id"):
             self.question = None
+
+    async def _preempt_asking(self) -> None:
+        task = self._asking
+        if task is not None and not task.done() and task is not asyncio.current_task():
+            task.cancel()
+            await asyncio.wait({task}, timeout=2.0)
+
+    async def _ask_aloud(self, ev: dict[str, Any]) -> None:
+        """Say a question of the house and wait for the answer aloud, with no need to press Talk; a phone may
+        answer meanwhile, and the first answer wins."""
+        cid = ev.get("id")
+        house = self.ctx.house
+        stop = self._asking_stop.setdefault(cid, asyncio.Event())
+        try:
+            await self.chatter.preempt()
+            async with self.busy:
+                if cid not in house.confirmations:
+                    return
+                await self.ctx.actions.say(ev.get("question") or {})
+                if not self.ctx.actions.speaks("normal") or not (self.listener and self.listener.ok) \
+                        or not self.mic.available:
+                    return                            # silent mode or no microphone: the phones answer
+                labels = [((o.get("label") or {}).get(self.lang) or "") for o in ev.get("options") or []]
+                grammar = [w for w in labels if w] + yes_no_grammar(self.lang)
+                for attempt in range(2):
+                    text, conf, _, spoke = await self.chatter._listen(grammar, stop=stop, max_s=6.0)
+                    if cid not in house.confirmations:
+                        return                        # answered on a phone meanwhile
+                    if spoke or not text:
+                        if attempt == 0 and not spoke:
+                            continue
+                        return
+                    if await self._answer_question(text, {"id": cid, "options": ev.get("options") or []}):
+                        return
+                    if ev.get("allow_name") and await self._new_name(cid, text, conf, stop):
+                        return
+                    if attempt == 0:
+                        await self.reply("Non ho capito: puoi ripetere?", "Sorry, could you say that again?")
+        finally:
+            self._asking_stop.pop(cid, None)
+
+    async def _new_name(self, cid: str, text: str, conf: float, stop: asyncio.Event) -> bool:
+        """The answer to "who is it?" is a name the house does not know yet: check it, then use it."""
+        candidate = name_from_speech(text)
+        if conf < NAME_CONFIDENCE or len(candidate) < 2:
+            return False
+        await self.reply(f"Si chiama {candidate}, giusto?", f"The name is {candidate}, right?")
+        verdict = None
+        for attempt in range(2):
+            answer, _, _, spoke = await self.chatter._listen(yes_no_grammar(self.lang), stop=stop, max_s=5.0)
+            if cid not in self.ctx.house.confirmations:
+                return True
+            verdict = None if spoke else yes_or_no(answer, self.lang, strict=True)
+            if verdict is not None or attempt:
+                break
+            await self.reply(f"Dimmi sì o no: si chiama {candidate}?", f"Say yes or no: is the name {candidate}?")
+        if not verdict:
+            return False
+        if self.ctx.house.answer(cid, {"name": candidate}, by="voice"):
+            await self.reply(f"Piacere, {candidate}!", f"Nice to meet you, {candidate}!")
+        return True
 
     def _question_grammar(self) -> list[str]:
         words = []
@@ -619,32 +687,21 @@ class Voice:
             words.append(label.get(self.lang) or label.get("it") or "")
         return [w for w in words if w] + YES[self.lang] + NO[self.lang]
 
-    async def _answer_question(self, text: str) -> bool:
-        q = self.question
-        t = normalize(text)
+    async def _answer_question(self, text: str, q: dict[str, Any] | None = None) -> bool:
+        q = q or self.question
+        if not q:
+            return False
+        t = f" {normalize(text)} "
         for o in q["options"]:
             label = o.get("label") or {}
             for word in label.values():
-                if word and normalize(word) in t:
-                    self.ctx.house.answer(q["id"], o.get("value"), by="voice")
-                    await self.reply("Grazie!", "Thanks!")
+                if word and f" {normalize(word)} " in t:
+                    if self.ctx.house.answer(q["id"], o.get("value"), by="voice"):
+                        await self.reply("Grazie!", "Thanks!")
                     return True
         return False
 
     # ================================================================ chatty mode
-    def _comment(self, ev) -> None:
-        if self.ctx.settings.get("voice.verbosity") != "chatty" or ev.get("category") != "person":
-            return
-        name = ev.get("name")
-        now = time.time()
-        if not name or now - self._last_comment < 20 or self.busy.locked():
-            return
-        self._last_comment = now
-        self.last_chatter = time.monotonic()
-        where = answers.room(self.ctx, ev.get("room"), "it")
-        where_en = answers.room(self.ctx, ev.get("room"), "en")
-        self._spawn(self.ctx.actions.say({"it": f"{name} è {where}.", "en": f"{name} is {where_en}."}, level="chatty"))
-
     def _on_count(self, ev) -> None:
         if self.ctx.settings.get("voice.verbosity") != "chatty":
             return

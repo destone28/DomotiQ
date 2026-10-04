@@ -244,8 +244,9 @@ def test_no_question_while_the_house_is_busy_or_nobody_is_around(ctx):
     async def scenario():
         ch = ctx.voice.chatter
         ctx.settings.set("voice.verbosity", "chatty")
-        place(ctx, "Marco", KITCHEN)                # "Marco è in cucina": no question for 20 s
+        place(ctx, "Marco", KITCHEN)
         now = time.monotonic()
+        ctx.voice.last_chatter = now                # "Ecco Marco in cucina!": no question for 20 s
         assert not ch._ready(now)
         ctx.voice.last_chatter = now - 21
         assert ch._ready(now)

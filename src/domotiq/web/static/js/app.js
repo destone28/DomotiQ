@@ -314,17 +314,32 @@ export function renderBanners() {
   }
   for (const c of s.confirmations || []) {
     html += `<div class="banner ask" data-cid="${c.id}"><span class="grow">${esc(tr(c.question))}</span>` +
-      c.options.map((o, i) => `<button data-i="${i}">${esc(tr(o.label))}</button>`).join("") + `</div>`;
+      c.options.map((o, i) => `<button data-i="${i}">${esc(tr(o.label))}</button>`).join("") +
+      (c.allow_name ? `<input class="newname" maxlength="40" placeholder="${esc(t("ask.new_name"))}">` +
+        `<button data-new="1">${esc(t("ask.add"))}</button>` : "") + `</div>`;
   }
   el.innerHTML = html;
   el.querySelectorAll("button[data-reg]").forEach(b => { b.onclick = () => go("identities", { reg: b.dataset.reg }); });
   el.querySelectorAll(".banner[data-cid] button").forEach(b => {
     b.onclick = async () => {
-      const cid = b.closest(".banner").dataset.cid;
+      const banner = b.closest(".banner");
+      const cid = banner.dataset.cid;
       const c = s.confirmations.find(x => x.id === cid);
       if (!c) return;
-      try { await api("POST", `/api/confirm/${cid}`, { value: c.options[+b.dataset.i].value }); } catch (e) { /* answered elsewhere */ }
+      let value;
+      if (b.dataset.new) {
+        const name = banner.querySelector(".newname").value.trim();
+        if (!name) return;
+        value = { name };
+      } else {
+        value = c.options[+b.dataset.i].value;
+      }
+      // the first answer wins, aloud or from any phone: a late one is simply ignored
+      try { await api("POST", `/api/confirm/${cid}`, { value }); } catch (e) { /* answered elsewhere */ }
     };
+  });
+  el.querySelectorAll(".banner input.newname").forEach(inp => {
+    inp.onkeydown = (e) => { if (e.key === "Enter") inp.closest(".banner").querySelector("button[data-new]").click(); };
   });
 }
 

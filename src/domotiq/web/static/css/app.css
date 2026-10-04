@@ -243,3 +243,14 @@ svg.plan { width: 100%; height: auto; display: block; touch-action: none; user-s
 .hold { user-select: none; -webkit-user-select: none; }
 .empty { text-align: center; color: var(--muted); padding: 24px 8px; }
 .warn-text { margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--warning) 18%, transparent); }
+
+/* an operation of the house in progress (calibration, light): nothing else can be pressed meanwhile */
+.loading { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.45); }
+.loading[hidden] { display: none; }
+.loading .box { background: var(--surface); color: var(--text); border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 22px 24px; max-width: 320px; margin: 16px; text-align: center; font-weight: 600; }
+.spinner { width: 44px; height: 44px; margin: 0 auto 14px; border-radius: 50%;
+  border: 4px solid rgba(127,127,127,.25); border-top-color: var(--primary); animation: spin .9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.banner input.newname { flex: 1 1 140px; min-width: 0; border: 0; border-radius: 10px; padding: 8px 10px; font: inherit; }

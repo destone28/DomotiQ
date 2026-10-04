@@ -45,7 +45,7 @@ CARRIED_MAX_S = 120.0       # carried this long, hands or not: dropped
 ID_ACCEPT = 0.30            # colour distance under which an identity is recognized
 ID_MARGIN = 0.07            # the second best must be this much worse
 CONFIRM_FRAMES = 2          # frames of agreement before an identity is given
-UNKNOWN_ASK_S = 2.0         # in sight this long and recognized as nobody: the house asks who it is
+UNKNOWN_ASK_S = 1.0         # in sight this long and recognized as nobody: the house asks who it is
 NEW_S, NEW_HITS = 1.0, 6    # something new is told to the house once it has stood this long: a reflection
                             # of the arm that has just left lasts less
 
@@ -73,7 +73,8 @@ class VTrack:
     vy: float = 0.0
     moving: bool = False
     history: list[tuple[float, float, float]] = field(default_factory=list)
-    asked: float = float("-inf")
+    asked: float = float("-inf")          # when the house last asked about two look-alikes
+    asked_new: float = float("-inf")      # when it asked who this newcomer is
 
     def to_track(self, layout, previous_room: str | None) -> Track:
         room = layout.locate(self.x, self.y, previous_room)
@@ -328,6 +329,14 @@ class Tracker:
             if not ambiguous:
                 t.uncertain, t.candidates = False, []
 
+    def adopt(self, o: Observation, now: float) -> None:
+        """A new track for something that stands out and stays, though no hand was seen putting it down."""
+        t = VTrack(new_id("t"), *self._position(o, o.category_guess), o, o.sig, o.category_guess,
+                   last_seen=now, since=now)
+        self.tracks[t.id] = t
+        self._apply(t, o, now)
+        o.extra["track"] = t.id
+
     def _ask_unknown(self, now: float) -> None:
         """In sight for a while and recognized as nobody: ask who it is. The registered characters that are
         not in the house are proposed, closest colours first, then those whose colours the house has not
@@ -336,21 +345,21 @@ class Tracker:
             return
         held = {t.identity for t in self.tracks.values() if t.identity}
         free = [i for i in self.identities.values() if i.id not in held]
-        if not free:
-            return
         for t in self.tracks.values():
-            if t.identity or t.obs is None or t.carried or t.asked >= t.since or now - t.since < UNKNOWN_ASK_S \
-                    or t.hits < 8:
+            if t.identity or t.obs is None or t.carried or t.asked_new >= t.since or now - t.since < UNKNOWN_ASK_S \
+                    or t.hits < NEW_HITS:
                 continue
             if any(v > 0 for v in t.votes.values()):
                 continue                       # being recognized right now
-            car = t.obs.area_mm2 > 6000
-            fit = [i for i in free if (i.category == CAR) == car]
+            # proposed by kind: cars for a car, objects for an object, characters for a character (a name
+            # can always be said or typed instead)
+            kind = CAR if t.obs.area_mm2 > 6000 or t.category == CAR else OBJECT if t.category == OBJECT else PERSON
+            fit = [i for i in free if (CAR if i.category == CAR else OBJECT if i.category == OBJECT else PERSON) == kind]
             trained = sorted((i for i in fit if len(i.signature)), key=lambda i: distance(t.sig, i.signature))
             cands = [i.id for i in trained[:3] + [i for i in fit if not len(i.signature)]][:4]
-            if cands:
-                t.asked = now
-                self.on_question(t, cands)
+            # asked even with no candidate: the answer may be a new name
+            t.asked_new = now
+            self.on_question(t, cands)
 
     # ------------------------------------------------------------ queries
     def track(self, track_id: str) -> VTrack | None:

@@ -52,6 +52,11 @@ LIGHT_FREEZE_S = 4.0     # ...the house waits this long for the light to be meas
 GHOST_FRAMES = 25        # a change explained by nothing for this many frames joins the empty house
 LIGHT_BLOCK_S = 2.5      # after the house changes the light of a room, its glow on walls and floor is no presence
 SCAN_CHROMA, SCAN_DARKER = 10.0, 8.0   # at a start, only what clearly stands out: another colour, or darker
+HAND_STILL_S = 8.0       # a "hand" that does not move for this long is something lying on the edge of the base
+LATE_S = 2.0             # something that clearly stands out and stays this long, within LATE_WINDOW_S of a
+LATE_WINDOW_S = 20.0     # hand, is a presence even if the house was waiting when it was put down
+MIN_FLOOR = 0.35         # share of a new thing seen over floor or furniture: a reflection on a wall has none
+EDGE_MM, EDGE_MM2 = 12.0, 600.0   # small things right on the edge of the base are cables and sleeves
 COCO_CLASSES = ["person", "dog", "cat", "animal", "car", "object"]
 
 
@@ -93,6 +98,7 @@ class Engine:
         self.absorbed = 0
         self._light_block: dict[str, float] = {}  # room -> until when a change of its light hides births
         self._clipped_since = 0.0                  # since when the light is beyond what the rooms can correct
+        self._hand_since: np.ndarray | None = None # since when each pixel has been part of a hand (0: not)
         # before the calibration the house does not know where the bathroom is: it assumes the
         # camera is mounted as in the model, with a wide margin
         self._nominal_privacy = Privacy(layout, Calibration.synthetic(*ANALYSIS, layout.camera), margin_mm=45.0)
@@ -114,10 +120,20 @@ class Engine:
         for room in rooms:
             self._light_block[room] = now + LIGHT_BLOCK_S
 
+    def _plausible(self, o: Observation, now: float) -> bool:
+        """Could this be something standing in the house (whatever put it there)?"""
+        if o.extra.get("floor", 1.0) < MIN_FLOOR:
+            return False                      # all on a wall: a reflection
+        b = self.layout.base
+        cx, cy = o.centroid_mm
+        if min(cx - b.x0, b.x1 - cx, cy - b.y0, b.y1 - cy) < EDGE_MM and o.area_mm2 < EDGE_MM2:
+            return False
+        room = self.layout.locate(cx, cy)
+        return self._light_block.get(room or "", 0.0) <= now
+
     def _may_be_born(self, o: Observation, scan: bool, births_open: bool, now: float) -> bool:
         x, y, w, h = o.bbox
-        room = self.layout.locate(*o.centroid_mm)
-        if self._light_block.get(room or "", 0.0) > now:
+        if not self._plausible(o, now):
             return False
         if scan:
             # at a start the empty house may be old (other lights on, the hall light changed): only what
@@ -246,6 +262,7 @@ class Engine:
             self._scan_pending, self._scan_until = False, now + SCAN_S
         seg = self.segmenter
         obs, fg, _lab = seg.process(small, now)
+        self._still_hands(small, obs, now)
         hands = seg.hand_mask if seg.hand_mask is not None else np.zeros(fg.shape, bool)
         active = bool(hands.any())
         if active:
@@ -296,7 +313,10 @@ class Engine:
         if relearn:
             self._relearn(small, fg, obs)
         else:
-            self._absorb_ghosts(small, fg, obs, hands, frozen or scan or share > 0.35)
+            # figurines put down while the house waited are looked for, but not while the whole picture is
+            # changing (a covered camera, the hall light)
+            steady = not light_event and share <= 0.35 and 0.33 < ratio < 3.0
+            self._absorb_ghosts(small, fg, obs, hands, frozen or scan or share > 0.35, now, steady)
         # the hall light drifts slowly: follow it on the free floor, when nothing moves
         if now - self._last_ref_update > 5.0 and not frozen and not any(o.hand for o in obs):
             self._last_ref_update = now
@@ -308,10 +328,57 @@ class Engine:
         self.proc_ms = 0.9 * self.proc_ms + 0.1 * (time.perf_counter() - t0) * 1000.0
         return self.tracks
 
+    def _still_hands(self, small: np.ndarray, obs: list[Observation], now: float) -> None:
+        """A hand moves: a "hand" that stays exactly where it is for HAND_STILL_S is a module or a cable lying
+        on the edge of the base. It is no hand, and it becomes part of the empty house."""
+        seg = self.segmenter
+        labels = seg.labels
+        hand_labels = [o.extra["label"] for o in obs if o.hand]
+        if labels is None:
+            return
+        if self._hand_since is None or self._hand_since.shape != labels.shape:
+            self._hand_since = np.zeros(labels.shape, np.float64)
+        since = self._hand_since
+        if not hand_labels:
+            since[:] = 0.0
+            return
+        lut = np.zeros(int(labels.max()) + 1, bool)
+        lut[hand_labels] = True
+        raw = lut[labels]
+        since[raw & (since == 0.0)] = now
+        since[~raw] = 0.0
+        still = []
+        for o in obs:
+            if not o.hand:
+                continue
+            x, y, w, h = o.bbox
+            blob = labels[y:y + h, x:x + w] == o.extra["label"]
+            t0 = since[y:y + h, x:x + w][blob]
+            if len(t0) and float(np.mean((t0 > 0) & (now - t0 >= HAND_STILL_S))) > 0.9:
+                still.append(o)
+        if not still:
+            return
+        absorb = np.zeros(labels.shape, bool)
+        for o in still:
+            o.hand = False
+            absorb |= labels == o.extra["label"]
+        seg.absorb(small, cv2.dilate(absorb.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0)
+        since[absorb] = 0.0
+        self.absorbed += 1
+        left = [o.extra["label"] for o in obs if o.hand]
+        seg.hand_mask = (cv2.dilate(np.isin(labels, left).astype(np.uint8), np.ones((15, 15), np.uint8)) > 0) \
+            if left else np.zeros(labels.shape, bool)
+        for o in still:
+            obs.remove(o)                     # part of the empty house now
+        if self._zone is not None:
+            self._zone &= ~absorb
+
     def _absorb_ghosts(self, small: np.ndarray, fg: np.ndarray, obs: list[Observation], hands: np.ndarray,
-                       frozen: bool) -> None:
+                       frozen: bool, now: float = 0.0, steady: bool = True) -> None:
         """What differs from the empty house with no track, no hand and no recent hand to explain it,
-        for GHOST_FRAMES frames in a row, becomes part of the empty house."""
+        for GHOST_FRAMES frames in a row, becomes part of the empty house. Unless it clearly stands out and
+        a hand was around not long ago: then it is a figurine put down while the house was waiting, and it
+        gets a track (LATE_S)."""
         seg = self.segmenter
         if self._ghost is None or self._ghost.shape != fg.shape:
             self._ghost = np.zeros(fg.shape, np.uint16)
@@ -328,6 +395,19 @@ class Engine:
         g = self._ghost
         np.add(g, 1, out=g, where=unexplained & (g < 60000))
         g[~unexplained] = 0
+        late = max(3, int(round(LATE_S * max(self.fps, 1.0))))
+        if steady and now - self._hand_at < LATE_WINDOW_S and seg.labels is not None:
+            for o in obs:
+                if o.hand or o.extra.get("track") or not 150 <= o.area_mm2 <= 20000:
+                    continue
+                chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
+                if (chroma_d < SCAN_CHROMA and light_d > -SCAN_DARKER) or not self._plausible(o, now):
+                    continue
+                x, y, w, h = o.bbox
+                blob = seg.labels[y:y + h, x:x + w] == o.extra["label"]
+                if float(np.median(g[y:y + h, x:x + w][blob])) >= late:
+                    self.tracker.adopt(o, now)
+                    g[y:y + h, x:x + w][blob] = 0
         if frozen:
             return
         ripe = g >= GHOST_FRAMES

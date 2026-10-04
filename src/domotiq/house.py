@@ -327,10 +327,13 @@ class House:
             self._pub("alerts_changed", alerts=list(self.alerts.values()))
 
     def ask(self, question: dict[str, str], options: list[dict[str, Any]],
-            context: dict[str, Any] | None = None, timeout_s: float = 60.0) -> str:
+            context: dict[str, Any] | None = None, timeout_s: float = 60.0, allow_name: bool = False) -> str:
+        """A question to the visitors, aloud and on the phones: the first answer wins, from either. With
+        `allow_name` the answer may also be a new name ({"name": ...})."""
         cid = new_id("ask")
         self.confirmations[cid] = {"id": cid, "question": question, "options": options,
-                                   "context": context or {}, "expires": time.time() + timeout_s}
+                                   "context": context or {}, "expires": time.time() + timeout_s,
+                                   "allow_name": allow_name}
         self._pub("confirm", **self.confirmations[cid])
         return cid
 

@@ -465,3 +465,14 @@ def test_the_colour_gains_are_applied_to_every_picture():
     assert cv2.LUT(frame, cam._lut)[0, 0].tolist() == [100, 100, 100]
     cam.set_balance([1.0, 1.0, 1.0])
     assert cam._lut is None
+
+
+def test_something_lying_on_the_edge_is_not_a_hand_for_ever(engine, renderer):
+    settle(engine, renderer, [], 0)
+    cable = Hand(300, 20)                                    # something still across the edge, as big as an arm
+    red = Thing(300, 100, "#d03030")
+    seen = [engine.feed(renderer.render([], hands=[cable]), 5 + i * 0.1) for i in range(40)]
+    assert engine.status()["hand"] and not any(seen)        # a hand, at first: the house waits
+    tracks = run(engine, renderer, [([red], {"hands": [cable]})] * 120, t0=9)
+    assert not engine.status()["hand"]                      # still for 8 s: part of the empty house
+    assert len(tracks) == 1 and tracks[0].room == "living"  # and the figurine put down meanwhile is seen

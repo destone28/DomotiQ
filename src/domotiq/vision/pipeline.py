@@ -107,7 +107,7 @@ class Segmenter:
         # measured on casa1 in the dim light of the lab: a dark brown figurine on the grey floor is 14 points
         # darker and 8.5 apart in colour, the empty house stays well below these. What differs with no hand
         # around never becomes a presence (engine), so the comparison can be this sensitive.
-        self.params = {"dc": 8.0, "dl": 12.0, "shadow_dc": 4.0, "min_px": 120, "hand_mm2": 3500.0}
+        self.params = {"dc": 8.0, "dl": 12.0, "shadow_dc": 4.0, "min_px": 120, "hand_mm2": 2500.0}
         self.labels: np.ndarray | None = None          # the blobs of the last frame, by number
         self.hand_mask: np.ndarray | None = None       # where the hands of the last frame are
         self.scene = StaticScene(layout, calib)
@@ -142,6 +142,11 @@ class Segmenter:
             pts = circle_pts(shape.cx, shape.cy, shape.r) if isinstance(shape, Circle) \
                 else rect_pts([shape.x0, shape.x1, shape.y0, shape.y1])
             polys.append(self._raised_hull(pts, h0, h1))
+        # the intercom totem: the LEDs of its buttons go on and off, and visitors' hands are on it
+        for f in lay.raw.get("furniture", []):
+            if f["id"] == "totem" and "rect" in f:
+                x0, x1, y0, y1 = f["rect"]
+                polys.append(self._raised_hull(rect_pts([x0 - 4, x1 + 4, y0 - 4, y1 + 4]), 0.0, float(f["height"]) + 15))
         excluded = cv2.dilate(self._poly_mask(polys), np.ones((5, 5), np.uint8))
         walls = (scene.kind == StaticScene.KINDS["wall"]) | (scene.kind == StaticScene.KINDS["fence"])
         wall_tops = (walls & scene.top).astype(np.uint8) * 255
@@ -377,7 +382,8 @@ class Segmenter:
             on_rim = blob & self.rim[y:y + h, x:x + w]
             rim_px = int(on_rim.sum())
             at_gate = rim_px > 0 and int((on_rim & self.gate[y:y + h, x:x + w]).sum()) > 0.8 * rim_px
-            hand = bool((rim_px >= 6 or border) and area_mm2 > 1500 and not at_gate)
+            # an arm crossing the edge of the base is big: a module or a cable lying on the edge is not
+            hand = bool((rim_px >= 6 or border) and area_mm2 > self.params["hand_mm2"] and not at_gate)
             sub = lab[y:y + h, x:x + w][blob].astype(np.float32)
             if lab.dtype == np.uint8:                   # back to the usual Lab units
                 sub[:, 0] *= 100.0 / 255.0
@@ -411,6 +417,10 @@ class Segmenter:
                             border, hand, int(area), h_est, guess)
             o.extra["label"] = i
             o.extra["contrast"] = (chroma_d, light_d)
+            # how much of it is seen over the floor or the furniture: something standing in the house always
+            # hides some floor, a reflection on a wall is all on the wall
+            kinds = self.scene.kind[y:y + h, x:x + w][blob]
+            o.extra["floor"] = float(np.mean((kinds == StaticScene.KINDS["floor"]) | (kinds == StaticScene.KINDS["furniture"])))
             obs.append(o)
         self.hand_mask = self._join_hands(obs, labels)
         return obs

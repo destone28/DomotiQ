@@ -28,9 +28,10 @@ from .auth import StaffAuth
 from .bus import Bus, Event
 from .clock import HouseClock
 from .house import House
-from .identities import Identities
+from .identities import Identities, clean_name
 from .layout import Layout
 from .lights import LightController
+from .model import CATEGORIES
 from .mcu import Mcu, RouterClient, SimulatedMcu
 from .registration import Registration
 from .rules import RuleEngine
@@ -156,6 +157,18 @@ def _wire(ctx: Context) -> None:
     _wire_vision(ctx)
 
 
+# a newcomer of each kind: (it, en) noun, question with names, question without names
+NEWCOMER = {
+    "person": ("una persona nuova", "a new person", "chi è?", "who is it?", "come si chiama?", "what's the name?"),
+    "dog": ("un cane nuovo", "a new dog", "chi è?", "who is it?", "come si chiama?", "what's the name?"),
+    "cat": ("un gatto nuovo", "a new cat", "chi è?", "who is it?", "come si chiama?", "what's the name?"),
+    "animal": ("un animale nuovo", "a new animal", "chi è?", "who is it?", "come si chiama?", "what's the name?"),
+    "car": ("un'auto nuova", "a new car", "che auto è?", "which car is it?", "come la chiamo?", "what shall I call it?"),
+    "object": ("qualcosa di nuovo", "something new", "che cos'è?", "what is it?", "come lo chiamo?",
+               "what shall I call it?"),
+}
+
+
 def _wire_vision(ctx: Context) -> None:
     """Questions of the vision about who is who, and the lights it must know about."""
     bus = ctx.bus
@@ -165,11 +178,11 @@ def _wire_vision(ctx: Context) -> None:
             "vision_question", track=track.to_dict(), candidates=list(cands))
 
     def ask_who(ev: Event) -> None:
-        from .voice.answers import room as room_phrase
+        from .voice.answers import join, room as room_phrase
         track = ev.get("track") or {}
         cands = [c for c in ev.get("candidates") or [] if ctx.identities.get(c)]
         unknown = not track.get("identity")          # recognized as nobody, rather than as two look-alikes
-        if not track.get("id") or not cands or (not unknown and len(cands) < 2):
+        if not track.get("id") or (not unknown and len(cands) < 2):
             return
         if any(c["context"].get("kind") == "who" and c["context"].get("track") == track["id"]
                for c in ctx.house.confirmations.values()):
@@ -182,23 +195,46 @@ def _wire_vision(ctx: Context) -> None:
         where_it = room_phrase(ctx, track.get("room"), "it")
         where_en = room_phrase(ctx, track.get("room"), "en")
         options = [{"value": c, "label": {"it": n, "en": n}} for c, n in zip(cands, names)]
-        if unknown and len(names) == 1:
-            question = {"it": f"C'è qualcuno di nuovo {where_it}: è {names[0]}?",
-                        "en": f"Someone new {where_en}: is it {names[0]}?"}
-            options.append({"value": "", "label": {"it": "No", "en": "No"}})
-        elif unknown:
-            question = {"it": f"Chi c'è adesso {where_it}? {' o '.join(names)}?",
-                        "en": f"Who is that {where_en}? {' or '.join(names)}?"}
-            options.append({"value": "", "label": {"it": "Nessuno di questi", "en": "None of these"}})
+        category = track.get("category") or "object"
+        if unknown:
+            # a newcomer: who it is, among the registered characters not in the house, or a new name
+            noun = NEWCOMER.get(category, NEWCOMER["object"])
+            if names:
+                ask_it, ask_en = noun[2] + " " + join(names, "it").replace(" e ", " o ") + "?", \
+                    noun[3] + " " + join(names, "en").replace(" and ", " or ") + "?"
+                options.append({"value": "", "label": {"it": "Nessuno di questi", "en": "None of these"}})
+            else:
+                ask_it, ask_en = noun[4], noun[5]
+            question = {"it": f"C'è {noun[0]} {where_it}: {ask_it}", "en": f"There's {noun[1]} {where_en}: {ask_en}"}
         else:
             question = {"it": f"{where_it[0].upper()}{where_it[1:]} c'è {' o '.join(names)}?",
                         "en": f"Is it {' or '.join(names)} {where_en}?"}
-        ctx.house.ask(question, options, {"kind": "who", "track": track["id"]}, timeout_s=60)
+        ctx.house.ask(question, options, {"kind": "who", "track": track["id"], "category": category,
+                                          "color": track.get("color")},
+                      timeout_s=120, allow_name=unknown)
 
     def answered(ev: Event) -> None:
         c = ev.get("context") or {}
-        if c.get("kind") == "who" and ev.get("value"):
-            ctx.vision.assign(c["track"], ev.get("value"))
+        value = ev.get("value")
+        if c.get("kind") != "who" or not value:
+            return
+        if isinstance(value, dict):
+            # a new name: the character is registered with what the house sees, and its colours are learned
+            name = clean_name(str(value.get("name") or ""))
+            if not name:
+                return
+            ident = ctx.identities.by_name(name)
+            if ident is None:
+                category = c.get("category") if c.get("category") in CATEGORIES else "object"
+                color = c.get("color") if isinstance(c.get("color"), str) and c["color"].startswith("#") else "#888888"
+                try:
+                    ident = ctx.identities.add(name, category, color=color, nickname=ev.get("by"))
+                except ValueError:
+                    return
+                bus.publish("registered", identity=ident.id, name=ident.name, category=ident.category,
+                            origin=ev.get("by") or "web")
+            value = ident.id
+        ctx.vision.assign(c["track"], value)
 
     last: dict[str, Any] = {}
 
