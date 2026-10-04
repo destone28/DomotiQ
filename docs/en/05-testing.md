@@ -79,15 +79,15 @@ Open **More → Calibration**.
 1. **Take characters and car out of the house (furniture stays).** Leave the furniture exactly where it will stay.
 2. **Tap the 4 corners of the base, in the order shown**: front left, front right, back right, back left. Front is the driveway edge; left is the kitchen and garden side. A chip shows which corner is next; ↶ removes the last one. Tap **Use these corners**. If the four points are not a plausible outline of the base, the house refuses them: tap them again, in order.
 3. **Check the overlay.** With *Overlay* on, the image shows the outline of the base, the rooms, the doors in green, the walls drawn at their real height and the excluded zones darkened (wall lights, the tree canopy, the pole). The drawn walls must sit on the walls in the image. If they do not, tap the corners again.
-4. **Adjust the camera and save the empty house.** The first time, tap **Adjust to the light again**: for a few seconds the camera adjusts exposure and white balance on its own, and the house measures the brightness and colours it reaches. It then looks for the manual values that give the same picture, a quarter darker (so the floor under the coloured house lights does not saturate), and locks them. Under some lights, like the warm, greenish ones of the lab, no colour temperature of the camera gives neutral colours: the house corrects what is left with a fixed gain on each colour. Finally it saves the empty house, the median of 20 frames. It takes about 15 seconds, and the house must be empty.
+4. **The light and the empty house.** Right after the corners the house sets the light of the camera by itself and saves the empty house; a box with a spinner shows it is working, and the buttons stay locked until the message *Empty house saved*. Do not touch the house during those 15 seconds. For a few seconds the camera adjusts exposure and white balance on its own, and the house measures the brightness and colours it reaches. It then looks for the manual values that give the same picture, a quarter darker (so the floor under the coloured house lights does not saturate), and locks them. Under some lights, like the warm, greenish ones of the lab, no colour temperature of the camera gives neutral colours: the house corrects what is left with a fixed gain on each colour. Finally it saves the empty house, the median of 20 frames. It takes about 15 seconds, and the house must be empty.
 
 Later:
 
-- **Save the empty house** takes a new reference without touching the camera settings, for example after moving a piece of furniture.
-- **Adjust to the light again** is for when the light of the hall changes a lot. Slow changes are followed automatically on the free floor.
+- **Save the empty house only** takes a new reference without touching the camera settings, for example after moving a piece of furniture.
+- **Set the light and save the empty house** is for when the light of the hall changes a lot. Slow changes are followed automatically on the free floor.
 - If the camera gets bumped, the web app shows *The webcam has moved: calibrate again*: repeat the whole procedure.
 
-**Diagnostics → Webcam** now shows the frame rate (about 10 per second) and the processing time, without *not calibrated*.
+**Diagnostics → Webcam** now shows the frame rate (7 to 10 per second) and the processing time, without *not calibrated* or *light not set*.
 
 ## 10. The first figurine
 

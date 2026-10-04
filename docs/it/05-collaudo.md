@@ -79,15 +79,15 @@ Apri **Altro → Calibrazione**.
 1. **Togli personaggi e auto dalla casa (gli arredi restano).** Lascia gli arredi esattamente dove resteranno.
 2. **Tocca i 4 angoli della base, nell'ordine indicato**: davanti a sinistra, davanti a destra, dietro a destra, dietro a sinistra. Il davanti è il bordo del vialetto; la sinistra è il lato di cucina e giardino. Un'etichetta indica l'angolo successivo; ↶ toglie l'ultimo. Tocca **Usa questi angoli**. Se i quattro punti non formano un contorno plausibile della base, la casa li rifiuta: toccali di nuovo, in ordine.
 3. **Controlla la sovrapposizione.** Con *Sovrapposizione* attiva, l'immagine mostra il contorno della base, le stanze, le porte in verde, le pareti disegnate alla loro altezza reale e le zone escluse scurite (applique, chioma dell'albero, palo). Le pareti disegnate devono coincidere con quelle nell'immagine. Se non coincidono, tocca di nuovo gli angoli.
-4. **Regola la webcam e salva la casa vuota.** La prima volta tocca **Regola di nuovo la luce**: per qualche secondo la webcam regola da sola esposizione e bilanciamento del bianco, e la casa misura la luminosità e i colori che ottiene. Poi cerca i valori manuali che danno la stessa immagine, un quarto più scura (così il pavimento sotto le luci colorate della casa non si satura), e li blocca. Con alcune luci, come quelle calde e verdastre del laboratorio, nessuna temperatura della webcam dà colori neutri: quello che resta lo corregge la casa con un guadagno fisso su ogni colore. Alla fine salva la casa vuota, cioè la mediana di 20 fotogrammi. In tutto ci vogliono circa 15 secondi, e la casa deve essere vuota.
+4. **La luce e la casa vuota.** Subito dopo gli angoli la casa regola da sola la luce della webcam e salva la casa vuota; una finestra con una rotellina mostra che sta lavorando, e i pulsanti restano bloccati fino al messaggio *Casa vuota salvata*. Non toccare la casa in quei 15 secondi. Per qualche secondo la webcam regola da sola esposizione e bilanciamento del bianco, e la casa misura la luminosità e i colori che ottiene. Poi cerca i valori manuali che danno la stessa immagine, un quarto più scura (così il pavimento sotto le luci colorate della casa non si satura), e li blocca. Con alcune luci, come quelle calde e verdastre del laboratorio, nessuna temperatura della webcam dà colori neutri: quello che resta lo corregge la casa con un guadagno fisso su ogni colore. Alla fine salva la casa vuota, cioè la mediana di 20 fotogrammi. In tutto ci vogliono circa 15 secondi, e la casa deve essere vuota.
 
 In seguito:
 
-- **Salva la casa vuota** prende un nuovo riferimento senza toccare le impostazioni della webcam, per esempio dopo aver spostato un arredo.
-- **Regola di nuovo la luce** serve quando la luce del padiglione cambia molto. I cambiamenti lenti vengono seguiti automaticamente sul pavimento libero.
+- **Salva solo la casa vuota** prende un nuovo riferimento senza toccare le impostazioni della webcam, per esempio dopo aver spostato un arredo.
+- **Regola la luce e salva la casa vuota** serve quando la luce del padiglione cambia molto. I cambiamenti lenti vengono seguiti automaticamente sul pavimento libero.
 - Se la webcam viene urtata, la webapp mostra *La webcam si è spostata: rifare la calibrazione*: ripeti tutta la procedura.
 
-Ora in **Diagnostica**, alla riga *Webcam*, compaiono i fotogrammi al secondo (circa 10) e il tempo di elaborazione, senza *da calibrare*.
+Ora in **Diagnostica**, alla riga *Webcam*, compaiono i fotogrammi al secondo (da 7 a 10) e il tempo di elaborazione, senza *da calibrare* né *luce da regolare*.
 
 ## 10. Il primo personaggio
 

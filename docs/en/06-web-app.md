@@ -29,7 +29,7 @@ Everyone can change the rules and the characters on purpose: this is a house for
 - **Top bar**: the name of the house, three status dots (**Microcontroller**, **Webcam**, **Audio**: green when working, red when not; a fourth dot appears while the simulation is on), and the **IT / EN** button that switches the language of the web app on this phone only. The first time, the web app picks the language of the phone. The language the house speaks is a different setting, in **Controls**.
 - **Bottom bar**: **House**, **Live**, **Controls**, **Events**, **More**.
 - **Alarm banners**: while an alarm rule is active (someone in the utility room, too many people in the bathroom, an intruder), a red banner at the top of every screen names the rule, who and where; the room is outlined in red on the plan.
-- **Questions of the house**: when the house is unsure, a banner asks, for example "Is it Marco or Leo in the kitchen?", with one button per answer. Any phone can answer; the first answer wins and the banner disappears everywhere. The house also asks aloud, and a spoken answer counts too (see [chapter 7](07-recognition-and-identities.md#same-colour-figurines-and-doubts)).
+- **Questions of the house**: when the house is unsure, a banner asks, for example "Is it Marco or Leo in the kitchen?", with one button per answer. Any phone can answer; the first answer wins and the banner disappears everywhere. The house also asks aloud and listens for the answer by itself, with no Talk button; the first answer wins, aloud or from a phone. When it asks who a newcomer is, the banner also has a field to type a new name, with the **Add** button (see [chapter 7](07-recognition-and-identities.md#a-newcomer)).
 - **Subtitles**: everything the house says appears as a subtitle at the bottom of every phone, even when the house is set to *Silent*.
 - **Notifications**: short messages pop up at the bottom (a character registered, the barbecue is ready, a rule's notification). Alarm notifications also vibrate the phone, where the browser allows it.
 - **Connection lost**: if the phone loses the house, a banner says *Lost the connection with the house: retrying…* and the web app reconnects by itself.
@@ -55,9 +55,9 @@ At the bottom, the list of everything the house sees, with name (or *Guest* for 
 
 <img src="../images/screens/en/live.png" alt="Live" width="260">
 
-*Live from the webcam*: the image of the camera, about 5 frames per second. The switch **Names and rooms** writes the name and the room over each character. The bathroom is always blurred, on the board, before the image reaches any phone.
+*Live from the webcam*: the image of the camera, about 5 frames per second. The switch **Names and rooms** writes the name and the room over each character. On the board, before the image reaches any phone, everything around the house is blurred and, by default, the bathroom (see **Settings**).
 
-When there is no camera the screen says *The webcam is not connected.*; while the simulation is on it shows a drawing of the house marked *SIMULAZIONE - SIMULATION*.
+When the camera is missing for more than a few seconds the screen says *The webcam is not connected.*, and the line goes away by itself when it is back; while the simulation is on it shows a drawing of the house marked *SIMULAZIONE - SIMULATION*.
 
 ## Controls
 
@@ -109,7 +109,7 @@ Virtual characters dragged on the plan instead of real figurines, virtual sensor
 
 <img src="../images/screens/en/calibration.png" alt="Calibration" width="260">
 
-*Staff only.* The four corners of the base, the overlay check, **Save the empty house** and **Adjust to the light again** (see [chapter 5](05-testing.md#9-camera-calibration)), and the dataset tools: **Capture**, **Burst (10)**, **Record a sequence (60 s)** and **Download the dataset** (see [chapter 7](07-recognition-and-identities.md#datasets-and-recordings)).
+*Staff only.* The four corners of the base (after **Use these corners** the house sets the light and saves the empty house by itself), the overlay check, **Set the light and save the empty house** and **Save the empty house only**. While the house works, a box with a spinner says what it is doing and the buttons stay locked, so an operation never starts twice; at the end the result appears (see [chapter 5](05-testing.md#9-camera-calibration)). Below are the dataset tools: **Capture**, **Burst (10)**, **Record a sequence (60 s)** and **Download the dataset** (see [chapter 7](07-recognition-and-identities.md#datasets-and-recordings)).
 
 ### Diagnostics
 
@@ -125,7 +125,7 @@ Virtual characters dragged on the plan instead of real figurines, virtual sensor
 
 *Staff only.*
 
-- **House**: the name of the house in Italian and English; **Buttons mounted upside down**, for a totem assembled the other way round.
+- **House**: the name of the house in Italian and English; **Buttons mounted upside down**, for a totem assembled the other way round; **Bathroom blurred in the live view**, on by default.
 - **Lights · Party · Barbecue · Climate**: *Maximum brightness (%)*, *Pixels current limit (mA)*, *Brightness of the follow-me lights*, *Off after (s)*, *Colour of the follow-me lights*, party *Duration (s)* (10–60), *Fan duration (s)* (5–120), *Hot: rise over the baseline (°C)*, *Shower: humidity rise (%)*. Then **Save**. Brightness and current limit go to the microcontroller at once.
 - **Voice**: **Greet new phones**, **Questions to the characters (chatty mode)** and *One question every (s)* (see [chapter 8](08-voice.md#talking-without-pressing-talk)).
 - **PIN · Time**: *Current PIN* and *New PIN (4-8 digits)*; a new PIN ends every other staff session. **Use this phone's time** sets the clock of the house.

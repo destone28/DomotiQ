@@ -31,8 +31,10 @@ Scan QR 1 on the sign (Wi-Fi), then QR 2 (the house). If the phone asks: *Stay c
 | You see | Do |
 |---|---|
 | Banner *The webcam has moved: calibrate again* | Calibrate (below). |
-| Ghost objects, or figurines not seen, after the hall light changed | Empty the house, **Calibration → Adjust to the light again**. |
-| A **?** on a character, or *The house asks* | Tap the right name on the banner, or hold Talk and say it. |
+| Ghost objects, or figurines not seen, after the hall light changed | Empty the house, **Calibration → Set the light and save the empty house**. |
+| A **?** on a character, or *The house asks* | Answer aloud right after the question (no need for Talk), or tap the name on the banner; for a newcomer you can also type a new name and tap **Add**. |
+| The house does not notice the characters, and *Diagnostics* always shows a hand | Something big lies on the edge of the base (a module, a cable): remove it or fix it down. After 8 seconds still, the house stops taking it for a hand anyway. |
+| Animals or objects that are not there on the driveway | Loose modules or cables moved by arms: mount the totem, fix the cables, then **Save the empty house only** with the house empty. |
 | The house is silent | **Controls**: Talkativeness *Normal*, Volume up. Speaker knob at maximum. |
 | "I don't know what time it is" | Open the web app on a phone, or hold Talk: "Sono le quindici e trenta". |
 | Lights breathe dimly and nothing reacts | The software is (re)starting: wait a minute. Then **Settings → Restart the app**, then **Reboot the board**. |
@@ -45,7 +47,7 @@ Scan QR 1 on the sign (Wi-Fi), then QR 2 (the house). If the phone asks: *Stay c
 
 **More → Staff PIN → Staff login** (valid 12 hours on that phone; after 5 wrong PINs wait a minute).
 
-- **Calibration**: take figurines and car out → tap the 4 corners of the base (front left, front right, back right, back left; front = driveway) → **Use these corners** → check that the drawn walls sit on the real ones → **Adjust to the light again**. Calibrate before opening the house to visitors: until then the blur only guesses where the bathroom is.
+- **Calibration**: take figurines and car out → tap the 4 corners of the base (front left, front right, back right, back left; front = driveway) → **Use these corners**: the house sets the light and saves the empty house by itself (about 15 seconds, with a spinner; do not touch the house) → check that the drawn walls sit on the real ones. Calibrate before opening the house to visitors: until then the blur only guesses where the bathroom is.
 - **Diagnostics**: modules, I2C scan, **Audio test**, **Microphone test (3 s)**, logs.
 - **Settings**: brightness and durations, PIN, Wi-Fi password, **Use this phone's time**, backup, bin, restart, reboot, power off.
 - **Controls → Make the house say**; **Simulation** on and off.

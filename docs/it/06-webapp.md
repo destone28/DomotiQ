@@ -29,7 +29,7 @@ Tutti possono cambiare le regole e i personaggi, ed è voluto: questa è una cas
 - **Barra in alto**: il nome della casa, tre pallini di stato (**Microcontrollore**, **Webcam**, **Audio**: verdi quando funzionano, rossi quando no; mentre la simulazione è attiva compare un quarto pallino) e il pulsante **IT / EN**, che cambia la lingua della webapp solo su questo telefono. La prima volta la webapp sceglie la lingua del telefono. La lingua in cui parla la casa è un'impostazione diversa, in **Comandi**.
 - **Barra in basso**: **Casa**, **Diretta**, **Comandi**, **Eventi**, **Altro**.
 - **Fasce di allarme**: mentre una regola di allarme è attiva (qualcuno nel locale tecnico, troppe persone in bagno, un intruso), una fascia rossa in cima a ogni schermata riporta il nome della regola, chi e dove; sulla piantina la stanza è contornata di rosso.
-- **Domande della casa**: quando la casa non è sicura, una fascia fa una domanda, per esempio "In cucina c'è Marco o Leo?", con un pulsante per ogni risposta. Può rispondere qualsiasi telefono; vale la prima risposta e la fascia sparisce ovunque. La casa fa la domanda anche ad alta voce, e vale anche una risposta a voce (vedi il [capitolo 7](07-riconoscimento-e-identita.md#personaggi-dello-stesso-colore-e-dubbi)).
+- **Domande della casa**: quando la casa non è sicura, una fascia fa una domanda, per esempio "In cucina c'è Marco o Leo?", con un pulsante per ogni risposta. Può rispondere qualsiasi telefono; vale la prima risposta e la fascia sparisce ovunque. La casa fa la domanda anche ad alta voce e ascolta la risposta da sola, senza il tasto Parla; vale la prima risposta, a voce o da un telefono. Quando chiede chi è un nuovo arrivato, la fascia ha anche un campo per scrivere un nome nuovo, con il pulsante **Aggiungi** (vedi il [capitolo 7](07-riconoscimento-e-identita.md#un-nuovo-arrivato)).
 - **Sottotitoli**: tutto quello che la casa dice compare come sottotitolo in fondo a ogni telefono, anche quando la casa è impostata su *Silenziosa*.
 - **Notifiche**: brevi messaggi compaiono in basso (un personaggio registrato, la grigliata pronta, la notifica di una regola). Le notifiche di allarme fanno anche vibrare il telefono, dove il browser lo permette.
 - **Connessione persa**: se il telefono perde la casa, una fascia dice *Connessione con la casa persa: riprovo…* e la webapp si ricollega da sola.
@@ -55,9 +55,9 @@ In fondo, l'elenco di tutto ciò che la casa vede, con nome (oppure *Ospite* per
 
 <img src="../images/screens/it/live.png" alt="Diretta" width="260">
 
-*Diretta dalla webcam*: l'immagine della webcam, circa 5 fotogrammi al secondo. L'interruttore **Nomi e stanze** scrive il nome e la stanza sopra ogni personaggio. Il bagno è sempre sfocato, sulla scheda, prima che l'immagine arrivi a qualsiasi telefono.
+*Diretta dalla webcam*: l'immagine della webcam, circa 5 fotogrammi al secondo. L'interruttore **Nomi e stanze** scrive il nome e la stanza sopra ogni personaggio. Sulla scheda, prima che l'immagine arrivi a qualsiasi telefono, viene sfocato tutto ciò che sta intorno alla casa e, di serie, il bagno (vedi **Impostazioni**).
 
-Quando non c'è la webcam la schermata dice *La webcam non è collegata.*; mentre la simulazione è attiva mostra un disegno della casa con la scritta *SIMULAZIONE - SIMULATION*.
+Quando la webcam manca per più di qualche secondo la schermata dice *La webcam non è collegata.*, e la scritta sparisce da sola quando torna; mentre la simulazione è attiva mostra un disegno della casa con la scritta *SIMULAZIONE - SIMULATION*.
 
 ## Comandi
 
@@ -109,7 +109,7 @@ Personaggi virtuali da trascinare sulla piantina al posto delle statuine vere, s
 
 <img src="../images/screens/it/calibration.png" alt="Calibrazione" width="260">
 
-*Solo per lo staff.* I quattro angoli della base, il controllo della sovrapposizione, **Salva la casa vuota** e **Regola di nuovo la luce** (vedi il [capitolo 5](05-collaudo.md#9-calibrazione-della-webcam)), e gli strumenti per i dataset: **Cattura**, **Raffica (10)**, **Registra una sequenza (60 s)** e **Scarica il dataset** (vedi il [capitolo 7](07-riconoscimento-e-identita.md#dataset-e-registrazioni)).
+*Solo per lo staff.* I quattro angoli della base (dopo **Usa questi angoli** la casa regola da sola la luce e salva la casa vuota), il controllo della sovrapposizione, **Regola la luce e salva la casa vuota** e **Salva solo la casa vuota**. Mentre la casa lavora, una finestra con una rotellina dice cosa sta facendo e i pulsanti restano bloccati, così un'operazione non parte due volte; alla fine compare il risultato (vedi il [capitolo 5](05-collaudo.md#9-calibrazione-della-webcam)). In fondo ci sono gli strumenti per i dataset: **Cattura**, **Raffica (10)**, **Registra una sequenza (60 s)** e **Scarica il dataset** (vedi il [capitolo 7](07-riconoscimento-e-identita.md#dataset-e-registrazioni)).
 
 ### Diagnostica
 
@@ -125,7 +125,7 @@ Personaggi virtuali da trascinare sulla piantina al posto delle statuine vere, s
 
 *Solo per lo staff.*
 
-- **Casa**: il nome della casa in italiano e in inglese; **Tasti montati al contrario**, per un totem montato al rovescio.
+- **Casa**: il nome della casa in italiano e in inglese; **Tasti montati al contrario**, per un totem montato al rovescio; **Bagno sfocato nella diretta**, acceso di serie.
 - **Luci · Festa · Barbecue · Clima**: *Luminosità massima (%)*, *Limite di corrente dei Pixels (mA)*, *Luminosità delle luci che seguono*, *Spegnimento dopo (s)*, *Colore delle luci che seguono*, la *Durata (s)* della festa (10–60), *Durata della ventola (s)* (5–120), *Caldo: aumento sul riferimento (°C)*, *Doccia: aumento di umidità (%)*. Poi **Salva**. Luminosità e limite di corrente arrivano subito al microcontrollore.
 - **Voce**: **Saluta i telefoni nuovi**, **Domande ai personaggi (modalità chiacchierona)** e *Una domanda ogni (s)* (vedi il [capitolo 8](08-voce.md#parlare-senza-premere-parla)).
 - **PIN · Ora**: *PIN attuale* e *Nuovo PIN (4-8 cifre)*; un PIN nuovo chiude tutte le altre sessioni dello staff. **Usa l'ora di questo telefono** imposta l'orologio della casa.

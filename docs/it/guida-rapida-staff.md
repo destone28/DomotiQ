@@ -31,8 +31,10 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 | Vedi | Fai |
 |---|---|
 | Fascia *La webcam si è spostata: rifare la calibrazione* | Calibra (vedi sotto). |
-| Oggetti fantasma, o statuine non viste, dopo che la luce del padiglione è cambiata | Svuota la casa, **Calibrazione → Regola di nuovo la luce**. |
-| Un **?** su un personaggio, oppure *La casa chiede* | Tocca il nome giusto sulla fascia, oppure tieni premuto Parla e dillo. |
+| Oggetti fantasma, o statuine non viste, dopo che la luce del padiglione è cambiata | Svuota la casa, **Calibrazione → Regola la luce e salva la casa vuota**. |
+| Un **?** su un personaggio, oppure *La casa chiede* | Rispondi a voce subito dopo la domanda (non serve Parla), oppure tocca il nome sulla fascia; per un nuovo arrivato puoi anche scrivere un nome nuovo e toccare **Aggiungi**. |
+| La casa non nota i personaggi, e in *Diagnostica* risulta sempre una mano | Qualcosa di grande è appoggiato sul bordo della base (un modulo, un cavo): toglilo o fissalo. Dopo 8 secondi fermo la casa smette comunque di prenderlo per una mano. |
+| Animali o oggetti che non ci sono sul vialetto | Moduli o cavi sciolti che il braccio sposta: monta il totem, fissa i cavi, poi **Salva solo la casa vuota** a casa vuota. |
 | La casa è muta | **Comandi**: Loquacità *Normale*, alza il Volume. Manopola delle casse al massimo. |
 | "Non so che ore sono" | Apri la webapp su un telefono, oppure tieni premuto Parla: "Sono le quindici e trenta". |
 | Le luci respirano debolmente e niente reagisce | Il software si sta (ri)avviando: aspetta un minuto. Poi **Impostazioni → Riavvia l'app**, poi **Riavvia la scheda**. |
@@ -45,7 +47,7 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 
 **Altro → PIN dello staff → Accesso staff** (vale 12 ore su quel telefono; dopo 5 PIN sbagliati aspetta un minuto).
 
-- **Calibrazione**: togli statuine e auto → tocca i 4 angoli della base (davanti a sinistra, davanti a destra, dietro a destra, dietro a sinistra; davanti = vialetto) → **Usa questi angoli** → controlla che le pareti disegnate coincidano con quelle vere → **Regola di nuovo la luce**. Calibra prima di aprire la casa ai visitatori: fino ad allora la sfocatura può solo indovinare dove si trova il bagno.
+- **Calibrazione**: togli statuine e auto → tocca i 4 angoli della base (davanti a sinistra, davanti a destra, dietro a destra, dietro a sinistra; davanti = vialetto) → **Usa questi angoli**: la casa regola da sola la luce e salva la casa vuota (circa 15 secondi, con una rotellina; non toccare la casa) → controlla che le pareti disegnate coincidano con quelle vere. Calibra prima di aprire la casa ai visitatori: fino ad allora la sfocatura può solo indovinare dove si trova il bagno.
 - **Diagnostica**: moduli, scansione I2C, **Prova audio**, **Prova microfono (3 s)**, registri.
 - **Impostazioni**: luminosità e durate, PIN, password del Wi-Fi, **Usa l'ora di questo telefono**, backup, cestino, riavvio dell'app, riavvio e spegnimento della scheda.
 - **Comandi → Fai dire alla casa**; **Simulazione** accesa e spenta.

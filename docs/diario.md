@@ -163,3 +163,21 @@ Le lunghezze vere si misurano sulla casa montata e poi entrano nel capitolo dei 
 - prova tutta la scala del bilanciamento del bianco.
 
 Misure sulla scheda con la luce calda del laboratorio: in automatico la C270 arriva a colori neutri (blu/verde 0,97), mentre nessuna temperatura manuale ci riesce (al meglio 0,53, con il verde dominante). Per questo la casa sceglie la temperatura che lascia meno da correggere e corregge il resto in software, con un guadagno fisso su ogni canale calcolato in modo da non cambiare la luminosità. I valori bloccati con la vecchia procedura vengono scartati all'avvio. Inoltre la webcam non abbassa più da sola i fotogrammi al secondo quando l'esposizione è lunga.
+
+**La visione sulla casa montata (4/10, mattina e pomeriggio).** Emilio ha montato l'hardware nella scocca e ha provato riconoscimento e webapp. Problemi trovati, con le immagini registrate durante le prove e riprodotte sul PC:
+- **La casa non vedeva niente.** Con la calibrazione delle 10:25 la zona esclusa del palo, proiettata fino a quasi l'altezza della webcam, copriva tutta l'immagine. Il palo è già nella geometria della scena; un controllo ora ferma una maschera che copre la casa, e un test usa gli angoli veri.
+- **La webcam in automatico.** La regolazione della luce non era mai partita con valori validi, quindi la webcam ricalcolava la luce a ogni mano. Ora finché la luce non è regolata la casa non riconosce niente, e la calibrazione la regola da sola dopo gli angoli.
+- **Il braccio diventava molte presenze; riflessi e cambi di luce diventavano oggetti.** Nasce la regola "niente si muove da solo" (D-20). Con quella le soglie si sono potute alzare in sensibilità, misurandole sulle immagini vere: Mister Braun, marrone scuro sul pavimento grigio, prima veniva preso per un'ombra.
+- **La casa ferma ad aspettare.** Le schedine dei tasti e del sensore di distanza, sciolte sul vialetto con il loro cavo sul bordo della base, venivano prese per una mano ferma, e per questo Viola e Rosaria in soggiorno non venivano notate. Ora una mano deve essere grande come un braccio, e una "mano" ferma per 8 secondi è un oggetto. Il totem è escluso dall'analisi, perché i LED dei tasti si accendono e spengono.
+- **Lentezza.** Con l'area analizzata finalmente piena, sulla scheda un'immagine costava fino a 250 ms. Diventa da 110 a 125 ms (da 7 a 8 immagini al secondo) con questi interventi: la luce si misura una volta al secondo invece di tre, la casa vuota si aggiorna solo dove cambia, la diretta va a 5 immagini al secondo.
+- **"Webcam non collegata".** La pagina della diretta leggeva lo stato della webcam una sola volta all'apertura. Ora lo segue. I reset USB della C270 coincidono con i riavvii e con gli accessi ssh (la sessione del desktop interroga la webcam), quindi da qui in avanti uso una sola connessione ssh tenuta aperta.
+- **Regolazione premuta sette volte.** Senza un segnale di avanzamento non si capiva se la casa stava lavorando. Ora la pagina di calibrazione mostra una finestra con una rotellina e blocca i pulsanti fino al risultato.
+
+Per i personaggi registrati senza colori (Viola, Rosaria, Mister Braun: la registrazione era avvenuta quando la visione non vedeva) la domanda "chi è?" li propone comunque, e la risposta insegna i loro colori. Dopo il riavvio la casa ha riconosciuto per nome Viola e Rosaria in soggiorno e Mister Braun in camera, e ha chiesto dell'auto in garage. Restano da sistemare a mano i moduli sciolti sul vialetto (totem da montare).
+
+**Domande a voce senza tasto, chi è per ogni nuovo arrivato, racconto (4/10, pomeriggio).** Su richiesta di Emilio (D-20):
+- dopo ogni domanda la casa ascolta da sola; la domanda è anche sui telefoni e vale la prima risposta;
+- per ogni cosa nuova chiede subito chi è, con i personaggi del tipo giusto e la possibilità di dire o scrivere un nome nuovo, che diventa un personaggio con i colori visti;
+- un narratore dice chi entra, esce o cambia stanza e l'auto parcheggiata.
+
+Nella prima prova la casa ha chiesto dell'auto e ha capito "Honda Civic", ma non il "sì" di conferma. Ora la conferma si chiede una seconda volta ("Dimmi sì o no…") invece di ripartire da capo, e per un oggetto non si propongono più i nomi delle persone.

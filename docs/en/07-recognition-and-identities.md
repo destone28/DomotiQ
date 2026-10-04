@@ -8,20 +8,31 @@ The house recognizes people, pets, the car and objects with **classical computer
 
 The vision runs in a separate process, so a slow frame or a camera problem never slows down the web app or the voice; if it stops, it starts again by itself.
 
-1. **Capture.** The Logitech C270 delivers MJPEG frames; the house analyses them at 640 × 480, about 10 per second. After calibration, exposure, white balance and gain are locked, so the colours do not drift as figurines and coloured lights come and go.
+1. **Capture.** The Logitech C270 delivers MJPEG frames; the house analyses them at 640 × 480, 7 to 10 per second on the board. Exposure, white balance and gain are locked, so the colours do not shift when figurines and coloured lights come and go. The values are found by measuring the pictures: the house lets the camera adjust automatically on the empty house, measures brightness and colours, then looks for the manual values that give the same picture, a quarter darker. What the colour temperature of the camera cannot correct (some warm, greenish lights) is corrected by a fixed gain on each channel. Until the light is set the house recognizes nothing, and says so in *Diagnostics*.
 2. **The empty house.** At calibration the house stores the median of 20 frames of the empty house, furniture included. Everything that differs from it is a figurine, the car, an object or a visitor's hand.
 3. **Difference in Lab colour space, with light correction per room.** The room lights of the house are coloured, and the hall light changes. Each pixel is corrected with the gains of its own room's light: one gain per colour channel, estimated on the free floor of the room as the most common ratio to the empty house (so a figurine or the car does not bias it), and the one closest to the previous frame when two are possible. Across a doorway the gain passes gradually from one room to the other. The house tells the vision every time it changes a light.
 4. **Shadows do not count.** A shadow is darker but keeps the colour of the floor.
-5. **Masks.** Zones that are not floor are ignored: the wall lights, the tree canopy, the camera pole and the tops of the walls, each projected at the height where it really is.
+5. **Masks.** The vision looks at the base of the house only: what is around it (the stand, the hands of visitors before they come in, phones) does not count. Inside the base, zones that are not floor are ignored: the wall lights, the tree canopy, the camera pole, the tops of the walls and the intercom totem, whose LEDs go on and off, each projected at the height where it really is.
 6. **Objects.** After a morphological clean-up, each connected blob becomes an object with its area in mm², its median colour and a histogram of its colour, its elongation, and its nearest and farthest points from the point under the camera.
 7. **Where it stands (parallax).** The camera sees a standing figurine from above, so the figurine appears stretched away from the point under the lens: its nearest point is the front of the feet, its farthest point the back of the head. Brought down by the figurine's height, the head gives the position of the feet too, so a figurine is placed correctly even when its feet are hidden behind a wall. The car, a box rather than a figurine, is placed at the middle of what is seen. On synthetic test scenes the position error stays below 12 mm.
-8. **Hands.** A large blob that enters from the edge of the image or of the base is a visitor's hand (except at the garage gate, where the car drives in). An arm cut in two by a wall top is joined back into the same hand.
-9. **Tracking.** Objects are matched to the tracks of the previous frame with the Hungarian method, on a distance that combines position, colour and size. Something that jumps more than 90 mm between two frames is not the same thing; a track unseen for 1.5 seconds disappears.
-10. **Carried by hand.** When a figurine disappears under a hand, its track becomes *carried* and keeps its identity; when the figurine reappears near the hand, or where the hand leaves it, it is the same character. A figurine held for more than 60 seconds is forgotten and recognized again by its colour when it is put down.
-11. **Who is it.** Each registered identity has a **colour signature**: a histogram of the a\* and b\* colour axes of the Lab space (where lightness is kept apart, so a shadow or a dimmer light changes little) plus the median colour. For white, grey and black figurines lightness weighs more, since it is the only thing that tells them apart. Identities are unique, so the assignment of identities to tracks is solved for all of them together; an identity is given after four frames of agreement. While a figurine is followed with confidence, its signature is slowly updated with what the camera sees.
+8. **Hands.** A blob at least as big as an arm (2,500 mm² inside the base) entering from the edge of the base is a visitor's hand, except at the garage gate, where the car drives in. Every piece close to the hand belongs to it, whatever its size: the arm cut by wall tops and wall lights, the fingers, the shadow. A "hand" that stays perfectly still for 8 seconds is instead something lying on the edge (a module, a cable), and it becomes part of the empty house.
+9. **Tracking.** Objects are matched to the tracks of the previous frame with the Hungarian method, on a distance that combines position, colour and size. Something that jumps more than 90 mm between frames is not the same thing. A followed character that is not seen for a moment (a light, two figurines touching) stays where it was for up to two minutes, instead of disappearing and coming back.
+10. **Carried by hand.** When a figurine disappears under a hand, its track becomes *carried* and keeps its identity; when the hand has gone, the figurine that reappears where the hand worked is the same character. If the hand leaves without putting it down, the character leaves the house 2.5 seconds later.
+11. **Who is it.** Each registered identity has a **colour signature**: a histogram of the a\* and b\* colour axes of the Lab space (where lightness is kept apart, so a shadow or a dimmer light changes little) plus the median colour. For white, grey and black figurines lightness weighs more, since it is the only thing that tells them apart. Identities are unique, so the assignment of identities to tracks is solved for all of them together; an identity is given after two frames of agreement. While a figurine is followed with confidence, its signature is slowly updated with what the camera sees.
 12. **Which room.** The room is the one under the point where the figurine stands, with 15 mm of tolerance on the doorways, so a figurine on a threshold does not flicker between two rooms.
 
 The result is a list of tracks, each with a position in millimetres, a room, a kind and, when known, an identity. The rest of the house (lights, rules, voice, web app) works on this list.
+
+### Nothing moves by itself
+
+In a diorama every change is made by a hand: a figurine comes in, goes out or moves only if somebody picks it up. The house uses this rule not to see presences that are not there.
+
+- **While a hand is over the house**, and for 0.6 seconds after it has left (its shadow, the figurine still swinging), the house counts nothing new and makes nobody disappear.
+- **Then new things are looked for only where the hand worked**, for 3 seconds. A new presence is announced after one second of stability: the reflection of the arm that has just left lasts less. Nothing is born that lies entirely on a wall (a reflection), nor anything small right on the edge of the base (a cable, a sleeve).
+- **A change with no hand around** (a reflection, the hall light) never becomes a presence: after about 3 seconds it becomes part of the empty house. The exception is something that clearly stands out and stays, appearing within 20 seconds of a hand: a figurine put down while the house was waiting, which becomes a presence after 2 seconds.
+- **When the house changes the light of a room**, for 2.5 seconds its glow on walls and floor is not taken for a presence.
+- **When the light of the whole hall changes**, the house measures the light of every room again and waits; if the light goes beyond what the correction can follow, after 4 seconds it learns the empty house again from the current picture, leaving out the characters it is following.
+- **At start-up** the house takes as present what clearly stands out from the empty house (another colour, or darker), not the glow of the lights.
 
 ## Kinds of things
 
@@ -87,14 +98,25 @@ Two figurines of the same colour are told apart only by following them. Continui
 When the thread is lost (both picked up together, the two touched, one reappeared far away, or the house just started) the track becomes **uncertain**. The house then:
 
 - asks on every phone, with a banner such as "Is it Marco or Leo in the kitchen?" and one button per name;
-- asks aloud too, if its talkativeness allows it; hold **Talk** and say the name to answer;
+- asks aloud too, if its talkativeness allows it, and right after listens for the answer by itself, with no need for **Talk**: just say the name. The first answer wins, aloud or from a phone;
 - without an answer within 60 seconds, keeps its best guess, marked as uncertain: a **?** on the plan, and "Marco is in the kitchen. I think." in voice answers.
 
 It asks again about the same figurine at most every 30 seconds. An answer, a registration or an intercom entry **confirms** an identity: a confirmed figurine keeps it as long as the house can follow it.
 
+## A newcomer
+
+When something appears that the house does not recognize, it asks at once, aloud and on every phone at the same time: "There's a new person in the living room: who is it? Viola, Rosaria or Mister Braun?". For an animal, a car or an object the question changes ("There's a new car in the garage: what shall I call it?"). It proposes the registered characters of the right kind that are not already in the house, closest colours first, then those whose colours it has not learned yet.
+
+- **Aloud**, with no Talk button: say one of the names proposed, or a new name ("the name is Luca"); the house repeats a new name and asks for confirmation ("The name is Luca, right?").
+- **From a phone**: tap a name on the banner, or type a new name and tap **Add**.
+- The first answer wins, from either; when it arrives, the house stops listening.
+
+With a new name the house creates the character, with the kind it guessed (it can be corrected under **Characters and objects**) and the colours it sees. With a registered name it updates that character's colours at once with what it sees, so next time it recognizes it by itself, even if it was registered under another light. A registration in progress from the web app comes first: while it waits for its figurine, the house does not ask this question.
+
 ## Privacy
 
-- **The bathroom is always blurred** on every image that leaves the board: the live view, snapshots, dataset captures and recorded sequences. The blurred area is the footprint of the bathroom at floor level and at the top of its walls, plus a margin, so nothing inside shows whatever its height. The area is computed from the calibration. Before the calibration the house assumes the camera is mounted as designed and blurs a wider area around where the bathroom should be: calibrate before the house is open to visitors, so the blur fits the bathroom exactly.
+- **Everything around the house is blurred** on every image that leaves the board (the stand, the visitors, their phones), as soon as the house knows where the base is.
+- **The bathroom is blurred** by default on every image that leaves the board: the live view, snapshots, dataset captures and recorded sequences. The staff can turn it off in **Settings → Bathroom blurred in the live view**. The blurred area is the footprint of the bathroom at floor level and at the top of its walls, plus a margin, so nothing inside shows whatever its height. The area is computed from the calibration. Before the calibration the house assumes the camera is mounted as designed and blurs a wider area around where the bathroom should be: calibrate before the house is open to visitors, so the blur fits the bathroom exactly.
 - The microphone records only while the house is listening; the audio stays in memory and is never saved.
 - Nothing leaves the board: no internet, no cloud. Positions are kept for 24 hours and events for 7 days.
 

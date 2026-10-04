@@ -212,15 +212,15 @@ Lo stesso file serve alla piantina della webapp, alla visione (stanze, zone escl
 ### 8.1 Cattura
 - La C270 si trova per nome in `/dev/v4l/by-id` (l'indice `videoN` cambia a ogni avvio).
 - Modalità 4:3 1280×960 MJPEG se la prova del campo visivo lo conferma, altrimenti 1280×720; elaborazione a 10 immagini al secondo, analisi a metà risoluzione.
-- Controlli bloccati dopo la calibrazione: esposizione manuale, bilanciamento del bianco fisso, guadagno fisso, antisfarfallio 50 Hz, compensazione del controluce spenta. Si riapplicano ogni 60 s e dopo ogni riconnessione della camera.
+- Controlli bloccati dopo la calibrazione: esposizione manuale, bilanciamento del bianco fisso, guadagno fisso, antisfarfallio 50 Hz, compensazione del controluce spenta, nessun calo automatico dei fotogrammi al secondo. I valori si trovano misurando le immagini (la C270 in automatico non dice quelli che usa) e quello che la temperatura di colore non corregge lo corregge un guadagno fisso per canale. Si riapplicano ogni 60 s e dopo ogni riconnessione della camera. Finché non sono regolati la casa non riconosce niente.
 - Si scartano i fotogrammi vecchi nel buffer dopo ogni cambio di impostazioni.
 
 ### 8.2 Calibrazione (staff)
 1. Casa senza personaggi e senza auto, arredi al loro posto.
 2. Quattro tocchi sugli angoli della base nell'immagine: omografia immagine → pavimento in mm.
 3. La webapp sovrappone stanze, porte, zone escluse e bagno all'immagine: si conferma o si ripete.
-4. "Casa vuota": mediana di 20 fotogrammi, salvata come riferimento.
-5. "Regola di nuovo" ricalcola esposizione e riferimento quando cambia la luce della sala.
+4. Subito dopo gli angoli, "Regola la luce e salva la casa vuota": luce della camera e mediana di 20 fotogrammi, salvata come riferimento (circa 15 s, con un indicatore di avanzamento nella webapp). Si ripete quando cambia molto la luce della sala; "Salva solo la casa vuota" dopo aver spostato un arredo.
+5. Si analizza solo la base della casa; nelle immagini che lasciano la scheda tutto ciò che sta intorno è sfocato, e il bagno di serie (impostazione dello staff).
 6. Se la camera viene urtata (i bordi fissi delle pareti non coincidono più), la diagnostica avvisa e chiede di ricalibrare.
 
 ### 8.3 Da immagine a oggetti
@@ -229,13 +229,15 @@ Lo stesso file serve alla piantina della webapp, alla visione (stanze, zone escl
 3. Pulizia morfologica, componenti connesse, zone escluse tolte (applique, chioma, palo, fuori base).
 4. Per ogni oggetto: area in mm², colore mediano e istogramma a*b*, allungamento radiale, punti estremi.
 5. **Punto d'appoggio**: per un oggetto alto, il punto dell'oggetto più vicino al punto sotto la camera, lungo la retta che lo congiunge (parallasse). Dietro una parete si usa la sommità e l'altezza stimata dell'oggetto.
-6. **Mani e braccia**: un oggetto grande che tocca il bordo dell'immagine è una mano. Diventa una "mano tracciata", e le tracce che copre restano ferme ma legate a lei.
+6. **Mani e braccia**: un oggetto grande come un braccio che entra dal bordo della base è una mano, con tutti i pezzi vicini; una "mano" ferma per 8 s è un oggetto sul bordo. Le tracce che copre restano ferme ma legate a lei.
+7. **Niente si muove da solo (D-20)**: mentre c'è una mano, e per 0,6 s dopo, non nasce e non sparisce niente; dopo, le cose nuove nascono solo dove la mano ha lavorato e si annunciano dopo un secondo di stabilità. Una differenza senza mano non diventa una presenza ed entra nella casa vuota dopo circa 3 s, salvo una cosa ben visibile comparsa entro 20 s da una mano. Un personaggio seguito che non si vede per un momento resta al suo posto.
 
 ### 8.4 Tracciamento e identità
 - Abbinamento fra un'immagine e la successiva con il metodo ungherese, su una distanza che combina posizione, colore e dimensione.
 - **Trasporto a mano (D41)**: quando un personaggio sparisce sotto una mano, la traccia passa "in mano"; quando riappare vicino alla mano (o dove la mano lo lascia) riprende la stessa identità. Così due personaggi dello stesso colore restano distinti.
 - **Incertezza (D52)**: se due candidati sono plausibili (due uguali spostati insieme, uno riapparso lontano, all'accensione) la traccia diventa "incerta". La casa chiede conferma sulla webapp e, se la loquacità lo permette, a voce: "In cucina c'è Marco o Leo?". Senza risposta entro 60 s tiene l'ipotesi migliore, segnata come incerta.
-- La galleria di colore di ogni identità si aggiorna lentamente quando il riconoscimento è sicuro.
+- La galleria di colore di ogni identità si aggiorna lentamente quando il riconoscimento è sicuro, e subito quando qualcuno dice chi è un personaggio.
+- **Nuovo arrivato (D-20)**: per ogni cosa che la casa non riconosce, la domanda "chi è?" parte subito, a voce e sui telefoni, con i personaggi registrati del tipo giusto e la possibilità di un nome nuovo; vale la prima risposta.
 - Stanza del punto d'appoggio con isteresi di 15 mm sulle porte, così chi sta sulla soglia non "salta" fra due stanze.
 
 ### 8.5 Categoria degli sconosciuti
@@ -304,7 +306,8 @@ Chiunque può rinominare o cancellare. Le cancellazioni vanno in un cestino per 
 
 ### 10.2 Ascolto
 - Tasto **parla**: ascolta finché è premuto, senza limite di tempo (D57). LED acceso mentre ascolta.
-- Citofono e conferme: ascolto automatico di 5 s dopo la domanda, senza tasto.
+- Dopo ogni domanda della casa (citofono, conferme, "chi è?", dubbi, domande ai personaggi, saluto ai telefoni): ascolto automatico di circa 6 s, senza tasto, ripetuto una volta se la risposta non è chiara. La stessa domanda è sui telefoni: vale la prima risposta, e una risposta dal telefono ferma l'ascolto.
+- **Racconto (D-20)**: in modalità normale e chiacchierona una frase breve per chi entra, esce o cambia stanza e per l'auto parcheggiata, detta quando il movimento si è fermato, unendo gli eventi contemporanei e mai sopra una domanda.
 
 ### 10.3 Riconoscimento
 | Uso | Motore |

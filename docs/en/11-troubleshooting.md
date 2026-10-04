@@ -159,17 +159,32 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### Banner *The webcam sees the whole house changed*
 **Cause.** For more than five seconds, more than a third of the house looks different from the empty house: the hall light changed a lot, something covers the camera, or the camera was knocked.
 
-**Fix.** Check the camera and its view; then, with the house empty, **More → Calibration → Adjust to the light again** (or **Save the empty house**). The banner goes away by itself when the view is normal again.
+**Fix.** Check the camera and its view; then, with the house empty, **More → Calibration → Set the light and save the empty house** (or **Save the empty house only**). The banner goes away by itself when the view is normal again.
 
 ### Ghost objects appear, or real ones are missed, after the hall light changed
 **Cause.** The locked exposure and the empty-house reference no longer fit the light of the hall.
 
-**Fix.** Empty the house and tap **Adjust to the light again**.
+**Fix.** Empty the house and tap **Set the light and save the empty house**.
+
+### The house does not notice the characters I put down
+**Cause.** The house thinks a hand is over the house and waits for it to leave (*Diagnostics* shows a hand even when nobody touches the house). It happens when something big lies on the edge of the base: a module, a cable, a visitor's arm.
+
+**Fix.** Remove or fix down what is on the edge. A "hand" still for 8 seconds is taken as an object anyway and becomes part of the empty house; a character put down meanwhile appears 2 seconds later.
+
+### Animals or objects that are not there, mostly on the driveway
+**Cause.** The arms of the players move loose modules or cables, and every move is a real change from the empty house.
+
+**Fix.** Mount the totem and run the cables along the walls, then with the house empty **More → Calibration → Save the empty house only**. To the question "what is it?" you can answer **None of these**.
+
+### The web app says *The webcam is not connected*
+**Cause.** For a few seconds the house received no pictures: a restart, a USB reset of the C270 (it happens at every opening, and when the desktop session of the board probes it, for instance at every ssh login).
+
+**Fix.** The line goes away by itself when the pictures are back. If it stays, check the webcam cable and *Diagnostics*; turning off the desktop of the board avoids the resets caused by ssh logins.
 
 ### Ghost objects where a piece of furniture was moved
 **Cause.** Furniture is part of the empty house.
 
-**Fix.** Put it back, or empty the house and tap **Save the empty house**.
+**Fix.** Put it back, or empty the house and tap **Save the empty house only**.
 
 ### A figurine is not seen, or keeps disappearing
 **Cause.** Its colour is too close to the floor, the walls or the lawns; or it stands where the vision does not look: under a wall light, under the tree canopy, next to the pole, on a wall top, outside the base.

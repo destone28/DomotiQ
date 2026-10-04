@@ -159,17 +159,32 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### Avviso *La webcam vede tutta la casa diversa*
 **Causa.** Per più di cinque secondi oltre un terzo della casa appare diverso dalla casa vuota: la luce della sala è cambiata molto, qualcosa copre la webcam, oppure la webcam è stata urtata.
 
-**Soluzione.** Controlla la webcam e la sua inquadratura; poi, con la casa vuota, **Altro → Calibrazione → Regola di nuovo la luce** (oppure **Salva la casa vuota**). L'avviso sparisce da solo quando l'immagine torna normale.
+**Soluzione.** Controlla la webcam e la sua inquadratura; poi, con la casa vuota, **Altro → Calibrazione → Regola la luce e salva la casa vuota** (oppure **Salva solo la casa vuota**, se la luce non è cambiata). L'avviso sparisce da solo quando l'immagine torna normale.
 
 ### Compaiono oggetti fantasma, o quelli veri non vengono visti, dopo che la luce del padiglione è cambiata
 **Causa.** L'esposizione bloccata e il riferimento della casa vuota non corrispondono più alla luce del padiglione.
 
-**Soluzione.** Svuota la casa e tocca **Regola di nuovo la luce**.
+**Soluzione.** Svuota la casa e tocca **Regola la luce e salva la casa vuota**.
+
+### La casa non nota i personaggi che metto
+**Causa.** La casa crede che ci sia una mano sopra la casa e aspetta che se ne vada (in *Diagnostica* risulta una mano anche quando nessuno tocca la casa). Succede se sul bordo della base è appoggiato qualcosa di grande: un modulo, un cavo, il braccio di un visitatore.
+
+**Soluzione.** Togli o fissa quello che è sul bordo. Una "mano" ferma per 8 secondi la casa la considera comunque un oggetto e la fa entrare nella casa vuota; un personaggio posato nel frattempo compare 2 secondi dopo.
+
+### Animali o oggetti che non ci sono, soprattutto sul vialetto
+**Causa.** Il braccio di chi gioca sposta moduli o cavi sciolti, e ogni spostamento è un cambiamento vero rispetto alla casa vuota.
+
+**Soluzione.** Monta il totem e fissa i cavi lungo le pareti, poi a casa vuota **Altro → Calibrazione → Salva solo la casa vuota**. Alla domanda "che cos'è?" si può rispondere **Nessuno di questi**.
+
+### La webapp dice *La webcam non è collegata*
+**Causa.** Per qualche secondo la casa non ha ricevuto immagini: un riavvio, un reset USB della C270 (succede a ogni apertura, e quando la sessione del desktop della scheda la interroga, per esempio a ogni accesso ssh).
+
+**Soluzione.** La scritta sparisce da sola quando le immagini tornano. Se resta, controlla il cavo della webcam e la *Diagnostica*; spegnere il desktop della scheda evita i reset dovuti agli accessi ssh.
 
 ### Oggetti fantasma dove è stato spostato un arredo
 **Causa.** Gli arredi fanno parte della casa vuota.
 
-**Soluzione.** Rimettilo a posto, oppure svuota la casa e tocca **Salva la casa vuota**.
+**Soluzione.** Rimettilo a posto, oppure svuota la casa e tocca **Salva solo la casa vuota**.
 
 ### Una statuina non viene vista, o continua a sparire
 **Causa.** Il suo colore è troppo vicino al pavimento, alle pareti o ai prati; oppure si trova dove la visione non guarda: sotto un'applique, sotto la chioma dell'albero, accanto al palo, sulla cima di una parete, fuori dalla base.
