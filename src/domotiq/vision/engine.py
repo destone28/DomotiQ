@@ -239,7 +239,11 @@ class Engine:
         blob = seg.labels[y:y + h, x:x + w] == o.extra["label"]
         if not blob.any():
             return False
-        cur = seg.corrected(self.frame, update=False)[y:y + h, x:x + w][blob]
+        # the frame brought back to the light of the empty house, only where the blob is (the whole frame for
+        # every blob of every frame would take most of the time of a frame)
+        crop = self.frame[y:y + h, x:x + w].astype(np.float32)
+        gains = seg._g[y:y + h, x:x + w] if seg._g is not None else 1.0
+        cur = np.minimum(crop / gains, 255.0)[blob]
         empty = self._empty0[y:y + h, x:x + w][blob]
         now_ref = seg.reference_bgr[y:y + h, x:x + w][blob]
         d_empty = float(np.median(np.abs(cur - empty).sum(axis=1)))

@@ -504,6 +504,10 @@ class Tracker:
                 continue
             t.identity, t.confidence = ident.id, conf
             t.category = ident.category
+            # the same character still "in a hand": it was put down here
+            for tid in [k for k, c in self.tracks.items() if c is not t and c.carried and c.identity == ident.id]:
+                del self.tracks[tid]
+                self._rooms.pop(tid, None)
             if not ambiguous:
                 t.uncertain, t.candidates = False, []
 
