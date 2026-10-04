@@ -689,6 +689,14 @@ class Engine:
                 out[vt.identity] = [round(float(v), 5) for v in vt.sig]
         return out
 
+    def learned_poses(self) -> dict[str, list[dict]]:
+        """The poses learned since the last call, for the house to keep."""
+        if not self.tracker or not self.tracker.posed:
+            return {}
+        out = {i: list(self.tracker.identities[i].poses) for i in self.tracker.posed if i in self.tracker.identities}
+        self.tracker.posed.clear()
+        return out
+
     def learned_sizes(self, identity: str | None = None) -> dict[str, float]:
         """How big the identities seen with confidence look from above (measured with no hand around)."""
         out = {}

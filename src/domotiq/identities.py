@@ -148,8 +148,10 @@ class Identities:
                 ident.signature = list(fields["signature"])
             if "size" in fields and fields["size"] is not None:
                 ident.size = float(fields["size"])
+            if "poses" in fields and fields["poses"] is not None:
+                ident.poses = [dict(p) for p in fields["poses"]][:8]
             self._save()
-        if set(fields) - {"signature", "size"}:
+        if set(fields) - {"signature", "size", "poses"}:
             self.store.add_audit("identity", identity_id, "update", before, ident.to_dict(),
                                  device, nickname)
         self.bus.publish("identities_changed", action="update", identity=identity_id)
@@ -194,5 +196,6 @@ class Identities:
         for i in self.all():
             d = i.to_dict()
             d.pop("signature", None)
+            d.pop("poses", None)              # what the vision learned: for the board only
             out.append(d)
         return out

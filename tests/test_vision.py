@@ -685,3 +685,46 @@ def test_who_stood_there_before_gets_its_name_back_without_asking(engine, render
     tr._touched.add("id-marco")
     tr._ask_unknown(21.0)
     assert t.identity is None and asked == [t.id]
+
+
+def test_a_new_pose_is_learned_and_then_recognized(engine, renderer):
+    standing = Thing(300, 100, "#7030c0")
+    tracks = bring(engine, renderer, [standing])
+    sig = engine.track_signature(tracks[0].id)[0]
+    engine.set_identities([Identity("id-viola", "Viola", signature=sig)])
+    tracks = run(engine, renderer, [([standing], {})] * 10, t0=10)
+    assert [t.identity for t in tracks] == ["id-viola"]
+    viola = engine.tracker.identities["id-viola"]
+    # somebody lays her down and says who she is: this look becomes one of her poses
+    lying = Thing(300, 100, "#7030c0", kind="animal", length=70.0, width=16.0, height=45.0)
+    run(engine, renderer, [([standing], {"hands": [Hand(300, 100)]})] * 3 + [([lying], {"hands": [Hand(300, 100)]})] * 3,
+        t0=12)
+    tracks = run(engine, renderer, [([lying], {})] * 30, t0=12.6)
+    engine.tracker.assign(tracks[0].id, "id-viola")
+    vt = engine.tracker.track(tracks[0].id)
+    engine.tracker.add_pose(viola, vt.sig, vt.obs.area_mm2, vt.obs.elongation)
+    assert len(viola.poses) == 1 and engine.learned_poses() == {"id-viola": viola.poses}
+    # later, lying again somewhere else, she is recognized from that pose, with no question
+    engine.tracker.tracks.clear()
+    asked = []
+    engine.on_question = lambda tr, c: asked.append(tr.id)
+    other = Thing(120, 80, "#7030c0", kind="animal", length=70.0, width=16.0, height=45.0)
+    run(engine, renderer, [([], {"hands": [Hand(120, 80)]})] * 3 + [([other], {"hands": [Hand(120, 80)]})] * 3, t0=20)
+    tracks = run(engine, renderer, [([other], {})] * 35, t0=20.6)
+    assert [t.identity for t in tracks] == ["id-viola"] and not asked
+
+
+def test_the_closest_pose_counts(layout, renderer):
+    from domotiq.vision.tracker import Tracker
+    seg = Segmenter(layout, renderer.calib)
+    seg.set_reference([renderer.render() for _ in range(3)])
+
+    def look(color):
+        obs, _, _ = seg.process(renderer.render([Thing(300, 100, color)]), now=0.1)
+        return max(obs, key=lambda o: o.area_mm2)
+    red, pink = look("#d03030"), look("#e070b0")
+    marco = Identity("id-marco", "Marco", signature=list(red.sig))
+    far = Tracker._unlike(pink.sig, pink.area_mm2, marco, pink.elongation)
+    marco.poses = [{"sig": list(pink.sig), "size": pink.area_mm2, "elong": pink.elongation}]
+    near = Tracker._unlike(pink.sig, pink.area_mm2, marco, pink.elongation)
+    assert far > 0.45 and near < 0.05            # seen like that before: it is Marco

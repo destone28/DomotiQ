@@ -54,6 +54,7 @@ class Identity:
     color: str = "#888888"               # dominant colour seen by the webcam, #rrggbb
     signature: list[float] = field(default_factory=list)   # colour signature (vision)
     size: float = 0.0                    # how big it looks from above, mm² (vision; 0 until learned)
+    poses: list[dict[str, Any]] = field(default_factory=list)   # learned looks: {"sig", "size", "elong"} (vision)
     photo: str | None = None             # file name under var/photos
     created_at: float = field(default_factory=time.time)
     created_by: str | None = None

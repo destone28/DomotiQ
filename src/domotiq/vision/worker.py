@@ -171,7 +171,12 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                     engine.set_identities([Identity.from_dict(d) for d in msg[1]])
                 elif kind == "assign" and engine.tracker:
                     engine.tracker.assign(msg[1], msg[2])
-                    # someone said who it is: its colours as seen now teach the house at once
+                    # someone said who it is: its colours as seen now teach the house at once, and this look is
+                    # one of its poses
+                    vt = engine.tracker.track(msg[1]) if msg[2] else None
+                    ident = engine.tracker.identities.get(msg[2] or "")
+                    if vt is not None and vt.obs is not None and ident is not None:
+                        engine.tracker.add_pose(ident, vt.sig, vt.obs.area_mm2, vt.obs.elongation)
                     sig = engine.track_signature(msg[1]) if msg[2] else None
                     if sig:
                         conn.send(("taught", {msg[2]: sig[0]}, engine.learned_sizes(msg[2])))
@@ -234,6 +239,9 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
             st.update(camera=camera.connected, device=camera.device,
                       size=list(camera.size) if camera.size else None, reconnects=camera.reconnects)
             conn.send(("status", st))
+        poses = engine.learned_poses()
+        if poses:
+            conn.send(("poses", poses))
         if now - last_learn > 60.0:
             last_learn = now
             learned = engine.learned()
@@ -347,6 +355,12 @@ class VisionProcess(VisionLink):
                 self._learn(msg[1], 0.1, msg[2] if len(msg) > 2 else None)
             elif kind == "taught":
                 self._learn(msg[1], 0.5, msg[2] if len(msg) > 2 else None)
+            elif kind == "poses":
+                for ident_id, poses in msg[1].items():
+                    try:
+                        self.identities.update(ident_id, poses=poses)
+                    except KeyError:
+                        pass
 
     def _learn(self, learned: dict[str, list[float]], weight: float = 0.1,
                sizes: dict[str, float] | None = None) -> None:
