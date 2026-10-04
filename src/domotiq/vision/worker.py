@@ -42,7 +42,7 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
     import cv2  # noqa: F401  (imported here: the parent does not need it)
 
     from ..layout import Layout
-    from .camera import Camera, Controls, picture_stats, tune, valid_lock
+    from .camera import Camera, Controls, average_stats, tune, valid_lock
     from .engine import Engine
 
     cv2.setNumThreads(2)
@@ -83,6 +83,13 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
         return frames
 
     engine = Engine(layout, calib_dir, Path(cfg["dataset"]), Path(cfg["recordings"]), grab)
+    engine.set_privacy(cfg.get("blur_private", True))
+    if cfg.get("device") != "synthetic":
+        # nothing is recognized until the light of the webcam is set on the empty house
+        try:
+            engine.light_ok = valid_lock(json.loads(lock_file.read_text()))
+        except (OSError, ValueError):
+            engine.light_ok = False
 
     def ask(track: Track, candidates: list[str]) -> None:
         conn.send(("question", track.to_dict(), candidates))
@@ -95,12 +102,9 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
         if c is None:
             return {"ok": False, "error": "no camera"}
 
-        def measure() -> tuple[float, float]:
+        def measure() -> tuple[float, tuple[float, float, float]]:
             camera.flush(frames=3)
-            stats = [picture_stats(f) for f in grab(2) if f is not None]
-            if not stats:
-                raise RuntimeError("no frames from the camera")
-            return sum(x[0] for x in stats) / len(stats), sum(x[1] for x in stats) / len(stats)
+            return average_stats(grab(2))
 
         camera.set_balance(None)
         try:
@@ -111,16 +115,18 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
         camera.set_balance(values["balance"])
         lock_file.write_text(json.dumps(values))
         camera.flush()
+        engine.light_ok = True
         result = engine.take_empty()
         result["camera"] = values
         return result
 
     commands = {
         "corners": lambda p: engine.set_corners(p.get("points") or []),
-        "empty": lambda p: (camera.flush(), engine.take_empty())[1],
+        # an empty house is saved with the light of the webcam set: the first time, both are done
+        "empty": lambda p: (camera.flush(), engine.take_empty())[1] if engine.light_ok else adjust(),
         "adjust": lambda p: adjust(),
         "reset": lambda p: (lock_file.unlink(missing_ok=True), camera.controls and camera.controls.automatic(),
-                            engine.reset())[2],
+                            setattr(engine, "light_ok", cfg.get("device") == "synthetic"), engine.reset())[3],
         "capture": lambda p: engine.capture(int(p.get("count", 1))),
         "record": lambda p: engine.start_recording(float(p.get("seconds", 60))),
         "export": lambda p: engine.export(),
@@ -146,10 +152,16 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                     engine.set_identities([Identity.from_dict(d) for d in msg[1]])
                 elif kind == "assign" and engine.tracker:
                     engine.tracker.assign(msg[1], msg[2])
+                    # someone said who it is: its colours as seen now teach the house at once
+                    sig = engine.track_signature(msg[1]) if msg[2] else None
+                    if sig:
+                        conn.send(("taught", {msg[2]: sig[0]}))
                 elif kind == "forget" and engine.tracker:
                     engine.tracker.forget(msg[1])
                 elif kind == "lights" and engine.segmenter:
                     engine.segmenter.light_changed(msg[1], time.time())
+                elif kind == "privacy":
+                    engine.set_privacy(bool(msg[1]))
                 elif kind == "want":
                     want[bool(msg[1])] = time.time()
                 elif kind == "cmd":
@@ -223,6 +235,7 @@ class VisionProcess(VisionLink):
             "dataset": str(paths.dataset),
             "recordings": str(paths.recordings),
             "device": device or settings.get("camera.device"),
+            "blur_private": settings.get("camera.blur_bathroom", True),
             "log_level": logging.getLogger().level or logging.INFO,
         }
         self._mp = mp.get_context("spawn")
@@ -309,15 +322,18 @@ class VisionProcess(VisionLink):
                     log.exception("vision question")
             elif kind == "learn":
                 self._learn(msg[1])
+            elif kind == "taught":
+                self._learn(msg[1], 0.5)
 
-    def _learn(self, learned: dict[str, list[float]]) -> None:
-        """The colour gallery follows the identities slowly while they are recognized with confidence."""
+    def _learn(self, learned: dict[str, list[float]], weight: float = 0.1) -> None:
+        """The colour gallery follows the identities slowly while they are recognized with confidence, and
+        at once when someone says who a figurine is."""
         from .signature import blend
         for ident_id, sig in learned.items():
             ident = self.identities.get(ident_id)
-            if ident is None or not ident.signature:
+            if ident is None:
                 continue
-            new = blend(ident.signature, sig, 0.1)
+            new = blend(ident.signature, sig, weight) if ident.signature else sig
             try:
                 self.identities.update(ident_id, signature=[round(float(v), 5) for v in new])
             except KeyError:
@@ -375,6 +391,10 @@ class VisionProcess(VisionLink):
 
     def lights_changed(self, rooms: list[str]) -> None:
         self._send("lights", rooms)
+
+    def set_privacy(self, blur_private: bool) -> None:
+        self.cfg["blur_private"] = bool(blur_private)
+        self._send("privacy", bool(blur_private))
 
     def status(self) -> dict[str, Any]:
         return {"available": self.available, "alive": bool(self._proc and self._proc.is_alive()), **self._status}

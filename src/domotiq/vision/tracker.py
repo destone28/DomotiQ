@@ -15,7 +15,12 @@ back to "uncertain" and the house asks.
 
 A visitor's hand is a large blob coming from the edge: whatever disappears
 under it is "carried", keeps its identity and reappears where the hand
-leaves it.
+leaves it. Figurines do not move by themselves, so the engine tells the
+tracker when something new may appear (where a hand has just been) and when
+the house is "frozen" (a hand at work, the light of the hall changing):
+then nothing is born and nothing disappears. A track already followed that
+is not seen for a moment (hidden by a light, touching another figurine)
+stays where it was instead of leaving and coming back.
 """
 
 from __future__ import annotations
@@ -32,11 +37,15 @@ from .pipeline import Observation
 from .signature import blend, distance, to_hex
 
 MAX_JUMP_MM = 90.0          # farther than this between frames: not the same thing
-LOST_S = 1.5                # a track unseen for longer disappears
-CARRIED_MAX_S = 60.0        # a carried track not put down for longer is dropped
+LOST_S = 1.5                # a young track unseen for longer was noise
+YOUNG_S = 2.5               # ...young: followed for less than this, with no identity
+HIDDEN_S = 120.0            # a track followed for longer stays where it was, unseen, up to this
+CARRIED_GONE_S = 2.5        # carried and not put down this long after the hands left: out of the house
+CARRIED_MAX_S = 120.0       # carried this long, hands or not: dropped
 ID_ACCEPT = 0.30            # colour distance under which an identity is recognized
 ID_MARGIN = 0.07            # the second best must be this much worse
-CONFIRM_FRAMES = 4          # frames of agreement before an identity is given
+CONFIRM_FRAMES = 2          # frames of agreement before an identity is given
+UNKNOWN_ASK_S = 2.0         # in sight this long and recognized as nobody: the house asks who it is
 
 
 @dataclass
@@ -88,19 +97,21 @@ class Tracker:
                 t.identity, t.locked, t.confidence = None, False, 0.0
 
     # ------------------------------------------------------------ update
-    def update(self, observations: list[Observation], now: float | None = None) -> list[Track]:
+    def update(self, observations: list[Observation], now: float | None = None, frozen: bool = False,
+               quiet_s: float = float("inf")) -> list[Track]:
+        """`frozen`: a hand at work or the light changing, nothing is born or lost; `quiet_s`: seconds since
+        the last hand. An observation may start a new track only if its extra["birth"] allows it."""
         now = time.time() if now is None else now
         hands = [o for o in observations if o.hand]
         things = [o for o in observations if not o.hand]
         self.hands = hands
-        self._associate(things, now)
+        self._associate(things, now, births=not frozen)
         self._carry(hands, now)
-        self._drop_lost(now)
+        self._drop_lost(now, frozen, quiet_s)
         self._recognize(now)
+        self._ask_unknown(now)
         out = []
         for t in self.tracks.values():
-            if t.obs is None and not t.carried:
-                continue                   # not seen this frame, kept for a while but not shown
             if t.hits < 2 and not t.identity:
                 continue                   # a blob seen once may be noise
             tr = t.to_track(self.layout, self._rooms.get(t.id))
@@ -111,7 +122,7 @@ class Tracker:
     def _position(self, o: Observation, category: str | None) -> tuple[float, float]:
         return o.position(self.calib, category)
 
-    def _associate(self, things: list[Observation], now: float) -> None:
+    def _associate(self, things: list[Observation], now: float, births: bool = True) -> None:
         """One assignment for all: the tracks in sight by position and colour, the carried ones by colour."""
         tracks = list(self.tracks.values())
         for t in tracks:
@@ -149,14 +160,16 @@ class Tracker:
                         self._doubt(t, now)
                 else:
                     self._apply(t, o, now)
+                o.extra["track"] = t.id
                 matched.add(j)
         for j, o in enumerate(things):
-            if j in matched:
+            if j in matched or not births or not o.extra.get("birth", True):
                 continue
             t = VTrack(new_id("t"), *self._position(o, o.category_guess), o, o.sig, o.category_guess,
                        last_seen=now, since=now)
             self.tracks[t.id] = t
             self._apply(t, o, now)
+            o.extra["track"] = t.id
 
     def _apply(self, t: VTrack, o: Observation, now: float) -> None:
         x, y = self._position(o, t.category)
@@ -195,14 +208,20 @@ class Tracker:
                     t.moving = True
                     break
 
-    def _drop_lost(self, now: float) -> None:
+    def _drop_lost(self, now: float, frozen: bool = False, quiet_s: float = float("inf")) -> None:
         for tid, t in list(self.tracks.items()):
             if t.carried:
-                if now - t.carried_since > CARRIED_MAX_S:
+                # the hands left without putting it down: taken out of the house
+                gone = not frozen and quiet_s > CARRIED_GONE_S and now - t.carried_since > CARRIED_GONE_S
+                if gone or now - t.carried_since > CARRIED_MAX_S:
                     del self.tracks[tid]
                     self._rooms.pop(tid, None)
                 continue
-            if now - t.last_seen > LOST_S:
+            unseen = now - t.last_seen
+            if unseen <= LOST_S or frozen:
+                continue
+            young = t.last_seen - t.since < YOUNG_S and not t.identity and not t.locked
+            if young or unseen > HIDDEN_S:
                 del self.tracks[tid]
                 self._rooms.pop(tid, None)
 
@@ -256,6 +275,8 @@ class Tracker:
         ids = [i for i in self.identities.values() if len(i.signature)]
         visible = [t for t in self.tracks.values() if t.obs is not None or t.carried]
         locked = {t.identity for t in visible if t.locked and t.identity}
+        # a character hidden for a moment is still in its place: its name is not free for another track
+        locked |= {t.identity for t in self.tracks.values() if t.obs is None and not t.carried and t.identity}
         free_ids = [i for i in ids if i.id not in locked]
         free_tracks = [t for t in visible if not t.locked and not t.carried and t.hits >= 2]
         if not free_tracks:
@@ -303,6 +324,30 @@ class Tracker:
             t.category = ident.category
             if not ambiguous:
                 t.uncertain, t.candidates = False, []
+
+    def _ask_unknown(self, now: float) -> None:
+        """In sight for a while and recognized as nobody: ask who it is. The registered characters that are
+        not in the house are proposed, closest colours first, then those whose colours the house has not
+        learned yet (the answer teaches them)."""
+        if not self.on_question:
+            return
+        held = {t.identity for t in self.tracks.values() if t.identity}
+        free = [i for i in self.identities.values() if i.id not in held]
+        if not free:
+            return
+        for t in self.tracks.values():
+            if t.identity or t.obs is None or t.carried or t.asked >= t.since or now - t.since < UNKNOWN_ASK_S \
+                    or t.hits < 8:
+                continue
+            if any(v > 0 for v in t.votes.values()):
+                continue                       # being recognized right now
+            car = t.obs.area_mm2 > 6000
+            fit = [i for i in free if (i.category == CAR) == car]
+            trained = sorted((i for i in fit if len(i.signature)), key=lambda i: distance(t.sig, i.signature))
+            cands = [i.id for i in trained[:3] + [i for i in fit if not len(i.signature)]][:4]
+            if cands:
+                t.asked = now
+                self.on_question(t, cands)
 
     # ------------------------------------------------------------ queries
     def track(self, track_id: str) -> VTrack | None:

@@ -51,6 +51,9 @@ class VisionLink:
     def status(self) -> dict[str, Any]:
         return {"available": self.available}
 
+    def set_privacy(self, blur_private: bool) -> None:
+        """Whether the bathroom is blurred in the images that leave the board."""
+
     def command(self, name: str, **params: Any) -> dict[str, Any]:
         """Calibration, capture and other staff operations."""
         return {"ok": False, "error": "no camera"}

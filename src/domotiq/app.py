@@ -168,17 +168,31 @@ def _wire_vision(ctx: Context) -> None:
         from .voice.answers import room as room_phrase
         track = ev.get("track") or {}
         cands = [c for c in ev.get("candidates") or [] if ctx.identities.get(c)]
-        if len(cands) < 2 or not track.get("id"):
+        unknown = not track.get("identity")          # recognized as nobody, rather than as two look-alikes
+        if not track.get("id") or not cands or (not unknown and len(cands) < 2):
             return
         if any(c["context"].get("kind") == "who" and c["context"].get("track") == track["id"]
                for c in ctx.house.confirmations.values()):
             return
+        registration = getattr(ctx, "registration", None)
+        if unknown and registration is not None and any(
+                sess.status in ("waiting", "choose", "confirm") for sess in registration.sessions.values()):
+            return                                    # a registration is waiting for this very figurine
         names = [ctx.identities.name_of(c) for c in cands]
         where_it = room_phrase(ctx, track.get("room"), "it")
         where_en = room_phrase(ctx, track.get("room"), "en")
-        question = {"it": f"{where_it[0].upper()}{where_it[1:]} c'è {' o '.join(names)}?",
-                    "en": f"Is it {' or '.join(names)} {where_en}?"}
         options = [{"value": c, "label": {"it": n, "en": n}} for c, n in zip(cands, names)]
+        if unknown and len(names) == 1:
+            question = {"it": f"C'è qualcuno di nuovo {where_it}: è {names[0]}?",
+                        "en": f"Someone new {where_en}: is it {names[0]}?"}
+            options.append({"value": "", "label": {"it": "No", "en": "No"}})
+        elif unknown:
+            question = {"it": f"Chi c'è adesso {where_it}? {' o '.join(names)}?",
+                        "en": f"Who is that {where_en}? {' or '.join(names)}?"}
+            options.append({"value": "", "label": {"it": "Nessuno di questi", "en": "None of these"}})
+        else:
+            question = {"it": f"{where_it[0].upper()}{where_it[1:]} c'è {' o '.join(names)}?",
+                        "en": f"Is it {' or '.join(names)} {where_en}?"}
         ctx.house.ask(question, options, {"kind": "who", "track": track["id"]}, timeout_s=60)
 
     def answered(ev: Event) -> None:
@@ -315,10 +329,16 @@ async def periodic(ctx: Context) -> None:
                                                               "en": "The webcam has moved: calibrate again"})
                 else:
                     ctx.house.clear_alert("camera-moved")
+                if vst.get("calibrated") and vst.get("light_ok") is False:
+                    ctx.house.set_alert("camera-light", name={
+                        "it": "La casa non riconosce niente finché non regoli la luce: Calibrazione → Regola la luce e salva la casa vuota",
+                        "en": "The house recognizes nothing until the light is set: Calibration → Set the light and save the empty house"})
+                else:
+                    ctx.house.clear_alert("camera-light")
                 if vst.get("flooded"):
                     ctx.house.set_alert("camera-flooded", name={
-                        "it": "La webcam vede tutta la casa diversa: luce della sala cambiata? Rifare «Regola di nuovo la luce»",
-                        "en": "The webcam sees the whole house changed: did the hall light change? Use “Adjust to the light again”"})
+                        "it": "La webcam vede tutta la casa diversa: è coperta, è stata urtata o la luce della sala è cambiata troppo? Calibrazione → Regola la luce e salva la casa vuota",
+                        "en": "The webcam sees the whole house changed: covered, knocked, or a much different hall light? Calibration → Set the light and save the empty house"})
                 else:
                     ctx.house.clear_alert("camera-flooded")
                 ctx.bus.publish("status", **ctx.house.status)

@@ -628,6 +628,7 @@ def create_app(ctx: "Context") -> FastAPI:
         if ctx.audio is not None:
             ctx.audio.set_volume(ctx.settings.get("voice.volume", 70))
         ctx.bus.publish("volume", volume=ctx.settings.get("voice.volume"))
+        ctx.vision.set_privacy(ctx.settings.get("camera.blur_bathroom", True))
         return ctx.settings.public()
 
     def confirm_pin(body: dict, w: Who) -> None:

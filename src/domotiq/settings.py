@@ -61,7 +61,8 @@ DEFAULTS: dict[str, Any] = {
     "buttons": {"reversed": False},
     "staff": {"pin_hash": None, "pin_salt": None, "session_hours": 12},
     "network": {"ssid": "", "password": "", "channel": 1, "address": "", "hostname": ""},
-    "camera": {"device": None},           # a /dev/v4l/by-id path, if the webcam is not found by itself
+    "camera": {"device": None,            # a /dev/v4l/by-id path, if the webcam is not found by itself
+               "blur_bathroom": True},    # the bathroom blurred in the live view and the images that leave
     "clock": {"timezone": "Europe/Rome"},
 }
 

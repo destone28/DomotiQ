@@ -169,6 +169,7 @@ def test_registered_identities_are_recognized(engine, renderer):
                            Identity("id-sofia", "Sofia", signature=sig_blue)])
     # a fresh start: the house recognizes them by colour alone
     engine.tracker.tracks.clear()
+    engine.rescan()
     tracks = run(engine, renderer, [([Thing(100, 60, "#d03030"), Thing(560, 300, "#3050d0")], {})] * 8, t0=10)
     names = {t.identity: t.room for t in tracks}
     assert names.get("id-marco") == "kitchen"
@@ -227,6 +228,22 @@ def test_same_colour_twins_are_followed_and_doubted(engine, renderer):
 
 
 # ------------------------------------------------------------ images that leave the board
+def test_around_the_house_is_blurred_and_the_bathroom_optionally(layout, renderer):
+    img = renderer.render([Thing(230, 300, "#20c020")])
+    rng = np.random.default_rng(0)
+    noise = rng.integers(0, 255, img.shape, dtype=np.uint8)
+    privacy = Privacy(layout, renderer.calib, private=False, outside=True)
+    around = privacy.mask > 0                                # the stand, the visitors, their phones
+    assert around.any() and not around.all()
+    img[around] = noise[around]
+    plain = privacy.apply(img)
+    assert np.abs(plain[around].astype(float) - img[around]).mean() > 30
+    x, y = renderer.calib.image_of(np.array([[230, 300]]), 90)[0].astype(int)
+    assert np.array_equal(plain[y - 8:y + 8, x - 8:x + 8], img[y - 8:y + 8, x - 8:x + 8])   # bathroom in focus
+    blurred = Privacy(layout, renderer.calib, private=True, outside=True).apply(img)
+    assert np.abs(blurred[y - 8:y + 8, x - 8:x + 8].astype(float) - img[y - 8:y + 8, x - 8:x + 8]).mean() > 10
+
+
 def test_bathroom_is_blurred(layout, renderer):
     img = renderer.render([Thing(230, 300, "#20c020")])
     out = Privacy(layout, renderer.calib).apply(img)
@@ -256,14 +273,104 @@ def test_engine_commands_and_dataset(engine, renderer, tmp_path):
     assert engine.set_corners([[0, 0], [0.1, 0], [0.1, 0.1], [0, 0.1]])["ok"] is False
 
 
-def test_whole_house_changed_is_reported(engine, renderer):
+def test_the_hall_light_changes_and_the_house_follows(engine, renderer):
     run(engine, renderer, [([], {})] * 3)
-    assert not engine.status()["flooded"]
-    # the hall light turns strongly blue and nobody measured it again
-    engine.segmenter.gain_period = 1e9
+    # the hall light turns strongly blue: the house measures every room again and counts nothing
     frames = [([], {"brightness": 0.45, "cast": (1.6, 0.8, 0.6)})] * 70
-    run(engine, renderer, frames, t0=10)
+    seen = [len(engine.feed(renderer.render(things, **kw), 10 + i * 0.1)) for i, (things, kw) in enumerate(frames)]
+    assert max(seen) == 0
+    assert not engine.status()["flooded"]
+
+
+def test_a_covered_camera_is_reported(engine, renderer):
+    run(engine, renderer, [([], {})] * 3)
+    run(engine, renderer, [([], {"brightness": 0.03})] * 70, t0=10)
     assert engine.status()["flooded"]
+    assert engine.tracks == []
+
+
+# ------------------------------------------------------------ hands, and nothing moves by itself
+def settle(engine, renderer, things, t0, seconds=4.0):
+    return run(engine, renderer, [(things, {})] * int(seconds / 0.1), t0=t0)
+
+
+def test_a_hand_over_the_house_is_never_a_presence(engine, renderer):
+    settle(engine, renderer, [], 0)                         # the start scan finds nothing
+    path = [(120, 60), (200, 120), (300, 150), (420, 100), (520, 160), (560, 300), (300, 250)]
+    seen = []
+    for i, (x, y) in enumerate(path * 3):
+        side = "bottom" if i % 2 else "top"
+        seen.append(engine.feed(renderer.render([], hands=[Hand(x, y, side=side)]), 5 + i * 0.1))
+    assert all(not tracks for tracks in seen)
+    assert engine.status()["hand"]
+    assert settle(engine, renderer, [], 8) == []            # it left nothing behind
+
+
+def test_a_figurine_put_down_by_hand_appears_when_the_hand_leaves(engine, renderer):
+    settle(engine, renderer, [], 0)
+    red = Thing(300, 100, "#d03030")
+    tracks = run(engine, renderer, [([], {"hands": [Hand(300, 100)]})] * 4 +
+                 [([red], {"hands": [Hand(300, 100)]})] * 4, t0=5)
+    assert tracks == []                                     # nothing counted while the hand is there
+    first = None
+    for i in range(30):
+        tracks = engine.feed(renderer.render([red]), 6 + i * 0.1)
+        if tracks and first is None:
+            first = i * 0.1
+    assert len(tracks) == 1 and tracks[0].room == "living"
+    assert np.hypot(tracks[0].x - 300, tracks[0].y - 100) < 12
+    assert first is not None and first <= 1.2               # ready as soon as the hand has settled
+
+
+def test_a_change_with_no_hand_is_not_a_presence(engine, renderer):
+    settle(engine, renderer, [], 0)
+    # a patch of the floor changes on its own (a reflection, a light): never a track, and it is learned
+    ghost = Thing(390, 60, "#30a0d0", "object", 15, 20)
+    seen = [engine.feed(renderer.render([ghost]), 5 + i * 0.1) for i in range(60)]
+    assert all(not tracks for tracks in seen)
+    assert engine.status()["absorbed"] >= 1
+    assert not engine.observations                          # part of the empty house now
+
+
+def test_a_figurine_taken_away_leaves_soon_after_the_hand(engine, renderer):
+    red = Thing(300, 100, "#d03030")
+    tracks = settle(engine, renderer, [red], 0)
+    assert len(tracks) == 1
+    run(engine, renderer, [([red], {"hands": [Hand(300, 100)]})] * 3 + [([], {"hands": [Hand(300, 60)]})] * 4,
+        t0=5)
+    gone_at = None
+    for i in range(50):
+        if not engine.feed(renderer.render([]), 6 + i * 0.1) and gone_at is None:
+            gone_at = i * 0.1
+    assert gone_at is not None and gone_at < 3.5
+    assert engine.tracks == []
+
+
+def test_a_followed_figurine_does_not_leave_when_unseen_for_a_moment(engine, renderer):
+    red = Thing(300, 100, "#d03030")
+    tracks = settle(engine, renderer, [red], 0)
+    engine.tracker.assign(tracks[0].id, "id-marco")
+    tracks = run(engine, renderer, [([], {})] * 5, t0=5)    # hidden for half a second, no hand around
+    assert [t.identity for t in tracks] == ["id-marco"]
+
+
+def test_an_unknown_figurine_is_asked_about(engine, renderer):
+    red, blue = Thing(300, 100, "#d03030"), Thing(520, 150, "#3050d0")
+    settle(engine, renderer, [red, blue], 0)
+    sigs = {round(t.x / 100): engine.track_signature(t.id)[0] for t in engine.tracks}
+    engine.set_identities([Identity("id-marco", "Marco", signature=sigs[3]),
+                           Identity("id-sofia", "Sofia", signature=sigs[5]),
+                           Identity("id-luca", "Luca")])        # registered, colours not learned yet
+    asked = []
+    engine.on_question = lambda tr, cands: asked.append((tr.identity, cands))
+    green = Thing(120, 80, "#20b040")
+    run(engine, renderer, [([red, blue], {"hands": [Hand(120, 80)]})] * 3 +
+        [([red, blue, green], {"hands": [Hand(120, 80)]})] * 3, t0=6)
+    settle(engine, renderer, [red, blue, green], 7)
+    newcomer = [t for t in engine.tracks if t.room == "kitchen"]
+    assert len(newcomer) == 1 and newcomer[0].identity is None
+    # the red and blue ones are recognized as Marco and Sofia: only Luca can be the newcomer
+    assert asked and asked[0][0] is None and asked[0][1] == ["id-luca"]
 
 
 # ------------------------------------------------------------------ camera settings
@@ -312,6 +419,18 @@ def test_the_webcam_settings_are_found_on_the_pictures():
         assert abs(b / g - 118 / 120) < 0.05 and abs(r / g - 122 / 120) < 0.05, values   # neutral again
         assert (values["gain"] > 0) == gain_needed
         assert values["exposure"] != 36
+
+
+def test_pictures_are_measured_on_all_three_channels():
+    from domotiq.vision.camera import average_stats
+
+    a = np.full((120, 160, 3), (40, 100, 160), np.uint8)
+    b = np.full((120, 160, 3), (60, 120, 180), np.uint8)
+    luma, (bl, gr, rd) = average_stats([a, b, None])
+    assert (round(bl), round(gr), round(rd)) == (50, 110, 170)
+    assert luma == pytest.approx(0.114 * 50 + 0.587 * 110 + 0.299 * 170, abs=0.5)
+    with pytest.raises(RuntimeError):
+        average_stats([])
 
 
 def test_a_broken_camera_lock_is_not_applied():

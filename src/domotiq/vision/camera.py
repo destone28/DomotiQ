@@ -165,6 +165,15 @@ def picture_stats(frame: np.ndarray) -> tuple[float, tuple[float, float, float]]
     return 0.114 * b + 0.587 * g + 0.299 * r, (b, g, r)
 
 
+def average_stats(frames: list[np.ndarray]) -> tuple[float, tuple[float, float, float]]:
+    """picture_stats() of a few pictures, averaged."""
+    stats = [picture_stats(f) for f in frames if f is not None]
+    if not stats:
+        raise RuntimeError("no frames from the camera")
+    n = len(stats)
+    return sum(x[0] for x in stats) / n, tuple(sum(x[1][i] for x in stats) / n for i in range(3))
+
+
 def _cast(bgr: tuple[float, float, float]) -> tuple[float, float]:
     b, g, r = (c + 1.0 for c in bgr)
     return float(np.log(b / g)), float(np.log(r / g))

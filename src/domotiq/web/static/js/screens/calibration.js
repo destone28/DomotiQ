@@ -22,8 +22,8 @@ export function mount(root) {
       </div>
       <div class="step"><b>3</b><span>${t("cal.step3")}</span></div>
       <div class="grid2">
-        <button class="btn primary" id="empty">${t("cal.empty")}</button>
-        <button class="btn" id="adjust">${t("cal.adjust")}</button>
+        <button class="btn primary" id="adjust">${t("cal.adjust")}</button>
+        <button class="btn" id="empty">${t("cal.empty")}</button>
       </div>
       <p class="muted small" id="status"></p>
     </div>
@@ -81,12 +81,21 @@ export function mount(root) {
       return r;
     } catch (e) { toast(e.message, "alarm"); return null; }
   };
+  // the light of the webcam and the empty house go together: right after the corners, and on request
+  const adjust = async () => {
+    $("#status").textContent = t("cal.working");
+    root.querySelectorAll("button").forEach(b => { b.disabled = true; });
+    try { return await cmd("adjust"); } finally {
+      root.querySelectorAll("button").forEach(b => { b.disabled = false; });
+      marks();
+    }
+  };
   $("#use").onclick = async () => {
     const r = await cmd("corners", { points: corners.map(p => [p.u, p.v]) });
-    if (r && r.ok) { corners.length = 0; marks(); }
+    if (r && r.ok) { corners.length = 0; marks(); await adjust(); }
   };
   $("#empty").onclick = () => cmd("empty");
-  $("#adjust").onclick = () => cmd("adjust");
+  $("#adjust").onclick = adjust;
   $("#cap").onclick = () => cmd("capture", { count: 1 });
   $("#burst").onclick = () => cmd("capture", { count: 10 });
   $("#rec").onclick = () => cmd("record", { seconds: 60 });

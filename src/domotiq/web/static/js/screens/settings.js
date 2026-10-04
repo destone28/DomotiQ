@@ -30,6 +30,7 @@ export function mount(root) {
         <label class="field"><span>${t("set.house_name")} (IT)</span><input type="text" id="hn-it" value="${esc(tr({ it: s.house.name.it }))}"></label>
         <label class="field"><span>${t("set.house_name")} (EN)</span><input type="text" id="hn-en" value="${esc(s.house.name.en)}"></label>
         <label class="row spread"><span>${t("set.buttons_reversed")}</span><span class="switch"><input type="checkbox" id="rev" ${s.buttons.reversed ? "checked" : ""}><span></span></span></label>
+        <label class="row spread"><span>${t("set.blur_bathroom")}</span><span class="switch"><input type="checkbox" id="blur" ${s.camera.blur_bathroom !== false ? "checked" : ""}><span></span></span></label>
       </div>
       <div class="card"><h3 style="margin-top:0">${t("set.lights")} · ${t("set.party")} · ${t("set.grill")} · ${t("set.climate")}</h3>
         ${NUMBERS.map(([path, label, min, max]) => `<label class="field"><span>${t(label)}</span>
@@ -76,7 +77,7 @@ export function mount(root) {
     const $ = (q) => root.querySelector(q);
     $("#save").onclick = $("#save-voice").onclick = async () => {
       const body = { house: { name: { it: $("#hn-it").value, en: $("#hn-en").value } }, buttons: { reversed: $("#rev").checked },
-        lights: { follow_color: $("#fcol").value },
+        lights: { follow_color: $("#fcol").value }, camera: { blur_bathroom: $("#blur").checked },
         voice: { greet_phones: $("#greet").checked, chatty_questions: $("#chatq").checked } };
       root.querySelectorAll("[data-path]").forEach(inp => {
         const [a, b] = inp.dataset.path.split(".");

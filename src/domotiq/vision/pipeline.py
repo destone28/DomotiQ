@@ -103,6 +103,8 @@ class Segmenter:
         self.gain_period = 0.33                        # the light is measured three times a second
         self._crowded: dict[int, float] = {}          # region -> since when it is all foreground
         self.params = {"dc": 11.0, "dl": 20.0, "shadow_dc": 7.0, "min_px": 80, "hand_mm2": 3500.0}
+        self.labels: np.ndarray | None = None          # the blobs of the last frame, by number
+        self.hand_mask: np.ndarray | None = None       # where the hands of the last frame are
         self.scene = StaticScene(layout, calib)
         self._build_masks()
 
@@ -119,9 +121,10 @@ class Segmenter:
 
     def _build_masks(self) -> None:
         lay, cal, scene = self.layout, self.calib, self.scene
-        # the floor that matters: the base, with room on the right for the car coming in
+        # the floor that matters: the base and nothing around it (a hand or a phone next to the house is not
+        # in the house); the car is seen as soon as it crosses the garage gate
         b = lay.base
-        self.view_mask = self._poly_mask([cal.image_of(rect_pts([b.x0 - 15, b.x1 + 95, b.y0 - 15, b.y1 + 10]))])
+        self.view_mask = self._poly_mask([cal.image_of(rect_pts([b.x0 - 5, b.x1 + 5, b.y0 - 5, b.y1 + 5]))])
         self.base_mask = self._poly_mask([cal.image_of(rect_pts([b.x0, b.x1, b.y0, b.y1]))])
         heights = {"pole": (0.0, 900.0), "tree-canopy": (95.0, 170.0)}
         polys = []
@@ -180,6 +183,15 @@ class Segmenter:
         self._ref_a = self._ref_lab8[..., 1].astype(np.float32)
         self._ref_b = self._ref_lab8[..., 2].astype(np.float32)
         self._ref_sat = None
+
+    def absorb(self, frame_bgr: np.ndarray, where: np.ndarray) -> None:
+        """Something changed here with no hand around (a reflection, the light of the hall): it is part of the
+        empty house now. The frame is brought back to the light the reference was taken with."""
+        if self.reference_bgr is None or not where.any():
+            return
+        cur = self.corrected(self._fit(frame_bgr), update=False)
+        self.reference_bgr[where] = cur[where]
+        self._reference_changed()
 
     def update_reference(self, frame_bgr: np.ndarray, fg: np.ndarray, rate: float = 0.02) -> None:
         """Follow slow changes of the hall light where nothing stands."""
@@ -314,6 +326,7 @@ class Segmenter:
 
     def blobs(self, fg: np.ndarray, lab: np.ndarray) -> list[Observation]:
         n, labels, stats, centroids = cv2.connectedComponentsWithStats(fg, connectivity=8)
+        self.labels = labels
         obs: list[Observation] = []
         cal = self.calib
         c = np.array(cal.nadir)
@@ -372,23 +385,30 @@ class Segmenter:
                             border, hand, int(area), h_est, guess)
             o.extra["label"] = i
             obs.append(o)
-        self._join_hands(obs, labels)
+        self.hand_mask = self._join_hands(obs, labels)
         return obs
 
-    def _join_hands(self, obs: list[Observation], labels: np.ndarray) -> None:
-        """An arm crossing a wall top is cut in two: a large blob touching a hand is the same hand."""
-        for _ in range(3):
+    HAND_REACH_PX = 41          # pieces of an arm cut by wall tops and masked zones, fingers, its shadow
+
+    def _join_hands(self, obs: list[Observation], labels: np.ndarray) -> np.ndarray:
+        """An arm crossing wall tops and wall lights is cut in pieces, and its fingers and shadow make small
+        blobs around it: every blob close to a hand is the same hand, whatever its size. Returns the region
+        of the hands, a little larger than the blobs."""
+        kernel = np.ones((self.HAND_REACH_PX, self.HAND_REACH_PX), np.uint8)
+        for _ in range(4):
             hands = [o.extra["label"] for o in obs if o.hand]
             if not hands:
-                return
-            near_hand = cv2.dilate(np.isin(labels, hands).astype(np.uint8), np.ones((31, 31), np.uint8)) > 0
+                return np.zeros(labels.shape, bool)
+            near_hand = cv2.dilate(np.isin(labels, hands).astype(np.uint8), kernel) > 0
             changed = False
             for o in obs:
-                if o.hand or o.area_mm2 < 1200:
+                if o.hand:
                     continue
                 x, y, w, h = o.bbox
                 if (near_hand[y:y + h, x:x + w] & (labels[y:y + h, x:x + w] == o.extra["label"])).any():
                     o.hand = True
                     changed = True
             if not changed:
-                return
+                break
+        hands = [o.extra["label"] for o in obs if o.hand]
+        return cv2.dilate(np.isin(labels, hands).astype(np.uint8), np.ones((15, 15), np.uint8)) > 0

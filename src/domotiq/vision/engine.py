@@ -5,6 +5,17 @@
 The worker process feeds it the frames of the webcam; the tests feed it
 synthetic ones. It owns the calibration, the empty-house reference, the
 tracker, the privacy filter, the staff captures and the recordings.
+
+Figurines do not move by themselves: every change in the house is made by a
+hand. So:
+- while a hand is over the house, and for a moment after it leaves (its
+  shadow, the figurine still swinging), the house is "frozen": nothing new
+  is counted and nothing disappears, and every piece of the arm is the hand;
+- after that, new things are looked for only where the hand was;
+- a change with no hand around (a reflection, the light of the hall) is not a
+  presence: after a few seconds it becomes part of the empty house;
+- much of the house changing at once with no hand is the light of the hall:
+  the light of every room is measured again, and the house waits.
 """
 
 from __future__ import annotations
@@ -33,6 +44,12 @@ log = logging.getLogger(__name__)
 
 ANALYSIS = (640, 480)
 EMPTY_FRAMES = 20
+SETTLE_S = 0.6           # after the last hand: its shadow is gone and what it put down stands still
+BIRTH_S = 3.0            # new things are looked for where the hands were, for this long
+SCAN_S = 3.0             # after a start or a new empty house, what is in sight is taken as it is
+LIGHT_SHARE = 0.20       # this much of the house changed at once with no hand: the light of the hall changed
+LIGHT_FREEZE_S = 4.0     # ...the house waits this long for the light to be measured again
+GHOST_FRAMES = 25        # a change explained by nothing for this many frames joins the empty house
 COCO_CLASSES = ["person", "dog", "cat", "animal", "car", "object"]
 
 
@@ -63,6 +80,15 @@ class Engine:
         self._moved = {"checked": 0.0, "shift": 0.0, "count": 0}
         self._background: dict[str, np.ndarray] = {}
         self._flooded_since = 0.0
+        self.light_ok = True                       # the worker clears it while the webcam light is not set
+        self.blur_private = True                   # the bathroom blurred in the images that leave the board
+        self._hand_at = float("-inf")              # the last frame with a hand over the house
+        self._zone: np.ndarray | None = None       # where the hands have been since the last births
+        self._scan_pending = True
+        self._scan_until = 0.0
+        self._light_since = 0.0
+        self._ghost: np.ndarray | None = None      # frames of unexplained change, per pixel
+        self.absorbed = 0
         # before the calibration the house does not know where the bathroom is: it assumes the
         # camera is mounted as in the model, with a wide margin
         self._nominal_privacy = Privacy(layout, Calibration.synthetic(*ANALYSIS, layout.camera), margin_mm=45.0)
@@ -75,7 +101,13 @@ class Engine:
 
     @property
     def ready(self) -> bool:
-        return self.calibrated and self.segmenter.reference is not None
+        return self.calibrated and self.segmenter.reference is not None and self.light_ok
+
+    def rescan(self) -> None:
+        """Take what is in sight as it is (after a start, or a new empty house)."""
+        self._scan_pending = True
+        self._zone, self._ghost = None, None
+        self._hand_at = float("-inf")
 
     def load(self) -> None:
         calib = Calibration.load(self.dir / "calibration.json")
@@ -93,7 +125,12 @@ class Engine:
         tracker.set_identities(self.identities)
         tracker.on_question = self._question
         self.tracker = tracker
-        self.privacy = Privacy(self.layout, calib)
+        self.privacy = Privacy(self.layout, calib, private=self.blur_private, outside=True)
+
+    def set_privacy(self, blur_private: bool) -> None:
+        self.blur_private = bool(blur_private)
+        if self.calib is not None:
+            self.privacy = Privacy(self.layout, self.calib, private=self.blur_private, outside=True)
 
     def _question(self, vt, candidates: list[str]) -> None:
         if self.on_question is not None:
@@ -152,6 +189,9 @@ class Engine:
         cv2.imwrite(str(self.dir / "reference.png"), np.clip(self.segmenter.reference_bgr, 0, 255).astype(np.uint8))
         self._backgrounds()
         self._moved.update(shift=0.0, count=0)
+        if self.tracker:
+            self.tracker.tracks.clear()             # the house is empty now
+        self.rescan()
         return {"ok": True, "message": "Casa vuota salvata.", "message_en": "Empty house saved."}
 
     def reset(self) -> dict[str, Any]:
@@ -179,26 +219,88 @@ class Engine:
         if not self.ready:
             self.tracks, self.observations = [], []
             return []
-        obs, fg, _lab = self.segmenter.process(small, now)
-        # most of the house different from the empty one: the hall light changed a lot, or the
-        # camera was covered or knocked; people never cover that much
-        share = float(np.count_nonzero(fg)) / max(float(np.count_nonzero(self.segmenter.mask)), 1.0)
-        if share > 0.35:
+        if self._scan_pending:
+            self._scan_pending, self._scan_until = False, now + SCAN_S
+        seg = self.segmenter
+        obs, fg, _lab = seg.process(small, now)
+        hands = seg.hand_mask if seg.hand_mask is not None else np.zeros(fg.shape, bool)
+        active = bool(hands.any())
+        if active:
+            self._hand_at = now
+            self._zone = hands.copy() if self._zone is None else (self._zone | hands)
+        quiet = now - self._hand_at
+        # much of the house changed at once, with no hand: the light of the hall
+        changed = float(np.count_nonzero((fg > 0) & ~hands))
+        share = changed / max(float(np.count_nonzero(seg.mask)), 1.0)
+        if share > LIGHT_SHARE and not active:
+            if not self._light_since:
+                self._light_since = now
+                seg.light_changed(seg.region_names, now, LIGHT_FREEZE_S)
+        else:
+            self._light_since = 0.0
+        light_event = bool(self._light_since) and now - self._light_since < LIGHT_FREEZE_S
+        # most of the house different from the empty one for long: the camera was covered or knocked,
+        # or the light changed beyond what the house can follow (a covered camera is just dark: the light
+        # correction of the rooms ends at its limit)
+        level = cv2.mean(small, mask=seg.mask)[:3]
+        ref_level = cv2.mean(seg.reference_bgr, mask=seg.mask)[:3]
+        ratio = (sum(level) + 3.0) / (sum(ref_level) + 3.0)
+        if share > 0.35 or not 0.33 < ratio < 3.0:
             self._flooded_since = self._flooded_since or now
         else:
             self._flooded_since = 0.0
+        scan = now < self._scan_until
+        frozen = (active or quiet < SETTLE_S or light_event) and not scan
+        # new things only where the hands were, once they have left
+        births_open = self._zone is not None and SETTLE_S <= quiet <= SETTLE_S + BIRTH_S and not light_event
+        for o in obs:
+            if not o.hand:
+                x, y, w, h = o.bbox
+                o.extra["birth"] = scan or (births_open and bool(self._zone[y:y + h, x:x + w].any()))
+        if self._zone is not None and quiet > SETTLE_S + BIRTH_S:
+            self._zone = None
         self.observations = obs
-        self.tracks = self.tracker.update(obs, now)
+        self.tracks = self.tracker.update(obs, now, frozen=frozen, quiet_s=quiet)
+        self._absorb_ghosts(small, fg, obs, hands, frozen or scan or share > 0.35)
         # the hall light drifts slowly: follow it on the free floor, when nothing moves
-        if now - self._last_ref_update > 5.0 and not any(o.hand for o in obs):
+        if now - self._last_ref_update > 5.0 and not frozen and not any(o.hand for o in obs):
             self._last_ref_update = now
-            self.segmenter.update_reference(small, fg, rate=0.02)
+            seg.update_reference(small, fg, rate=0.02)
         if now - self._moved["checked"] > 30.0:
             self._check_moved(small, now)
         if self._record:
             self._record_frame(small, now)
         self.proc_ms = 0.9 * self.proc_ms + 0.1 * (time.perf_counter() - t0) * 1000.0
         return self.tracks
+
+    def _absorb_ghosts(self, small: np.ndarray, fg: np.ndarray, obs: list[Observation], hands: np.ndarray,
+                       frozen: bool) -> None:
+        """What differs from the empty house with no track, no hand and no recent hand to explain it,
+        for GHOST_FRAMES frames in a row, becomes part of the empty house."""
+        seg = self.segmenter
+        if self._ghost is None or self._ghost.shape != fg.shape:
+            self._ghost = np.zeros(fg.shape, np.uint16)
+        explained = hands.copy()
+        tracked = [o.extra["label"] for o in obs if o.extra.get("track")]
+        if tracked and seg.labels is not None:
+            lut = np.zeros(int(seg.labels.max()) + 1, bool)
+            lut[tracked] = True
+            # a piece of a figurine cut off from its blob still belongs to it
+            explained |= cv2.dilate(lut[seg.labels].astype(np.uint8), np.ones((15, 15), np.uint8)) > 0
+        if self._zone is not None:
+            explained |= self._zone
+        unexplained = (fg > 0) & ~explained
+        g = self._ghost
+        np.add(g, 1, out=g, where=unexplained & (g < 60000))
+        g[~unexplained] = 0
+        if frozen:
+            return
+        ripe = g >= GHOST_FRAMES
+        if ripe.any():
+            ripe = (cv2.dilate(ripe.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0) & (seg.mask > 0) & ~explained
+            seg.absorb(small, ripe)
+            g[ripe] = 0
+            self.absorbed += 1
 
     def _check_moved(self, small: np.ndarray, now: float) -> None:
         """A bumped camera no longer sees the walls where the reference has them."""
@@ -274,6 +376,9 @@ class Engine:
             "hands": len(self.tracker.hands) if self.tracker else 0,
             "moved": self.moved,
             "flooded": bool(self._flooded_since and self.frame_at - self._flooded_since > 5.0),
+            "light_ok": self.light_ok,
+            "hand": bool(self.frame_at - self._hand_at < SETTLE_S),
+            "absorbed": self.absorbed,
             "shift_px": self._moved["shift"],
             "gains": self.segmenter.gains if self.segmenter else {},
             "recording": bool(self._record),
