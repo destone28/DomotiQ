@@ -53,6 +53,7 @@ class Identity:
     alias_en: str | None = None          # how the English recognizer should hear it
     color: str = "#888888"               # dominant colour seen by the webcam, #rrggbb
     signature: list[float] = field(default_factory=list)   # colour signature (vision)
+    size: float = 0.0                    # how big it looks from above, mm² (vision; 0 until learned)
     photo: str | None = None             # file name under var/photos
     created_at: float = field(default_factory=time.time)
     created_by: str | None = None
@@ -86,6 +87,7 @@ class Track:
     since: float = field(default_factory=time.time)
     virtual: bool = False                # created by the simulation
     hidden: bool = False                 # not seen for a moment, kept where it was
+    on: str | None = None                # the furniture it stands on (an id of the layout), None on the floor
     presence: float = 1.0                # how sure the house is that something is really there (0-1)
 
     def to_dict(self) -> dict[str, Any]:

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ..model import ANIMALS, CAR, CATEGORY_NAMES, PERSON, category_matches
 
@@ -49,6 +49,13 @@ def describe(ctx: "Context", track, lang: str) -> str:
     return f"{art} {noun}"
 
 
+def furniture(ctx: "Context", fid: str | None) -> dict[str, Any] | None:
+    """The piece of furniture of the layout with this id (with its phrases "on" and "off"), or None."""
+    if not fid:
+        return None
+    return next((f for f in ctx.layout.raw.get("furniture", []) if f.get("id") == fid and "on" in f), None)
+
+
 def where_is(ctx: "Context", name: str, lang: str) -> str:
     ident = ctx.identities.by_name(name)
     if not ident:
@@ -58,7 +65,8 @@ def where_is(ctx: "Context", name: str, lang: str) -> str:
     if not track:
         return f"Non vedo {ident.name}." if lang == "it" else f"I can't see {ident.name}."
     unsure = track.uncertain
-    where = room(ctx, track.room, lang)
+    item = furniture(ctx, getattr(track, "on", None))
+    where = item["on"][lang] if item else room(ctx, track.room, lang)
     if lang == "it":
         return f"{ident.name} è {where}." + (" Almeno credo." if unsure else "")
     return f"{ident.name} is {where}." + (" I think." if unsure else "")

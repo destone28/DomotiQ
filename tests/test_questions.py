@@ -20,6 +20,8 @@ KITCHEN, LIVING = (80, 100), (300, 100)
 @pytest.fixture
 def ctx(tmp_path, monkeypatch):
     monkeypatch.setattr(chatter_mod, "ECHO_S", 0.0)
+    from domotiq.voice import variants
+    monkeypatch.setattr(variants.VARIETY, "pick", lambda key, options: options[0])   # the first way of saying it
     c = build(parse_args(["--simulate", "--var", str(tmp_path / "var"), "--no-audio", "--no-camera", "--no-llm"]))
     from domotiq.app import _wire
     from domotiq.voice.manager import Voice
@@ -224,7 +226,7 @@ def test_a_command_instead_of_a_name_is_answered_then_asked_again(ctx):
         hear(ctx, ["che ore sono", "marco", "no si chiama marta", "sì"])
         newcomer(ctx)
         await settle(ctx)
-        i = ctx.said.index("E il nuovo arrivato in soggiorno: come si chiama?")
+        i = ctx.said.index("E il nuovo arrivato in soggiorno? Come si chiama?")
         assert i >= 2                                      # the time (or that it is unknown) was said first
         assert ctx.said[i + 1:] == ["Una persona di nome Marco, giusto?", "Una persona di nome Marta, giusto?",
                                     "Piacere, Marta!"]
@@ -326,3 +328,32 @@ def test_the_house_asks_the_time_and_hears_it_with_no_talk(ctx):
         assert ctx.said[-1] == "Grazie! Allora sono le 3 e 30."
         assert ctx.clock.known
     asyncio.run(scenario())
+
+
+def test_the_house_says_things_in_different_ways():
+    from domotiq.voice import variants
+    v = variants.Variety(seed=1)
+    said = [v.pick("k", variants.LEAVE) for _ in range(30)]
+    assert all(a != b for a, b in zip(said, said[1:]))       # never twice in a row
+    assert len(set(said)) == len(variants.LEAVE)              # and every way is used
+    # a name typed by a visitor is put in place, never read as a format
+    assert variants.fill(("Ciao {name}!", "Hi {name}!"), name="{name:>9}") == ("Ciao {name:>9}!", "Hi {name:>9}!")
+
+
+def test_on_the_bed_it_is_said_and_off_the_table_it_is_asked(ctx, monkeypatch):
+    from domotiq.model import Track
+    n = ctx.voice.narrator
+    monkeypatch.setattr(n, "_quiet", lambda: True)
+    ctx.voice._spawn = lambda coro: (coro.close(), None)[1]
+    viola = ctx.identities.add("Viola", "person")
+    ctx.house.tracks["t-v"] = Track("t-v", 527, 170, "person", viola.id, "bedroom", on="bed")
+    n._on_enter(ev("room_enter", track="t-v", name="Viola", category="person", room="bedroom", other="living"))
+    lines = n.tick(time.monotonic() + 5)
+    assert lines[-1]["it"] == "Viola è sul letto della camera."
+    ctx.house.tracks["t-v"].on = "kitchen-table"
+    n._on_furniture(ev("furniture", track="t-v", name="Viola", category="person", room="kitchen",
+                       on="kitchen-table", before=None))
+    lines = n.tick(time.monotonic() + 10)
+    assert lines[-1]["it"] == "Viola, scendi subito dal tavolo!"
+    from domotiq.voice import answers
+    assert answers.where_is(ctx, "Viola", "it") == "Viola è sul tavolo della cucina."

@@ -64,13 +64,27 @@ SUPPRESS_S, SUPPRESS_MM = 30.0, 25.0   # where one was found, nothing new is bor
 PRESENCE_MIN, CHECK_GAP_S = 0.8, 1.0
 PRESENCE_DOUBTED, CHECK_GAP_DOUBTED_S, DOUBT_S = 0.92, 2.5, 120.0
 HIDDEN_FLAG_S = 1.0         # not seen for longer: told to the house as hidden
+ON_FRAMES = 3               # frames on the same piece of furniture before the house is told
 # A character lying down, or on the bed, does not look quite as when it was registered: much closer to it than to
 # anybody else is enough, after a few more frames
 ID_ACCEPT_LOOSE, ID_MARGIN_LOOSE, CONFIRM_LOOSE = 0.45, 0.15, 4
-FROZEN_JUMP_MM = 30.0       # while a hand is at work, a figurine it does not hold stays where it is: farther is
-                            # another blob (the hand took it, and it is carried)
-MERGED_GROWTH = 1.4         # a figurine put down against another: their blobs are one, this much bigger
-MERGED_SIG = 0.75           # ...and coloured partly like it
+LOOSE_WINDOW_S = 10.0       # ...but only in the first seconds of a track (just put down, or at a start): something
+                            # seen for a while does not take a name that has just become free elsewhere
+KEEP_MISSES = 8             # a track keeps its name until it fails to look like it for this many frames in a row
+# Size as well as colour: the car is never a figurine, nor a figurine the car; and a size very different from the
+# one learned (more than SIZE_FREE times, a figurine lying down is three times one standing) counts as less alike
+CAR_MIN_MM2, FIGURINE_MAX_MM2 = 2500.0, 6000.0
+SIZE_FREE, SIZE_WEIGHT = 2.5, 0.2
+CARRIED_SIG = 0.45          # put down: coloured like it
+PUT_DOWN_SIG = 0.7          # ...or the one new thing the hands left, even looking a little different (lying down)
+FROZEN_JUMP_MM = 30.0       # a figurine stays where it is unless a hand carries it: farther is another blob (with a
+                            # hand at work: the hand took it, and it is carried), however long it was unseen
+HAND_RECENT_S = 3.6         # for this long after the last hand a figurine may stand somewhere else (pushed, put down)
+PLACE_MM = 40.0             # who stood here before: an unknown thing this close to where a character was last seen
+FRAGMENT_MM = 40.0          # an unknown blob this close to a character, coloured like it, is a piece of it
+MERGED_GROWTH = 0.5         # a figurine put down against another: their blobs are one, bigger by at least half
+                            # of the figurine (standing, seen from above, it is small next to one lying down)
+MERGED_SIG = 0.9            # ...and coloured partly like it
 
 
 def _group(category: str | None) -> str:
@@ -111,6 +125,10 @@ class VTrack:
     frame: int = 0                         # the last frame it was seen in
     born: int = 0                          # the frame it was first seen in
     area: float = 0.0                      # how big its blob usually is, measured with no hand around
+    on: str | None = None                  # the furniture it stands on
+    on_next: str | None = None             # ...what it seems to stand on now, and for how many frames
+    on_frames: int = 0
+    misses: int = 0                        # frames in a row it did not look like the character it is named after
     presence: float = 0.0
     checked_at: float = 0.0                # when its presence was first over the threshold
 
@@ -138,6 +156,9 @@ class Tracker:
         self.jittery = 0                 # false presences found by their jumps (for the diagnostics)
         self.frame = 0
         self._quiet_s = float("inf")
+        # the history: where each character was last seen, and whether a hand has been over that place since
+        self.places: dict[str, tuple[float, float, float]] = {}
+        self._touched: set[str] = set()
 
     def set_identities(self, identities: list[Identity]) -> None:
         self.identities = {i.id: i for i in identities}
@@ -163,7 +184,9 @@ class Tracker:
         self.hands = hands
         self._associate(things, now, births=not frozen)
         self._carry(hands, now)
+        self._remember(hands, now)
         self._drop_jittery(now)
+        self._drop_fragments()
         self._drop_lost(now, frozen, quiet_s)
         self._recognize(now)
         self._ask_unknown(now)
@@ -174,6 +197,7 @@ class Tracker:
             t.shown = True
             tr = t.to_track(self.layout, self._rooms.get(t.id))
             tr.hidden = now - t.last_seen > HIDDEN_FLAG_S
+            tr.on = t.on
             tr.presence = round(t.presence if not t.identity else 1.0, 2)
             self._rooms[t.id] = tr.room
             out.append(tr)
@@ -190,7 +214,8 @@ class Tracker:
         f_still = min(1.0, max(0.0, 1.0 - jumps / JITTER_COUNT))
         chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
         f_contrast = min(1.0, max(chroma_d / 30.0, -light_d / 25.0, light_d / 40.0, 0.0) / 0.6)
-        f_shape = 1.0 if o.area_mm2 >= 6000 else min(1.0, max(0.0, (4.0 - o.elongation) / 1.5))
+        longest = 6.5 if chroma_d >= 20.0 or light_d <= -15.0 else 3.5     # lying down, if the colour is vivid
+        f_shape = 1.0 if o.area_mm2 >= 6000 else min(1.0, max(0.0, (longest + 0.5 - o.elongation) / 1.5))
         return f_seen * f_still * f_contrast * f_shape
 
     def _confirmed(self, t: VTrack, now: float) -> bool:
@@ -209,9 +234,20 @@ class Tracker:
             return False
         return now - t.checked_at >= gap       # and the second
 
-    def recognizable(self, sig: np.ndarray) -> bool:
+    @staticmethod
+    def _unlike(sig: np.ndarray, area: float, ident: Identity) -> float:
+        """How different something looks from a registered identity: colour first, then size."""
+        if area and (ident.category == CAR) != (area >= CAR_MIN_MM2) and \
+                (ident.category == CAR or area > FIGURINE_MAX_MM2):
+            return 1e6                        # the car for a figurine, a figurine for the car
+        d = distance(sig, ident.signature)
+        if area and ident.size:
+            d += SIZE_WEIGHT * max(0.0, abs(float(np.log(area / ident.size))) - float(np.log(SIZE_FREE)))
+        return d
+
+    def recognizable(self, sig: np.ndarray, area: float = 0.0) -> bool:
         """Looks like a registered character (closely, or much more than like anybody else)."""
-        ds = sorted(distance(sig, i.signature) for i in self.identities.values() if len(i.signature))
+        ds = sorted(self._unlike(sig, area, i) for i in self.identities.values() if len(i.signature))
         if not ds:
             return False
         return ds[0] < ID_ACCEPT or ds[0] < ID_ACCEPT_LOOSE and (len(ds) == 1 or ds[1] - ds[0] >= ID_MARGIN_LOOSE)
@@ -234,7 +270,7 @@ class Tracker:
                         # put down somewhere: only the colour tells, and a track in sight is preferred. Only
                         # once the hands have left and where they were: under an arm, a piece of it would do
                         # (or never moved, the hand only passed over it: "place", not "birth")
-                        if births and o.extra.get("place", o.extra.get("birth", True)) and sd < 0.45:
+                        if births and o.extra.get("place", o.extra.get("birth", True)) and sd < CARRIED_SIG:
                             cost[i, j] = 0.8 + 1.5 * sd
                         continue
                     unseen = min(now - t.last_seen, 1.0)
@@ -243,8 +279,8 @@ class Tracker:
                     d = float(np.hypot(x - t.x - t.vx * dt, y - t.y - t.vy * dt))
                     if d > MAX_JUMP_MM * (1 + 2 * unseen) or (sd > 0.6 and d > 25):
                         continue
-                    if self._frozen and d > FROZEN_JUMP_MM:
-                        continue
+                    if d > FROZEN_JUMP_MM and (self._frozen or self._quiet_s > HAND_RECENT_S or unseen < 0.5):
+                        continue          # nothing jumps by itself: farther is another blob
                     cost[i, j] = d / MAX_JUMP_MM + 1.5 * sd
             rows, cols = linear_sum_assignment(cost)
             for i, j in zip(rows, cols):
@@ -283,6 +319,11 @@ class Tracker:
                 and self.layout.locate(cx, cy) not in self._animated:
             t.jumps.append(now)            # jumped, or seen again after a frame without it
         t.raw, t.frame = (cx, cy), self.frame
+        fid = o.standing_on(self.calib, self.tops)[1] if t.category != CAR and o.area_mm2 < 6000 else None
+        t.on_frames = t.on_frames + 1 if fid == t.on_next else 1
+        t.on_next = fid
+        if t.on_frames >= ON_FRAMES:
+            t.on = fid                     # three frames alike: no flicker on the edge of the bed
         if t.jumps and now - t.jumps[0] > JITTER_WINDOW_S:
             t.jumps = [j for j in t.jumps if now - j <= JITTER_WINDOW_S]
         dt = max(now - t.last_seen, 1e-3)
@@ -294,6 +335,10 @@ class Tracker:
             t.moving = speed > 15.0
             k = 0.85 if t.moving else 0.45
             x, y = t.x + k * (x - t.x), t.y + k * (y - t.y)
+        # nothing moves by itself: once it has settled, a figurine keeps its place on the map until a hand has been
+        # around (a shadow or a changing light on its blob does not move it)
+        if not (t.hits < NEW_HITS or now - t.since < NEW_S or self._frozen or self._quiet_s <= HAND_RECENT_S):
+            x, y = t.x, t.y
         t.x, t.y = x, y
         t.obs = o
         t.last_seen = now
@@ -322,6 +367,53 @@ class Tracker:
                     t.moving = True
                     break
 
+    def _drop_fragments(self) -> None:
+        """A figurine lying across something (a tree trunk, the edge of the bed) can be seen as two blobs: the
+        unknown one next to a known character and coloured like it is a piece of that character, not someone
+        new to ask about."""
+        named = [u for u in self.tracks.values() if u.identity and u.identity in self.identities and not u.carried]
+        for tid, t in list(self.tracks.items()):
+            if t.identity or t.carried or t.locked or t.obs is None:
+                continue
+            for u in named:
+                if np.hypot(u.x - t.x, u.y - t.y) < FRAGMENT_MM and \
+                        distance(t.sig, self.identities[u.identity].signature) < ID_ACCEPT:
+                    del self.tracks[tid]
+                    self._rooms.pop(tid, None)
+                    break
+
+    def _remember(self, hands: list[Observation], now: float) -> None:
+        """Keep the history of where each character was; a hand over a place may have taken what stood there."""
+        for t in self.tracks.values():
+            if t.identity and t.obs is not None and not t.carried:
+                self.places[t.identity] = (t.x, t.y, now)
+                self._touched.discard(t.identity)
+        if not hands:
+            return
+        held = {t.identity for t in self.tracks.values() if t.identity}
+        for ident, (x, y, _) in self.places.items():
+            if ident in held or ident in self._touched:
+                continue
+            px = self.calib.image_of(np.array([[x, y]]), 20.0)[0]
+            for h in hands:
+                bx, by, bw, bh = h.bbox
+                if bx - 8 <= px[0] <= bx + bw + 8 and by - 8 <= px[1] <= by + bh + 8:
+                    self._touched.add(ident)
+                    break
+
+    def was_here(self, t: VTrack) -> str | None:
+        """The character that stood right here, now not in sight anywhere, with no hand over its place since:
+        it is still that one (nothing moves by itself), seen again or seen differently."""
+        held = {u.identity for u in self.tracks.values() if u.identity and u is not t}
+        best, dist = None, PLACE_MM
+        for ident, (x, y, _) in self.places.items():
+            if ident in held or ident in self._touched or ident not in self.identities:
+                continue
+            d = float(np.hypot(t.x - x, t.y - y))
+            if d < dist:
+                best, dist = ident, d
+        return best
+
     def dismiss(self, track_id: str, now: float) -> tuple[float, float] | None:
         """Nothing there, somebody said: the track goes and nothing is born there for a while. Returns the middle
         of what was seen (where the engine forgets it)."""
@@ -339,6 +431,22 @@ class Tracker:
         if room:
             self._doubted[room] = now + DOUBT_S
 
+    def _put_down_as(self, t: VTrack) -> bool:
+        """The hands took a character and left something new, not recognized: nothing moves by itself, so it is
+        that character, lying down or on the bed looking a little different. With more new things, the one
+        coloured most like it."""
+        if not t.identity:
+            return False
+        new = [u for u in self.tracks.values() if u is not t and not u.identity and not u.carried
+               and u.obs is not None and u.since >= t.carried_since - 0.5]
+        best = min(new, key=lambda u: distance(t.sig, u.obs.sig), default=None)
+        if best is None or (len(new) > 1 and distance(t.sig, best.obs.sig) >= PUT_DOWN_SIG):
+            return False
+        best.identity, best.locked, best.confidence = t.identity, t.locked, max(t.confidence, 0.5)
+        best.category, best.shown, best.misses = t.category, True, 0
+        best.votes = {t.identity: CONFIRM_LOOSE}
+        return True
+
     def _put_against(self, t: VTrack, now: float) -> bool:
         """A carried figurine that was not seen put down: if a blob grew as much as a figurine and is coloured
         partly like it, the two touch. It stays there, hidden behind the other, until they part."""
@@ -346,13 +454,11 @@ class Tracker:
         for u in self.tracks.values():
             if u is t or u.carried or u.obs is None or distance(t.sig, u.obs.sig) >= MERGED_SIG:
                 continue
-            # grown since before the hands came, or (just put down too) bigger than one more figurine like this
-            if u.area:
-                g = u.obs.area_mm2 / u.area / MERGED_GROWTH
-            elif t.area:
-                g = u.obs.area_mm2 / t.area / (1.0 + MERGED_GROWTH)
-            else:
-                continue
+            # grown since before the hands came by at least half of this figurine, or (just put down too)
+            # bigger than this figurine alone by as much
+            size = t.area or 300.0
+            grown = u.obs.area_mm2 - (u.area if u.area else size)
+            g = grown / (MERGED_GROWTH * size)
             if g >= 1.0 and g > growth:
                 best, growth = u, g
         if best is None:
@@ -391,7 +497,10 @@ class Tracker:
                 # the hands left without putting it down: taken out of the house, unless it was put down against
                 # another figurine and the two are seen as one
                 gone = not frozen and quiet_s > CARRIED_GONE_S and now - t.carried_since > CARRIED_GONE_S
-                if gone and self._put_against(t, now):
+                if gone and (self._put_down_as(t) or self._put_against(t, now)):
+                    if t.carried:
+                        del self.tracks[tid]       # its name went to what the hands put down
+                        self._rooms.pop(tid, None)
                     continue
                 if gone or now - t.carried_since > CARRIED_MAX_S:
                     del self.tracks[tid]
@@ -453,42 +562,51 @@ class Tracker:
         self.identities.pop(identity, None)
 
     def _recognize(self, now: float) -> None:
+        """Names for the tracks in sight that are not confirmed. A name is never in two places: one held by a
+        track (confirmed, hidden for a moment, in a hand, or recognized) goes to another track only after its
+        holder has stopped looking like it for KEEP_MISSES frames; so a character touching another one, unseen,
+        does not lend its name to some blob elsewhere."""
         ids = [i for i in self.identities.values() if len(i.signature)]
         visible = [t for t in self.tracks.values() if t.obs is not None or t.carried]
-        locked = {t.identity for t in visible if t.locked and t.identity}
-        # a character hidden for a moment is still in its place: its name is not free for another track
-        locked |= {t.identity for t in self.tracks.values() if t.obs is None and not t.carried and t.identity}
-        free_ids = [i for i in ids if i.id not in locked]
         free_tracks = [t for t in visible if not t.locked and not t.carried and t.hits >= 2]
         if not free_tracks:
             return
-        if not free_ids:
-            for t in free_tracks:
-                t.identity, t.confidence, t.uncertain, t.candidates = None, 0.0, False, []
-            return
-        cost = np.ones((len(free_tracks), len(free_ids)))
+        taken = {t.identity for t in self.tracks.values() if t.identity and t not in free_tracks}
+        cands = [i for i in ids if i.id not in taken]
+        raw = np.ones((len(free_tracks), max(len(cands), 1)))     # how much it looks like each one
         for i, t in enumerate(free_tracks):
-            for j, ident in enumerate(free_ids):
-                d = distance(t.sig, ident.signature)
-                if ident.category == CAR and t.obs is not None and t.obs.area_mm2 < 2500:
-                    d += 0.3                  # the car is much bigger than a figurine
-                if ident.category != CAR and t.obs is not None and t.obs.area_mm2 > 7000:
-                    d += 0.3
-                cost[i, j] = d
-        rows, cols = linear_sum_assignment(cost)
-        best_of = {i: j for i, j in zip(rows, cols)}
+            for j, ident in enumerate(cands):
+                raw[i, j] = self._unlike(t.sig, t.obs.area_mm2 if t.obs is not None else 0.0, ident)
+        cost = raw.copy()
+        for i, t in enumerate(free_tracks):
+            for j, ident in enumerate(cands):
+                if any(u.identity == ident.id for u in free_tracks if u is not t):
+                    cost[i, j] = 1e6          # held by another track in sight
+        best_of = dict(zip(*linear_sum_assignment(cost))) if cands else {}
         for i, t in enumerate(free_tracks):
             j = best_of.get(i)
             d = cost[i, j] if j is not None else 1.0
-            close = [free_ids[k].id for k in np.argsort(cost[i]) if cost[i, k] < ID_ACCEPT]
-            others = sorted(cost[i, k] for k in range(len(free_ids)) if k != j) if j is not None else []
+            if d >= 1e6:
+                j, d = None, 1.0
+            # twins are told by how much it looks like each of them, whoever holds the name
+            others = sorted(raw[i, k] for k in range(len(cands)) if k != j) if j is not None else []
             margin = (others[0] - d) if others else 1.0
             loose = d >= ID_ACCEPT
-            if j is None or d >= ID_ACCEPT_LOOSE or loose and margin < ID_MARGIN_LOOSE:
+            fits = j is not None and d < ID_ACCEPT_LOOSE and not (loose and margin < ID_MARGIN_LOOSE)
+            if fits and t.identity != cands[j].id and loose and now - t.since > LOOSE_WINDOW_S:
+                fits = False                  # too late for a loose name: only a close match now
+            if not fits:
+                if t.identity:
+                    t.misses += 1
+                    if t.misses < KEEP_MISSES:
+                        continue              # keeps its name for a moment (a shadow, a hand nearby)
                 t.identity, t.confidence, t.uncertain, t.candidates = None, 0.0, False, []
                 t.votes.clear()
+                t.misses = 0
                 continue
-            ident = free_ids[j]
+            t.misses = 0
+            ident = cands[j]
+            close = [cands[k].id for k in np.argsort(raw[i]) if raw[i, k] < ID_ACCEPT]
             conf = max(0.0, min(1.0, (ID_ACCEPT - d) / ID_ACCEPT * 0.6 + min(margin, 0.3) / 0.3 * 0.4))
             t.votes[ident.id] = t.votes.get(ident.id, 0) + 1
             for k in list(t.votes):
@@ -535,6 +653,12 @@ class Tracker:
                 continue                       # asked only about what the house is sure is there
             if any(v > 0 for v in t.votes.values()):
                 continue                       # being recognized right now
+            before = self.was_here(t)
+            if before is not None:
+                # no hand has been here since that character stood here: it is that one, nothing to ask
+                self.assign(t.id, before)
+                t.locked = False
+                continue
             # proposed by kind: cars for a car, animals for an animal, objects for an object; a new person is
             # asked the name (a registered name said aloud or typed is recognized anyway)
             kind = CAR if t.obs.area_mm2 > 6000 or t.category == CAR else _group(t.category)

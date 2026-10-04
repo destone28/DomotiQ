@@ -122,6 +122,8 @@ class House:
             if prev.room != t.room:
                 self._emit_room("room_exit", prev, prev.room, t.room)
                 self._emit_room("room_enter", t, t.room, prev.room)
+            if prev.on != t.on and not t.carried:
+                self._pub("furniture", **self._who(t), room=t.room, on=t.on, before=prev.on)
 
         self.tracks = new
         self._update_counts()

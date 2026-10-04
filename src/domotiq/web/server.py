@@ -12,6 +12,7 @@ nickname), and ends up in the change log on the device.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import io
 import json
 import logging
@@ -38,6 +39,32 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 STATIC = Path(__file__).parent / "static"
+
+
+def asset_version() -> str:
+    """Changes whenever a file of the web app changes: the pages load their files under it, so a phone never
+    keeps an old script after an update."""
+    h = hashlib.sha1()
+    for p in sorted(STATIC.rglob("*")):
+        if p.is_file():
+            st = p.stat()
+            h.update(f"{p.relative_to(STATIC)}:{st.st_mtime_ns}:{st.st_size}".encode())
+    return h.hexdigest()[:10]
+
+
+def page(name: str) -> Response:
+    html = (STATIC / name).read_text(encoding="utf-8").replace('"/static/', f'"/static/v{asset_version()}/')
+    return Response(html, media_type="text/html", headers={"Cache-Control": "no-cache"})
+
+
+class FreshStatic(StaticFiles):
+    """The files of the web app are checked again at every load (a cheap "not modified" when unchanged): after
+    an update a phone never mixes the new page with old scripts kept in its cache."""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
 MAX_PHOTO = 4 * 1024 * 1024
 
 
@@ -191,15 +218,23 @@ def create_app(ctx: "Context") -> FastAPI:
     # ============================================================ pages
     @app.get("/", include_in_schema=False)
     async def index():
-        return FileResponse(STATIC / "index.html", headers={"Cache-Control": "no-cache"})
+        return page("index.html")
 
     @app.get("/sign", include_in_schema=False)
     async def sign_page():
-        return FileResponse(STATIC / "sign.html", headers={"Cache-Control": "no-cache"})
+        return page("sign.html")
 
     @app.get("/board", include_in_schema=False)
     async def board_page():
-        return FileResponse(STATIC / "board.html", headers={"Cache-Control": "no-cache"})
+        return page("board.html")
+
+    @app.get("/static/v{version}/{path:path}", include_in_schema=False)
+    async def versioned(version: str, path: str):
+        """The files of the web app under the version of the moment: kept by the phones as long as they like."""
+        f = (STATIC / path).resolve()
+        if STATIC.resolve() not in f.parents or not f.is_file():
+            raise HTTPException(404)
+        return FileResponse(f, headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
     @app.get("/manifest.webmanifest", include_in_schema=False)
     async def manifest():
@@ -463,6 +498,12 @@ def create_app(ctx: "Context") -> FastAPI:
     async def confirm(cid: str, body: dict):
         if not ctx.house.answer(cid, body.get("value"), by="web"):
             raise HTTPException(404, "already answered")
+        return {"ok": True}
+
+    @app.post("/api/confirm/{cid}/close")
+    async def close_question(cid: str):
+        """Closed on a phone: the question disappears everywhere and the house stops listening for it."""
+        ctx.house.withdraw(cid)
         return {"ok": True}
 
     @app.post("/api/alerts/{key}/dismiss")
@@ -846,7 +887,7 @@ def create_app(ctx: "Context") -> FastAPI:
         asyncio.get_running_loop().call_later(1.0, system_action, what)
         return {"ok": True}
 
-    app.mount("/static", StaticFiles(directory=STATIC), name="static")
+    app.mount("/static", FreshStatic(directory=STATIC), name="static")
     return app
 
 

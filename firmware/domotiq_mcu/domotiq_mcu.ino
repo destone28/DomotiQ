@@ -80,6 +80,7 @@ static const uint8_t LIGHT_BIT[N_LIGHTS] = {M_PX_GARAGE, M_PX_BEDROOM, M_PX_KITC
 static const uint8_t THERMO_BIT[2] = {M_THERMO_STAT, M_THERMO_BATH};
 static const uint8_t MATRIX_LIGHT = 5;           // the LED matrix of the board, as Linux numbers it
 static const uint8_t MX_W = 13, MX_H = 8, MX_TOP = 7;   // 8 levels, 0..7
+static const uint8_t MX_BITS = 3;                // the matrix takes the number of bits, not the top level
 
 enum { FX_OFF = 0, FX_SOLID, FX_BREATHE, FX_BLINK, FX_WAVE, FX_RAINBOW, FX_SPARKLE, FX_FIRE,
        FX_ALARM, FX_COOL, FX_WARM, FX_BOOT = 100 };
@@ -1063,7 +1064,7 @@ void setup() {
   for (uint8_t li = 0; li < N_LIGHTS; li++) { cur_light[li].started = 0; req_light_dirty[li] = false; }
   cur_matrix.started = 0;
   matrixBegin();                     // the light of the utility room
-  matrixSetGrayscaleBits(MX_TOP);
+  matrixSetGrayscaleBits(MX_BITS);
   req_relay = 0;                     // the latching relay may still be closed from before a power cut
   k_thread_create(&io_thread_data, io_stack, K_THREAD_STACK_SIZEOF(io_stack),
                   io_thread, NULL, NULL, NULL, 7, 0, K_NO_WAIT);

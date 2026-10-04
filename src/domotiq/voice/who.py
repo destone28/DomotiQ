@@ -27,7 +27,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from . import answers
+from . import variants as V
 from .intents import Intent, find_names, normalize
+from .variants import capital, pick, said, said_each
 from .intents import parse as parse_command
 
 if TYPE_CHECKING:
@@ -412,23 +414,14 @@ NEWCOMER = {
 }
 NOUN = {"person": ("una persona", "a person"), "dog": ("un cane", "a dog"), "cat": ("un gatto", "a cat"),
         "animal": ("un animale", "an animal"), "car": ("un'auto", "a car"), "object": ("un oggetto", "an object")}
-ASK_NAME = {
-    "person": ("Come si chiama?", "What's their name?"),
-    "dog": ("Come si chiama?", "What's its name?"),
-    "cat": ("Come si chiama?", "What's its name?"),
-    "animal": ("Come si chiama?", "What's its name?"),
-    "car": ("Come la chiamo?", "What shall I call it?"),
-    "object": ("Come lo chiamo?", "What shall I call it?"),
-}
-WHAT_IS_IT = ("Ah, scusa! Allora cos'è: una persona, un animale, un'auto o un oggetto?",
-              "Oh, sorry! So what is it: a person, an animal, a car or an object?")
-NOTHING = ("Ah, allora ho visto male: scusate!", "Oh, I must have seen wrong: sorry!")
-LATER = ("Va bene, nessun problema: se vuoi me lo dici dalla webapp.",
-         "All right, no problem: you can tell me later in the web app.")
-GIVE_UP = ("Va bene, lasciamo stare: me lo puoi dire dalla webapp.",
-           "All right, let's leave it: you can tell me in the web app.")
-WAITING = ("Certo, aspetto.", "Sure, I'll wait.")
-THINKING = {"it": "Mmm...", "en": "Hmm..."}
+
+
+def ask_name(category: str) -> tuple[str, str]:
+    """One of the ways to ask the name of something of this kind."""
+    group = category if category in ("person", "car", "object") else "animal"
+    return pick(f"ask.{group}", V.ASK_NAME[group])
+
+
 MAX_TURNS = 7               # answers listened to, at most, before leaving it to the phones
 LISTEN_S = 6.0
 THINKING_S = 0.8            # the language model takes longer than this: a sound, so the visitor knows
@@ -466,7 +459,8 @@ class Dialogue:
         task = asyncio.ensure_future(voice.llm.classify(text, names))
         done, _ = await asyncio.wait({task}, timeout=THINKING_S)
         if not done:
-            await voice.say(THINKING[voice.lang])
+            it, en = pick("who.thinking", V.THINKING)
+            await voice.say(it if voice.lang == "it" else en)
             await self.ctx.actions.thinking(True)          # still working on it
         return await task or Reply("other")
 
@@ -475,8 +469,9 @@ class Dialogue:
         cid = ev.get("id")
         context = ev.get("context") or {}
         category = context.get("category") if context.get("category") in KINDS else "object"
-        where_it = answers.room(self.ctx, context.get("room"), "it") if context.get("room") else "in casa"
-        where_en = answers.room(self.ctx, context.get("room"), "en") if context.get("room") else "in the house"
+        room = context.get("room")
+        where_it = answers.room(self.ctx, room, "it") if room else "in casa"
+        where_en = answers.room(self.ctx, room, "en") if room else "in the house"
         sure = False                    # the visitor said or confirmed what it is
         pending: str | None = None      # a new name waiting for a yes
         prompt: tuple[str, str] | None = None
@@ -491,18 +486,18 @@ class Dialogue:
             r = await self.interpret(text)
             if cid not in house.confirmations:
                 return
-            ask_it, ask_en = ASK_NAME[category]
+            ask = ask_name(category)
             if pending:
                 if r.kind == "yes" or r.kind == "kind" and not r.name:
                     category = r.category or category
                     await self._new(cid, pending, category, context)
                     return
                 if r.kind in ("no", "none_of"):
-                    pending, prompt = None, ("Come si chiama, allora?", "What's the name, then?")
+                    pending, prompt = None, pick("who.name_again", V.NAME_AGAIN)
                     continue
                 if r.kind == "silence" and silences == 0:
                     silences += 1
-                    prompt = (f"Dimmi sì o no: si chiama {pending}?", f"Say yes or no: is the name {pending}?")
+                    prompt = said("who.confirm_again", V.CONFIRM_AGAIN, name=pending)
                     continue
                 if not r.name:
                     pending = None
@@ -510,40 +505,44 @@ class Dialogue:
                 silences += 1
                 if silences > 1:
                     return              # nobody answers: the phones still can
-                prompt = (ask_it, ask_en)
+                prompt = ask
             elif r.kind == "wait":
-                prompt = WAITING
+                prompt = pick("who.wait", V.WAITING)
             elif r.kind == "nobody":
                 voice.narrator.hush(context.get("track"))
                 if house.answer(cid, {"nothing": True}, by="voice"):
-                    await voice.reply(*NOTHING)
+                    await voice.reply(*pick("who.nothing", V.NOTHING))
                 return
             elif r.kind == "unknown":
-                await voice.reply(*LATER)
+                await voice.reply(*pick("who.later", V.LATER))
                 return
             elif r.kind == "other":
                 others += 1
                 if r.intent is not None:
                     await voice.execute(r.intent)          # "che ore sono?": answered, then asked again
                 if others >= 2:
-                    await voice.reply(*GIVE_UP)
+                    await voice.reply(*pick("who.give_up", V.GIVE_UP))
                     return
-                prompt = (f"E il nuovo arrivato {where_it}: {ask_it[0].lower()}{ask_it[1:]}",
-                          f"And the newcomer {where_en}: {ask_en[0].lower()}{ask_en[1:]}") if r.intent else \
-                    (f"Scusa, mi serve il nome. {ask_it}", f"Sorry, I need the name. {ask_en}")
+                if r.intent is not None:
+                    prompt = said_each("who.after", V.AFTER_COMMAND, {"where": where_it, "ask": ask[0]},
+                                       {"where": where_en, "ask": ask[1]})
+                else:
+                    prompt = said_each("who.not_a_name", V.NOT_A_NAME, {"ask": ask[0]}, {"ask": ask[1]})
             elif r.kind == "yes":
-                sure, prompt = True, (f"Bene! {ask_it}", f"Good! {ask_en}")
+                sure = True
+                prompt = said_each("who.yes", V.YES_ASK, {"ask": ask[0]}, {"ask": ask[1]})
             elif r.kind == "no":
-                sure, prompt = False, WHAT_IS_IT
+                sure, prompt = False, pick("who.what", V.WHAT_IS_IT)
             elif r.kind == "none_of":
-                prompt = (f"Va bene. {ask_it}", f"All right. {ask_en}")
+                prompt = said_each("who.none_of", V.NONE_OF_ASK, {"ask": ask[0]}, {"ask": ask[1]})
             elif r.kind in ("kind", "name"):
                 if r.category in KINDS:
                     category, sure = r.category, True
-                ask_it, ask_en = ASK_NAME[category]
+                ask = ask_name(category)
                 if not r.name:
                     noun = NOUN[category]
-                    prompt = (f"Ah, {noun[0]}! {ask_it}", f"Oh, {noun[1]}! {ask_en}")
+                    prompt = said_each("who.kind", V.KIND_ASK, {"noun": noun[0], "ask": ask[0]},
+                                       {"noun": noun[1], "ask": ask[1]})
                     continue
                 ident = self.ctx.identities.by_name(r.name)
                 if ident is not None:
@@ -552,27 +551,27 @@ class Dialogue:
                     if there is not None:
                         # nobody can be in two places: what the house saw here is nothing
                         if house.answer(cid, {"nothing": True}, by="voice"):
-                            w_it, w_en = answers.room(self.ctx, there.room, "it"), answers.room(self.ctx, there.room, "en")
-                            await voice.reply(f"{ident.name} è già {w_it}: allora qui ho visto male, scusate!",
-                                              f"{ident.name} is already {w_en}: so I saw wrong here, sorry!")
+                            await voice.reply(*said_each(
+                                "who.elsewhere", V.ELSEWHERE,
+                                {"name": ident.name, "where": answers.room(self.ctx, there.room, "it")},
+                                {"name": ident.name, "where": answers.room(self.ctx, there.room, "en")}))
                         return
                     if house.answer(cid, ident.id, by="voice"):
-                        await voice.reply(f"Ah, è {ident.name}! Grazie.", f"Oh, it's {ident.name}! Thanks.")
+                        await voice.reply(*said("who.known", V.KNOWN, name=ident.name))
                     return
                 pending = r.name
                 if sure:
-                    prompt = (f"Si chiama {pending}, giusto?", f"The name is {pending}, right?")
+                    prompt = said("who.confirm", V.CONFIRM_NAME, name=pending)
                 else:
                     noun = NOUN[category]
-                    prompt = (f"{noun[0][0].upper()}{noun[0][1:]} di nome {pending}, giusto?",
-                              f"{noun[1][0].upper()}{noun[1][1:]} called {pending}, right?")
-        await voice.reply(*GIVE_UP)
+                    prompt = said_each("who.confirm_kind", V.CONFIRM_KIND,
+                                       {"Noun": capital(noun[0]), "noun": noun[0], "name": pending},
+                                       {"Noun": capital(noun[1]), "noun": noun[1], "name": pending})
+        await voice.reply(*pick("who.give_up", V.GIVE_UP))
 
     async def _new(self, cid: str, name: str, category: str, context: dict) -> None:
         """Registered with what the house sees, its colours learned at once."""
         self.voice.narrator.hush(context.get("track"))
         if self.ctx.house.answer(cid, {"name": name, "category": category}, by="voice"):
-            if category in ("car", "object"):
-                await self.voice.reply(f"D'accordo: {name}!", f"All right: {name}!")
-            else:
-                await self.voice.reply(f"Piacere, {name}!", f"Nice to meet you, {name}!")
+            table = V.NAMED if category in ("car", "object") else V.WELCOME
+            await self.voice.reply(*said("who.welcome", table, name=name))

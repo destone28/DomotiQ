@@ -10,7 +10,11 @@ across a room for a moment is not announced, merges what happens together
 in one go, and never talks over a question or while someone speaks to it.
 A newcomer the house does not know is not announced: it is asked about.
 Every line agrees with any name (no adjective or participle that changes
-with the character).
+with the character), and each is said in one of several ways (variants.py).
+
+On the bed or the sofa the house says so ("Ecco Viola sul letto della
+camera!"); on a table, a bench, the fridge and the other furniture it tells
+the character to get down at once.
 """
 
 from __future__ import annotations
@@ -20,6 +24,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from . import answers
+from . import variants as V
 
 if TYPE_CHECKING:
     from .manager import Voice
@@ -42,6 +47,7 @@ class Narrator:
         bus.subscribe("room_exit", self._on_exit)
         bus.subscribe("identity_changed", self._on_identity)
         bus.subscribe("car", self._on_car)
+        bus.subscribe("furniture", self._on_furniture)
 
     # ------------------------------------------------------------ events
     def _on_enter(self, ev) -> None:
@@ -62,7 +68,7 @@ class Narrator:
             del self._moves[track]                     # came and went before it was told: nothing to say
             return
         self._moves[track] = {"from": ev.get("room"), "to": None, "at": time.monotonic(),
-                              "name": ev.get("name"), "category": ev.get("category")}
+                              "name": ev.get("name"), "category": ev.get("category"), "identity": ev.get("identity")}
 
     def hush(self, track: str | None) -> None:
         """The newcomer of this track has just been named in a dialogue: no "Ecco Marco!" after it."""
@@ -85,27 +91,56 @@ class Narrator:
 
     def _on_car(self, ev) -> None:
         if ev.get("state") == "parked":
-            self._add(f"car:{ev.get('track')}", {"it": "L'auto è parcheggiata in garage.",
-                                                 "en": "The car is parked in the garage."})
+            it, en = V.pick("car.parked", V.CAR_PARKED)
+            self._add(f"car:{ev.get('track')}", {"it": it, "en": en})
+
+    def _on_furniture(self, ev) -> None:
+        """Up on a piece of furniture (or down from it) without changing room."""
+        track, name = ev.get("track"), ev.get("name")
+        if not track or not name or track in self._moves and self._moves[track].get("to") is not None:
+            return                                     # a newcomer, or a move that will say it when it settles
+        if not ev.get("on"):
+            self._moves.pop(track, None)
+            return
+        self._moves[track] = {"from": ev.get("room"), "to": ev.get("room"), "at": time.monotonic(), "name": name,
+                              "category": ev.get("category"), "furniture": True}
 
     # ------------------------------------------------------------ lines
-    def line(self, move: dict[str, Any]) -> dict[str, str] | None:
-        """The words for a settled move, or None when there is nothing worth saying."""
+    def line(self, move: dict[str, Any], on: str | None = None) -> dict[str, str] | None:
+        """The words for a settled move (`on`: the furniture it stands on now), or None when there is nothing
+        worth saying."""
         name, src, dst = move.get("name"), move.get("from"), move.get("to")
-        if not name or src == dst:
+        if not name:
             return None                                # newcomers are asked about, not announced
         ctx = self.ctx
+        if dst is not None and on:
+            item = answers.furniture(ctx, on)
+            if item:
+                if item.get("rest"):                   # the bed, the sofa
+                    return self._said("rest", V.REST, name=name, on_it=item["on"]["it"], on_en=item["on"]["en"])
+                return self._said("off", V.GET_OFF, name=name, off_it=item["off"]["it"], off_en=item["off"]["en"])
+        if src == dst:
+            return None
         if dst is None:
-            return {"it": f"Ciao {name}, a presto!", "en": f"Bye {name}, see you soon!"}
+            return self._said("leave", V.LEAVE, name=name)
         where_it, where_en = answers.room(ctx, dst, "it"), answers.room(ctx, dst, "en")
         if src is None:
-            return {"it": f"Ecco {name} {where_it}!", "en": f"Here's {name} {where_en}!"}
+            return self._said("arrive", V.ARRIVE, name=name, where_it=where_it, where_en=where_en)
         if src in OUTSIDE and dst not in OUTSIDE:
-            return {"it": f"{name} entra in casa.", "en": f"{name} comes into the house."}
+            return self._said("enter", V.ENTER, name=name)
         if dst == "driveway" and src not in OUTSIDE:
-            return {"it": f"{name} esce sul vialetto.", "en": f"{name} goes out onto the driveway."}
+            return self._said("driveway", V.TO_DRIVEWAY, name=name)
         to_en = where_en.replace("in the ", "to the ", 1).replace("on the ", "to the ", 1)
-        return {"it": f"{name} va {where_it}.", "en": f"{name} goes {to_en}."}
+        return self._said("move", V.MOVE, name=name, where_it=where_it, where_en=to_en)
+
+    @staticmethod
+    def _said(key: str, table: list, name: str, **values: str) -> dict[str, str]:
+        it_values = {k[:-3]: v for k, v in values.items() if k.endswith("_it")}
+        en_values = {k[:-3]: v for k, v in values.items() if k.endswith("_en")}
+        en_values = {("to" if k == "where" else k): v for k, v in en_values.items()} | \
+            ({"where": values["where_en"]} if "where_en" in values else {})
+        it, en = V.said_each(f"narrator.{key}", table, {"name": name, **it_values}, {"name": name, **en_values})
+        return {"it": it, "en": en}
 
     def _add(self, key: str, line: dict[str, str], now: float | None = None) -> None:
         """Queue a line; a newer line about the same character replaces the one not said yet."""
@@ -123,7 +158,11 @@ class Narrator:
         for track, move in list(self._moves.items()):
             if now - move["at"] >= SETTLE_S:
                 del self._moves[track]
-                line = self.line(move)
+                if move.get("to") is None and move.get("identity") and \
+                        self.ctx.house.where_is(move["identity"]) is not None:
+                    continue                           # still in the house (put down elsewhere): no goodbye
+                t = self.ctx.house.tracks.get(track)
+                line = self.line(move, t.on if t is not None and move.get("to") is not None else None)
                 if line:
                     self._add(track, line, now)
         self._lines = [x for x in self._lines if now - x[0] < STALE_S]

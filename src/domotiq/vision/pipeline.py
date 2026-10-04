@@ -37,14 +37,14 @@ CATEGORY_HEIGHT = {"person": 90.0, "dog": 35.0, "cat": 35.0, "animal": 35.0, "ca
 NOT_SURFACES = ("shower", "totem", "pole", "tree")
 
 
-def surfaces(layout: Layout) -> list[tuple[Rect | Circle, float]]:
-    """The tops of the furniture, (footprint, height), highest first."""
+def surfaces(layout: Layout) -> list[tuple[Rect | Circle, float, str]]:
+    """The tops of the furniture, (footprint, height, id), highest first."""
     out = []
     for f in layout.raw.get("furniture", []):
         if f["id"] in NOT_SURFACES:
             continue
         shape = Circle(*f["circle"]) if "circle" in f else Rect.of(f["rect"])
-        out.append((shape, float(f["height"])))
+        out.append((shape, float(f["height"]), f["id"]))
     return sorted(out, key=lambda s: -s[1])
 
 
@@ -66,19 +66,19 @@ class Observation:
     category_guess: str = "object"
     extra: dict = field(default_factory=dict)
 
-    def standing_on(self, calib: Calibration, tops: list[tuple[Rect | Circle, float]]) -> float:
-        """The height of what it stands on: the feet, brought up to the top of a piece of furniture, are on it
-        (on the floor they would be elsewhere, where the floor is hidden by that furniture)."""
+    def standing_on(self, calib: Calibration, tops: list[tuple[Rect | Circle, float, str]]) -> tuple[float, str | None]:
+        """What it stands on (height, furniture id; 0 and None for the floor): the feet, brought up to the top of
+        a piece of furniture, are on it (on the floor they would be elsewhere, where the floor is hidden by it)."""
         cx, cy, hc = calib.camera
         nx, ny = self.near_mm
-        for shape, height in tops:
+        for shape, height, fid in tops:
             s = (hc - height) / hc
             if shape.contains(cx + (nx - cx) * s, cy + (ny - cy) * s, 3.0):
-                return height
-        return 0.0
+                return height, fid
+        return 0.0, None
 
     def position(self, calib: Calibration, category: str | None,
-                 tops: list[tuple[Rect | Circle, float]] | None = None) -> tuple[float, float]:
+                 tops: list[tuple[Rect | Circle, float, str]] | None = None) -> tuple[float, float]:
         """Where it stands, on the floor or on a piece of furniture (`tops`, from surfaces()).
 
         A figurine seen from above shows its top and the side facing the
@@ -95,7 +95,7 @@ class Observation:
             x, y = calib.lowered(np.array([self.centroid_mm]), h / 2)[0]
             return float(x), float(y)
         cx, cy, hc0 = calib.camera
-        z0 = self.standing_on(calib, tops) if tops else 0.0
+        z0 = self.standing_on(calib, tops)[0] if tops else 0.0
         s = (hc0 - z0) / hc0                       # what is seen on the floor, brought up to that height
         hc = hc0 - z0
         k = hc / max(hc - h, 1.0)

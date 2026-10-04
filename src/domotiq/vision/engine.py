@@ -66,6 +66,8 @@ FORGET_S, FORGET_MM = 3.0, 30.0   # "there is nothing there": what is seen there
 # (4.5-19 times longer than wide) or a faint patch (9-12 in colour).
 BIRTH_ELONGATION = 3.5
 BIRTH_CHROMA, BIRTH_DARKER, BIRTH_LIGHTER = 14.0, 12.0, 25.0
+# a figurine lying down is longer: up to LYING_ELONGATION when its colour is vivid (the strips of light are faint)
+LYING_ELONGATION, VIVID_CHROMA, VIVID_DARKER = 6.5, 20.0, 15.0
 BEFORE_HAND_S = 0.5      # different from the empty house since before the hand came: it was already there
 HOLE_DIFF = 30.0         # as close as this to the empty house as it was saved (sum over the channels): a hole
 # The light of the hall: the webcam is set again on what it sees when the picture stays this much darker or
@@ -203,7 +205,7 @@ class Engine:
         if o.extra.get("floor", 1.0) < MIN_FLOOR:
             return False                      # all on a wall: a reflection
         if o.area_mm2 < 6000 and not self._known(o):
-            if o.elongation > BIRTH_ELONGATION:
+            if o.elongation > self._longest(o):
                 return False                  # a thin strip: the foot of a wall, the edge of the furniture
             chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
             if chroma_d < BIRTH_CHROMA and -BIRTH_DARKER < light_d < BIRTH_LIGHTER:
@@ -217,11 +219,17 @@ class Engine:
 
     def _known(self, o: Observation) -> bool:
         """Looks like a registered character."""
-        return bool(self.tracker) and self.tracker.recognizable(o.sig)
+        return bool(self.tracker) and self.tracker.recognizable(o.sig, o.area_mm2)
+
+    @staticmethod
+    def _longest(o: Observation) -> float:
+        """How much longer than wide a figurine can be: more when lying down, which only a vivid one may."""
+        chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
+        return LYING_ELONGATION if chroma_d >= VIVID_CHROMA or light_d <= -VIVID_DARKER else BIRTH_ELONGATION
 
     def _figurine_like(self, o: Observation) -> bool:
         """Compact and clearly standing out from the floor, as a figurine is (whether a hand brought it or not)."""
-        if o.hand or not 150 <= o.area_mm2 <= 6000 or o.elongation > BIRTH_ELONGATION:
+        if o.hand or not 150 <= o.area_mm2 <= 6000 or o.elongation > self._longest(o):
             return False
         if o.extra.get("floor", 1.0) < MIN_FLOOR:
             return False
@@ -269,6 +277,9 @@ class Engine:
 
     def _may_be_born(self, o: Observation, scan: bool, births_open: bool, now: float) -> bool:
         x, y, w, h = o.bbox
+        if births_open and not scan and o.extra.get("floor", 1.0) >= MIN_FLOOR \
+                and self._zone[y:y + h, x:x + w].any():
+            o.extra["place"] = True           # where the hands were: a figurine they held may be here, as it lies
         if not self._plausible(o, now):
             return False
         if scan:
@@ -283,7 +294,6 @@ class Engine:
             return self._known(o)
         if not births_open or not self._zone[y:y + h, x:x + w].any():
             return False
-        o.extra["place"] = True               # where the hands were: a figurine they held may be here
         # brought by the hand: it was not there before the hand came, and it is not the place a hand has just
         # emptied
         appeared = self._appeared(o)
@@ -677,6 +687,15 @@ class Engine:
         for vt in self.tracker.tracks.values():
             if vt.identity and not vt.uncertain and vt.confidence > 0.6 and vt.obs is not None and not vt.carried:
                 out[vt.identity] = [round(float(v), 5) for v in vt.sig]
+        return out
+
+    def learned_sizes(self, identity: str | None = None) -> dict[str, float]:
+        """How big the identities seen with confidence look from above (measured with no hand around)."""
+        out = {}
+        for vt in (self.tracker.tracks.values() if self.tracker else []):
+            if vt.identity and vt.area and not vt.carried and (identity is None and not vt.uncertain
+                                                               and vt.confidence > 0.6 or vt.identity == identity):
+                out[vt.identity] = round(float(vt.area), 1)
         return out
 
     def status(self) -> dict[str, Any]:

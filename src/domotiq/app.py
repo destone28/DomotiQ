@@ -167,7 +167,8 @@ def _wire_vision(ctx: Context) -> None:
 
     def ask_who(ev: Event) -> None:
         from .voice.answers import join, room as room_phrase
-        from .voice.who import ASK_NAME, NEWCOMER
+        from .voice import variants as V
+        from .voice.who import NEWCOMER, ask_name
         track = ev.get("track") or {}
         cands = [c for c in ev.get("candidates") or [] if ctx.identities.get(c)]
         unknown = not track.get("identity")          # recognized as nobody, rather than as two look-alikes
@@ -189,13 +190,17 @@ def _wire_vision(ctx: Context) -> None:
             # a newcomer: what the house thinks it is, to be confirmed or corrected, and its name; registered
             # ones of the same kind not in the house may be proposed (never a person: a new person is asked
             # the name, and a registered name said aloud is recognized anyway)
+            # said in one of several ways, so that the house does not repeat itself
             noun = NEWCOMER.get(category, NEWCOMER["object"])
-            ask_it, ask_en = ASK_NAME.get(category, ASK_NAME["object"])
+            ask_it, ask_en = ask_name(category)
             if names:
-                ask_it = f"È {join(names, 'it').replace(' e ', ' o ')}, o come si chiama?"
-                ask_en = f"Is it {join(names, 'en').replace(' and ', ' or ')}, or what's its name?"
-            question = {"it": f"{where_it[0].upper()}{where_it[1:]} vedo {noun[0]}, giusto? {ask_it}",
-                        "en": f"I see {noun[1]} {where_en}, right? {ask_en}"}
+                ask_it, ask_en = V.said_each("ask.candidates", V.CANDIDATES,
+                                             {"names": join(names, "it").replace(" e ", " o ")},
+                                             {"names": join(names, "en").replace(" and ", " or ")})
+            it, en = V.said_each("ask.newcomer", V.NEWCOMER_Q,
+                                 {"Where": V.capital(where_it), "where": where_it, "noun": noun[0], "ask": ask_it},
+                                 {"Where": V.capital(where_en), "where": where_en, "noun": noun[1], "ask": ask_en})
+            question = {"it": it, "en": en}
         else:
             question = {"it": f"{where_it[0].upper()}{where_it[1:]} c'è {' o '.join(names)}?",
                         "en": f"Is it {' or '.join(names)} {where_en}?"}

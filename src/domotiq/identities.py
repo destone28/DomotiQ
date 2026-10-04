@@ -146,8 +146,10 @@ class Identities:
                 ident.facts = clean_facts(fields["facts"])
             if "signature" in fields and fields["signature"] is not None:
                 ident.signature = list(fields["signature"])
+            if "size" in fields and fields["size"] is not None:
+                ident.size = float(fields["size"])
             self._save()
-        if set(fields) - {"signature"}:
+        if set(fields) - {"signature", "size"}:
             self.store.add_audit("identity", identity_id, "update", before, ident.to_dict(),
                                  device, nickname)
         self.bus.publish("identities_changed", action="update", identity=identity_id)

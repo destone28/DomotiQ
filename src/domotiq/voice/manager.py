@@ -38,7 +38,8 @@ from .chatter import ECHO_S, NAME_CONFIDENCE, WELCOME, Chatter, yes_no_grammar, 
 from .narrator import Narrator
 from .stories import StoryTeller
 from .intents import Intent, find_name, find_room, name_from_speech, normalize, parse, parse_time
-from .who import GIVE_UP, LATER, NOTHING, THINKING, WAITING, WHAT_IS_IT, Dialogue
+from . import variants as V
+from .who import Dialogue
 from .llm import LanguageModel
 from .stt import Listener
 from .tts import Speaker
@@ -64,7 +65,8 @@ FREQUENT = {
 }
 for _i, _lang in enumerate(("it", "en")):
     FREQUENT[_lang].append(WELCOME[_lang])
-    FREQUENT[_lang] += [THINKING[_lang]] + [p[_i] for p in (GIVE_UP, LATER, NOTHING, WAITING, WHAT_IS_IT)]
+    FREQUENT[_lang] += V.fixed_lines(V.THINKING, V.GIVE_UP, V.LATER, V.NOTHING, V.WAITING, V.WHAT_IS_IT,
+                                     V.NAME_AGAIN, V.CAR_PARKED)[_lang]
 
 
 class Voice:

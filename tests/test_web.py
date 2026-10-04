@@ -194,3 +194,17 @@ def test_an_alarm_closed_on_a_phone_stays_closed_until_it_happens_again(web):
     h.clear_alert("r-utility")                                # over
     h.set_alert("r-utility", name={"it": "Locale tecnico riservato", "en": "Utility room reserved"})
     assert len(c.get("/api/state").json()["alerts"]) == 1     # it happens again: shown again
+
+
+def test_the_pages_load_their_files_under_a_version_and_questions_close(web):
+    ctx, c = web
+    html = c.get("/").text
+    assert '"/static/v' in html and '"/static/js/' not in html          # a new version, new addresses
+    path = html.split('src="')[1].split('"')[0]                          # the script of the page
+    r = c.get(path)
+    assert r.status_code == 200 and "immutable" in r.headers["cache-control"]
+    assert c.get("/static/v1/../server.py").status_code == 404
+    assert c.get("/static/js/app.js").headers["cache-control"] == "no-cache"
+    cid = ctx.house.ask({"it": "Chi è?", "en": "Who is it?"}, [], {"kind": "who", "track": "t-x"})
+    assert c.post(f"/api/confirm/{cid}/close").json()["ok"]
+    assert not ctx.house.confirmations

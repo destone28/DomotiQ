@@ -328,7 +328,8 @@ export function renderBanners() {
       (c.allow_name ? `<input class="newname" maxlength="40" placeholder="${esc(t("ask.new_name"))}">` +
         (c.who ? `<select class="newcat">${cats.map(k => `<option value="${k}"${k === c.category ? " selected" : ""}>${esc(t("cat." + k))}</option>`).join("")}</select>` : "") +
         `<button data-new="1">${esc(t("ask.add"))}</button>` : "") +
-      (c.who ? `<button data-nothing="1">${esc(t("ask.nothing"))}</button>` : "") + `</div>`;
+      (c.who ? `<button data-nothing="1">${esc(t("ask.nothing"))}</button>` : "") +
+      `<button class="close" data-close="1" aria-label="${esc(t("common.close"))}">✕</button></div>`;
   }
   el.innerHTML = html;
   el.querySelectorAll("button[data-reg]").forEach(b => { b.onclick = () => go("identities", { reg: b.dataset.reg }); });
@@ -346,6 +347,12 @@ export function renderBanners() {
       const c = s.confirmations.find(x => x.id === cid);
       if (!c) return;
       let value;
+      if (b.dataset.close) {
+        // closed on one phone: the question goes away everywhere
+        banner.remove();
+        try { await api("POST", `/api/confirm/${cid}/close`, {}); } catch (e) { /* answered meanwhile */ }
+        return;
+      }
       if (b.dataset.nothing) {
         value = { nothing: true };
       } else if (b.dataset.new) {

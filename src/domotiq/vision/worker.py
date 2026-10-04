@@ -174,7 +174,7 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                     # someone said who it is: its colours as seen now teach the house at once
                     sig = engine.track_signature(msg[1]) if msg[2] else None
                     if sig:
-                        conn.send(("taught", {msg[2]: sig[0]}))
+                        conn.send(("taught", {msg[2]: sig[0]}, engine.learned_sizes(msg[2])))
                 elif kind == "dismiss":
                     engine.dismiss(msg[1], time.time())
                 elif kind == "forget" and engine.tracker:
@@ -238,7 +238,7 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
             last_learn = now
             learned = engine.learned()
             if learned:
-                conn.send(("learn", learned))
+                conn.send(("learn", learned, engine.learned_sizes()))
         spare = 1.0 / TARGET_FPS - (time.time() - start)
         if spare > 0:
             time.sleep(spare)
@@ -344,21 +344,27 @@ class VisionProcess(VisionLink):
                 except Exception:  # noqa: BLE001
                     log.exception("vision question")
             elif kind == "learn":
-                self._learn(msg[1])
+                self._learn(msg[1], 0.1, msg[2] if len(msg) > 2 else None)
             elif kind == "taught":
-                self._learn(msg[1], 0.5)
+                self._learn(msg[1], 0.5, msg[2] if len(msg) > 2 else None)
 
-    def _learn(self, learned: dict[str, list[float]], weight: float = 0.1) -> None:
-        """The colour gallery follows the identities slowly while they are recognized with confidence, and
-        at once when someone says who a figurine is."""
+    def _learn(self, learned: dict[str, list[float]], weight: float = 0.1,
+               sizes: dict[str, float] | None = None) -> None:
+        """The colour gallery and the size follow the identities slowly while they are recognized with
+        confidence, and at once when someone says who a figurine is."""
         from .signature import blend
+        sizes = sizes or {}
         for ident_id, sig in learned.items():
             ident = self.identities.get(ident_id)
             if ident is None:
                 continue
             new = blend(ident.signature, sig, weight) if ident.signature else sig
+            fields = {"signature": [round(float(v), 5) for v in new]}
+            if sizes.get(ident_id):
+                size = float(sizes[ident_id])
+                fields["size"] = round(ident.size + weight * (size - ident.size), 1) if ident.size else size
             try:
-                self.identities.update(ident_id, signature=[round(float(v), 5) for v in new])
+                self.identities.update(ident_id, **fields)
             except KeyError:
                 pass
 

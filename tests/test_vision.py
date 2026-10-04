@@ -169,21 +169,32 @@ def test_car_and_hand_are_told_apart(layout, renderer):
 
 
 # ------------------------------------------------------------ tracking and identities
-def test_track_follows_a_figurine_through_a_door(engine, renderer):
+def test_a_figurine_moved_by_hand_through_a_door_changes_room_once(engine, renderer):
     tracks = bring(engine, renderer, [Thing(120.0, 110.0, "#d03030")])
-    # a known character: something unknown moving with no hand around would be a reflection
     engine.tracker.assign(tracks[0].id, "id-marco")
-    path = [(120.0, 110.0)] * 5 + [(120.0 + i * 12.0, 110.0) for i in range(1, 16)]
+    # a hand slides it from the kitchen to the living room: on the map it does not follow the hand, it is
+    # where the hand leaves it
+    path = [(120.0 + i * 12.0, 110.0) for i in range(1, 16)]
     rooms = []
     for i, (x, y) in enumerate(path):
-        tracks = engine.feed(renderer.render([Thing(x, y, "#d03030")]), 10 + i * 0.1)
-        if tracks:
-            rooms.append((tracks[0].id, tracks[0].room))
-    ids = {tid for tid, _ in rooms}
-    assert len(ids) == 1                         # one track all the way
-    assert rooms[0][1] == "kitchen" and rooms[-1][1] == "living"
-    changes = sum(1 for a, b in zip(rooms, rooms[1:]) if a[1] != b[1])
-    assert changes == 1                          # no flicker on the threshold
+        tracks = engine.feed(renderer.render([Thing(x, y, "#d03030")], hands=[Hand(x, y)]), 10 + i * 0.1)
+        rooms += [t.room for t in tracks if t.identity == "id-marco"]
+    for i in range(40):
+        tracks = engine.feed(renderer.render([Thing(300.0, 110.0, "#d03030")]), 11.6 + i * 0.1)
+        rooms += [t.room for t in tracks if t.identity == "id-marco"]
+    assert [t.identity for t in tracks] == ["id-marco"] and tracks[0].room == "living"
+    assert np.hypot(tracks[0].x - 300, tracks[0].y - 110) < 12
+    assert sum(1 for a, b in zip(rooms, rooms[1:]) if a != b) == 1     # one change of room, no flicker
+
+
+def test_a_figurine_never_moves_on_the_map_by_itself(engine, renderer):
+    red = Thing(300.0, 100.0, "#d03030")
+    tracks = bring(engine, renderer, [red])
+    x0, y0 = tracks[0].x, tracks[0].y
+    # its blob shifts a little with no hand around (a shadow, a light): its place on the map does not
+    for i in range(40):
+        tracks = engine.feed(renderer.render([Thing(300.0 + i * 0.2, 100.0, "#d03030")]), 10 + i * 0.1)
+    assert len(tracks) == 1 and (tracks[0].x, tracks[0].y) == (x0, y0)
 
 
 def test_registered_identities_are_recognized(engine, renderer):
@@ -232,23 +243,21 @@ def test_same_colour_twins_are_followed_and_doubted(engine, renderer):
     engine.tracker.assign(right.id, "id-ada")
     asked = []
     engine.on_question = lambda tr, cands: asked.append((tr.id, sorted(cands)))
-    # they walk apart: each keeps its name by being followed
-    frames = [([Thing(250 - i * 8, 100, "#e0c020"), Thing(560 - i * 3, 100 + i * 8, "#e0c020")], {})
-              for i in range(8)]
-    tracks = run(engine, renderer, frames, t0=15)
+    # they stay where they are: each keeps its name by being followed
+    tracks = run(engine, renderer, [([a, b], {})] * 8, t0=15)
     ids = {t.identity: t for t in tracks}
     assert ids["id-leo"].x < ids["id-ada"].x
     # Leo alone is taken and put down: Ada stayed in sight, so it can only be Leo
-    frames = [([Thing(186, 100, "#e0c020"), Thing(536, 164, "#e0c020")], {"hands": [Hand(186, 100)]})] * 2 + \
-             [([Thing(536, 164, "#e0c020")], {"hands": [Hand(330, 60)]})] * 3 + \
-             [([Thing(330, 60, "#e0c020"), Thing(536, 164, "#e0c020")], {"hands": [Hand(330, 60)]})] * 2 + \
-             [([Thing(330, 60, "#e0c020"), Thing(536, 164, "#e0c020")], {})] * 12
+    frames = [([a, b], {"hands": [Hand(250, 100)]})] * 2 + \
+             [([b], {"hands": [Hand(330, 60)]})] * 3 + \
+             [([Thing(330, 60, "#e0c020"), b], {"hands": [Hand(330, 60)]})] * 2 + \
+             [([Thing(330, 60, "#e0c020"), b], {})] * 12
     tracks = run(engine, renderer, frames, t0=17)
     ids = {t.identity: t for t in tracks}
     assert ids["id-leo"].x == pytest.approx(330, abs=12) and not any(t.uncertain for t in tracks)
     # both are taken at once and put down: now each could be either of them
-    frames = [([Thing(330, 60, "#e0c020"), Thing(536, 164, "#e0c020")],
-               {"hands": [Hand(330, 60), Hand(536, 164, side="top")]})] * 2 + \
+    frames = [([Thing(330, 60, "#e0c020"), b],
+               {"hands": [Hand(330, 60), Hand(560, 100, side="top")]})] * 2 + \
              [([], {"hands": [Hand(90, 60), Hand(560, 120, side="top")]})] * 3 + \
              [([Thing(90, 60, "#e0c020"), Thing(560, 120, "#e0c020")],
                {"hands": [Hand(90, 60), Hand(560, 120, side="top")]})] * 2 + \
@@ -638,3 +647,41 @@ def test_a_figurine_on_the_bed_is_seen_on_the_bed(engine, renderer):
     tracks = bring(engine, renderer, [viola])
     assert len(tracks) == 1 and tracks[0].room == "bedroom"
     assert np.hypot(tracks[0].x - 527, tracks[0].y - 170) < 6
+
+
+def test_the_car_and_a_figurine_of_the_same_colour_are_never_mixed_up(engine, renderer):
+    blue = Thing(300, 100, "#3050d0")
+    tracks = bring(engine, renderer, [blue])
+    sig = engine.track_signature(tracks[0].id)[0]
+    # the car registered with exactly the colours of the figurine: the size tells them apart
+    engine.set_identities([Identity("id-civic", "Honda Civic", category="car", signature=sig, size=9000.0)])
+    tracks = run(engine, renderer, [([blue], {})] * 20, t0=10)
+    assert [t.identity for t in tracks] == [None]
+
+
+def test_a_figurine_lying_on_the_bed_is_seen_and_followed(engine, renderer):
+    # lying down it is more than three times longer than wide, but its colour is vivid
+    lying = Thing(527, 165, "#7030c0", kind="animal", length=70.0, width=16.0, height=46.5 + 12.0)
+    tracks = bring(engine, renderer, [lying])
+    assert len(tracks) == 1 and tracks[0].room == "bedroom"
+    tracks = run(engine, renderer, [([lying], {})] * 30, t0=10)
+    assert len(tracks) == 1 and tracks[0].on == "bed"
+
+
+def test_who_stood_there_before_gets_its_name_back_without_asking(engine, renderer):
+    red = Thing(300, 100, "#d03030")
+    tracks = bring(engine, renderer, [red])
+    engine.set_identities([Identity("id-marco", "Marco")])
+    tr = engine.tracker
+    t = tr.tracks[tracks[0].id]
+    tr.places["id-marco"] = (t.x + 10, t.y, 9.0)     # Marco stood right there, and no hand came since
+    asked = []
+    engine.on_question = lambda track, cands: asked.append(track.id)
+    t.identity, t.asked_new = None, float("-inf")
+    tr._ask_unknown(20.0)
+    assert t.identity == "id-marco" and asked == []
+    # a hand has been over that place since: it may be someone else, and the house asks
+    t.identity, t.asked_new = None, float("-inf")
+    tr._touched.add("id-marco")
+    tr._ask_unknown(21.0)
+    assert t.identity is None and asked == [t.id]
