@@ -18,6 +18,8 @@ Password del Wi-Fi: ____________________ PIN dello staff: ____________
 - **Citofono**: suona il campanello, la casa chiede "Chi è?": di' un nome. Un personaggio conosciuto viene fatto entrare (portalo dentro dalla porta d'ingresso entro un minuto); un nome nuovo viene registrato.
 - **Lingua**: italiano ⇄ inglese. Luci che lampeggiano verdi = italiano, rosse = inglese. LED acceso = inglese.
 
+I tre LED dei tasti tutti accesi: la casa ascolta, rispondi senza premere niente. LED che respirano: la casa sta pensando alla risposta.
+
 ## I telefoni dei visitatori
 
 Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo chiede: *Resta connesso* / *Usa senza Internet*. Android: spegni per un attimo i dati mobili. Tutti possono dare comandi, cambiare le regole e registrare personaggi.
@@ -31,12 +33,13 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 | Vedi | Fai |
 |---|---|
 | Fascia *La webcam si è spostata: rifare la calibrazione* | Calibra (vedi sotto). |
-| Oggetti fantasma, o statuine non viste, dopo che la luce del padiglione è cambiata | Svuota la casa, **Calibrazione → Regola la luce e salva la casa vuota**. |
-| Un **?** su un personaggio, oppure *La casa chiede* | Rispondi a voce subito dopo la domanda (non serve Parla), oppure tocca il nome sulla fascia; per un nuovo arrivato puoi anche scrivere un nome nuovo e toccare **Aggiungi**. |
+| Oggetti fantasma, o statuine non viste, dopo che la luce del padiglione è cambiata | Di solito la webcam si riregola da sola in pochi secondi. Se no: svuota la casa, **Calibrazione → Regola la luce e salva la casa vuota**. |
+| Un **?** su un personaggio, oppure *La casa chiede* | Rispondi a voce subito dopo la domanda, senza Parla, con una frase qualsiasi: un nome, "no, è un cane", "non c'è nessuno". Oppure tocca il nome sulla fascia; per un nuovo arrivato puoi scrivere un nome nuovo, sceglierne il tipo e toccare **Aggiungi**, oppure toccare **Non c'è niente**. |
 | La casa non nota i personaggi, e in *Diagnostica* risulta sempre una mano | Qualcosa di grande è appoggiato sul bordo della base (un modulo, un cavo): toglilo o fissalo. Dopo 8 secondi fermo la casa smette comunque di prenderlo per una mano. |
-| Animali o oggetti che non ci sono sul vialetto | Moduli o cavi sciolti che il braccio sposta: monta il totem, fissa i cavi, poi **Salva solo la casa vuota** a casa vuota. |
+| La casa chiede di qualcuno che non c'è | Rispondi "non c'è nessuno" o tocca **Non c'è niente**: la casa lo dimentica. Se torna nello stesso punto, cerca un modulo, un LED o un cavo da fissare, poi **Salva solo la casa vuota** a casa vuota. |
+| Una fascia rossa di allarme | Chiudila con la **✕**: sparisce da tutti i telefoni e torna solo se l'allarme si ripresenta. |
 | La casa è muta | **Comandi**: Loquacità *Normale*, alza il Volume. Manopola delle casse al massimo. |
-| "Non so che ore sono" | Apri la webapp su un telefono, oppure tieni premuto Parla: "Sono le quindici e trenta". |
+| "Non so che ore sono: che ore sono adesso?" | Rispondi a voce, senza Parla: "Sono le quindici e trenta". Oppure apri la webapp su un telefono. |
 | Le luci respirano debolmente e niente reagisce | Il software si sta (ri)avviando: aspetta un minuto. Poi **Impostazioni → Riavvia l'app**, poi **Riavvia la scheda**. |
 | Un pallino di stato rosso in alto | La **Diagnostica** mostra quale parte. |
 | Un visitatore ha rovinato una regola o eliminato un personaggio | **Eventi → Modifiche** mostra cosa è successo; **Impostazioni → Cestino → Ripristina** (24 ore); **Impostazioni → Regole di partenza** ripristina tutte le regole. |

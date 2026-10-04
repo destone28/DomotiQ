@@ -212,7 +212,7 @@ Lo stesso file serve alla piantina della webapp, alla visione (stanze, zone escl
 ### 8.1 Cattura
 - La C270 si trova per nome in `/dev/v4l/by-id` (l'indice `videoN` cambia a ogni avvio).
 - Modalità 4:3 1280×960 MJPEG se la prova del campo visivo lo conferma, altrimenti 1280×720; elaborazione a 10 immagini al secondo, analisi a metà risoluzione.
-- Controlli bloccati dopo la calibrazione: esposizione manuale, bilanciamento del bianco fisso, guadagno fisso, antisfarfallio 50 Hz, compensazione del controluce spenta, nessun calo automatico dei fotogrammi al secondo. I valori si trovano misurando le immagini (la C270 in automatico non dice quelli che usa) e quello che la temperatura di colore non corregge lo corregge un guadagno fisso per canale. Si riapplicano ogni 60 s e dopo ogni riconnessione della camera. Finché non sono regolati la casa non riconosce niente.
+- Controlli bloccati dopo la calibrazione: esposizione manuale, bilanciamento del bianco fisso, guadagno fisso, antisfarfallio 50 Hz, compensazione del controluce spenta, nessun calo automatico dei fotogrammi al secondo. I valori si trovano misurando le immagini (la C270 in automatico non dice quelli che usa) e quello che la temperatura di colore non corregge lo corregge un guadagno fisso per canale. Si riapplicano ogni 60 s e dopo ogni riconnessione della camera. Finché non sono regolati la casa non riconosce niente. Se l'immagine resta per 5 s molto più buia o più chiara della casa vuota (meno di 0,55 o più di 1,8 volte), senza mani e senza luci della casa appena cambiate, la camera si riregola da sola, al massimo una volta al minuto, senza toccare calibrazione, casa vuota e presenze (D-22).
 - Si scartano i fotogrammi vecchi nel buffer dopo ogni cambio di impostazioni.
 
 ### 8.2 Calibrazione (staff)
@@ -226,18 +226,19 @@ Lo stesso file serve alla piantina della webapp, alla visione (stanze, zone escl
 ### 8.3 Da immagine a oggetti
 1. Differenza dal riferimento nello spazio colore Lab, con guadagno per stanza stimato sul pavimento grigio visibile: compensa le luci colorate della casa e i cambi di luce della sala.
 2. Le ombre (più scure ma dello stesso colore) non contano.
-3. Pulizia morfologica, componenti connesse, zone escluse tolte (applique, chioma, palo, fuori base).
+3. Pulizia morfologica, componenti connesse, zone escluse tolte (applique, chioma, palo, schede con LED del locale tecnico, fuori base).
 4. Per ogni oggetto: area in mm², colore mediano e istogramma a*b*, allungamento radiale, punti estremi.
-5. **Punto d'appoggio**: per un oggetto alto, il punto dell'oggetto più vicino al punto sotto la camera, lungo la retta che lo congiunge (parallasse). Dietro una parete si usa la sommità e l'altezza stimata dell'oggetto.
+5. **Punto d'appoggio**: per un oggetto alto, il punto dell'oggetto più vicino al punto sotto la camera, lungo la retta che lo congiunge (parallasse). Dietro una parete si usa la sommità e l'altezza stimata dell'oggetto. Sopra un arredo (letto, divano, tavoli, panche) il calcolo parte dall'altezza dell'arredo: è sopra se i piedi, riportati a quell'altezza, cadono sull'arredo.
 6. **Mani e braccia**: un oggetto grande come un braccio che entra dal bordo della base è una mano, con tutti i pezzi vicini; una "mano" ferma per 8 s è un oggetto sul bordo. Le tracce che copre restano ferme ma legate a lei.
-7. **Niente si muove da solo (D-20)**: mentre c'è una mano, e per 0,6 s dopo, non nasce e non sparisce niente; dopo, le cose nuove nascono solo dove la mano ha lavorato e si annunciano dopo un secondo di stabilità. Una differenza senza mano non diventa una presenza ed entra nella casa vuota dopo circa 3 s, salvo una cosa ben visibile comparsa entro 20 s da una mano. Un personaggio seguito che non si vede per un momento resta al suo posto.
+7. **Niente si muove da solo (D-20, D-22)**: mentre c'è una mano, e per 0,6 s dopo, non nasce e non sparisce niente; dopo, nasce solo ciò che la mano ha portato (diverso dalla casa vuota solo da quando la mano è arrivata), compatto (al massimo 3,5 volte più lungo che largo) e ben staccato dal pavimento. Prima di mostrarlo e chiederne il nome, doppio controllo: la sicurezza (vista, ferma, contrasto, forma) supera l'80% due volte a 1 s di distanza; 92% a 2,5 s per due minuti nelle stanze dove si è appena detto che non c'era nessuno. Una cosa sconosciuta che salta o sparisce e ricompare più volte al secondo senza mano è un riflesso: esce, e lì non nasce niente per 30 s. Una differenza senza mano non diventa una presenza: le differenze tenui entrano nella casa vuota dopo circa 3 s, ciò che sembra una statuina non ci entra mai; il posto lasciato da una statuina inglobata, quando torna uguale alla casa vuota salvata, non è una presenza. Un personaggio seguito che non si vede per un momento resta al suo posto.
 
 ### 8.4 Tracciamento e identità
 - Abbinamento fra un'immagine e la successiva con il metodo ungherese, su una distanza che combina posizione, colore e dimensione.
 - **Trasporto a mano (D41)**: quando un personaggio sparisce sotto una mano, la traccia passa "in mano"; quando riappare vicino alla mano (o dove la mano lo lascia) riprende la stessa identità. Così due personaggi dello stesso colore restano distinti.
 - **Incertezza (D52)**: se due candidati sono plausibili (due uguali spostati insieme, uno riapparso lontano, all'accensione) la traccia diventa "incerta". La casa chiede conferma sulla webapp e, se la loquacità lo permette, a voce: "In cucina c'è Marco o Leo?". Senza risposta entro 60 s tiene l'ipotesi migliore, segnata come incerta.
 - La galleria di colore di ogni identità si aggiorna lentamente quando il riconoscimento è sicuro, e subito quando qualcuno dice chi è un personaggio.
-- **Nuovo arrivato (D-20)**: per ogni cosa che la casa non riconosce, la domanda "chi è?" parte subito, a voce e sui telefoni, con i personaggi registrati del tipo giusto e la possibilità di un nome nuovo; vale la prima risposta.
+- **Riconoscimento largo**: un personaggio sdraiato o sopra un arredo è riconosciuto anche a distanza di colore fino a 0,45 se il secondo candidato è più lontano di almeno 0,15, dopo 4 immagini concordi. Una statuina su cui la mano è solo passata ritrova la sua traccia; una posata contro un'altra resta nascosta dietro di lei.
+- **Nuovo arrivato (D-20, D-21)**: per ogni cosa che la casa è sicura di non riconoscere, la domanda parte subito, a voce e sui telefoni, con quello che le sembra ("vedo una persona nuova, giusto?"). A una persona si chiede il nome; per animali, auto e oggetti si propongono i registrati dello stesso tipo. Ogni risposta libera viene capita (nome, tipo, sì/no, "non c'è nessuno", non lo so, comandi); un nome già presente e visibile in casa vuol dire che il nuovo arrivato non c'era. Vale la prima risposta.
 - Stanza del punto d'appoggio con isteresi di 15 mm sulle porte, così chi sta sulla soglia non "salta" fra due stanze.
 
 ### 8.5 Categoria degli sconosciuti
@@ -305,8 +306,8 @@ Chiunque può rinominare o cancellare. Le cancellazioni vanno in un cestino per 
 - Guardia dell'audio: se la scheda sparisce o il flusso si blocca (sul forum è un problema noto), la casa riapre il dispositivo e lo segnala in diagnostica.
 
 ### 10.2 Ascolto
-- Tasto **parla**: ascolta finché è premuto, senza limite di tempo (D57). LED acceso mentre ascolta.
-- Dopo ogni domanda della casa (citofono, conferme, "chi è?", dubbi, domande ai personaggi, saluto ai telefoni): ascolto automatico di circa 6 s, senza tasto, ripetuto una volta se la risposta non è chiara. La stessa domanda è sui telefoni: vale la prima risposta, e una risposta dal telefono ferma l'ascolto.
+- Tasto **parla**: ascolta finché è premuto, senza limite di tempo (D57). Tutti e tre i LED dei tasti accesi mentre la casa ascolta, in respiro mentre elabora la risposta.
+- Dopo ogni domanda della casa (citofono, conferme, "chi è?", dubbi, domande ai personaggi, saluto ai telefoni): ascolto automatico di circa 6 s, senza tasto, ripetuto una volta se la risposta non è chiara. Il microfono si apre mentre la casa finisce la domanda e la sua voce si scarta fino a 0,35 s dopo l'ultima parola. La stessa domanda è sui telefoni: vale la prima risposta, e una risposta dal telefono ferma l'ascolto.
 - **Racconto (D-20)**: in modalità normale e chiacchierona una frase breve per chi entra, esce o cambia stanza e per l'auto parcheggiata, detta quando il movimento si è fermato, unendo gli eventi contemporanei e mai sopra una domanda.
 
 ### 10.3 Riconoscimento
@@ -319,7 +320,7 @@ La registrazione di un nome controlla che Vosk lo conosca in entrambe le lingue;
 
 ### 10.4 Capire la frase
 1. **Percorso rapido**: parole chiave e confronto tollerante agli errori (nomi, stanze, colori, verbi). Se la frase corrisponde con sicurezza a un comando, si esegue subito.
-2. **Percorso libero**: Qwen2.5-0.5B su llama-server riceve la frase e una descrizione breve della casa (stanze, nomi, comandi possibili) e deve rispondere con un JSON vincolato: `{"intent": ..., "args": {...}}`. Mentre ragiona la casa dice "Vediamo…".
+2. **Percorso libero**: Qwen2.5-0.5B su llama-server riceve la frase e una descrizione breve della casa (stanze, nomi, comandi possibili) e deve rispondere con un JSON vincolato: `{"intent": ..., "args": {...}}`. Mentre ragiona la casa dice "Vediamo…". Le risposte a "chi è?" che le regole non capiscono passano allo stesso modello, con istruzioni proprie in un secondo slot di llama-server (D-21).
 3. **La risposta la compone sempre il codice** dai dati veri della casa, con frasi preparate in IT ed EN: il modello sceglie cosa fare, non inventa cosa dire.
 4. Se l'intento è incerto: "Intendi accendere la luce in cucina?".
 5. Se la domanda non riguarda la casa: "Sono la casa: posso dirti chi c'è, dove, che temperatura fa, e posso accendere luci, fare festa o grigliare."
@@ -443,7 +444,7 @@ La scheda non ha batteria per l'orologio. In ordine:
 3. a voce: "Sono le 15 e 30";
 4. lo staff la corregge nelle impostazioni.
 
-Se dopo 2 minuti dall'avvio l'ora è ancora sconosciuta, la casa lo dice una volta (salvo modalità silenziosa): "Non so che ore sono: premi Parla e dimmelo". Fuso Europe/Rome.
+Se dopo 2 minuti dall'avvio l'ora è ancora sconosciuta, la casa lo chiede una volta (salvo modalità silenziosa): "Non so che ore sono: che ore sono adesso?", e ascolta la risposta senza tasto. Fuso Europe/Rome.
 
 ---
 

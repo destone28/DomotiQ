@@ -164,7 +164,7 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### Ghost objects appear, or real ones are missed, after the hall light changed
 **Cause.** The locked exposure and the empty-house reference no longer fit the light of the hall.
 
-**Fix.** Empty the house and tap **Set the light and save the empty house**.
+**Fix.** Usually the house copes by itself: if the picture stays much darker or brighter than the empty house for 5 seconds, the camera sets itself again without losing the calibration, the empty house and the presences (the *retunes* counter in *Diagnostics* goes up by one). If that is not enough, empty the house and tap **Set the light and save the empty house**.
 
 ### The house does not notice the characters I put down
 **Cause.** The house thinks a hand is over the house and waits for it to leave (*Diagnostics* shows a hand even when nobody touches the house). It happens when something big lies on the edge of the base: a module, a cable, a visitor's arm.
@@ -174,7 +174,12 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### Animals or objects that are not there, mostly on the driveway
 **Cause.** The arms of the players move loose modules or cables, and every move is a real change from the empty house.
 
-**Fix.** Mount the totem and run the cables along the walls, then with the house empty **More → Calibration → Save the empty house only**. To the question "what is it?" you can answer **None of these**.
+**Fix.** Mount the totem and run the cables along the walls, then with the house empty **More → Calibration → Save the empty house only**.
+
+### The house asks about somebody who is not there
+**Cause.** Something a hand moved or left behind (a shadow, a reflection, a cable) passed the double check of the house.
+
+**Fix.** Answer "there's nobody" (or "that's my hand", "it's a shadow"), or tap **Nothing there** on a phone. The house forgets what it saw, nothing is born there for 30 seconds, and for two minutes it is stricter in that room. If it keeps happening in the same spot, look at the live view: it may be a module, an LED or a cable to fix down or cover.
 
 ### The web app says *The webcam is not connected*
 **Cause.** For a few seconds the house received no pictures: a restart, a USB reset of the C270 (it happens at every opening, and when the desktop session of the board probes it, for instance at every ssh login).
@@ -190,6 +195,11 @@ The installer (which needs internet) reloads the firmware when needed; without i
 **Cause.** Its colour is too close to the floor, the walls or the lawns; or it stands where the vision does not look: under a wall light, under the tree canopy, next to the pole, on a wall top, outside the base.
 
 **Fix.** Move it to a clearer spot, or use a figurine of another colour. The registration warns about these cases.
+
+### A known character is taken for a newcomer
+**Cause.** Seen now, its colour differs from when it was registered: another light, the character lying down, on a coloured background. The house still recognizes it if it looks much more like it than like anybody else.
+
+**Fix.** Answer the question with its name: the house assigns it and updates its colours at once, so next time it recognizes it by itself. If that character is already in sight somewhere else in the house, the house concludes the newcomer was not there.
 
 ### A character has a **?**, or the house keeps asking who is who
 **Cause.** Two figurines of similar colour, picked up together or touching: the house cannot tell them apart by colour.
@@ -211,7 +221,7 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### The *Audio* dot is red, or the house is silent
 **Cause.** The USB sound card is missing or not found, the volume is at 0, the house is set to *Silent*, or the speech synthesis service is down.
 
-**Fix.** Check `aplay -l` for a USB audio card, **Controls → Volume** and **Talkativeness**, and `systemctl status domotiq-tts`. The house uses the first USB audio card that can play; to force another device, add `Environment=DOMOTIQ_AUDIO=plughw:CARD=<name>,DEV=0` with `sudo systemctl edit domotiq` and restart it. If the card disappears while running, the house opens it again by itself. Without any sound card, the house still writes what it would say as subtitles.
+**Fix.** Check `aplay -l` for a USB audio card, **Controls → Volume** and **Talkativeness**, and `systemctl status domotiq-tts`. The house uses the first USB audio card that can play; to force another device, add `Environment=DOMOTIQ_AUDIO=plughw:CARD=<name>,DEV=0` with `sudo systemctl edit domotiq` and restart it. If the card disappears or resets by itself while running (the US205 sometimes does, and comes back with a low volume), the house notices within a couple of seconds, opens it again and sets the levels back to 0 dB; the audio *restarts* counter in *Diagnostics* goes up by one. If it happens often, check that the card is plugged in firmly and power the speakers from another USB socket. Without any sound card, the house still writes what it would say as subtitles.
 
 ### The first English sentence is slow
 **Cause.** The English voice is loaded at its first use.
@@ -252,10 +262,10 @@ The installer (which needs internet) reloads the firmware when needed; without i
 
 ## Clock
 
-### The house says "I don't know what time it is: press Talk and tell me."
+### The house asks "I don't know the time: what time is it now?"
 **Cause.** The board has no battery for its clock and no internet at the fair, and no phone has opened the web app since the start.
 
-**Fix.** Open the web app from a phone (it sets the time), say the time holding **Talk** ([chapter 8](08-voice.md#setting-the-clock-by-voice)), or use **Settings → Use this phone's time**. **Diagnostics → Clock** shows where the time came from. Rules with *it is a given time* need a known time.
+**Fix.** Answer at once aloud, with no button ("it's half past three"), open the web app from a phone (it sets the time), or use **Settings → Use this phone's time** ([chapter 8](08-voice.md#setting-the-clock-by-voice)). **Diagnostics → Clock** shows where the time came from. Rules with *it is a given time* need a known time.
 
 ## Web app and staff
 

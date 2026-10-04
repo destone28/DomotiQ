@@ -18,6 +18,8 @@ Wi-Fi password: ____________________ Staff PIN: ____________
 - **Intercom**: the doorbell rings, the house asks "Who is it?": say a name. A known character is let in (move it through the front door within a minute); a new name is registered.
 - **Language**: Italian ⇄ English. Lights flash green = Italian, red = English. LED on = English.
 
+All three button LEDs on: the house is listening, answer without pressing anything. LEDs breathing: the house is working out its answer.
+
 ## Visitors' phones
 
 Scan QR 1 on the sign (Wi-Fi), then QR 2 (the house). If the phone asks: *Stay connected* / *Use without Internet*. Android: turn mobile data off for a moment. Everyone can give commands, change rules and register characters.
@@ -31,12 +33,13 @@ Scan QR 1 on the sign (Wi-Fi), then QR 2 (the house). If the phone asks: *Stay c
 | You see | Do |
 |---|---|
 | Banner *The webcam has moved: calibrate again* | Calibrate (below). |
-| Ghost objects, or figurines not seen, after the hall light changed | Empty the house, **Calibration → Set the light and save the empty house**. |
-| A **?** on a character, or *The house asks* | Answer aloud right after the question (no need for Talk), or tap the name on the banner; for a newcomer you can also type a new name and tap **Add**. |
+| Ghost objects, or figurines not seen, after the hall light changed | Usually the webcam sets itself again within a few seconds. If not: empty the house, **Calibration → Set the light and save the empty house**. |
+| A **?** on a character, or *The house asks* | Answer aloud right after the question, with no Talk, with any sentence: a name, "no, it's a dog", "there's nobody". Or tap the name on the banner; for a newcomer you can type a new name, choose its kind and tap **Add**, or tap **Nothing there**. |
 | The house does not notice the characters, and *Diagnostics* always shows a hand | Something big lies on the edge of the base (a module, a cable): remove it or fix it down. After 8 seconds still, the house stops taking it for a hand anyway. |
-| Animals or objects that are not there on the driveway | Loose modules or cables moved by arms: mount the totem, fix the cables, then **Save the empty house only** with the house empty. |
+| The house asks about somebody who is not there | Answer "there's nobody" or tap **Nothing there**: the house forgets it. If it keeps coming back in the same spot, look for a module, an LED or a cable to fix down, then **Save the empty house only** with the house empty. |
+| A red alarm banner | Close it with **✕**: it disappears from every phone and comes back only if the alarm happens again. |
 | The house is silent | **Controls**: Talkativeness *Normal*, Volume up. Speaker knob at maximum. |
-| "I don't know what time it is" | Open the web app on a phone, or hold Talk: "Sono le quindici e trenta". |
+| "I don't know the time: what time is it now?" | Answer aloud, with no Talk: "It's half past three". Or open the web app on a phone. |
 | Lights breathe dimly and nothing reacts | The software is (re)starting: wait a minute. Then **Settings → Restart the app**, then **Reboot the board**. |
 | A red status dot at the top | **Diagnostics** shows which part. |
 | A visitor broke a rule or deleted a character | **Events → Changes** shows what happened; **Settings → Bin → Restore** (24 hours); **Settings → Default rules** resets all rules. |

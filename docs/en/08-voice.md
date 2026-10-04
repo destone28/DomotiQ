@@ -15,13 +15,15 @@ Seen by the visitor, from the left:
 
 | Button | What it does | Its LED |
 |---|---|---|
-| **Talk** | Hold it down and speak; release it when you are done. A beep marks the start and the end. There is no need to hurry: the house listens as long as the button is held (up to two minutes). Pressing Talk while the house is speaking interrupts it. | on while the house listens |
+| **Talk** | Hold it down and speak; release it when you are done. A beep marks the start and the end. There is no need to hurry: the house listens as long as the button is held (up to two minutes). Pressing Talk while the house is speaking interrupts it. | on while the house listens (with the other two) |
 | **Intercom** | A doorbell rings and the house asks "Chi è?" / "Who is it?". Say a name, without pressing anything: the house listens for 5 seconds after its question. See [the intercom](07-recognition-and-identities.md#with-the-intercom). | blinks during the conversation |
 | **Language** | Switches between Italian and English. All the lights flash for about a second, **green for Italian** and **red for English**, and the house says "Italiano" or "English". | on while the house speaks English |
 
+While the house listens, **all three button LEDs** are on; while it works out an answer to say, they **breathe**: the middle one lights up, then all three, then the middle one again, then none, until the house speaks.
+
 The house starts in Italian. The language can also be changed from **Controls → Language of the house** in the web app, or by voice ("Parla inglese", "Speak Italian"). This is the language the house speaks and listens in; each phone chooses the language of the web app on its own.
 
-During the intercom conversation and the registration by voice, the house listens by itself for a few seconds after each of its questions ("Who is it?", "I heard Marco, right?", "Which room did you put it in?"). To answer its questions about who is who ("Is it Marco or Leo in the kitchen?"), hold **Talk** and say the name.
+During the intercom conversation and the registration by voice, the house listens by itself for a few seconds after each of its questions ("Who is it?", "I heard Marco, right?", "Which room did you put it in?"). Its questions about who is who ("Is it Marco or Leo in the kitchen?") and about the time are answered with no button too.
 
 ## Talkativeness
 
@@ -35,7 +37,7 @@ Set it from **Controls → Talkativeness**, or by voice: "Stai zitta" / "Be quie
 
 ## Talking without pressing Talk
 
-After **every** question of its own the house listens by itself for a few seconds, with no Talk button: the greeting of a new phone, the questions to the characters, "who is it?" for a newcomer, a doubt between two characters, confirmations. If the answer is not clear it asks once more, and meanwhile the same question appears on the phones: the first answer wins, aloud or from the app, and as soon as it arrives the house stops listening. While it listens: the **Talk** LED lights up and the phones show *The house is listening…*. If the house says something else while it listens (a rule, a warning), the answer is thrown away: it could be its own voice. **Talk** and the **intercom** always come first: pressing them interrupts the greeting or the question, and the house listens to the button.
+After **every** question of its own the house listens by itself for a few seconds, with no Talk button: the greeting of a new phone, the questions to the characters, "who is it?" for a newcomer, a doubt between two characters, confirmations. If the answer is not clear it asks once more, and meanwhile the same question appears on the phones: the first answer wins, aloud or from the app, and as soon as it arrives the house stops listening. The microphone opens while the house is still ending its question, and what it hears is thrown away until a third of a second after its last word: an answer said at once ("yes") is not lost while the recorder starts. While it listens, the three button LEDs are on and the phones show *The house is listening…*; while it works out the answer, the LEDs breathe. The question "who is it?" about a newcomer can be answered with any sentence: the house understands it and replies accordingly ([chapter 7](07-recognition-and-identities.md#a-newcomer)). If the house says something else while it listens (a rule, a warning), the answer is thrown away: it could be its own voice. **Talk** and the **intercom** always come first: pressing them interrupts the greeting or the question, and the house listens to the button.
 
 **A new phone.** The first time a phone opens the web app, the house greets it: "Hello! A new phone has just joined. What's your name?". The name can be said aloud (the house asks to confirm: "Is your name Luca?") or typed on the card that appears on the phone; then the house invites the visitor to come in with a character, and the phone offers **Add a character**. The name becomes the phone's nickname, the one shown in the change log.
 - Each phone is greeted once, also after a restart; a phone that comes back from the same address with another page (the home-screen icon, a private window, `casaN.lan`) is the same phone. The house forgets phones (and names) after 7 days.
@@ -104,7 +106,11 @@ What the answers sound like: "Marco è in cucina." / "Marco is in the kitchen.",
 
 ## The language model for commands
 
-A sentence the parser does not understand ("Quanta gente c'è in cucina?", a request with unusual words, a sentence mangled by the recognizer) goes to **Qwen2.5-0.5B-Instruct** (quantized to 4 bits, GGUF), run by `llama-server` from llama.cpp in the `domotiq-llm` service. While it works, the house says "Vediamo…" / "Let me see…". It receives fixed instructions with the rooms, the commands of the house and a few examples, then the names of the registered characters and the sentence. Its output is constrained while it is produced, so it can only write one command of the house with its arguments: *where_is Marco*, *who_in kitchen*, *lights_on bedroom purple*, or *other* for anything else. The instructions are always the same text, which `llama-server` keeps in its cache. **This model chooses what to do and never writes what the house says**: the answer is composed from the real state of the house, with sentences prepared in Italian and English, so it cannot make things up. The same holds for the day of the characters ("What did Marco do today?"): the answer comes from what the camera really saw, not from a model.
+A sentence the parser does not understand ("Quanta gente c'è in cucina?", a request with unusual words, a sentence mangled by the recognizer) goes to **Qwen2.5-0.5B-Instruct** (quantized to 4 bits, GGUF), run by `llama-server` from llama.cpp in the `domotiq-llm` service. While it works, the house says "Vediamo…" / "Let me see…". It receives fixed instructions with the rooms, the commands of the house and a few examples, then the names of the registered characters and the sentence. Its output is constrained while it is produced, so it can only write one command of the house with its arguments: *where_is Marco*, *who_in kitchen*, *lights_on bedroom purple*, or *other* for anything else. The instructions are always the same text, which `llama-server` keeps in its cache.
+
+The same model also understands the answers to "who is it?" that the rules do not recognize: it classifies them as a name, a kind, yes, no, "there's nobody", "I don't know" or anything else. A name it proposes counts only if it is in the sentence; the kind and the registered names are read by the house in the sentence itself, so the model cannot make up a character. These instructions sit in a second slot of `llama-server` (`-np 2`), so neither kind of request pushes the other out of the cache. After a start the two sets of instructions are read in about 5 minutes; meanwhile a free sentence gets "I didn't get that". Then a free answer takes 3 to 6 seconds.
+
+**This model chooses what to do and never writes what the house says**: the answer is composed from the real state of the house, with sentences prepared in Italian and English, so it cannot make things up. The same holds for the day of the characters ("What did Marco do today?"): the answer comes from what the camera really saw, not from a model.
 
 ## Stories, memories and free questions
 
@@ -131,15 +137,13 @@ The microphone is on only while the house listens, at 16 kHz mono: while Talk is
 
 ## Speech synthesis
 
-Piper (`piper1-gpl`, GPL-3.0) runs as a separate program in the `domotiq-tts` service, and the house sends it sentences over HTTP on the loopback interface. The voices are `it_IT-serena-medium` (CC BY 4.0) and `en_US-ljspeech-medium` (public domain). Numbers and units are spoken properly ("24.3 °C" becomes "24 point 3 degrees"). The frequent sentences ("Who is it?", "Let me see…", "Let's dance!"…) are synthesized at start-up and kept in memory, so they play at once even when the processor is busy.
+Piper (`piper1-gpl`, GPL-3.0) runs as a separate program in the `domotiq-tts` service, and the house sends it sentences over HTTP on the loopback interface. The voices are `it_IT-serena-medium` (CC BY 4.0) and `en_US-ljspeech-medium` (public domain). Numbers and units are spoken properly ("24.3 °C" becomes "24 point 3 degrees"). The frequent sentences ("Who is it?", "Let me see…", "Let's dance!"…) are synthesized at start-up and kept in memory, so they play at once even when the processor is busy. A few phrases are given to Piper already written as phonemes, where the Italian voice would swallow a vowel: "Come si chiama?" came out as "Cme s chiama?", because the automatic transcription reads "si" as a reduced vowel.
 
 All the other sounds (doorbell, chime, the beeps of Talk, alarm, notification) and the party music are synthesized by the house's own code: no recorded samples. The party music is four-on-the-floor dance music at 124 BPM, with kick, clap, hi-hats, bass, chords and a melody that change at every party, in time with the light show of the microcontroller. The music ducks under the voice when the house speaks.
 
 ## Setting the clock by voice
 
-The UNO Q has no battery for its clock. If two minutes after start-up the time is still unknown, the house says once (unless it is Silent): "I don't know what time it is: press Talk and tell me."
-
-Hold **Talk** and say the time:
+The UNO Q has no battery for its clock. If two minutes after start-up the time is still unknown, the house asks once (unless it is Silent): "I don't know the time: what time is it now?", and listens for the answer at once, with no Talk button. It does the same after "What time is it?" when it does not know. At any time you can also hold **Talk** and say the time:
 
 - Italian: "Sono le quindici e trenta", "Sono le tre e mezza", "Sono le tre e venticinque", "Sono le dieci e un quarto", "Sono le tre e tre quarti", "Sono le otto meno venti", "Sono le sette meno un quarto", "È l'una e dieci". Any minute works, in words or digits; "del pomeriggio" or "di sera" add twelve hours.
 - English: "It's half past three", "It's quarter to five", "It's twenty past six", "It's ten to seven pm", "It's five twenty", "Set the clock at three thirty". "pm", "afternoon" or "evening" add twelve hours.

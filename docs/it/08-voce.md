@@ -15,13 +15,15 @@ Visti dal visitatore, da sinistra:
 
 | Tasto | Cosa fa | Il suo LED |
 |---|---|---|
-| **Parla** | Tienilo premuto e parla; rilascialo quando hai finito. Un bip segna l'inizio e la fine. Non c'è fretta: la casa ascolta finché il tasto resta premuto (fino a due minuti). Premere Parla mentre la casa sta parlando la interrompe. | acceso mentre la casa ascolta |
+| **Parla** | Tienilo premuto e parla; rilascialo quando hai finito. Un bip segna l'inizio e la fine. Non c'è fretta: la casa ascolta finché il tasto resta premuto (fino a due minuti). Premere Parla mentre la casa sta parlando la interrompe. | acceso mentre la casa ascolta (con gli altri due) |
 | **Citofono** | Suona un campanello e la casa chiede "Chi è?" / "Who is it?". Di' un nome, senza premere niente: dopo la domanda la casa ascolta per 5 secondi. Vedi [il citofono](07-riconoscimento-e-identita.md#con-il-citofono). | lampeggia durante la conversazione |
 | **Lingua** | Passa dall'italiano all'inglese e viceversa. Tutte le luci lampeggiano per circa un secondo, **verdi per l'italiano** e **rosse per l'inglese**, e la casa dice "Italiano" o "English". | acceso mentre la casa parla inglese |
 
+Mentre la casa ascolta, **tutti e tre i LED** dei tasti sono accesi; mentre elabora una risposta da dire, **respirano**: si accende il centro, poi tutti, poi di nuovo il centro, poi si spengono, finché la casa parla.
+
 La casa parte in italiano. La lingua si può cambiare anche dalla webapp, in **Comandi → Lingua della casa**, oppure a voce ("Parla inglese", "Speak Italian"). È la lingua in cui la casa parla e ascolta; ogni telefono sceglie per conto suo la lingua della webapp.
 
-Durante la conversazione del citofono e la registrazione a voce, la casa ascolta da sola per qualche secondo dopo ognuna delle sue domande ("Chi è?", "Ho capito Marco, giusto?", "In che stanza l'hai messo?"). Per rispondere alle sue domande su chi è chi ("In cucina c'è Marco o Leo?"), tieni premuto **Parla** e di' il nome.
+Durante la conversazione del citofono e la registrazione a voce, la casa ascolta da sola per qualche secondo dopo ognuna delle sue domande ("Chi è?", "Ho capito Marco, giusto?", "In che stanza l'hai messo?"). Anche alle sue domande su chi è chi ("In cucina c'è Marco o Leo?") e sull'ora si risponde senza premere niente.
 
 ## Loquacità
 
@@ -35,7 +37,7 @@ Si imposta da **Comandi → Loquacità**, oppure a voce: "Stai zitta" / "Be quie
 
 ## Parlare senza premere Parla
 
-Dopo **ogni** sua domanda la casa ascolta da sola per qualche secondo, senza il tasto Parla: il saluto a un telefono nuovo, le domande ai personaggi, "chi è?" per un nuovo arrivato, i dubbi tra due personaggi, le conferme. Se la risposta non è chiara la chiede una seconda volta, e intanto la stessa domanda compare sui telefoni: vale la prima risposta, a voce o dall'app, e appena arriva la casa smette di ascoltare. Mentre ascolta: il LED di **Parla** si accende e sui telefoni compare *La casa ti ascolta…*. Se mentre ascolta la casa dice qualcos'altro (una regola, un avviso), la risposta viene scartata: potrebbe essere la sua stessa voce. **Parla** e il **citofono** vengono sempre prima: premerli interrompe il saluto o la domanda, e la casa ascolta il tasto.
+Dopo **ogni** sua domanda la casa ascolta da sola per qualche secondo, senza il tasto Parla: il saluto a un telefono nuovo, le domande ai personaggi, "chi è?" per un nuovo arrivato, i dubbi tra due personaggi, le conferme. Se la risposta non è chiara la chiede una seconda volta, e intanto la stessa domanda compare sui telefoni: vale la prima risposta, a voce o dall'app, e appena arriva la casa smette di ascoltare. Il microfono si apre già mentre la casa finisce la domanda, e quello che sente viene scartato fino a un terzo di secondo dopo la sua ultima parola: così una risposta detta subito ("sì") non va persa mentre il registratore parte. Mentre ascolta, i tre LED dei tasti sono accesi e sui telefoni compare *La casa ti ascolta…*; mentre elabora la risposta, i LED respirano. Alla domanda "chi è?" su un nuovo arrivato si può rispondere con qualsiasi frase: la casa la capisce e risponde di conseguenza ([capitolo 7](07-riconoscimento-e-identita.md#un-nuovo-arrivato)). Se mentre ascolta la casa dice qualcos'altro (una regola, un avviso), la risposta viene scartata: potrebbe essere la sua stessa voce. **Parla** e il **citofono** vengono sempre prima: premerli interrompe il saluto o la domanda, e la casa ascolta il tasto.
 
 **Un telefono nuovo.** La prima volta che un telefono apre la webapp, la casa lo saluta: "Ciao! Si è appena collegato un telefono nuovo. Come ti chiami?". Il nome si può dire a voce (la casa chiede conferma: "Ti chiami Luca?") oppure scrivere nella scheda che compare sul telefono; poi la casa invita a entrare con un personaggio, e il telefono propone **Aggiungi un personaggio**. Il nome diventa il soprannome del telefono, quello che compare nel registro delle modifiche.
 - Ogni telefono viene salutato una volta sola, anche dopo un riavvio; un telefono che si ricollega dallo stesso indirizzo con un'altra pagina (l'icona sulla schermata Home, una finestra anonima, `casaN.lan`) è lo stesso telefono. La casa dimentica i telefoni (e i nomi) dopo 7 giorni.
@@ -104,7 +106,11 @@ Ecco come suonano le risposte: "Marco è in cucina." / "Marco is in the kitchen.
 
 ## Il modello linguistico dei comandi
 
-Una frase che l'analizzatore non capisce ("Quanta gente c'è in cucina?", una richiesta con parole insolite, una frase storpiata dal riconoscimento) passa a **Qwen2.5-0.5B-Instruct** (quantizzato a 4 bit, in formato GGUF), fatto girare da `llama-server` di llama.cpp nel servizio `domotiq-llm`. Mentre lavora, la casa dice "Vediamo…" / "Let me see…". Riceve istruzioni fisse con le stanze, i comandi della casa e qualche esempio, poi i nomi dei personaggi registrati e la frase. La sua uscita è vincolata mentre viene prodotta, così può scrivere soltanto un comando della casa con i suoi argomenti: *where_is Marco*, *who_in kitchen*, *lights_on bedroom purple*, oppure *other* per tutto il resto. Le istruzioni sono sempre lo stesso testo, che `llama-server` tiene nella sua cache. **Questo modello sceglie cosa fare e non scrive mai quello che dice la casa**: la risposta si compone dallo stato reale della casa, con frasi preparate in italiano e in inglese, quindi non può inventare. Lo stesso vale per la giornata dei personaggi ("Cosa ha fatto Marco oggi?"): la risposta viene da quello che la webcam ha visto davvero, non da un modello.
+Una frase che l'analizzatore non capisce ("Quanta gente c'è in cucina?", una richiesta con parole insolite, una frase storpiata dal riconoscimento) passa a **Qwen2.5-0.5B-Instruct** (quantizzato a 4 bit, in formato GGUF), fatto girare da `llama-server` di llama.cpp nel servizio `domotiq-llm`. Mentre lavora, la casa dice "Vediamo…" / "Let me see…". Riceve istruzioni fisse con le stanze, i comandi della casa e qualche esempio, poi i nomi dei personaggi registrati e la frase. La sua uscita è vincolata mentre viene prodotta, così può scrivere soltanto un comando della casa con i suoi argomenti: *where_is Marco*, *who_in kitchen*, *lights_on bedroom purple*, oppure *other* per tutto il resto. Le istruzioni sono sempre lo stesso testo, che `llama-server` tiene nella sua cache.
+
+Lo stesso modello capisce anche le risposte a "chi è?" che le regole non riconoscono: le classifica come nome, tipo, sì, no, "non c'è nessuno", "non lo so" o altro. Un nome che propone vale solo se è nella frase; il tipo e i nomi registrati la casa li legge nella frase stessa, quindi il modello non può inventare un personaggio. Queste istruzioni stanno in un secondo slot di `llama-server` (`-np 2`), così nessuno dei due tipi di richiesta toglie l'altro dalla cache. Dopo l'avvio le due istruzioni si leggono in circa 5 minuti; intanto una frase libera ottiene "non ho capito". Poi una risposta libera richiede da 3 a 6 secondi.
+
+**Questo modello sceglie cosa fare e non scrive mai quello che dice la casa**: la risposta si compone dallo stato reale della casa, con frasi preparate in italiano e in inglese, quindi non può inventare. Lo stesso vale per la giornata dei personaggi ("Cosa ha fatto Marco oggi?"): la risposta viene da quello che la webcam ha visto davvero, non da un modello.
 
 ## Storie, ricordi e domande libere
 
@@ -131,15 +137,13 @@ Il microfono è acceso solo mentre la casa ascolta, a 16 kHz mono: mentre Parla 
 
 ## Sintesi vocale
 
-Piper (`piper1-gpl`, GPL-3.0) gira come programma separato nel servizio `domotiq-tts`, e la casa gli manda le frasi via HTTP sull'interfaccia di loopback. Le voci sono `it_IT-serena-medium` (CC BY 4.0) e `en_US-ljspeech-medium` (pubblico dominio). Numeri e unità di misura vengono pronunciati come si deve ("24.3 °C" diventa "24 virgola 3 gradi" in italiano e "24 point 3 degrees" in inglese). Le frasi frequenti ("Chi è?", "Vediamo…", "Si balla!"…) vengono sintetizzate all'avvio e tenute in memoria, così partono subito anche quando il processore è impegnato.
+Piper (`piper1-gpl`, GPL-3.0) gira come programma separato nel servizio `domotiq-tts`, e la casa gli manda le frasi via HTTP sull'interfaccia di loopback. Le voci sono `it_IT-serena-medium` (CC BY 4.0) e `en_US-ljspeech-medium` (pubblico dominio). Numeri e unità di misura vengono pronunciati come si deve ("24.3 °C" diventa "24 virgola 3 gradi" in italiano e "24 point 3 degrees" in inglese). Le frasi frequenti ("Chi è?", "Vediamo…", "Si balla!"…) vengono sintetizzate all'avvio e tenute in memoria, così partono subito anche quando il processore è impegnato. Alcune frasi si passano a Piper già trascritte in fonemi, dove la voce italiana mangerebbe una vocale: "Come si chiama?" usciva come "Cme s chiama?", perché la trascrizione automatica legge "si" come una vocale ridotta.
 
 Tutti gli altri suoni (campanello, campanello breve, i bip di Parla, allarme, notifica) e la musica della festa sono sintetizzati dal codice stesso della casa: nessun campione registrato. La musica della festa è dance in cassa dritta a 124 BPM, con kick, clap, hi-hat, basso, accordi e una melodia che cambiano a ogni festa, a tempo con lo spettacolo di luci del microcontrollore. Quando la casa parla, la musica si abbassa sotto la voce.
 
 ## Impostare l'ora a voce
 
-La UNO Q non ha una batteria per l'orologio. Se due minuti dopo l'avvio l'ora è ancora sconosciuta, la casa dice una volta (a meno che non sia Silenziosa): "Non so che ore sono: premi Parla e dimmelo."
-
-Tieni premuto **Parla** e di' l'ora:
+La UNO Q non ha una batteria per l'orologio. Se due minuti dopo l'avvio l'ora è ancora sconosciuta, la casa lo chiede una volta (a meno che non sia Silenziosa): "Non so che ore sono: che ore sono adesso?", e ascolta subito la risposta, senza il tasto Parla. Fa lo stesso dopo "Che ore sono?" quando non lo sa. In qualsiasi momento si può anche tenere premuto **Parla** e dire l'ora:
 
 - In italiano: "Sono le quindici e trenta", "Sono le tre e mezza", "Sono le tre e venticinque", "Sono le dieci e un quarto", "Sono le tre e tre quarti", "Sono le otto meno venti", "Sono le sette meno un quarto", "È l'una e dieci". Va bene qualsiasi minuto, in lettere o in cifre; "del pomeriggio" o "di sera" aggiungono dodici ore.
 - In inglese: "It's half past three", "It's quarter to five", "It's twenty past six", "It's ten to seven pm", "It's five twenty", "Set the clock at three thirty". "pm", "afternoon" o "evening" aggiungono dodici ore.

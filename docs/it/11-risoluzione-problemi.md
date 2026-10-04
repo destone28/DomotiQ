@@ -164,7 +164,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### Compaiono oggetti fantasma, o quelli veri non vengono visti, dopo che la luce del padiglione è cambiata
 **Causa.** L'esposizione bloccata e il riferimento della casa vuota non corrispondono più alla luce del padiglione.
 
-**Soluzione.** Svuota la casa e tocca **Regola la luce e salva la casa vuota**.
+**Soluzione.** Di solito la casa si arrangia: se l'immagine resta per 5 secondi molto più buia o più chiara della casa vuota, la webcam si riregola da sola senza perdere calibrazione, casa vuota e presenze (in *Diagnostica* il contatore *retunes* sale di uno). Se non basta, svuota la casa e tocca **Regola la luce e salva la casa vuota**.
 
 ### La casa non nota i personaggi che metto
 **Causa.** La casa crede che ci sia una mano sopra la casa e aspetta che se ne vada (in *Diagnostica* risulta una mano anche quando nessuno tocca la casa). Succede se sul bordo della base è appoggiato qualcosa di grande: un modulo, un cavo, il braccio di un visitatore.
@@ -174,7 +174,12 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### Animali o oggetti che non ci sono, soprattutto sul vialetto
 **Causa.** Il braccio di chi gioca sposta moduli o cavi sciolti, e ogni spostamento è un cambiamento vero rispetto alla casa vuota.
 
-**Soluzione.** Monta il totem e fissa i cavi lungo le pareti, poi a casa vuota **Altro → Calibrazione → Salva solo la casa vuota**. Alla domanda "che cos'è?" si può rispondere **Nessuno di questi**.
+**Soluzione.** Monta il totem e fissa i cavi lungo le pareti, poi a casa vuota **Altro → Calibrazione → Salva solo la casa vuota**.
+
+### La casa chiede di qualcuno che non c'è
+**Causa.** Qualcosa che la mano ha spostato o lasciato (un'ombra, un riflesso, un cavo) ha superato il doppio controllo della casa.
+
+**Soluzione.** Rispondi "non c'è nessuno" (o "è la mia mano", "è un'ombra"), oppure tocca **Non c'è niente** sul telefono. La casa dimentica quello che aveva visto, lì per 30 secondi non nasce niente e per due minuti in quella stanza è più severa. Se succede spesso nello stesso punto, guarda la diretta: può essere un modulo, un LED o un cavo da fissare o da coprire.
 
 ### La webapp dice *La webcam non è collegata*
 **Causa.** Per qualche secondo la casa non ha ricevuto immagini: un riavvio, un reset USB della C270 (succede a ogni apertura, e quando la sessione del desktop della scheda la interroga, per esempio a ogni accesso ssh).
@@ -190,6 +195,11 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 **Causa.** Il suo colore è troppo vicino al pavimento, alle pareti o ai prati; oppure si trova dove la visione non guarda: sotto un'applique, sotto la chioma dell'albero, accanto al palo, sulla cima di una parete, fuori dalla base.
 
 **Soluzione.** Spostala in un punto più libero, oppure usa una statuina di un altro colore. La registrazione avvisa in questi casi.
+
+### Un personaggio noto viene preso per un nuovo arrivato
+**Causa.** Visto adesso, il suo colore è diverso da quando è stato registrato: un'altra luce, il personaggio sdraiato, su uno sfondo colorato. La casa lo riconosce lo stesso se gli somiglia molto più che a chiunque altro.
+
+**Soluzione.** Alla domanda rispondi con il suo nome: la casa lo assegna e ne aggiorna subito i colori, così la volta dopo lo riconosce da sola. Se quel personaggio è già in vista in un altro punto della casa, la casa conclude che il nuovo arrivato non c'era.
 
 ### Un personaggio ha un **?**, oppure la casa continua a chiedere chi è chi
 **Causa.** Due statuine di colore simile, prese insieme o a contatto: la casa non riesce a distinguerle dal colore.
@@ -211,7 +221,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### Il pallino *Audio* è rosso, oppure la casa è muta
 **Causa.** La scheda audio USB manca o non viene trovata, il volume è a 0, la casa è impostata su *Silenziosa*, oppure il servizio di sintesi vocale è fermo.
 
-**Soluzione.** Controlla con `aplay -l` che ci sia una scheda audio USB, poi **Comandi → Volume** e **Loquacità**, e `systemctl status domotiq-tts`. La casa usa la prima scheda audio USB che può suonare; per forzare un altro dispositivo, aggiungi `Environment=DOMOTIQ_AUDIO=plughw:CARD=<name>,DEV=0` con `sudo systemctl edit domotiq` e riavvia il servizio. Se la scheda sparisce mentre la casa è accesa, la casa la riapre da sola. Anche senza nessuna scheda audio, la casa continua a scrivere come sottotitoli quello che direbbe.
+**Soluzione.** Controlla con `aplay -l` che ci sia una scheda audio USB, poi **Comandi → Volume** e **Loquacità**, e `systemctl status domotiq-tts`. La casa usa la prima scheda audio USB che può suonare; per forzare un altro dispositivo, aggiungi `Environment=DOMOTIQ_AUDIO=plughw:CARD=<name>,DEV=0` con `sudo systemctl edit domotiq` e riavvia il servizio. Se la scheda sparisce o si riavvia da sola mentre la casa è accesa (la US205 ogni tanto lo fa, e torna con il volume basso), la casa se ne accorge entro un paio di secondi, la riapre e rimette i livelli a 0 dB; in *Diagnostica* il contatore *restarts* dell'audio sale di uno. Se succede spesso, controlla che la scheda sia ben inserita e alimenta le casse da un'altra presa USB. Anche senza nessuna scheda audio, la casa continua a scrivere come sottotitoli quello che direbbe.
 
 ### La prima frase in inglese è lenta
 **Causa.** La voce inglese viene caricata al primo utilizzo.
@@ -252,10 +262,10 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 
 ## Orologio
 
-### La casa dice "Non so che ore sono: premi Parla e dimmelo."
+### La casa chiede "Non so che ore sono: che ore sono adesso?"
 **Causa.** La scheda non ha una batteria per l'orologio né internet in fiera, e dall'avvio nessun telefono ha aperto la webapp.
 
-**Soluzione.** Apri la webapp da un telefono (imposta l'ora), di' l'ora tenendo premuto **Parla** ([capitolo 8](08-voce.md#impostare-lora-a-voce)), oppure usa **Impostazioni → Usa l'ora di questo telefono**. In **Diagnostica**, alla riga *Orologio*, si vede da dove arriva l'ora. Le regole con *è un certo orario* hanno bisogno di un'ora nota.
+**Soluzione.** Rispondi subito a voce, senza premere niente ("sono le tre e mezza"), apri la webapp da un telefono (imposta l'ora), oppure usa **Impostazioni → Usa l'ora di questo telefono** ([capitolo 8](08-voce.md#impostare-lora-a-voce)). In **Diagnostica**, alla riga *Orologio*, si vede da dove arriva l'ora. Le regole con *è un certo orario* hanno bisogno di un'ora nota.
 
 ## Webapp e staff
 

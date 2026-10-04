@@ -181,3 +181,18 @@ La domanda "chi è?" propone anche i personaggi di cui la casa non conosce ancor
 - un narratore dice chi entra, esce o cambia stanza e l'auto parcheggiata.
 
 Nella prima prova la casa ha chiesto dell'auto e ha capito "Honda Civic", ma non il "sì" di conferma. Ora la conferma si chiede una seconda volta ("Dimmi sì o no…") invece di ripartire da capo, e per un oggetto non si propongono più i nomi delle persone.
+
+**Audio, risposte libere, falsi positivi, luce della sala (4/10, pomeriggio e sera).** Emilio ha provato a lungo con la casa montata. In ordine:
+- **Audio muto.** La scheda audio US205 ogni tanto si riavvia da sola: aplay restava bloccato e il volume tornava a -23 dB. Ora la casa riconosce la scheda dal suo bus USB e scrive senza bloccarsi. Se la scheda cambia o resta ferma più di un secondo, riapre l'uscita e rimette i livelli a 0 dB.
+- **Falsi positivi che saltano.** Misurato sulle registrazioni: il centro della macchia di una statuina ferma si sposta di 0,3-0,4 mm tra un fotogramma e l'altro (2 mm al massimo). Un riflesso o un LED salta di 4-11 mm, oppure sparisce e ricompare. Tre salti in un secondo e mezzo senza mani bastano a escluderlo.
+- **"Chi è?" in linguaggio naturale** (D-21). La domanda dice cosa sembra alla casa e accetta qualsiasi risposta, compreso "non c'è nessuno in giardino". Nella prima prova vera Emilio ha detto "Rosaria", il riconoscimento ha sentito "rosario" e la casa ha risposto "Non vedo Rosaria." come a un comando: ora i nomi registrati si riconoscono anche con una lettera sbagliata. È comparso anche un personaggio di nome "Chi", nato da un vecchio "chi?" frainteso; Emilio l'ha poi cancellato. Ora "chi" e le altre parole che non sono nomi non si accettano più come nome.
+- **Luce della sala** (D-22). Se l'immagine resta molto più buia o più chiara della casa vuota, la webcam si riregola da sola senza toccare calibrazione, casa vuota e presenze. Una differenza comparsa senza mani (una lampada, un'ombra laterale) non diventa mai una presenza.
+- **Ancora presenze inesistenti** (D-22). Domande su persone in bagno e animali in soggiorno, una dopo l'altra. Una registrazione di 90 secondi, riprodotta sul PC con le firme di colore vere, ha mostrato:
+  - strisce di luce ai piedi delle pareti;
+  - l'estremità della lampada del soggiorno, poco fuori dalla zona esclusa, su cui la traccia di Mister Braun è saltata quando la mano lo ha preso;
+  - Viola, sdraiata sul letto e non riconosciuta, finita nella casa vuota: tolta lei, il letto vuoto sembrava una persona nuova;
+  - Rosaria persa perché la mano le era solo passata sopra.
+
+  Dopo le correzioni la stessa registrazione dà zero domande inutili, e tutti e quattro i personaggi sono riconosciuti e seguiti in ogni spostamento.
+- **Voce.** Il microfono ora si apre mentre la casa finisce la domanda: prima un "sì" detto subito si perdeva, e la conferma di "Honda Civic" non è mai arrivata, due volte. Mentre la casa ascolta i tre LED dei tasti sono accesi; mentre pensa, respirano. Per "Come si chiama?", che suonava come "Cme s chiama?", ho prima rallentato la voce sulle frasi brevi, ma a Emilio la voce sembrava sbagliata: ora la velocità è normale ovunque, e solo quella frase passa a Piper già in fonemi, perché la trascrizione automatica leggeva "si" come una vocale ridotta. L'ora si chiede e si ascolta senza Parla.
+- **Mobili e webapp.** Una statuina sul letto, sul divano o su un tavolo viene messa sopra il mobile e non accanto. Sul tetto dell'auto no: la statuina si confonde con l'auto. Nella webapp allarmi e notifiche si chiudono.
