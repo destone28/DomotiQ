@@ -114,3 +114,19 @@ Con le nuove regole la stessa registrazione dà zero domande inutili, e tutti e 
 ### D-23 — La luce del locale tecnico è la matrice LED della UNO Q (4/10)
 **Scelta:** il locale tecnico, dove la UNO Q è appesa alla parete, ha come luce la matrice di 13 × 8 LED della scheda. Per Linux è la luce 5, comandata come le altre: effetti, luminosità, festa, luci che seguono le persone. La matrice ha un solo colore e 8 livelli di luminosità, quindi il colore richiesto si vede sul LED RGB della scheda accanto a lei (LED3, regolabile), che segue lo stesso effetto.
 **Perché:** lo ha chiesto Emilio: la stanza era l'unica interna senza luce, e la matrice è già lì, senza un modulo in più né cavi. La vede anche la webcam, per questo la scheda è tra le zone escluse dall'analisi.
+
+### D-24 — Nomi stabili, posizioni ferme, storico e pose imparate sulla scheda (4/10)
+**Scelta:**
+- **Niente si muove da solo, nemmeno sulla mappa.** Senza una mano recente una traccia non salta oltre 30 mm e la posizione di un personaggio fermo non cambia.
+- **Un nome non salta.** Non passa da una traccia all'altra finché chi lo tiene non smette di somigliargli per otto fotogrammi; il riconoscimento con colori meno vicini vale solo nei primi 10 secondi di una traccia nuova.
+- **Conta la dimensione.** L'auto non è mai una statuina, né una statuina l'auto.
+- **Storico.** Ogni personaggio ha il suo ultimo posto e il segno se una mano ci è passata: prima di chiedere di una cosa nuova, chi stava lì senza essere toccato riprende il suo nome.
+- **Pose.** Ogni personaggio impara sulla scheda fino a sei pose (colori, dimensione, forma) mentre la casa è sicura di lui, e subito quando qualcuno dice chi è.
+- **Mani che posano.** La sola cosa nuova lasciata dalle mani è il personaggio che tenevano; un pezzo di macchia accanto a un personaggio, del suo colore, è suo.
+
+**Perché:** le prove di Emilio della sera hanno mostrato:
+- Viola che saltava tra cucina e giardino mentre era in bagno contro Rosaria: il suo nome, rimasto libero, finiva su macchie lontane;
+- Mister Braun salutato quando l'ha messo sul letto (sdraiato era più lungo della soglia di forma);
+- "Mister Blu" scambiato per la Honda Civic, blu anche lei.
+
+Nella registrazione delle 15:31, poi, due tracce si scambiavano di posto senza nessuna mano. Con queste regole la registrazione dà zero domande e i quattro personaggi sono seguiti e riconosciuti in ogni spostamento. Le pose sono la forma di apprendimento sul posto che la scheda regge senza un modello neurale: confrontare con le pose note costa una frazione di millisecondo per macchia, mentre una rete per le immagini avrebbe chiesto dati etichettati e un processore più libero.
