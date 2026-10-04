@@ -133,7 +133,7 @@ Ogni luce ha una pila di livelli. Il livello attivo più alto decide cosa mostra
 
 Durante una festa il microcontrollore gestisce da solo lo spettacolo di luci, a tempo con la musica; quando la festa finisce la casa ridisegna ogni luce a partire dai suoi livelli.
 
-**Luci che seguono le persone.** Una stanza con almeno una persona riceve una luce bianca calda al 60 % (del massimo della casa); si spegne 3 secondi dopo che l'ultima persona è uscita. Gli animali non accendono le luci. In garage conta anche l'auto: la luce resta accesa mentre l'auto arriva e finché non è parcheggiata da 10 secondi. Il locale tecnico, il giardino e il vialetto non hanno luce. Colore, luminosità e ritardo sono impostazioni dello staff, e **Comandi → Luci che seguono le persone** le spegne.
+**Luci che seguono le persone.** Una stanza con almeno una persona riceve una luce bianca calda al 60 % (del massimo della casa); si spegne 3 secondi dopo che l'ultima persona è uscita. Gli animali non accendono le luci. In garage conta anche l'auto: la luce resta accesa mentre l'auto arriva e finché non è parcheggiata da 10 secondi. Il giardino e il vialetto non hanno luce; la luce del locale tecnico è la matrice LED della UNO Q. Colore, luminosità e ritardo sono impostazioni dello staff, e **Comandi → Luci che seguono le persone** le spegne.
 
 ## Scenari
 

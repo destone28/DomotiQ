@@ -133,7 +133,7 @@ Each light has a stack of layers. The highest active layer decides what the ligh
 
 During a party the microcontroller runs the light show by itself, in time with the music; when the party ends the house redraws every light from its layers.
 
-**Follow-me lights.** A room with at least one person gets a warm white light at 60 % (of the house maximum); it goes off 3 seconds after the last person leaves. Animals do not turn lights on. In the garage the car counts too: the light stays on while the car arrives and until it has been parked for 10 seconds. The utility room, the garden and the driveway have no light. Colour, brightness and delay are staff settings, and **Controls → Lights follow people** switches them off.
+**Follow-me lights.** A room with at least one person gets a warm white light at 60 % (of the house maximum); it goes off 3 seconds after the last person leaves. Animals do not turn lights on. In the garage the car counts too: the light stays on while the car arrives and until it has been parked for 10 seconds. The garden and the driveway have no light; the light of the utility room is the LED matrix of the UNO Q. Colour, brightness and delay are staff settings, and **Controls → Lights follow people** switches them off.
 
 ## Scenes
 

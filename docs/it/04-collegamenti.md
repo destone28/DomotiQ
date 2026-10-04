@@ -60,6 +60,8 @@ Il bus principale va dalla UNO Q al **Modulino Hub** e prosegue fino al **Latch 
 | 6 | Thermo, poi Buttons, poi Distance | credenza del soggiorno, poi il totem sul vialetto | 0x44, 0x3E, 0x29 |
 | 7 | libero | | |
 
+La luce del **locale tecnico** non è un modulo: è la matrice di 13 × 8 LED della UNO Q stessa, comandata dal firmware come le altre luci (luce 5 per Linux). La matrice ha un solo colore e 8 livelli: prende effetti e luminosità; il colore si vede sul LED RGB della scheda accanto a lei (LED3).
+
 Note:
 
 - **Stessi indirizzi, canali diversi.** I cinque Pixels rispondono tutti a 0x36 e i due Thermo a 0x44. Non è un problema: il firmware apre un solo canale dell'Hub alla volta.

@@ -11,7 +11,7 @@
     {"id": "living",   "name": {"it": "Soggiorno", "en": "Living room"},       "rect": [175, 425, 10, 220],  "indoor": true,  "light": "living"},
     {"id": "bedroom",  "name": {"it": "Camera", "en": "Bedroom"},              "rect": [435, 640, 10, 220],  "indoor": true,  "light": "bedroom"},
     {"id": "bathroom", "name": {"it": "Bagno", "en": "Bathroom"},              "rect": [175, 285, 230, 360], "indoor": true,  "light": "bathroom", "private": true},
-    {"id": "utility",  "name": {"it": "Locale tecnico", "en": "Utility room"}, "rect": [295, 425, 230, 360], "indoor": true,  "light": null},
+    {"id": "utility",  "name": {"it": "Locale tecnico", "en": "Utility room"}, "rect": [295, 425, 230, 360], "indoor": true,  "light": "utility"},
     {"id": "garage",   "name": {"it": "Garage", "en": "Garage"},               "rect": [435, 640, 230, 360], "indoor": true,  "light": "garage"},
     {"id": "garden",   "name": {"it": "Giardino", "en": "Garden"},             "rect": [0, 165, 230, 370],   "indoor": false, "light": null},
     {"id": "driveway", "name": {"it": "Vialetto", "en": "Driveway"},           "rect": [0, 650, -80, 0],     "indoor": false, "light": null}
@@ -84,7 +84,8 @@
     {"id": "bedroom",  "room": "bedroom",  "index": 1, "channel": 1, "rect": [497, 557, 208, 222]},
     {"id": "kitchen",  "room": "kitchen",  "index": 2, "channel": 2, "rect": [153, 168, 155, 215]},
     {"id": "living",   "room": "living",   "index": 3, "channel": 3, "rect": [413, 428, 73, 133]},
-    {"id": "bathroom", "room": "bathroom", "index": 4, "channel": 5, "rect": [273, 288, 295, 355]}
+    {"id": "bathroom", "room": "bathroom", "index": 4, "channel": 5, "rect": [273, 288, 295, 355]},
+    {"id": "utility",  "room": "utility",  "index": 5, "channel": -1, "rect": [425, 435, 290, 345], "matrix": true}
   ],
   "sensors": [
     {"id": "thermostat", "type": "thermo",   "index": 0, "channel": 6, "room": "living",   "pos": [405, 50]},

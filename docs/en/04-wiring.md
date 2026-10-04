@@ -60,6 +60,8 @@ The main bus goes from the UNO Q to the **Modulino Hub** and on to the **Latch R
 | 6 | Thermo, then Buttons, then Distance | sideboard in the living room, then the totem on the driveway | 0x44, 0x3E, 0x29 |
 | 7 | free | | |
 
+The light of the **utility room** is not a module: it is the 13 × 8 LED matrix of the UNO Q itself, driven by the firmware like the other lights (light 5 for Linux). The matrix has a single colour and 8 levels: it takes effects and brightness; the colour shows on the RGB LED of the board next to it (LED3).
+
 Notes:
 
 - **Same addresses, different channels.** The five Pixels all answer at 0x36 and the two Thermo at 0x44. That is fine: the firmware opens only one Hub channel at a time.

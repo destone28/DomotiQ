@@ -110,3 +110,7 @@ Con il 2B una storia di cinque frasi richiede minuti, più 3-4 minuti la prima v
 - soprattutto Viola: sdraiata sul letto e non riconosciuta, era entrata nella casa vuota, e quando la mano l'ha tolta il letto vuoto è sembrato una persona nuova.
 
 Con le nuove regole la stessa registrazione dà zero domande inutili, e tutti e quattro i personaggi sono riconosciuti e seguiti in ogni spostamento. Il prezzo è circa un secondo in più prima che un nuovo arrivato venga annunciato.
+
+### D-23 — La luce del locale tecnico è la matrice LED della UNO Q (4/10)
+**Scelta:** il locale tecnico, dove la UNO Q è appesa alla parete, ha come luce la matrice di 13 × 8 LED della scheda. Per Linux è la luce 5, comandata come le altre: effetti, luminosità, festa, luci che seguono le persone. La matrice ha un solo colore e 8 livelli di luminosità, quindi il colore richiesto si vede sul LED RGB della scheda accanto a lei (LED3, regolabile), che segue lo stesso effetto.
+**Perché:** lo ha chiesto Emilio: la stanza era l'unica interna senza luce, e la matrice è già lì, senza un modulo in più né cavi. La vede anche la webcam, per questo la scheda è tra le zone escluse dall'analisi.

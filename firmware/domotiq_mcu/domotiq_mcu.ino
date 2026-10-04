@@ -19,6 +19,12 @@
  *       ch6 Thermo sideboard → Buttons (0x3E) → Distance (0x29)
  *   Every Pixels sits at the factory address 0x36 on its own channel.
  *
+ * ── The light of the utility room ───────────────────────────────────────────
+ * It is the 13 × 8 LED matrix of the UNO Q itself (light 5 for Linux). The
+ * matrix has one colour and 8 levels: it takes the effects and the
+ * brightness of the other lights, and their colour shows on the RGB LED3
+ * next to it.
+ *
  * ── No Modulino library ────────────────────────────────────────────────────
  * On the UNO Q core, Arduino_Modulino reports modules as present without
  * touching the bus, returns true from every write and retries forever in
@@ -37,6 +43,7 @@
  * so all types and globals are declared first.
  */
 
+#include <Arduino_LED_Matrix.h>
 #include <Arduino_RouterBridge.h>
 #include <Wire.h>
 #include <zephyr/device.h>
@@ -71,6 +78,8 @@ enum {
 };
 static const uint8_t LIGHT_BIT[N_LIGHTS] = {M_PX_GARAGE, M_PX_BEDROOM, M_PX_KITCHEN, M_PX_LIVING, M_PX_BATH};
 static const uint8_t THERMO_BIT[2] = {M_THERMO_STAT, M_THERMO_BATH};
+static const uint8_t MATRIX_LIGHT = 5;           // the LED matrix of the board, as Linux numbers it
+static const uint8_t MX_W = 13, MX_H = 8, MX_TOP = 7;   // 8 levels, 0..7
 
 enum { FX_OFF = 0, FX_SOLID, FX_BREATHE, FX_BLINK, FX_WAVE, FX_RAINBOW, FX_SPARKLE, FX_FIRE,
        FX_ALARM, FX_COOL, FX_WARM, FX_BOOT = 100 };
@@ -99,6 +108,12 @@ struct PartyCmd {
   uint32_t bpm10 = 1240, seed = 1, duration = 0, delay = 0;
 };
 
+struct PartyBeat {           // the party show at one moment: Pixels and matrix follow the same beat
+  uint32_t beat_ms, t, beat, in_beat, pattern;
+  uint8_t hue;
+  bool finale;
+};
+
 struct Event {
   uint8_t kind;              // 1 btn, 2 dist, 3 thermo, 4 mods
   int32_t a, b, c;
@@ -110,6 +125,8 @@ K_MSGQ_DEFINE(events, sizeof(Event), 32, 4);
 
 static LightCmd req_light[N_LIGHTS];
 static bool req_light_dirty[N_LIGHTS];
+static LightCmd req_matrix;
+static bool req_matrix_dirty = false;
 static PartyCmd req_party;
 static int8_t req_relay = 0;               // 0 off at boot, 1 on, -1 nothing pending
 static uint8_t req_leds = 0, req_blink = 0;
@@ -133,6 +150,11 @@ static uint8_t sent_frame[N_LIGHTS][N_LED][4];
 static bool sent_valid[N_LIGHTS];
 static bool party_on = false;
 static uint32_t party_start = 0, party_end = 0, party_bpm10 = 1240, party_seed = 1;
+static LightCmd cur_matrix;
+static uint8_t mx[MX_W * MX_H], mx_sent[MX_W * MX_H];
+static bool mx_valid = false;
+static uint8_t led3[3], led3_sent[3];
+static bool led3_valid = false;
 static uint8_t btn_raw[3], btn_stable[3], btn_count[3];
 static int32_t tof_last = -1;
 static uint32_t tof_last_sent = 0;
@@ -418,16 +440,24 @@ static void render_light(uint8_t li, uint32_t now) {
 
 // The party show: patterns change every four beats, flashes only on beats
 // (at 124 BPM that is about 2 per second, below the 3 per second limit).
+static PartyBeat party_beat(uint32_t now) {
+  PartyBeat p;
+  p.beat_ms = 600000u / (party_bpm10 ? party_bpm10 : 1240);
+  p.t = now - party_start;
+  p.beat = p.t / p.beat_ms;
+  p.in_beat = p.t % p.beat_ms;
+  uint32_t seed = party_seed ^ ((p.beat / 4) * 2654435761u);
+  p.pattern = rng(&seed) % 5;
+  p.hue = (uint8_t)(rng(&seed));
+  p.finale = party_end - now < 2000;
+  return p;
+}
+
 static void render_party(uint32_t now) {
-  uint32_t beat_ms = 600000u / (party_bpm10 ? party_bpm10 : 1240);
-  uint32_t t = now - party_start;
-  uint32_t beat = t / beat_ms;
-  uint32_t in_beat = t % beat_ms;
-  uint32_t bar = beat / 4;
-  uint32_t seed = party_seed ^ (bar * 2654435761u);
-  uint32_t pattern = rng(&seed) % 5;
-  uint8_t hue = (uint8_t)(rng(&seed));
-  bool finale = party_end - now < 2000;
+  PartyBeat pb = party_beat(now);
+  uint32_t beat_ms = pb.beat_ms, t = pb.t, beat = pb.beat, in_beat = pb.in_beat, pattern = pb.pattern;
+  uint8_t hue = pb.hue;
+  bool finale = pb.finale;
   for (uint8_t li = 0; li < N_LIGHTS; li++) {
     for (uint8_t i = 0; i < N_LED; i++) {
       uint8_t r, g, b;
@@ -456,6 +486,112 @@ static void render_party(uint32_t now) {
       }
       frame[li][i][0] = r; frame[li][i][1] = g; frame[li][i][2] = b;
     }
+  }
+}
+
+// ============================================================ the LED matrix
+// The same effects as the Pixels, in levels 0..MX_TOP; `env` (0-255) is how
+// bright the colour LED is at this moment.
+static void render_matrix(uint32_t now) {
+  const LightCmd &c = cur_matrix;
+  uint32_t t = now - c.started;
+  uint16_t speed = c.speed ? c.speed : 50;
+  uint8_t top = (uint8_t)(((uint16_t)c.bri * MX_TOP + 50) / 100);
+  if (top == 0 && c.bri > 0) top = 1;
+  uint16_t env = 255;
+  uint8_t r = c.r, g = c.g, b = c.b;
+  for (uint8_t y = 0; y < MX_H; y++) {
+    for (uint8_t x = 0; x < MX_W; x++) {
+      uint16_t k = 255;
+      switch (c.effect) {
+        case FX_OFF:
+          k = 0;
+          break;
+        case FX_BOOT:
+        case FX_BREATHE: {
+          uint32_t period = c.effect == FX_BOOT ? 3200 : 5200 - speed * 36;
+          k = 60 + (tri(t, period) * 196) / 255;
+          break;
+        }
+        case FX_BLINK:
+        case FX_ALARM: {
+          uint32_t period = c.effect == FX_ALARM ? 500 : (1400 - speed * 10 < 340 ? 340 : 1400 - speed * 10);
+          if ((t % period) >= period / 2) k = 0;
+          break;
+        }
+        case FX_WAVE:
+        case FX_COOL: {
+          uint32_t period = 2600 - speed * 18;
+          k = 50 + (tri(t + x * (period / MX_W), period) * 206) / 255;
+          break;
+        }
+        case FX_RAINBOW:                 // one colour only: bands moving across, the LED goes round the colours
+          k = 40 + (tri((t * (speed + 10)) / 40 + (x + y) * 40, 1024) * 215) / 255;
+          break;
+        case FX_SPARKLE:
+          k = (fx_rand() % 100) < 12 ? 255 : 70;
+          break;
+        case FX_FIRE:                    // brighter at the bottom, flickering
+          k = (uint16_t)((120 + (fx_rand() % 136)) * (3 + y)) / 10;
+          if (k > 255) k = 255;
+          break;
+        case FX_WARM:
+          k = 150 + (tri(t, 4000) * 105) / 255;
+          break;
+        default:
+          break;
+      }
+      mx[y * MX_W + x] = (uint8_t)((top * k + 127) / 255);
+      if (x == 0 && y == 0) env = k;
+    }
+  }
+  if (c.effect == FX_RAINBOW) hue_to_rgb((uint8_t)((t * (speed + 10)) / 400), &r, &g, &b);
+  if (c.effect == FX_FIRE) { r = 255; g = 90; b = 0; env = 160 + (fx_rand() % 96); }
+  uint16_t lv = (uint16_t)((uint32_t)env * c.bri / 100);
+  led3[0] = scale8(r, lv); led3[1] = scale8(g, lv); led3[2] = scale8(b, lv);
+}
+
+static void render_party_matrix(uint32_t now) {
+  PartyBeat p = party_beat(now);
+  uint8_t r, g, b;
+  hue_to_rgb((uint8_t)(p.hue + p.beat * 16), &r, &g, &b);
+  uint16_t env = 255;
+  for (uint8_t y = 0; y < MX_H; y++) {
+    for (uint8_t x = 0; x < MX_W; x++) {
+      uint8_t v;
+      if (p.finale) {
+        v = (fx_rand() % 100) < 30 ? MX_TOP : 1;
+      } else if (p.pattern == 0) {       // a column running across
+        v = x == (p.t / (p.beat_ms / 8)) % MX_W ? MX_TOP : 1;
+      } else if (p.pattern == 1) {       // flash on the beat
+        v = p.in_beat < p.beat_ms / 3 ? MX_TOP : 1;
+      } else if (p.pattern == 2) {       // bands
+        v = (uint8_t)(tri(p.t / 2 + (x + y) * 40, 512) * MX_TOP / 255);
+      } else if (p.pattern == 3) {       // a chessboard that turns over on every beat
+        v = ((x + y + p.beat) & 1) ? MX_TOP : 0;
+      } else {                           // pulse
+        v = (uint8_t)((MX_TOP * (255 - (p.in_beat * 200) / p.beat_ms)) / 255);
+      }
+      mx[y * MX_W + x] = v;
+    }
+  }
+  if (p.pattern == 1) env = p.in_beat < p.beat_ms / 3 ? 255 : 50;
+  if (p.pattern == 4) env = 255 - (p.in_beat * 200) / p.beat_ms;
+  led3[0] = scale8(r, env); led3[1] = scale8(g, env); led3[2] = scale8(b, env);
+}
+
+static void flush_matrix() {
+  if (!mx_valid || memcmp(mx, mx_sent, sizeof(mx)) != 0) {
+    matrixGrayscaleWrite(mx);
+    memcpy(mx_sent, mx, sizeof(mx));
+    mx_valid = true;
+  }
+  if (!led3_valid || memcmp(led3, led3_sent, sizeof(led3)) != 0) {
+    analogWrite(LED3_R, led3[0]);
+    analogWrite(LED3_G, led3[1]);
+    analogWrite(LED3_B, led3[2]);
+    memcpy(led3_sent, led3, sizeof(led3));
+    led3_valid = true;
   }
 }
 
@@ -749,6 +885,8 @@ static void io_thread(void *, void *, void *) {
       req_relay = 0;
       k_mutex_unlock(&state_lock);
       for (uint8_t li = 0; li < N_LIGHTS; li++) { cur_light[li] = LightCmd(); cur_light[li].started = t_now; }
+      cur_matrix = LightCmd();
+      cur_matrix.started = t_now;
       party_on = false;
     }
 
@@ -777,6 +915,11 @@ static void io_thread(void *, void *, void *) {
           req_light_dirty[li] = false;
         }
       }
+      if (req_matrix_dirty) {
+        cur_matrix = req_matrix;
+        cur_matrix.started = now;
+        req_matrix_dirty = false;
+      }
       p = req_party;
       req_party.pending = false;
       k_mutex_unlock(&state_lock);
@@ -792,9 +935,19 @@ static void io_thread(void *, void *, void *) {
         LightCmd &c = cur_light[li];
         if (c.duration && now - c.started >= c.duration) { c.effect = FX_OFF; c.duration = 0; }
       }
-      if (party_on && now >= party_start) render_party(now);
-      else for (uint8_t li = 0; li < N_LIGHTS; li++) render_light(li, now);
+      if (cur_matrix.duration && now - cur_matrix.started >= cur_matrix.duration) {
+        cur_matrix.effect = FX_OFF;
+        cur_matrix.duration = 0;
+      }
+      if (party_on && now >= party_start) {
+        render_party(now);
+        render_party_matrix(now);
+      } else {
+        for (uint8_t li = 0; li < N_LIGHTS; li++) render_light(li, now);
+        render_matrix(now);
+      }
       flush_lights();
+      flush_matrix();
     }
     k_msleep(2);
   }
@@ -811,13 +964,14 @@ int ping() { seen_linux(); return (int)(k_uptime_get_32() & 0x7FFFFFFF); }
 
 bool light(int index, int effect, int r, int g, int b, int bri, int speed, int duration_ms) {
   seen_linux();
-  if (index < 0 || index >= N_LIGHTS) return false;
+  if (index < 0 || (index >= N_LIGHTS && index != MATRIX_LIGHT)) return false;
   k_mutex_lock(&state_lock, K_FOREVER);
-  LightCmd &c = req_light[index];
+  LightCmd &c = index == MATRIX_LIGHT ? req_matrix : req_light[index];
   c.effect = (uint8_t)effect; c.r = (uint8_t)r; c.g = (uint8_t)g; c.b = (uint8_t)b;
   c.bri = (uint8_t)constrain(bri, 0, 100); c.speed = (uint8_t)constrain(speed, 0, 100);
   c.duration = duration_ms > 0 ? (uint32_t)duration_ms : 0;
-  req_light_dirty[index] = true;
+  if (index == MATRIX_LIGHT) req_matrix_dirty = true;
+  else req_light_dirty[index] = true;
   k_mutex_unlock(&state_lock);
   return true;
 }
@@ -907,6 +1061,9 @@ void setup() {
   Wire1.setClock(100000);            // Modulino run at 100 kHz; the UNO Q default is 400 kHz
   if (bus_lines() != 3) bus_unstick();
   for (uint8_t li = 0; li < N_LIGHTS; li++) { cur_light[li].started = 0; req_light_dirty[li] = false; }
+  cur_matrix.started = 0;
+  matrixBegin();                     // the light of the utility room
+  matrixSetGrayscaleBits(MX_TOP);
   req_relay = 0;                     // the latching relay may still be closed from before a power cut
   k_thread_create(&io_thread_data, io_stack, K_THREAD_STACK_SIZEOF(io_stack),
                   io_thread, NULL, NULL, NULL, 7, 0, K_NO_WAIT);
