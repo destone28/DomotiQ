@@ -5,7 +5,7 @@
 The UNO Q has no battery for its clock: after a power cut it wakes up with
 whatever time it had when it was switched off. At a fair there is no NTP
 either. So the clock takes the time from the first phone that opens the web
-app, from a sentence ("it's half past three"), or from the staff.
+app, from a sentence ("it's half past three"), or from the settings page.
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ class HouseClock:
 
         A phone sets it only while the house does not know the time: a visitor's
         phone with a wrong clock must not move the clock of a house that knows
-        it. Corrections come from the staff or by voice.
+        it. Corrections come from the settings page or by voice.
         """
         drift = abs(epoch - time.time())
         if source == "phone" and self.known:

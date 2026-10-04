@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // Quick controls: party, barbecue, scenes, lights, language and voice.
 
-import { api, esc, isStaff, store, toast } from "../app.js";
+import { api, esc, pageHead, store, toast } from "../app.js";
 import { t, tr } from "../i18n.js";
 
 const COLORS = ["#ffaa5a", "#ffffff", "#ff2010", "#ff8000", "#ffd020", "#20e040", "#20d0ff", "#2050ff", "#a030ff", "#ff40a0"];
@@ -20,7 +20,7 @@ export function mount(root) {
   let room = "all", color = COLORS[0], effect = "solid", brightness = 60;
   const rooms = s.layout.lights.map(l => l.room);
   root.innerHTML = `
-    <h1>${t("cmd.title")}</h1>
+    ${pageHead(t("cmd.title"), t("cmd.lead"))}
     <div class="grid2">
       <button class="btn big accent" id="party"><span class="ico">🎉</span>${t("cmd.party")}</button>
       <button class="btn big" id="grill"><span class="ico">🔥</span><span id="grill-label"></span></button>
@@ -53,10 +53,10 @@ export function mount(root) {
         <div class="pill-list">${["silent", "normal", "chatty"].map(v => `<button class="chip" data-verb="${v}">${t("cmd." + v)}</button>`).join("")}</div></div>
       <label class="field"><span>${t("cmd.volume")}</span><input type="range" min="0" max="100" id="vol"></label>
       <button class="btn block" id="bell">🔔 ${t("cmd.intercom")}</button>
-      <div id="say-box" ${isStaff() ? "" : "hidden"} style="margin-top:12px">
-        <label class="field"><span>${t("cmd.say")} (${t("common.staff_only")})</span>
+      <div id="say-box" style="margin-top:12px">
+        <label class="field"><span>${t("cmd.say")}</span>
           <input type="text" id="say" maxlength="200" placeholder="${t("cmd.say_ph")}"></label>
-        <button class="btn" id="say-go">${t("common.ok")}</button>
+        <button class="btn" id="say-go">${t("cmd.say_go")}</button>
       </div>
     </div>`;
 
@@ -94,7 +94,7 @@ export function mount(root) {
     if (document.activeElement !== $("#vol")) $("#vol").value = b.volume ?? 70;
   };
   render();
-  return { update(type) { if (["house", "hello", "staff"].includes(type)) { render(); $("#say-box").hidden = !isStaff(); } } };
+  return { update(type) { if (["house", "hello"].includes(type)) render(); } };
 }
 
 function roomName(s, id) {

@@ -3,10 +3,11 @@
 """HTTP API, WebSocket and static files of the web app.
 
 Every phone gets the full state when it connects and then only the changes.
-Anyone connected can look, command, edit rules and register characters;
-calibration, diagnostics and settings need the staff PIN. Every change says
-which phone made it (a random id kept by the browser, and an optional
-nickname), and ends up in the change log on the device.
+Anyone connected can do everything: look, command, edit rules, register
+characters, calibrate, check and change the settings. Every change says which
+phone made it (a random id kept by the browser, and an optional nickname),
+and ends up in the change log on the device; deleted rules and characters
+wait in the bin for 24 hours.
 """
 
 from __future__ import annotations
@@ -96,7 +97,7 @@ class Hub:
         for t in ("tracks_changed", "lights_changed", "sensor", "count_changed", "alerts_changed",
                   "confirm", "confirm_closed", "notify", "say", "identities_changed", "rules_changed",
                   "scene", "party", "grill", "registration", "status", "language", "verbosity",
-                  "volume", "car", "rule_fired", "climate", "shower",
+                  "volume", "car", "rule_fired", "climate", "shower", "armed",
                   "modules", "listening", "clock", "sim", "follow", "welcome"):
             ctx.bus.subscribe(t, self.on_event)
 
@@ -148,7 +149,7 @@ class Hub:
             self.send({"type": "identities", "data": self.ctx.identities.to_list()})
         elif t == "rules_changed":
             self.send({"type": "rules", "data": self.ctx.rules.to_list()})
-        elif t in ("scene", "party", "grill", "car", "language", "verbosity", "volume"):
+        elif t in ("scene", "party", "grill", "car", "language", "verbosity", "volume", "armed"):
             self.send({"type": "house", "data": _brief(self.ctx), "event": t, "detail": ev.data})
         elif t == "registration":
             self.send({"type": "registration", "data": ev.data})
@@ -175,7 +176,7 @@ class Hub:
 def _brief(ctx: "Context") -> dict[str, Any]:
     h = ctx.house
     return {"scene": h.scene, "party": h.party_on, "grill": h.grill_on, "car": h.car_state(),
-            "language": ctx.settings.get("voice.language"),
+            "language": ctx.settings.get("voice.language"), "armed": h.armed,
             "verbosity": ctx.settings.get("voice.verbosity"), "volume": ctx.settings.get("voice.volume")}
 
 
@@ -205,10 +206,6 @@ def create_app(ctx: "Context") -> FastAPI:
     hub = Hub(ctx)
     app.state.hub = hub
     ctx.hub_clients = hub.clients          # Diagnostics counts the phones with the web app open
-
-    def staff(request: Request) -> None:
-        if not ctx.auth.check(request.headers.get("x-staff")):
-            raise HTTPException(401, "staff PIN required")
 
     def audit(w: Who, entity: str, eid: str | None, action: str, before: Any = None, after: Any = None):
         ctx.store.add_audit(entity, eid, action, before, after, w.device, w.nickname)
@@ -550,13 +547,22 @@ def create_app(ctx: "Context") -> FastAPI:
             ctx.bus.publish("follow", on=ctx.settings.get("lights.follow", True))
             ok = True
         elif name == "say":
-            staff(request)
             await a.say(str(body.get("text", ""))[:200])
             ok = True
         elif name == "intercom":
             if ctx.voice is None:
                 raise HTTPException(503, "voice not available")
             await ctx.voice.intercom()
+            ok = True
+        elif name == "alarm":
+            # on and off like a burglar alarm: off, the rules that raise alarms stay quiet
+            on = bool(body.get("armed", True))
+            ctx.house.set_armed(on, w.nickname or None)
+            await a.sound("beep")
+            who_it = f" da {w.nickname}" if w.nickname else ""
+            who_en = f" by {w.nickname}" if w.nickname else ""
+            await a.notify("info", {"it": ("Allarme inserito" if on else "Allarme disinserito") + who_it,
+                                    "en": ("Alarm on" if on else "Alarm off") + who_en})
             ok = True
         else:
             raise HTTPException(404, "unknown command")
@@ -570,9 +576,7 @@ def create_app(ctx: "Context") -> FastAPI:
         return ctx.sim.to_dict()
 
     @app.post("/api/sim/enable")
-    async def sim_enable(body: dict, request: Request):
-        if not ctx.args.simulate:
-            staff(request)
+    async def sim_enable(body: dict):
         ctx.sim.enabled = bool(body.get("on", True))
         ctx.sim.mute = bool(body.get("mute", False))
         ctx.house.status["simulation"] = ctx.sim.enabled
@@ -630,34 +634,15 @@ def create_app(ctx: "Context") -> FastAPI:
     async def sign_data():
         return sign.sign_data(ctx)
 
-    # ============================================================ staff
-    @app.post("/api/staff/login")
-    async def login(body: dict, w: Who = Depends(who)):
-        lock = ctx.auth.locked_for(w.client)
-        if lock > 0:
-            raise HTTPException(429, f"locked for {int(lock) + 1} s")
-        token = ctx.auth.login(str(body.get("pin", "")), w.client)
-        if not token:
-            raise HTTPException(403, "wrong PIN")
-        return {"token": token, "hours": ctx.settings.get("staff.session_hours", 12)}
-
-    @app.post("/api/staff/logout")
-    async def logout(request: Request):
-        ctx.auth.logout(request.headers.get("x-staff"))
-        return {"ok": True}
-
-    @app.get("/api/staff/check", dependencies=[Depends(staff)])
-    async def staff_check():
-        return {"ok": True}
-
-    @app.get("/api/staff/settings", dependencies=[Depends(staff)])
+    # ============================================================ settings
+    @app.get("/api/settings")
     async def settings_get():
         return ctx.settings.public()
 
-    @app.put("/api/staff/settings", dependencies=[Depends(staff)])
+    @app.put("/api/settings")
     async def settings_put(body: dict, w: Who = Depends(who)):
-        # the PIN and the network have their own endpoints, which also apply them
-        body = {k: v for k, v in body.items() if k not in ("staff", "network")}
+        # the network has its own endpoint, which also applies it to the hotspot
+        body = {k: v for k, v in body.items() if k != "network"}
         before = ctx.settings.public()
         ctx.settings.update(body)
         audit(w, "settings", None, "update", before, ctx.settings.public())
@@ -672,29 +657,9 @@ def create_app(ctx: "Context") -> FastAPI:
         ctx.vision.set_privacy(ctx.settings.get("camera.blur_bathroom", True))
         return ctx.settings.public()
 
-    def confirm_pin(body: dict, w: Who) -> None:
-        """The PIN and the Wi-Fi password change only with the current PIN, not with a session alone."""
-        lock = ctx.auth.locked_for(w.client)
-        if lock > 0:
-            raise HTTPException(429, f"locked for {int(lock) + 1} s")
-        if not ctx.auth.verify(str(body.get("current", "")), w.client):
-            raise HTTPException(403, "wrong current PIN")
-
-    @app.post("/api/staff/pin", dependencies=[Depends(staff)])
-    async def pin(body: dict, request: Request, w: Who = Depends(who)):
-        confirm_pin(body, w)
-        try:
-            ctx.settings.set_pin(str(body.get("pin", "")))
-        except ValueError as e:
-            raise HTTPException(400, str(e)) from e
-        ended = ctx.auth.revoke_all(keep=request.headers.get("x-staff"))
-        audit(w, "settings", "pin", "update")
-        return {"ok": True, "sessions_ended": ended}
-
-    @app.post("/api/staff/network", dependencies=[Depends(staff)])
+    @app.post("/api/network")
     async def network(body: dict, w: Who = Depends(who)):
         from .. import network as net
-        confirm_pin(body, w)
         password = str(body.get("password", ""))
         if not net.valid_password(password):
             raise HTTPException(400, "the Wi-Fi password must be 8 to 63 characters, letters, digits and symbols")
@@ -713,20 +678,21 @@ def create_app(ctx: "Context") -> FastAPI:
                 "reason": None if exists else ("no NetworkManager on this machine" if not net.available()
                                                else "the hotspot is not set up yet: scripts/hotspot.sh setup")}
 
-    @app.post("/api/staff/time", dependencies=[Depends(staff)])
-    async def staff_time(body: dict):
+    @app.post("/api/clock")
+    async def set_clock(body: dict):
+        """The time set from the settings: unlike the automatic one of /api/time, it always counts."""
         if "epoch" in body:
-            ok = ctx.clock.set(float(body["epoch"]), "staff")
+            ok = ctx.clock.set(float(body["epoch"]), "settings")
         else:
-            ok = ctx.clock.set_hm(int(body.get("hour", 0)), int(body.get("minute", 0)), "staff")
+            ok = ctx.clock.set_hm(int(body.get("hour", 0)), int(body.get("minute", 0)), "settings")
         ctx.bus.publish("clock", **ctx.clock.to_dict())
         return {"ok": ok, "clock": ctx.clock.to_dict()}
 
-    @app.get("/api/staff/trash", dependencies=[Depends(staff)])
+    @app.get("/api/trash")
     async def trash():
         return ctx.store.trash()
 
-    @app.post("/api/staff/trash/{trash_id}/restore", dependencies=[Depends(staff)])
+    @app.post("/api/trash/{trash_id}/restore")
     async def trash_restore(trash_id: int):
         item = ctx.store.trash_take(trash_id)
         if not item:
@@ -737,7 +703,7 @@ def create_app(ctx: "Context") -> FastAPI:
             ctx.identities.restore(item["data"])
         return {"ok": True}
 
-    @app.post("/api/staff/rules/defaults", dependencies=[Depends(staff)])
+    @app.post("/api/rules/defaults")
     async def rules_defaults(w: Who = Depends(who)):
         from ..default_rules import default_rules
         before = ctx.rules.to_list()
@@ -746,11 +712,11 @@ def create_app(ctx: "Context") -> FastAPI:
         return ctx.rules.to_list()
 
     # ------------------------------------------------------------ vision (calibration, dataset)
-    @app.get("/api/staff/vision", dependencies=[Depends(staff)])
+    @app.get("/api/vision")
     async def vision_status():
         return ctx.vision.status()
 
-    @app.post("/api/staff/vision/{name}", dependencies=[Depends(staff)])
+    @app.post("/api/vision/{name}")
     async def vision_command(name: str, request: Request, w: Who = Depends(who)):
         try:
             body = await request.json()
@@ -762,7 +728,7 @@ def create_app(ctx: "Context") -> FastAPI:
             audit(w, "calibration", name, "update")
         return result
 
-    @app.get("/api/staff/vision/raw.jpg", dependencies=[Depends(staff)])
+    @app.get("/api/vision/raw.jpg")
     async def vision_raw(overlay: int = 0):
         jpg = None
         if ctx.vision.available:
@@ -770,7 +736,7 @@ def create_app(ctx: "Context") -> FastAPI:
                 None, lambda: ctx.vision.command("raw_frame", overlay=bool(overlay)))).get("jpeg")
         return Response(jpg or _frame(ctx), media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
-    @app.get("/api/staff/dataset.zip", dependencies=[Depends(staff)])
+    @app.get("/api/dataset.zip")
     async def dataset_zip():
         path = ctx.vision.command("export").get("path") if ctx.vision.available else None
         if not path or not Path(path).exists():
@@ -778,12 +744,12 @@ def create_app(ctx: "Context") -> FastAPI:
         return FileResponse(path, media_type="application/zip", filename="domotiq-dataset.zip")
 
     # ------------------------------------------------------------ diagnostics
-    @app.get("/api/staff/diagnostics", dependencies=[Depends(staff)])
+    @app.get("/api/diagnostics")
     async def diagnostics():
         from ..diagnostics import collect
         return await collect(ctx)
 
-    @app.post("/api/staff/diagnostics/scan", dependencies=[Depends(staff)])
+    @app.post("/api/diagnostics/scan")
     async def scan():
         # the main bus (Hub, Latch Relay) answers on every channel too: each channel lists what is behind it
         out: dict[str, Any] = {}
@@ -799,15 +765,15 @@ def create_app(ctx: "Context") -> FastAPI:
                 out[str(ch)] = str(e)
         return out
 
-    @app.post("/api/staff/diagnostics/sound", dependencies=[Depends(staff)])
+    @app.post("/api/diagnostics/sound")
     async def sound_test():
         await ctx.actions.sound("chime")
         await ctx.actions.say({"it": "Prova dell'audio: mi senti?", "en": "Audio test: can you hear me?"})
         return {"ok": ctx.audio is not None and ctx.audio.ok}
 
-    @app.post("/api/staff/voice/text", dependencies=[Depends(staff)])
+    @app.post("/api/voice/text")
     async def voice_text(body: dict):
-        """A sentence handled as if it had been said with Talk (for the staff: demos and tests)."""
+        """A sentence handled as if it had been said with Talk (demos and tests)."""
         if ctx.voice is None:
             raise HTTPException(503, "voice not available")
         text = " ".join(str(body.get("text", "")).split())[:200]
@@ -822,19 +788,19 @@ def create_app(ctx: "Context") -> FastAPI:
         voice._spawn(run())
         return {"ok": True}
 
-    @app.post("/api/staff/diagnostics/mic", dependencies=[Depends(staff)])
+    @app.post("/api/diagnostics/mic")
     async def mic_test():
         if ctx.voice is None:
             raise HTTPException(503, "voice not available")
         return await ctx.voice.mic_test()
 
-    @app.get("/api/staff/logs", dependencies=[Depends(staff)])
+    @app.get("/api/logs")
     async def logs():
         from ..diagnostics import journal
         return Response(journal(), media_type="text/plain; charset=utf-8")
 
     # ------------------------------------------------------------ backup
-    @app.get("/api/staff/backup.zip", dependencies=[Depends(staff)])
+    @app.get("/api/backup.zip")
     async def backup():
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
@@ -843,7 +809,7 @@ def create_app(ctx: "Context") -> FastAPI:
                 "rules": ctx.rules.to_list(),
                 "identities": [i.to_dict() for i in ctx.identities.all()],
                 "settings": {k: v for k, v in ctx.settings.public().items()
-                             if k not in ("staff", "network", "house", "camera")},
+                             if k not in ("network", "house", "camera")},
             }, ensure_ascii=False, indent=2))
             for ident in ctx.identities.all():
                 if ident.photo and (ctx.paths.photos / ident.photo).exists():
@@ -852,7 +818,7 @@ def create_app(ctx: "Context") -> FastAPI:
         return Response(buf.getvalue(), media_type="application/zip",
                         headers={"Content-Disposition": f'attachment; filename="domotiq-casa{house}-backup.zip"'})
 
-    @app.post("/api/staff/restore", dependencies=[Depends(staff)])
+    @app.post("/api/restore")
     async def restore(request: Request, parts: str = "rules,identities,settings", w: Who = Depends(who)):
         data = await request.body()
         try:
@@ -874,7 +840,7 @@ def create_app(ctx: "Context") -> FastAPI:
         return {"ok": True, "parts": sorted(wanted)}
 
     # ------------------------------------------------------------ system
-    @app.post("/api/staff/system/{what}", dependencies=[Depends(staff)])
+    @app.post("/api/system/{what}")
     async def system(what: str):
         from ..diagnostics import system_action
         if what not in ("restart", "reboot", "shutdown"):

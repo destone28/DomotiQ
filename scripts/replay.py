@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
 # SPDX-License-Identifier: MIT
-"""Run the vision again on a sequence recorded by the staff.
+"""Run the vision again on a sequence recorded from the calibration page.
 
 A recording (Calibration → Record in the web app) is a folder under
 var/recordings with the frames, the calibration, the empty-house reference

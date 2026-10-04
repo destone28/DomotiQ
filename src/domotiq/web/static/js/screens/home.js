@@ -1,19 +1,24 @@
 // SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
 // SPDX-License-Identifier: MIT
-// The virtual house: the plan, who is where, lights, climate, car, alarms.
+// The virtual house: the alarm, the plan, who is where, lights, climate, car.
 
-import { esc, go, identityName, modal, roomName, store } from "../app.js";
+import { api, esc, go, identityName, modal, pageHead, roomName, store, toast } from "../app.js";
 import { t, tr } from "../i18n.js";
 import { ICONS, Plan } from "../plan.js";
 
 export function mount(root) {
   root.innerHTML = `
+    ${pageHead(t("home.title"), t("home.lead"))}
+    <div class="card alarm-card" id="alarm"></div>
     <div class="plan-wrap" id="plan"></div>
     <p class="muted small" style="margin:6px 4px">${t("home.tap_hint")}</p>
-    <div class="grid2 wide" id="cards"></div>
-    <div class="card"><h3 style="margin-top:0">${t("nav.home")}</h3><ul class="list" id="who"></ul></div>`;
+    <h2>${t("home.status")}</h2>
+    <div class="status-grid" id="cards"></div>
+    <h2>${t("home.who")}</h2>
+    <div class="card"><ul class="list" id="who"></ul></div>`;
   const plan = new Plan(root.querySelector("#plan"), store.state, { onTap: (id) => showTrack(id) });
   const render = () => {
+    renderAlarm(root.querySelector("#alarm"));
     plan.update(store.state);
     renderCards(root.querySelector("#cards"));
     renderWho(root.querySelector("#who"));
@@ -26,6 +31,22 @@ export function mount(root) {
   };
 }
 
+// on and off like a burglar alarm: off, the rules that raise alarms stay quiet
+function renderAlarm(el) {
+  const s = store.state;
+  const armed = (s.brief || {}).armed !== false;
+  const ringing = armed && (s.alerts || []).some(a => a.rule && a.level === "alarm");
+  el.className = "card alarm-card " + (ringing ? "ringing" : armed ? "on" : "off");
+  el.innerHTML = `<span class="shield">${ringing ? "🚨" : "🛡️"}</span>
+    <span class="grow"><span class="muted small">${t("alarm.title")}</span>
+      <span class="state" style="display:block">${ringing ? t("alarm.ringing") : armed ? t("alarm.on") : t("alarm.off")}</span>
+      <span class="muted small">${armed ? t("alarm.on_hint") : t("alarm.off_hint")}</span></span>
+    <button class="btn ${armed ? "" : "primary"}" id="arm">${armed ? t("alarm.disarm") : t("alarm.arm")}</button>`;
+  el.querySelector("#arm").onclick = async () => {
+    try { await api("POST", "/api/commands/alarm", { armed: !armed }); } catch (e) { toast(e.message, "alarm"); }
+  };
+}
+
 function renderCards(el) {
   const s = store.state;
   const th = (s.sensors || {}).thermostat || {};
@@ -35,19 +56,19 @@ function renderCards(el) {
   const climate = s.climate === "hot" ? t("home.climate.hot") : s.climate === "cold" ? t("home.climate.cold") : "";
   const scene = s.scenes && s.scenes[s.scene] ? tr(s.scenes[s.scene].name) : s.scene;
   el.innerHTML = `
-    <div class="card"><div class="muted small">${t("home.people")}</div><div class="stat num">${persons}</div></div>
-    <div class="card"><div class="muted small">${t("home.thermostat")}</div>
+    <div class="card"><div class="label">👥 ${t("home.people")}</div><div class="stat num">${persons}</div></div>
+    <div class="card"><div class="label">🌡️ ${t("home.thermostat")}</div>
       <div class="stat num">${th.t != null ? th.t.toFixed(1) + "°" : "—"}</div>
       <div class="small muted">${th.rh != null ? Math.round(th.rh) + "%" : ""} ${esc(climate)}</div></div>
-    <div class="card"><div class="muted small">${t("home.bathroom")}</div>
+    <div class="card"><div class="label">🚿 ${t("home.bathroom")}</div>
       <div class="stat num">${ba.rh != null ? Math.round(ba.rh) + "%" : "—"}</div>
       <div class="small muted">${s.shower ? t("home.shower") : ""}</div></div>
-    <div class="card"><div class="muted small">${t("home.car")}</div><div class="stat" style="font-size:18px">${esc(t("car." + (s.car || "absent")))}</div></div>
-    <div class="card"><div class="muted small">${t("home.scene")}</div><div class="stat" style="font-size:18px">${esc(scene)}</div></div>
-    <div class="card"><div class="pill-list">
+    <div class="card"><div class="label">🚗 ${t("home.car")}</div><div class="stat" style="font-size:18px">${esc(t("car." + (s.car || "absent")))}</div></div>
+    <div class="card"><div class="label">🎬 ${t("home.scene")}</div><div class="stat" style="font-size:18px">${esc(scene)}</div></div>
+    <div class="card"><div class="label">🎉 ${t("home.party")} · 🔥 ${t("home.grill")}</div><div class="pill-list" style="margin-top:6px">
       ${s.party ? `<span class="chip on">🎉 ${t("home.party")}</span>` : ""}
       ${s.grill ? `<span class="chip warn">🔥 ${t("home.grill")}</span>` : ""}
-      ${!s.party && !s.grill ? `<span class="muted small">—</span>` : ""}
+      ${!s.party && !s.grill ? `<span class="muted small">${t("home.nothing_on")}</span>` : ""}
     </div></div>`;
 }
 

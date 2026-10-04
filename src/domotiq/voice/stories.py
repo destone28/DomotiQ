@@ -19,7 +19,7 @@ character, in English no he or she).
   the garage" by someone who is in the garage; dogs bark and cats hiss.
 - **Personalities.** The first time a character is needed it gets a job, a
   character, a passion and a quirk from the database, different from those
-  of the others; they stay the same until the house restarts. What the staff
+  of the others; they stay the same until the house restarts. What somebody
   told the house about a character (its facts: web app or "ricorda che
   Marco fa il medico") comes first: a fact that is a job takes the place of
   the job, the others are used in the stories written in their language.
@@ -203,7 +203,7 @@ class StoryTeller:
         self.reset()
 
     def reset(self) -> None:
-        """Back to the personalities the staff gave (what a restart does)."""
+        """Back to the personalities given in the web app or by voice (what a restart does)."""
         self.personas: dict[str, dict[str, Any]] = {}       # identity -> {"trait", "passion", "quirk", "job"}
         self.used: dict[str, set[str]] = {}                  # character, room or house -> pieces already used
         self.life: dict[tuple, Any] = {}                     # what the house made up about its life
@@ -269,7 +269,7 @@ class StoryTeller:
         return p
 
     def job(self, ident, lang: str) -> dict[str, Any] | None:
-        """The job of a character in a language: the one the staff said first, else the one from the database."""
+        """The job of a character in a language: the one somebody gave first, else the one from the database."""
         if ident.category != PERSON:
             return None
         fact = next((as_clause(f) for f in ident.facts if is_job(f)), None)
@@ -452,7 +452,7 @@ class StoryTeller:
     async def _speak(self, sentences: list[str | tuple[str, str]],
                      on_sentence: Callable[[str], None] | None = None) -> list[str]:
         """Speak the sentences in order, synthesizing the next one while one plays. They are in the language
-        of the house, unless one comes with its own (a fact the staff wrote in the other language)."""
+        of the house, unless one comes with its own (a fact written in the other language)."""
         lang = self.lang
         spoken = self.ctx.actions.speaks("normal")
         voice = self.voice

@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: MIT
 // Live view from the webcam, with the bathroom blurred by the board.
 
-import { store } from "../app.js";
+import { pageHead, store } from "../app.js";
 import { t } from "../i18n.js";
 
 export function mount(root) {
   let overlay = false;
   try { overlay = localStorage.getItem("domotiq.overlay") === "1"; } catch (e) { /* ignore */ }
   root.innerHTML = `
-    <h1>${t("live.title")}</h1>
+    ${pageHead(t("live.title"), t("live.lead"))}
     <div class="live"><img id="img" alt="${t("live.title")}"></div>
     <div class="row spread" style="margin-top:10px">
       <span class="muted small" style="flex:1">${t("live.privacy")}</span>

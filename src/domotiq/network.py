@@ -3,7 +3,7 @@
 """The Wi-Fi hotspot of the house, as far as the application touches it.
 
 The hotspot is the NetworkManager connection `domotiq-hotspot` made by
-scripts/hotspot.sh. The staff can change its password from the web app. The
+scripts/hotspot.sh. Its password can be changed from the settings of the web app. The
 sudo rules installed with the house allow exactly two things on it:
 - /usr/local/sbin/domotiq-hotspot-psk, a small root-owned script that reads
   the new passphrase on its standard input, checks it and sets only that

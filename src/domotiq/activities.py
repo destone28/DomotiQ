@@ -87,7 +87,7 @@ class Actions:
         if not line:
             return
         if isinstance(text, str):
-            # a sentence given as it is (typed by the staff, written by the storyteller) may be in the other
+            # a sentence given as it is (typed in the web app, written by the storyteller) may be in the other
             # language: it is read by the voice of the language it is written in
             from .voice.stories import sentence_lang
             lang = sentence_lang(line, lang)

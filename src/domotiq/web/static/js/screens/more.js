@@ -1,61 +1,43 @@
 // SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
 // SPDX-License-Identifier: MIT
-// Everything else: rules, characters, simulation, staff pages, sign, about.
+// Everything else, in three groups: the house, setting it up, the stand. Open to everybody.
 
-import { api, esc, isStaff, setNickname, setStaff, store, toast } from "../app.js";
+import { esc, pageHead, setNickname, store } from "../app.js";
 import { t } from "../i18n.js";
 
+const item = (go, icon, label, sub) => `<li><button class="link" data-go="${go}">
+  <span class="ico">${icon}</span><span class="grow"><span class="title">${label}</span>${sub ? `<span class="sub">${sub}</span>` : ""}</span>
+  <span class="chev">›</span></button></li>`;
+const link = (href, icon, label, sub) => `<li><a class="link" href="${href}" target="_blank" rel="noopener">
+  <span class="ico">${icon}</span><span class="grow"><span class="title">${label}</span>${sub ? `<span class="sub">${sub}</span>` : ""}</span>
+  <span class="chev">↗</span></a></li>`;
+
 export function mount(root) {
-  const render = () => {
-    const staff = isStaff();
-    const item = (go, icon, label, lock) => `<li><button class="link" ${lock && !staff ? "disabled" : ""} data-go="${go}">
-      <span style="font-size:22px">${icon}</span><span class="grow"><span class="title">${label}</span>
-      ${lock ? `<span class="sub">${t("common.staff_only")}</span>` : ""}</span><span>›</span></button></li>`;
-    root.innerHTML = `
-      <h1>${t("more.title")}</h1>
-      <div class="card"><ul class="list">
-        ${item("events", "📜", t("more.events"))}
-        ${item("rules", "📏", t("more.rules"))}
-        ${item("identities", "🧍", t("more.identities"))}
-        ${item("sim", "🕹️", t("more.sim"))}
-      </ul></div>
-      <div class="card"><ul class="list">
-        ${item("calibration", "🎯", t("more.calibration"), true)}
-        ${item("diagnostics", "🩺", t("more.diagnostics"), true)}
-        ${item("settings", "⚙️", t("more.settings"), true)}
-      </ul></div>
-      <div class="card"><ul class="list">
-        <li><a class="link row" href="/sign" target="_blank" style="text-decoration:none;color:inherit;width:100%"><span style="font-size:22px">🪧</span><span class="grow title">${t("more.sign")}</span><span>›</span></a></li>
-        <li><a class="link row" href="/board" target="_blank" style="text-decoration:none;color:inherit;width:100%"><span style="font-size:22px">📺</span><span class="grow title">${t("more.board")}</span><span>›</span></a></li>
-        ${item("about", "ℹ️", t("more.about"))}
-      </ul></div>
-      <div class="card">
-        <label class="field"><span>${t("more.nickname")}</span><input type="text" id="nick" maxlength="30" value="${esc(store.nickname)}"></label>
-        <p class="muted small">${t("more.nickname_hint")}</p>
-      </div>
-      <div class="card" id="staff-box">
-        ${staff ? `<button class="btn block" id="logout">🔓 ${t("more.staff_out")}</button>` : `
-          <label class="field"><span>${t("staff.pin")}</span><input type="password" inputmode="numeric" id="pin" maxlength="8" autocomplete="off"></label>
-          <button class="btn primary block" id="login">🔒 ${t("more.staff_in")}</button>`}
-      </div>`;
-    root.querySelector("#nick").onchange = (e) => setNickname(e.target.value);
-    const login = root.querySelector("#login");
-    if (login) {
-      const go = async () => {
-        try {
-          const r = await api("POST", "/api/staff/login", { pin: root.querySelector("#pin").value });
-          setStaff(r.token);
-          render();
-        } catch (e) {
-          toast(e.status === 429 ? t("staff.locked") : t("staff.wrong"), "alarm");
-        }
-      };
-      login.onclick = go;
-      root.querySelector("#pin").onkeydown = (e) => { if (e.key === "Enter") go(); };
-    }
-    const logout = root.querySelector("#logout");
-    if (logout) logout.onclick = async () => { try { await api("POST", "/api/staff/logout"); } catch (e) { /* ignore */ } setStaff(""); render(); };
-  };
-  render();
-  return { update(type) { if (type === "staff") render(); } };
+  root.innerHTML = `
+    ${pageHead(t("more.title"), t("more.lead"))}
+    <h2>${t("more.house")}</h2>
+    <div class="card menu"><ul class="list">
+      ${item("events", "📜", t("more.events"), t("more.events_sub"))}
+      ${item("rules", "📏", t("more.rules"), t("more.rules_sub"))}
+      ${item("sim", "🕹️", t("more.sim"), t("more.sim_sub"))}
+    </ul></div>
+    <h2>${t("more.setup")}</h2>
+    <div class="card menu"><ul class="list">
+      ${item("calibration", "🎯", t("more.calibration"), t("more.calibration_sub"))}
+      ${item("diagnostics", "🩺", t("more.diagnostics"), t("more.diagnostics_sub"))}
+      ${item("settings", "⚙️", t("more.settings"), t("more.settings_sub"))}
+    </ul></div>
+    <h2>${t("more.stand")}</h2>
+    <div class="card menu"><ul class="list">
+      ${link("/sign", "🪧", t("more.sign"), t("more.sign_sub"))}
+      ${link("/board", "📺", t("more.board"), t("more.board_sub"))}
+      ${item("about", "ℹ️", t("more.about"))}
+    </ul></div>
+    <h2>${t("more.you")}</h2>
+    <div class="card">
+      <label class="field" style="margin-top:0"><span>${t("more.nickname")}</span><input type="text" id="nick" maxlength="30" value="${esc(store.nickname)}"></label>
+      <p class="muted small" style="margin-bottom:0">${t("more.nickname_hint")}</p>
+    </div>`;
+  root.querySelector("#nick").onchange = (e) => setNickname(e.target.value);
+  return {};
 }

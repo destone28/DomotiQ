@@ -313,7 +313,7 @@ def test_phone_sets_the_clock_only_when_unknown():
     c.source = "unknown"
     assert c.set(time.time() + 3600, "phone") and c.source == "phone"
     assert not c.set(time.time() - 3600, "phone")          # a second phone with another time: ignored
-    assert c.set(time.time() + 120, "staff") and c.source == "staff"
+    assert c.set(time.time() + 120, "settings") and c.source == "settings"
 
 
 # ------------------------------------------------------------------ a sound card that resets by itself

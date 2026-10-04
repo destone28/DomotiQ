@@ -13,7 +13,6 @@
 # Options:
 #   --house N          house number, 1 or 2 (sets name, Wi-Fi, address)
 #   --hotspot MODE     now | boot | no   (default: boot = active from the next start)
-#   --pin NNNN         staff PIN (default: generated and printed at the end)
 #   --no-llm           skip llama.cpp and the language model
 #   --skip-firmware    do not rebuild or reload the microcontroller firmware
 
@@ -24,14 +23,12 @@ cd "$ROOT"
 
 HOUSE=""
 HOTSPOT="boot"
-PIN=""
 WITH_LLM=1
 WITH_FIRMWARE=1
 while [ $# -gt 0 ]; do
     case "$1" in
         --house) HOUSE="$2"; shift 2 ;;
         --hotspot) HOTSPOT="$2"; shift 2 ;;
-        --pin) PIN="$2"; shift 2 ;;
         --no-llm) WITH_LLM=0; shift ;;
         --skip-firmware) WITH_FIRMWARE=0; shift ;;
         *) echo "unknown option: $1"; exit 2 ;;
@@ -201,25 +198,19 @@ step "House settings"
 mkdir -p "$VAR/config"
 arduino-app-cli system set-name "casa$HOUSE" >/dev/null 2>&1 || sudo hostnamectl set-hostname "casa$HOUSE"
 sudo timedatectl set-timezone Europe/Rome
-if [ -z "$PIN" ] && ! python3 -c "import json,sys;d=json.load(open('$VAR/config/settings.json'));sys.exit(0 if d['staff']['pin_hash'] else 1)" 2>/dev/null; then
-    PIN=$(python3 -c "import secrets;print(''.join(secrets.choice('0123456789') for _ in range(4)))")
-    NEW_PIN="$PIN"
-fi
 WIFI_PASS=$(python3 -c "import json;print(json.load(open('$VAR/config/settings.json'))['network']['password'])" 2>/dev/null || echo "")
 if [ -z "$WIFI_PASS" ]; then
     WIFI_PASS=$(python3 -c "import secrets;a='abcdefghjkmnpqrstuvwxyz23456789';print('-'.join(''.join(secrets.choice(a) for _ in range(4)) for _ in range(3)))")
 fi
 CHANNEL=$([ "$HOUSE" = 1 ] && echo 1 || echo 11)
-PYTHONPATH=src ./venv/bin/python - "$HOUSE" "$WIFI_PASS" "$CHANNEL" "${PIN:-}" <<'EOF'
+PYTHONPATH=src ./venv/bin/python - "$HOUSE" "$WIFI_PASS" "$CHANNEL" <<'EOF'
 import sys
 from domotiq.settings import Paths, Settings
-house, password, channel, pin = sys.argv[1:5]
+house, password, channel = sys.argv[1:4]
 s = Settings(Paths())
 s.update({"house": {"number": int(house), "name": {"it": f"Casa {house}", "en": f"House {house}"}},
           "network": {"ssid": f"DomotiQ-Casa{house}", "password": password, "channel": int(channel),
                       "address": f"10.42.{house}.1", "hostname": f"casa{house}"}})
-if pin:
-    s.set_pin(pin)
 EOF
 ok "casa$HOUSE, Wi-Fi DomotiQ-Casa$HOUSE"
 
@@ -260,5 +251,4 @@ echo
 echo "${B}DomotiQ casa$HOUSE is installed.${N}"
 echo "  Wi-Fi:    DomotiQ-Casa$HOUSE   password: $WIFI_PASS"
 echo "  Address:  http://10.42.$HOUSE.1/   (on the hotspot)   http://casa$HOUSE.local/"
-[ -n "${NEW_PIN:-}" ] && echo "  Staff PIN: $NEW_PIN   (write it down: it is not shown again)"
 echo "  Sign to print: http://10.42.$HOUSE.1/sign"

@@ -23,7 +23,6 @@ export const store = {
   online: false,
   device: stored("domotiq.device", randomId),
   nickname: stored("domotiq.nickname") || "",
-  staff: stored("domotiq.staff") || "",
   listeners: new Set(),
 };
 
@@ -32,21 +31,12 @@ export function setNickname(name) {
   try { localStorage.setItem("domotiq.nickname", store.nickname); } catch (e) { /* ignore */ }
 }
 
-export function setStaff(token) {
-  store.staff = token || "";
-  try { token ? localStorage.setItem("domotiq.staff", token) : localStorage.removeItem("domotiq.staff"); } catch (e) { /* ignore */ }
-  emit("staff");
-}
-
-export function isStaff() { return !!store.staff; }
-
 export function on(fn) { store.listeners.add(fn); return () => store.listeners.delete(fn); }
 function emit(type) { for (const fn of [...store.listeners]) { try { fn(type); } catch (e) { console.error(e); } } }
 
 // ------------------------------------------------------------------ API
 export async function api(method, path, body, opts = {}) {
   const headers = { "X-Device": store.device, "X-Nickname": encodeURIComponent(store.nickname || "") };
-  if (store.staff) headers["X-Staff"] = store.staff;
   let payload;
   if (body instanceof Blob || body instanceof ArrayBuffer) {
     payload = body;
@@ -56,7 +46,6 @@ export async function api(method, path, body, opts = {}) {
     headers["Content-Type"] = "application/json";
   }
   const res = await fetch(path, { method, headers, body: payload });
-  if (res.status === 401 && store.staff) setStaff("");
   if (!res.ok) {
     let msg = res.statusText;
     try { const j = await res.json(); msg = j.detail || msg; } catch (e) { /* not json */ }
@@ -123,6 +112,8 @@ function handle(msg) {
     case "rules": s.rules = msg.data; break;
     case "house":
       Object.assign(s.brief, msg.data);
+      s.armed = msg.data.armed;
+      if (msg.event === "armed") renderBanners();
       s.scene = msg.data.scene; s.party = msg.data.party; s.grill = msg.data.grill; s.car = msg.data.car;
       s.language = msg.data.language; s.verbosity = msg.data.verbosity;
       break;
@@ -307,30 +298,41 @@ export function renderBanners() {
   const el = document.getElementById("banners");
   const s = store.state;
   if (!s) { el.innerHTML = ""; return; }
+  const close = `<button class="close" data-close="1" aria-label="${esc(t("common.close"))}">✕</button>`;
   let html = "";
-  if (!store.online) html += `<div class="banner ask"><span class="grow">${t("status.offline")}</span></div>`;
+  if (!store.online) html += `<div class="banner offline"><span class="ico">📡</span><span class="grow">${t("status.offline")}</span></div>`;
+  // red an alarm, amber a warning; an alarm of the rules can be switched off from here, like a burglar alarm
   for (const a of s.alerts || []) {
-    html += `<div class="banner alarm"><span>⚠️</span><span class="grow">${esc(tr(a.name))}${a.who ? " — " + esc(a.who) : ""}${a.room ? " · " + esc(roomName(a.room)) : ""}</span>` +
+    const loud = a.level === "alarm";
+    const where = [a.who, a.room ? roomName(a.room) : ""].filter(Boolean).join(" · ");
+    html += `<div class="banner ${loud ? "alarm" : "warning"}"><span class="ico">${loud ? "🚨" : "⚠️"}</span>` +
+      `<span class="grow">${esc(tr(a.name))}${where ? `<small>${esc(where)}</small>` : ""}</span>` +
+      (a.rule && (s.brief || {}).armed !== false ? `<button data-disarm="1">${esc(t("alarm.disarm"))}</button>` : "") +
       `<button class="close" data-alert="${esc(a.key)}" aria-label="${esc(t("common.close"))}">✕</button></div>`;
   }
   for (const r of s.registrations || []) {
     if (r.origin !== "web" && r.status === "choose") {
-      html += `<div class="banner ask"><span class="grow">${esc(t("reg.from_voice"))}: ${esc(r.name)}</span>` +
-        `<button data-reg="${esc(r.id)}">${esc(t("reg.choose"))}</button></div>`;
+      html += `<div class="banner ask"><div class="head"><span class="ico">✨</span><span class="grow">` +
+        `<span class="kicker">${esc(t("reg.from_voice"))}</span>${esc(r.name)}</span></div>` +
+        `<div class="opts"><button class="pri" data-reg="${esc(r.id)}">${esc(t("reg.choose"))}</button></div></div>`;
     }
   }
   for (const c of s.confirmations || []) {
-    // a newcomer: a registered one, a new name with what it really is, or nothing there at all
+    // a question of the house: a registered one, all of them together, a new name with what it really is,
+    // or nothing there at all
     const cats = ["person", "dog", "cat", "animal", "car", "object"];
-    html += `<div class="banner ask" data-cid="${c.id}"><span class="grow">${esc(tr(c.question))}</span>` +
-      c.options.map((o, i) => `<button data-i="${i}">${esc(tr(o.label))}</button>`).join("") +
+    html += `<div class="banner ask" data-cid="${c.id}"><div class="head"><span class="ico">❓</span>` +
+      `<span class="grow"><span class="kicker">${esc(t("ask.title"))}</span>${esc(tr(c.question))}</span>${close}</div>` +
+      `<div class="opts">` +
+      c.options.map((o, i) => `<button class="pri" data-i="${i}">${esc(tr(o.label))}</button>`).join("") +
       // two figurines touching are one blob: "both of them" is an answer too
       (c.options.length >= 2 ? `<button data-both="1">${esc(t(c.options.length > 2 ? "ask.all" : "ask.both"))}</button>` : "") +
-      (c.allow_name ? `<input class="newname" maxlength="40" placeholder="${esc(t("ask.new_name"))}">` +
+      (c.who ? `<button class="quiet" data-nothing="1">${esc(t("ask.nothing"))}</button>` : "") +
+      `</div>` +
+      (c.allow_name ? `<div class="new"><input class="newname" maxlength="40" placeholder="${esc(t("ask.new_name"))}">` +
         (c.who ? `<select class="newcat">${cats.map(k => `<option value="${k}"${k === c.category ? " selected" : ""}>${esc(t("cat." + k))}</option>`).join("")}</select>` : "") +
-        `<button data-new="1">${esc(t("ask.add"))}</button>` : "") +
-      (c.who ? `<button data-nothing="1">${esc(t("ask.nothing"))}</button>` : "") +
-      `<button class="close" data-close="1" aria-label="${esc(t("common.close"))}">✕</button></div>`;
+        `<button class="pri" data-new="1">${esc(t("ask.add"))}</button></div>` : "") +
+      `</div>`;
   }
   el.innerHTML = html;
   el.querySelectorAll("button[data-reg]").forEach(b => { b.onclick = () => go("identities", { reg: b.dataset.reg }); });
@@ -339,6 +341,11 @@ export function renderBanners() {
     b.onclick = async () => {
       b.closest(".banner").remove();
       try { await api("POST", `/api/alerts/${encodeURIComponent(b.dataset.alert)}/dismiss`, {}); } catch (e) { /* gone already */ }
+    };
+  });
+  el.querySelectorAll("button[data-disarm]").forEach(b => {
+    b.onclick = async () => {
+      try { await api("POST", "/api/commands/alarm", { armed: false }); } catch (e) { toast(e.message, "alarm"); }
     };
   });
   el.querySelectorAll(".banner[data-cid] button").forEach(b => {
@@ -360,7 +367,7 @@ export function renderBanners() {
         value = { together: c.options.map(o => o.value) };
       } else if (b.dataset.new) {
         const name = banner.querySelector(".newname").value.trim();
-        if (!name) return;
+        if (!name) { banner.querySelector(".newname").focus(); return; }
         const cat = banner.querySelector(".newcat");
         value = cat ? { name, category: cat.value } : { name };
       } else {
@@ -373,6 +380,13 @@ export function renderBanners() {
   el.querySelectorAll(".banner input.newname").forEach(inp => {
     inp.onkeydown = (e) => { if (e.key === "Enter") inp.closest(".banner").querySelector("button[data-new]").click(); };
   });
+}
+
+// a page starts with its title, a line about it and its main action
+export function pageHead(title, lead, actions = "") {
+  return `<header class="page-head"><div class="title-row"><h1>${title}</h1>` +
+    (actions ? `<div class="actions">${actions}</div>` : "") + `</div>` +
+    (lead ? `<p class="lead">${lead}</p>` : "") + `</header>`;
 }
 
 // ------------------------------------------------------------------ navigation

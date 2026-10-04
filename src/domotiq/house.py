@@ -302,6 +302,18 @@ class House:
         if 0 <= index < len(BUTTONS):
             self._pub("button", button=BUTTONS[index], pressed=bool(pressed))
 
+    # ================================================================ alarm
+    @property
+    def armed(self) -> bool:
+        """The alarm is on: the rules that raise alarms work. Off, like a burglar alarm switched off, they stay
+        quiet (everything else goes on as usual)."""
+        return bool(self.settings.get("alarm.armed", True))
+
+    def set_armed(self, on: bool, by: str | None = None) -> None:
+        self.settings.set("alarm.armed", bool(on))
+        self._now = None
+        self._pub("armed", armed=bool(on), by=by)
+
     # ================================================================ alerts, confirmations
     def set_alert(self, key: str, **data: Any) -> None:
         if key in self.dismissed_alerts:
@@ -385,6 +397,7 @@ class House:
             "status": self.status,
             "language": self.settings.get("voice.language"),
             "verbosity": self.settings.get("voice.verbosity"),
+            "armed": self.armed,
         }
 
 

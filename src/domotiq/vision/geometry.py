@@ -24,7 +24,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-# corners of the base on the floor, in the order the staff taps them
+# corners of the base on the floor, in the order they are tapped
 BASE_CORNERS_MM = [(0.0, -80.0), (650.0, -80.0), (650.0, 370.0), (0.0, 370.0)]
 
 

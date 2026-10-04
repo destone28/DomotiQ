@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // Events, what the house said, the change log and the history of each character.
 
-import { api, esc, identityName, roomName, store } from "../app.js";
+import { api, esc, identityName, pageHead, roomName, store } from "../app.js";
 import { t, tr } from "../i18n.js";
 
 const ICON = { room_enter: "➡️", room_exit: "⬅️", car: "🚗", rule: "📏", notify: "🔔", say: "🔊", climate: "🌡️",
@@ -38,7 +38,7 @@ function describe(ev) {
 export function mount(root) {
   let tab = "events";
   root.innerHTML = `
-    <h1>${t("ev.title")}</h1>
+    ${pageHead(t("ev.title"), t("ev.lead"))}
     <div class="pill-list" id="tabs">
       ${["events", "said", "changes", "history"].map(k => `<button class="chip" data-tab="${k}">${t("ev." + k)}</button>`).join("")}
     </div>

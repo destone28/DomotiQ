@@ -75,7 +75,7 @@ def test_registration_with_a_virtual_figurine(web):
     settle(ctx)
     tracks = c.get("/api/state").json()["tracks"]
     assert tracks[0]["identity"] == ident["id"] and tracks[0]["room"] == "living"
-    # rename and delete, with the trash for the staff
+    # rename and delete, with the bin
     assert c.put(f"/api/identities/{ident['id']}", json={"name": "Marco Polo"}).json()["name"] == "Marco Polo"
     assert c.delete(f"/api/identities/{ident['id']}").status_code == 200
     assert c.get("/api/identities").json() == []
@@ -92,23 +92,15 @@ def test_two_candidates_are_offered(web):
     assert s["status"] == "confirm"
 
 
-def test_staff_pin_and_lock(web):
+def test_settings_and_tools_are_open_to_everybody(web):
     ctx, c = web
-    assert c.get("/api/staff/settings").status_code == 401
-    for _ in range(5):
-        assert c.post("/api/staff/login", json={"pin": "9999"}).status_code == 403
-    assert c.post("/api/staff/login", json={"pin": "0000"}).status_code == 429     # locked for a minute
-
-
-def test_staff_session(web):
-    ctx, c = web
-    token = c.post("/api/staff/login", json={"pin": "0000"}).json()["token"]
-    h = {"X-Staff": token}
-    settings = c.get("/api/staff/settings", headers=h).json()
-    assert "voice" in settings and "pin_hash" not in str(settings.get("staff", {}))
-    diag = c.get("/api/staff/diagnostics", headers=h).json()
-    assert "mcu" in diag
-    assert c.get("/api/staff/backup.zip", headers=h).content[:2] == b"PK"
+    settings = c.get("/api/settings").json()
+    assert "voice" in settings and "staff" not in settings
+    assert c.put("/api/settings", json={"voice": {"question_every_s": 90}}).status_code == 200
+    assert ctx.settings.get("voice.question_every_s") == 90
+    assert "mcu" in c.get("/api/diagnostics").json()
+    assert c.get("/api/backup.zip").content[:2] == b"PK"
+    assert c.post("/api/staff/login", json={"pin": "0000"}).status_code in (404, 405)   # no PIN any more
 
 
 def test_commands_and_confirmations(web):
@@ -131,54 +123,25 @@ def test_websocket_hello(web):
         assert ws.receive_json()["type"] in ("pong", "status", "sim", "tracks")
 
 
-def test_staff_changes_the_wifi_password_and_pin(web, tmp_path):
+def test_the_wifi_password_is_changed_from_the_settings(web):
     ctx, c = web
-    h = {"X-Staff": c.post("/api/staff/login", json={"pin": "0000"}).json()["token"]}
-    # a session alone is not enough: the current PIN is asked again
-    assert c.post("/api/staff/network", json={"password": "casa-nuova-2026"}, headers=h).status_code == 403
-    assert c.post("/api/staff/network", json={"password": "short", "current": "0000"}, headers=h).status_code == 400
-    assert c.post("/api/staff/network", json={"password": "x" * 64, "current": "0000"}, headers=h).status_code == 400
-    r = c.post("/api/staff/network", json={"password": "casa-nuova-2026", "current": "0000"}, headers=h).json()
+    assert c.post("/api/network", json={"password": "short"}).status_code == 400
+    assert c.post("/api/network", json={"password": "x" * 64}).status_code == 400
+    r = c.post("/api/network", json={"password": "casa-nuova-2026"}).json()
     assert r["ok"] and not r["applied"] and r["reason"]     # no NetworkManager on a test machine: saved only
     assert ctx.settings.get("network.password") == "casa-nuova-2026"
     # the generic settings endpoint cannot change the network behind the hotspot's back
-    c.put("/api/staff/settings", json={"network": {"password": "sneaky-pass"}}, headers=h)
+    c.put("/api/settings", json={"network": {"password": "sneaky-pass"}})
     assert ctx.settings.get("network.password") == "casa-nuova-2026"
-    assert c.post("/api/staff/network", json={"password": "casa-nuova-2026", "current": "0000"}).status_code == 401
-    # PIN: needs the current one, then the old one no longer works and other sessions are over
-    other = {"X-Staff": c.post("/api/staff/login", json={"pin": "0000"}).json()["token"]}
-    assert c.post("/api/staff/pin", json={"pin": "4821"}, headers=h).status_code == 403
-    assert c.post("/api/staff/pin", json={"pin": "12", "current": "0000"}, headers=h).status_code == 400
-    r = c.post("/api/staff/pin", json={"pin": "4821", "current": "0000"}, headers=h).json()
-    assert r["ok"] and r["sessions_ended"] == 1
-    assert c.get("/api/staff/check", headers=h).status_code == 200
-    assert c.get("/api/staff/check", headers=other).status_code == 401
-    assert c.post("/api/staff/login", json={"pin": "0000"}).status_code == 403
-    assert c.post("/api/staff/login", json={"pin": "4821"}).status_code == 200
-
-
-def test_wrong_pins_from_many_addresses_lock_everybody(web):
-    ctx, c = web
-    from domotiq.auth import GLOBAL_ERRORS
-    now = 1000.0
-    for i in range(GLOBAL_ERRORS):
-        assert ctx.auth.login("9999", f"10.42.1.{i + 10}", now + i) is None
-    # a new address is locked too, and the lock grows while wrong PINs keep coming
-    assert ctx.auth.locked_for("10.42.1.200", now + GLOBAL_ERRORS) > 0
-    assert ctx.auth.login("0000", "10.42.1.201", now + GLOBAL_ERRORS) is None
-    assert ctx.auth.login("0000", "10.42.1.201", now + GLOBAL_ERRORS + 61) is not None
 
 
 def test_admin_command_line(tmp_path):
     from domotiq.admin import main
     from domotiq.settings import Paths, Settings
     var = str(tmp_path / "var")
-    assert main(["--var", var, "pin", "12"]) == 2
-    assert main(["--var", var, "pin", "7777"]) == 0
     assert main(["--var", var, "wifi", "short"]) == 2
     assert main(["--var", var, "wifi", "una-password-lunga"]) == 0
     s = Settings(Paths(var))
-    assert s.check_pin("7777") and not s.check_pin("0000")
     assert s.get("network.password") == "una-password-lunga"
 
 
@@ -208,3 +171,20 @@ def test_the_pages_load_their_files_under_a_version_and_questions_close(web):
     cid = ctx.house.ask({"it": "Chi è?", "en": "Who is it?"}, [], {"kind": "who", "track": "t-x"})
     assert c.post(f"/api/confirm/{cid}/close").json()["ok"]
     assert not ctx.house.confirmations
+
+
+def test_the_alarm_is_switched_off_and_on_like_a_burglar_alarm(web):
+    ctx, c = web
+    from domotiq.model import Track
+    h = ctx.house
+    h.update_tracks([Track("p", 360, 300, category="person")], now=1000)
+    ctx.rules.tick(now=1006)
+    assert h.alerts                                      # somebody in the utility room: the alarm goes off
+    assert c.post("/api/commands/alarm", json={"armed": False}).json()["ok"]
+    assert not h.alerts and c.get("/api/state").json()["armed"] is False
+    ctx.rules.tick(now=1030)
+    assert not h.alerts                                  # off: quiet, however long they stay
+    assert c.post("/api/commands/alarm", json={"armed": True}).json()["ok"]
+    assert c.get("/api/state").json()["brief"]["armed"] is True
+    ctx.rules.tick(now=time.time() + 6)
+    assert h.alerts                                      # on again: whoever is still there is noticed

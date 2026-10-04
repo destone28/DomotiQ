@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // Simulation: drag virtual characters on the plan, move virtual sensors, press virtual buttons.
 
-import { api, esc, isStaff, store, toast } from "../app.js";
+import { api, esc, pageHead, store, toast } from "../app.js";
 import { t } from "../i18n.js";
 import { BOUNDS, Plan } from "../plan.js";
 
@@ -13,11 +13,10 @@ export function mount(root) {
   const render = () => {
     const sim = store.state.sim || { enabled: false, objects: [] };
     root.innerHTML = `
-      <h1>${t("sim.title")}</h1>
+      ${pageHead(t("sim.title"), t("sim.lead"))}
       <div class="card">
         <label class="row spread"><span><b>${t("sim.on")}</b></span><span class="switch"><input type="checkbox" id="on" ${sim.enabled ? "checked" : ""}><span></span></span></label>
         <label class="row spread" style="margin-top:8px"><span>${t("sim.mute")}</span><span class="switch"><input type="checkbox" id="mute" ${sim.mute ? "checked" : ""}><span></span></span></label>
-        ${!isStaff() ? `<p class="muted small">${t("common.staff_only")}</p>` : ""}
       </div>
       ${sim.enabled ? `
         <p class="muted small">${t("sim.hint")} ${t("sim.remove")}</p>
@@ -43,7 +42,7 @@ export function mount(root) {
     const $ = (q) => root.querySelector(q);
     const toggle = async () => {
       try { await api("POST", "/api/sim/enable", { on: $("#on").checked, mute: $("#mute").checked }); }
-      catch (e) { toast(e.status === 401 ? t("common.staff_only") : e.message, "warning"); render(); }
+      catch (e) { toast(e.message, "warning"); render(); }
     };
     $("#on").onchange = toggle;
     $("#mute").onchange = toggle;
@@ -94,7 +93,7 @@ export function mount(root) {
   render();
   return {
     update(type) {
-      if (type === "sim" || type === "staff") render();
+      if (type === "sim") render();
       else if (plan && ["tracks", "lights", "counts", "alerts", "house", "sensors"].includes(type)) plan.update(store.state);
     },
   };

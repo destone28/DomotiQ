@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
 # SPDX-License-Identifier: MIT
-"""What the staff page shows when something does not work."""
+"""What the diagnostics page shows when something does not work."""
 
 from __future__ import annotations
 

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // When / If / Then rules: the list, and an editor built from a small schema.
 
-import { api, ask, esc, setNickname, store, toast } from "../app.js";
+import { api, ask, esc, pageHead, setNickname, store, toast } from "../app.js";
 import { t, tr } from "../i18n.js";
 
 // field kinds: room, rooms+all, who, identity, num, text2 (it/en), color, effect, time, sensor,
@@ -100,7 +100,7 @@ export function mount(root, params) {
   const renderList = () => {
     const rules = store.state.rules || [];
     root.innerHTML = `
-      <div class="row spread"><h1>${t("rules.title")}</h1><button class="btn primary small" id="new">+ ${t("rules.new")}</button></div>
+      ${pageHead(t("rules.title"), t("rules.lead"), `<button class="btn primary small" id="new">+ ${t("rules.new")}</button>`)}
       <div class="card"><ul class="list">${rules.map(r => `
         <li><span class="switch"><input type="checkbox" data-toggle="${r.id}" ${r.enabled ? "checked" : ""}><span></span></span>
         <button class="link grow" data-edit="${r.id}"><span class="grow"><span class="title">${r.alert ? "⚠️ " : ""}${esc(tr(r.name))}</span>

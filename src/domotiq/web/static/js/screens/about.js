@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // What the project is, who made it, and whose work it uses.
 
-import { store } from "../app.js";
+import { pageHead, store } from "../app.js";
 import { lang, t } from "../i18n.js";
 
 const TEXT = {
@@ -22,7 +22,7 @@ const TEXT = {
 
 export function mount(root) {
   root.innerHTML = `
-    <h1>${t("about.title")}</h1>
+    ${pageHead(t("about.title"))}
     <div class="card">${TEXT[lang()]}</div>
     <div class="card small">
       <p><b>Created by Emilio Destratis</b> (destratis.it) in collaboration with Arduino.</p>

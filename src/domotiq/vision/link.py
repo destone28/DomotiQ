@@ -62,7 +62,7 @@ class VisionLink:
         """Whether the bathroom is blurred in the images that leave the board."""
 
     def command(self, name: str, **params: Any) -> dict[str, Any]:
-        """Calibration, capture and other staff operations."""
+        """Calibration, capture and the other operations of the calibration page."""
         return {"ok": False, "error": "no camera"}
 
     def stop(self) -> None:

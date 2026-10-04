@@ -24,7 +24,6 @@ from typing import Any
 
 from . import __version__
 from .activities import Actions
-from .auth import StaffAuth
 from .bus import Bus, Event
 from .clock import HouseClock
 from .house import House
@@ -57,7 +56,6 @@ class Context:
     house: House
     rules: RuleEngine
     actions: Actions
-    auth: StaffAuth
     clock: HouseClock
     sim: Simulation
     vision: VisionLink
@@ -86,7 +84,7 @@ def build(args: argparse.Namespace) -> Context:
     sim = Simulation(enabled=bool(args.simulate))
     ctx = Context(args=args, paths=paths, settings=settings, layout=layout, store=store, bus=bus,
                   identities=identities, mcu=mcu, lights=lights, house=house,
-                  rules=None, actions=None, auth=StaffAuth(settings),  # type: ignore[arg-type]
+                  rules=None, actions=None,  # type: ignore[arg-type]
                   clock=HouseClock(can_set=not args.simulate), sim=sim, vision=NoVision())
     ctx.actions = Actions(ctx)
     ctx.rules = RuleEngine(paths, bus, house, lights, store, ctx.actions)

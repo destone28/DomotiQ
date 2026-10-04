@@ -46,13 +46,13 @@ def free_port() -> int:
 def call(base: str, method: str, path: str, body=None, headers=None):
     req = urllib.request.Request(base + path, method=method,
                                  data=json.dumps(body).encode() if body is not None else None,
-                                 headers={"Content-Type": "application/json", "X-Nickname": "Staff",
+                                 headers={"Content-Type": "application/json", "X-Nickname": "Demo",
                                           **(headers or {})})
     with urllib.request.urlopen(req, timeout=10) as r:
         return json.loads(r.read() or b"null")
 
 
-def populate(base: str) -> str:
+def populate(base: str) -> None:
     """A few characters in the house, one of them registered by the tests of the stand."""
     people = [("Marco", "person", "#d03030", 300, 110), ("Sofia", "person", "#3050d0", 90, 150),
               ("Fido", "dog", "#b07a3a", 110, 300), ("Auto", "car", "#e8e8e8", 540, 300)]
@@ -67,7 +67,6 @@ def populate(base: str) -> str:
     call(base, "POST", "/api/sim/objects", {"x": 520, "y": 120, "category": "person", "color": "#20a060"})
     call(base, "POST", "/api/commands/scene", {"scene": "relax"})
     time.sleep(1.0)
-    return call(base, "POST", "/api/staff/login", {"pin": "0000"})["token"]
 
 
 class Tab:
@@ -85,7 +84,7 @@ class Tab:
                 return msg.get("result", {})
 
 
-async def shoot(base: str, token: str, out: Path, debug_port: int) -> None:
+async def shoot(base: str, out: Path, debug_port: int) -> None:
     targets = json.loads(urllib.request.urlopen(f"http://127.0.0.1:{debug_port}/json").read())
     page = next(t for t in targets if t["type"] == "page")
     async with websockets.connect(page["webSocketDebuggerUrl"], max_size=50_000_000) as ws:
@@ -98,14 +97,23 @@ async def shoot(base: str, token: str, out: Path, debug_port: int) -> None:
             await tab.send("Page.navigate", url=base + "/")
             await asyncio.sleep(1.5)
             await tab.send("Runtime.evaluate", expression=(
-                f"localStorage.setItem('domotiq.lang','{lang}');localStorage.setItem('domotiq.staff','{token}');"
-                "localStorage.setItem('domotiq.nickname','Staff');"))
+                f"localStorage.setItem('domotiq.lang','{lang}');"
+                "localStorage.setItem('domotiq.nickname','Demo');"))
             # the language is read when the page loads
             await tab.send("Page.reload", ignoreCache=True)
             await asyncio.sleep(1.5)
+            # no welcome card for this phone, and no subtitles of what the house says over the pages
+            await tab.send("Runtime.evaluate", expression=(
+                "fetch('/api/welcome',{method:'POST',headers:{'Content-Type':'application/json',"
+                "'X-Device':localStorage.getItem('domotiq.device')},body:JSON.stringify({later:true})});"
+                "const st=document.createElement('style');st.textContent='#subtitle{display:none!important}';"
+                "document.head.appendChild(st);"))
             for name, hash_ in SCREENS:
                 await tab.send("Page.navigate", url=f"{base}/{hash_}")
                 await asyncio.sleep(2.5)
+                await tab.send("Runtime.evaluate", expression=(
+                    "document.querySelectorAll('#modal [data-a=later]').forEach(b=>b.click());"))
+                await asyncio.sleep(0.3)
                 shot = await tab.send("Page.captureScreenshot", format="png")
                 (out / lang / f"{name}.png").write_bytes(base64.b64decode(shot["data"]))
                 print(f"{lang}/{name}.png")
@@ -144,8 +152,8 @@ def main() -> None:
                 break
             except OSError:
                 time.sleep(0.5)
-        token = populate(base)
-        asyncio.run(shoot(base, token, out, debug_port))
+        populate(base)
+        asyncio.run(shoot(base, out, debug_port))
     finally:
         chrome.terminate()
         app.terminate()

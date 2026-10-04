@@ -11,10 +11,8 @@ from __future__ import annotations
 
 import contextlib
 import copy
-import hashlib
 import json
 import os
-import secrets
 import tempfile
 import threading
 from pathlib import Path
@@ -58,16 +56,13 @@ DEFAULTS: dict[str, Any] = {
     },
     "garage": {"parked_after_s": 3, "absent_after_s": 10, "light_off_after_s": 10},
     "constraints": {"utility_grace_s": 5, "bathroom_max": 1},
+    "alarm": {"armed": True},        # off like a burglar alarm: the rules that raise alarms stay quiet
     "buttons": {"reversed": False},
-    "staff": {"pin_hash": None, "pin_salt": None, "session_hours": 12},
     "network": {"ssid": "", "password": "", "channel": 1, "address": "", "hostname": ""},
     "camera": {"device": None,            # a /dev/v4l/by-id path, if the webcam is not found by itself
                "blur_bathroom": True},    # the bathroom blurred in the live view and the images that leave
     "clock": {"timezone": "Europe/Rome"},
 }
-
-DEFAULT_PIN = "0000"
-
 
 def _merge(base: dict, extra: dict) -> dict:
     out = copy.deepcopy(base)
@@ -176,10 +171,9 @@ class Settings:
             self._mtime = self._disk_mtime()
 
     def public(self) -> dict[str, Any]:
-        """Everything except secrets, for the settings page."""
+        """Everything, for the settings page (what an older version kept for the staff PIN is left out)."""
         d = copy.deepcopy(self._data)
-        d["staff"] = {"session_hours": d["staff"].get("session_hours", 12),
-                      "pin_set": bool(d["staff"].get("pin_hash"))}
+        d.pop("staff", None)
         return d
 
     def save(self) -> None:
@@ -187,21 +181,3 @@ class Settings:
             write_json_atomic(self.path, self._data)
             self._mtime = self._disk_mtime()
 
-    # ------------------------------------------------------------ staff PIN
-    def set_pin(self, pin: str) -> None:
-        if not (pin.isdigit() and 4 <= len(pin) <= 8):
-            raise ValueError("the PIN must be 4 to 8 digits")
-        salt = secrets.token_hex(8)
-        self.set("staff.pin_salt", salt, save=False)
-        self.set("staff.pin_hash", _hash_pin(pin, salt))
-
-    def check_pin(self, pin: str) -> bool:
-        salt = self.get("staff.pin_salt")
-        stored = self.get("staff.pin_hash")
-        if not stored:
-            return secrets.compare_digest(pin, DEFAULT_PIN)
-        return secrets.compare_digest(_hash_pin(pin, salt or ""), stored)
-
-
-def _hash_pin(pin: str, salt: str) -> str:
-    return hashlib.pbkdf2_hmac("sha256", pin.encode(), salt.encode(), 100_000).hex()

@@ -96,9 +96,19 @@ nav.bottom button[aria-current="page"] { color: var(--primary); font-weight: 600
 
 /* the last lines of every page stay above the bar of the quick choices */
 main { max-width: 900px; margin: 0 auto; padding: 12px 12px calc(32px + env(safe-area-inset-bottom)); outline: none; }
-h1 { font-size: 22px; margin: 6px 0 12px; }
-h2 { font-size: 17px; margin: 18px 0 8px; }
+h1 { font-size: 22px; margin: 6px 0 12px; line-height: 1.2; }
+h2 { font-size: 13px; margin: 22px 4px 8px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
 h3 { font-size: 15px; margin: 12px 0 6px; color: var(--muted); font-weight: 600; }
+
+/* every page starts the same way: title, one line about it, its main action on the right */
+.page-head { margin: 4px 2px 14px; }
+.page-head .title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.page-head h1 { margin: 0; }
+.page-head .lead { margin: 3px 0 0; color: var(--muted); font-size: 14px; }
+.page-head .actions { display: flex; gap: 8px; flex: none; }
+.card-title { font-size: 15px; font-weight: 700; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+.card-title .sub { font-weight: 400; color: var(--muted); font-size: 13px; }
+.card > .card-title:only-child { margin-bottom: 0; }
 p.muted, .muted { color: var(--muted); }
 .small { font-size: 13px; }
 
@@ -137,8 +147,8 @@ p.muted, .muted { color: var(--muted); }
 .list li { display: flex; gap: 12px; align-items: center; padding: 12px 4px; border-bottom: 1px solid var(--line); }
 .list li:last-child { border-bottom: 0; }
 .list .grow { flex: 1; min-width: 0; }
-.list .title { font-weight: 600; }
-.list .sub { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
+.list .title { font-weight: 600; display: block; }
+.list .sub { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; display: block; }
 .list button.link { background: none; border: 0; padding: 0; text-align: left; width: 100%; display: flex; gap: 12px; align-items: center; }
 
 label.field { display: block; margin: 10px 0; }
@@ -165,22 +175,48 @@ input[type=color] { width: 56px; height: 40px; border: 1px solid var(--line); bo
 .kv dd { margin: 0; }
 
 /* ------------------------------------------------------------ banners, toasts, subtitle, modal */
-#banners { position: sticky; top: var(--top-h); z-index: 15; }
-.banner { display: flex; gap: 10px; align-items: center; padding: 10px 14px; font-weight: 600; }
+/* one colour per kind of notice, everywhere: red an alarm, amber a warning, grey the connection, the house's
+   own colour a question waiting for an answer */
+#banners { max-width: 900px; margin: 0 auto; padding: 0 12px; }
+#banners:empty { display: none; }
+.banner { display: flex; gap: 10px; align-items: center; padding: 10px 12px; margin-top: 8px; border-radius: 12px;
+  font-weight: 600; box-shadow: var(--shadow); }
+.banner .ico { font-size: 20px; line-height: 1; flex: none; }
+.banner .grow { flex: 1; min-width: 0; }
+.banner .grow small { display: block; font-weight: 400; opacity: .85; }
+.banner button { border: 0; border-radius: 10px; padding: 8px 12px; font-weight: 700; min-height: 38px; }
 .banner.alarm { background: var(--danger); color: #fff; animation: pulse 1.2s infinite; }
-.banner.ask { background: var(--accent); color: #231400; flex-wrap: wrap; }
-.banner .grow { flex: 1; }
-.banner button { border: 0; border-radius: 10px; padding: 8px 12px; font-weight: 700; background: rgba(255,255,255,.85); color: #231400; }
-@keyframes pulse { 50% { filter: brightness(1.15); } }
+.banner.alarm button { background: #fff; color: var(--danger); }
+.banner.warning { background: var(--warning); color: #231a00; }
+.banner.warning button { background: rgba(255,255,255,.75); color: #231a00; }
+.banner.offline { background: var(--surface-2); color: var(--text); }
+.banner.ask { background: var(--surface); color: var(--text); border-left: 5px solid var(--primary); flex-direction: column; align-items: stretch; gap: 8px; }
+.banner.ask .head { display: flex; gap: 10px; align-items: flex-start; }
+.banner.ask .kicker { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--primary); }
+.banner.ask .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.banner.ask .opts button { background: var(--surface-2); color: var(--text); }
+.banner.ask .opts button.pri { background: var(--primary); color: var(--primary-ink); }
+.banner.ask .opts button.quiet { background: transparent; border: 1px solid var(--line); font-weight: 600; }
+.banner.ask .new { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.banner.ask .new input.newname { flex: 1 1 140px; min-width: 0; min-height: 40px; border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 10px; background: var(--surface-2); color: var(--text); }
+.banner.ask .new select.newcat { width: auto; min-height: 40px; border: 1px solid var(--line); border-radius: 10px;
+  padding: 6px 8px; background: var(--surface-2); color: var(--text); }
+.banner.ask .new button { background: var(--primary); color: var(--primary-ink); }
+@keyframes pulse { 50% { filter: brightness(1.12); } }
+@media (prefers-reduced-motion: reduce) { .banner.alarm { animation: none; } }
 
 .toasts { position: fixed; left: 12px; right: 12px; bottom: calc(var(--nav-h) + 12px + env(safe-area-inset-bottom)); z-index: 30; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
 .toast { background: var(--text); color: var(--bg); border-radius: 12px; padding: 10px 14px; max-width: 520px; box-shadow: var(--shadow); pointer-events: auto; font-weight: 600; }
-.toast.alarm { background: var(--danger); color: #fff; }
 .toast { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-.toast .close, .banner .close { background: transparent; border: 0; color: inherit; font: inherit; font-weight: 700; padding: 4px 8px; margin-left: auto; cursor: pointer; }
-.banner.alarm .close { background: rgba(255,255,255,.2); border-radius: 10px; }
+.toast::before { content: "ℹ️"; }
+.toast.alarm { background: var(--danger); color: #fff; }
+.toast.alarm::before { content: "🚨"; }
 .toast.warning { background: var(--warning); color: #231a00; }
+.toast.warning::before { content: "⚠️"; }
 .toast.success { background: var(--success); color: #fff; }
+.toast.success::before { content: "✓"; font-weight: 700; }
+.toast .close, .banner .close { background: transparent !important; border: 0; color: inherit !important; font: inherit; font-weight: 700; padding: 4px 8px; margin-left: auto; cursor: pointer; }
 
 .subtitle { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav-h) + 70px + env(safe-area-inset-bottom)); z-index: 25; background: rgba(20,24,26,.88); color: #fff; padding: 8px 14px; border-radius: 12px; max-width: min(92vw, 560px); text-align: center; font-size: 15px; max-height: 30vh; overflow: hidden; pointer-events: none; }
 .subtitle::before { content: "🔊 "; }
@@ -201,6 +237,7 @@ svg.plan { width: 100%; height: auto; display: block; touch-action: none; user-s
 .plan .room { fill: transparent; }
 .plan .room.busy { fill: rgba(0,135,143,.10); }
 .plan .room.alarm { fill: rgba(214,58,47,.22); stroke: var(--danger); stroke-width: 4; animation: blink 1s infinite; }
+.plan .room.warning { fill: rgba(224,161,0,.20); stroke: var(--warning); stroke-width: 4; }
 .plan .wall { fill: var(--wall); stroke: var(--wall-edge); stroke-width: .8; }
 .plan .fence { fill: #a3814f; }
 .plan .door { fill: var(--floor); }
@@ -257,5 +294,28 @@ svg.plan { width: 100%; height: auto; display: block; touch-action: none; user-s
 .spinner { width: 44px; height: 44px; margin: 0 auto 14px; border-radius: 50%;
   border: 4px solid rgba(127,127,127,.25); border-top-color: var(--primary); animation: spin .9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.banner input.newname { flex: 1 1 140px; min-width: 0; border: 0; border-radius: 10px; padding: 8px 10px; font: inherit; }
-.banner select.newcat { border: 0; border-radius: 10px; padding: 8px 6px; font: inherit; background: rgba(255,255,255,.85); color: #231400; }
+
+
+/* ------------------------------------------------------------ the alarm, on and off like a burglar alarm */
+.alarm-card { display: flex; align-items: center; gap: 12px; }
+.alarm-card .shield { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; font-size: 24px; flex: none; }
+.alarm-card.on .shield { background: color-mix(in srgb, var(--success) 20%, transparent); }
+.alarm-card.off .shield { background: var(--surface-2); filter: grayscale(1); }
+.alarm-card.ringing { box-shadow: 0 0 0 2px var(--danger), var(--shadow); }
+.alarm-card.ringing .shield { background: color-mix(in srgb, var(--danger) 22%, transparent); }
+.alarm-card .grow { flex: 1; min-width: 0; }
+.alarm-card .state { font-weight: 700; font-size: 17px; }
+.alarm-card.on .state { color: var(--success); }
+.alarm-card.ringing .state { color: var(--danger); }
+.alarm-card .btn { flex: none; }
+
+/* ------------------------------------------------------------ the menu of "More" */
+.menu .list li { padding: 0; }
+.menu .list button.link, .menu .list a.link { padding: 12px 4px; color: inherit; text-decoration: none; display: flex;
+  gap: 12px; align-items: center; width: 100%; flex-wrap: nowrap; }
+.menu .ico { font-size: 22px; width: 30px; text-align: center; flex: none; }
+.menu .chev { color: var(--muted); font-size: 20px; }
+.status-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+@media (min-width: 700px) { .status-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+.status-grid .card { margin: 0; }
+.status-grid .label { color: var(--muted); font-size: 13px; font-weight: 600; }

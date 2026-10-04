@@ -100,10 +100,11 @@ export class Plan {
     this.state = state;
     const s = state;
     // rooms: occupancy and alarms
-    const alarmRooms = new Set((s.alerts || []).map(a => a.room).filter(Boolean));
+    const alarmRooms = new Set((s.alerts || []).filter(a => a.level === "alarm").map(a => a.room).filter(Boolean));
+    const warnRooms = new Set((s.alerts || []).filter(a => a.level !== "alarm").map(a => a.room).filter(Boolean));
     for (const [id, node] of Object.entries(this.rooms)) {
       const c = (s.counts || {})[id] || {};
-      node.setAttribute("class", "room" + (alarmRooms.has(id) ? " alarm" : (c.persons ? " busy" : "")));
+      node.setAttribute("class", "room" + (alarmRooms.has(id) ? " alarm" : warnRooms.has(id) ? " warning" : (c.persons ? " busy" : "")));
     }
     // lights
     const party = s.party;

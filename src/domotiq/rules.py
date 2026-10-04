@@ -146,6 +146,7 @@ class RuleEngine:
                   "identity_disappear", "sensor", "climate", "shower", "button",
                   "car", "scene", "grill", "party"):
             bus.subscribe(t, self.on_event)
+        bus.subscribe("armed", lambda ev: self.armed(bool(ev.get("armed")), ev.ts or time.time()))
 
     # ================================================================ storage
     def save(self) -> None:
@@ -198,6 +199,37 @@ class RuleEngine:
             if tkey.startswith(rule_id + "|"):
                 self.house.clear_alert(akey)
                 self.alert_keys.pop(tkey, None)
+
+    # ================================================================ the alarm on and off
+    def armed(self, on: bool, now: float) -> None:
+        """Off: every alarm stops now, with its lights. On again: whoever is already where an alarm rule
+        watches is looked at afresh, as if they had just come in."""
+        alert_rules = [r for r in self.rules if r["alert"]]
+        for rule in alert_rules:
+            for key in [k for k in self.timers if k.startswith(rule["id"] + "|")]:
+                self.timers.pop(key, None)
+            for key in [k for k in self.latched if k.startswith(rule["id"] + "|")]:
+                self.latched.pop(key, None)
+        for key in [k for k in self.alert_keys if k.split("|")[0] in {r["id"] for r in alert_rules}]:
+            self.alert_until.pop(key, None)
+            self._release(key)
+        if not on:
+            return
+        for rule in alert_rules:
+            w = rule["when"]
+            if not rule["enabled"]:
+                continue
+            if w["type"] == "dwell":
+                for t in self.house.tracks.values():
+                    if t.room == w.get("room") and _who_ok(w.get("who"), {"category": t.category,
+                                                                          "identity": t.identity}):
+                        key = f"{rule['id']}|{t.id}"
+                        self.timers[key] = Timer(rule["id"], key, now + float(w.get("seconds", 5)),
+                                                 {"track": t.id, "identity": t.identity, "category": t.category,
+                                                  "name": self.house.identities.name_of(t.identity),
+                                                  "room": t.room})
+            elif w["type"] in ("count_above", "count_below"):
+                self.on_event(Event("count_changed", {"room": w.get("room")}, now), now)
 
     # ================================================================ events
     def on_event(self, ev: Event, now: float | None = None) -> None:
@@ -382,6 +414,8 @@ class RuleEngine:
 
     def fire(self, rule: dict[str, Any], ctx: dict[str, Any], now: float,
              key: str | None = None, bypass_cooldown: bool = False) -> bool:
+        if rule["alert"] and not self.house.armed:
+            return False                      # the alarm is off
         if not bypass_cooldown and now - self.last_fired.get(rule["id"], 0) < rule["cooldown_s"]:
             return False
         if not self.conditions_ok(rule, now):
@@ -394,8 +428,11 @@ class RuleEngine:
             if rule["when"]["type"] not in HELD:
                 # nothing will say when a one-off event is over: the alarm lasts as long as its lights
                 self.alert_until[key] = now + ALERT_HOLD_S
+            # red for an alarm (its siren, or a notice of level alarm), amber for a warning
+            loud = any(a.get("type") == "sound" and a.get("name") == "alarm" or
+                       a.get("type") == "notify" and a.get("level") == "alarm" for a in rule["then"])
             self.house.set_alert(akey, rule=rule["id"], name=rule["name"], room=ctx.get("room"),
-                                 who=ctx.get("name") or None)
+                                 who=ctx.get("name") or None, level="alarm" if loud else "warning")
         self.bus.publish("rule_fired", rule=rule["id"], name=rule["name"], ctx=_plain(ctx))
         self.store.add_event("rule", {"rule": rule["id"], "name": rule["name"], "ctx": _plain(ctx)},
                              "warning" if rule["alert"] else "info")

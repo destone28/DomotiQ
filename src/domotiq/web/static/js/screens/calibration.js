@@ -1,16 +1,15 @@
 // SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
 // SPDX-License-Identifier: MIT
-// Staff: camera calibration (4 corners, empty house) and dataset tools.
+// Camera calibration (4 corners, light and empty house) and dataset tools.
 
-import { api, isStaff, go, toast } from "../app.js";
+import { api, pageHead, toast } from "../app.js";
 import { lang, t } from "../i18n.js";
 
 export function mount(root) {
-  if (!isStaff()) { go("more"); return {}; }
   const corners = [];
   let overlay = true;
   root.innerHTML = `
-    <h1>${t("cal.title")}</h1>
+    ${pageHead(t("cal.title"), t("cal.lead"))}
     <div class="card">
       <div class="step"><b>1</b><span>${t("cal.step1")}</span></div>
       <div class="step"><b>2</b><span>${t("cal.step2")} <span id="next-corner" class="chip warn"></span></span></div>
@@ -38,19 +37,7 @@ export function mount(root) {
   const $ = (q) => root.querySelector(q);
   const names = t("cal.corners");
   const img = $("#img");
-  const refresh = () => {
-    img.src = `/api/staff/vision/raw.jpg?overlay=${overlay ? 1 : 0}&_=${Date.now()}`;
-  };
-  const token = () => (localStorage.getItem("domotiq.staff") || "");
-  // raw.jpg needs the staff header: fetch it as a blob
-  const load = async () => {
-    try {
-      const res = await fetch(`/api/staff/vision/raw.jpg?overlay=${overlay ? 1 : 0}`, { headers: { "X-Staff": token() } });
-      const blob = await res.blob();
-      img.src = URL.createObjectURL(blob);
-    } catch (e) { /* retry later */ }
-  };
-  void refresh;
+  const load = () => { img.src = `/api/vision/raw.jpg?overlay=${overlay ? 1 : 0}&_=${Date.now()}`; };
   const marks = () => {
     root.querySelectorAll(".cal-img .mark").forEach(m => m.remove());
     corners.forEach((p, i) => {
@@ -83,7 +70,7 @@ export function mount(root) {
     $("#loading").hidden = false;
     root.querySelectorAll("button").forEach(b => { b.disabled = true; });
     try {
-      const r = await api("POST", `/api/staff/vision/${name}`, body || {});
+      const r = await api("POST", `/api/vision/${name}`, body || {});
       const msg = (lang() === "en" && r.message_en) || r.message;
       $("#status").textContent = msg || (r.ok ? "OK" : (r.error || ""));
       if (r.ok) toast(msg || t("common.done"), "success");
@@ -111,7 +98,7 @@ export function mount(root) {
   $("#export").onclick = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/staff/dataset.zip", { headers: { "X-Staff": token() } });
+      const res = await fetch("/api/dataset.zip");
       if (!res.ok) throw new Error(res.statusText);
       const a = document.createElement("a");
       a.href = URL.createObjectURL(await res.blob());

@@ -4,7 +4,7 @@
 
 The worker process feeds it the frames of the webcam; the tests feed it
 synthetic ones. It owns the calibration, the empty-house reference, the
-tracker, the privacy filter, the staff captures and the recordings.
+tracker, the privacy filter, the captures and the recordings.
 
 Figurines do not move by themselves: every change in the house is made by a
 hand. So:
@@ -87,7 +87,7 @@ class Engine:
         self.dir = calib_dir
         self.dataset_dir = dataset_dir
         self.recordings_dir = recordings_dir
-        self.grab = grab                           # returns n new frames, for the staff commands
+        self.grab = grab                           # returns n new frames, for the calibration commands
         for d in (calib_dir, dataset_dir, recordings_dir):
             d.mkdir(parents=True, exist_ok=True)
         self.calib: Calibration | None = None
@@ -812,7 +812,7 @@ class Engine:
             cv2.rectangle(img, (x0 - 3, y0 - th - 3), (x0 + tw + 3, y0 + 4), (30, 30, 30), -1)
             cv2.putText(img, text, (x0, y0), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
 
-    # ------------------------------------------------------------ dataset (staff)
+    # ------------------------------------------------------------ dataset
     def capture(self, count: int = 1) -> dict[str, Any]:
         frames = [self.frame] if count <= 1 or self.grab is None else self.grab(count)
         saved = 0
@@ -889,7 +889,7 @@ class Engine:
         self.dataset_dir.mkdir(parents=True, exist_ok=True)
         return {"ok": True}
 
-    # ------------------------------------------------------------ recordings (staff)
+    # ------------------------------------------------------------ recordings
     def start_recording(self, seconds: float = 60.0) -> dict[str, Any]:
         name = time.strftime("rec-%Y%m%d-%H%M%S")
         d = self.recordings_dir / name

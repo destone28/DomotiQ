@@ -372,7 +372,7 @@ def test_what_a_character_did_today(ctx):
     rows += [(t0 + 900 + s, "v1", marco.id, 500, 100, "bedroom") for s in range(0, 100, 5)]
     ctx.store.add_positions(rows)
     ctx.store.add_event("party", {"state": "started"}, ts=t0 + 700)
-    ctx.clock.source = "staff"                     # the house knows the time: "today" starts at midnight
+    ctx.clock.source = "settings"                  # the house knows the time: "today" starts at midnight
     text = memory.day_of(ctx, "Marco", "it", now=t0 + 1000)
     assert "per la prima volta" in text and "Ha passato più tempo in cucina" in text
     assert "poi in soggiorno e in camera" in text and "una festa" in text

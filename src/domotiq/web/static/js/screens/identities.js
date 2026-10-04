@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // Characters, pets, cars and objects: the list, and the guided registration.
 
-import { api, ask, esc, modal, roomName, setNickname, store, toast } from "../app.js";
+import { api, ask, esc, modal, pageHead, roomName, setNickname, store, toast } from "../app.js";
 import { t, tr } from "../i18n.js";
 import { ICONS, Plan } from "../plan.js";
 
@@ -35,7 +35,7 @@ export function mount(root, params) {
   const renderList = () => {
     const ids = store.state.identities || [];
     root.innerHTML = `
-      <div class="row spread"><h1>${t("id.title")}</h1><button class="btn primary small" id="add">+ ${t("id.add")}</button></div>
+      ${pageHead(t("id.title"), t("id.lead"), `<button class="btn primary small" id="add">+ ${t("id.add")}</button>`)}
       <div class="card"><ul class="list">${ids.length ? ids.map(i => `
         <li><button class="link" data-id="${i.id}">
           ${i.photo ? `<img class="photo" src="/api/photos/${encodeURIComponent(i.photo)}" alt="">` :
