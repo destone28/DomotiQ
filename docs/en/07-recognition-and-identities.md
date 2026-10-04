@@ -32,7 +32,8 @@ In a diorama every change is made by a hand: a figurine comes in, goes out or mo
 - **A change with no hand around** (a reflection, the hall light) never becomes a presence: after about 3 seconds it becomes part of the empty house. The exception is something that clearly stands out and stays, appearing within 20 seconds of a hand: a figurine put down while the house was waiting, which becomes a presence after 2 seconds.
 - **When the house changes the light of a room**, for 2.5 seconds its glow on walls and floor is not taken for a presence.
 - **When the light of the whole hall changes**, the house measures the light of every room again and waits; if the light goes beyond what the correction can follow, after 4 seconds it learns the empty house again from the current picture, leaving out the characters it is following.
-- **At start-up** the house takes as present what clearly stands out from the empty house (another colour, or darker), not the glow of the lights.
+- **At start-up** the house recognizes the registered characters that are in the house (by their colour) and the car; the rest becomes part of the empty house, since meanwhile lights may have gone on or modules may have been moved. A new character that was already in the house shows up as soon as somebody moves it.
+- **The intercom** is left out of the analysis, but its outline counts as the edge of the base: an arm reaching towards the living room over the totem is still a hand.
 
 ## Kinds of things
 
@@ -110,6 +111,7 @@ When something appears that the house does not recognize, it asks at once, aloud
 - **Aloud**, with no Talk button: say one of the names proposed, or a new name ("the name is Luca"); the house repeats a new name and asks for confirmation ("The name is Luca, right?").
 - **From a phone**: tap a name on the banner, or type a new name and tap **Add**.
 - The first answer wins, from either; when it arrives, the house stops listening.
+- If what it asks about disappears before the answer (it was a reflection, or somebody took it away), the question is withdrawn from the phones and the house stops listening.
 
 With a new name the house creates the character, with the kind it guessed (it can be corrected under **Characters and objects**) and the colours it sees. With a registered name it updates that character's colours at once with what it sees, so next time it recognizes it by itself, even if it was registered under another light. A registration in progress from the web app comes first: while it waits for its figurine, the house does not ask this question.
 

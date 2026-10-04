@@ -32,7 +32,8 @@ In un plastico ogni cambiamento lo fa una mano: una statuina entra, esce o si sp
 - **Una differenza senza mano intorno** (un riflesso, la luce della sala) non diventa mai una presenza: dopo circa 3 secondi entra a far parte della casa vuota. Fa eccezione una cosa che spicca chiaramente e resta, comparsa entro 20 secondi dal passaggio di una mano: è una statuina posata mentre la casa aspettava, e dopo 2 secondi diventa una presenza.
 - **Quando la casa cambia la luce di una stanza**, per 2,5 secondi il suo riflesso su pareti e pavimento non viene preso per una presenza.
 - **Quando cambia la luce di tutta la sala**, la casa rimisura la luce di ogni stanza e aspetta; se la luce va oltre quello che la correzione riesce a seguire, dopo 4 secondi reimpara la casa vuota dall'immagine attuale, lasciando da parte i personaggi che sta seguendo.
-- **All'accensione** la casa prende per presenti le cose che spiccano chiaramente rispetto alla casa vuota (un altro colore, o più scure), non i riflessi delle luci.
+- **All'accensione** la casa riconosce i personaggi registrati che sono in casa (dal loro colore) e l'auto; il resto entra nella casa vuota, perché nel frattempo possono essersi accese delle luci o spostati dei moduli. Un personaggio nuovo che era già in casa compare appena qualcuno lo sposta.
+- **Il citofono** è escluso dall'analisi, ma il suo contorno conta come bordo della base: un braccio che si allunga verso il soggiorno passando sopra il totem resta una mano.
 
 ## Tipi di cose
 
@@ -110,6 +111,7 @@ Quando compare qualcosa che la casa non riconosce, lo chiede subito, a voce e su
 - **A voce**, senza il tasto Parla: si dice uno dei nomi proposti, oppure un nome nuovo ("si chiama Luca"); un nome nuovo la casa lo ripete e chiede conferma ("Si chiama Luca, giusto?").
 - **Dal telefono**: si tocca un nome sulla fascia, oppure si scrive un nome nuovo e si tocca **Aggiungi**.
 - Vale la prima risposta, da uno dei due canali; quando arriva, la casa smette di ascoltare.
+- Se quello di cui chiede sparisce prima della risposta (era un riflesso, oppure qualcuno l'ha portato via), la domanda viene ritirata dai telefoni e la casa smette di ascoltare.
 
 Con un nome nuovo la casa crea il personaggio, con il tipo che ha intuito (lo si corregge in **Personaggi e oggetti**) e i colori che vede. Con un nome già registrato aggiorna subito i colori di quel personaggio con quelli che vede in quel momento, così la volta dopo lo riconosce da sola, anche se era stato registrato con un'altra luce. Una registrazione in corso dalla webapp ha la precedenza: mentre aspetta il suo personaggio, la casa non fa questa domanda.
 

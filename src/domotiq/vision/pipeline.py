@@ -107,7 +107,8 @@ class Segmenter:
         # measured on casa1 in the dim light of the lab: a dark brown figurine on the grey floor is 14 points
         # darker and 8.5 apart in colour, the empty house stays well below these. What differs with no hand
         # around never becomes a presence (engine), so the comparison can be this sensitive.
-        self.params = {"dc": 8.0, "dl": 12.0, "shadow_dc": 4.0, "min_px": 120, "hand_mm2": 2500.0}
+        self.params = {"dc": 8.0, "dl": 12.0, "shadow_dc": 4.0, "min_px": 120, "hand_mm2": 2500.0,
+                       "hand_near_px": 60}
         self.labels: np.ndarray | None = None          # the blobs of the last frame, by number
         self.hand_mask: np.ndarray | None = None       # where the hands of the last frame are
         self.scene = StaticScene(layout, calib)
@@ -143,11 +144,13 @@ class Segmenter:
                 else rect_pts([shape.x0, shape.x1, shape.y0, shape.y1])
             polys.append(self._raised_hull(pts, h0, h1))
         # the intercom totem: the LEDs of its buttons go on and off, and visitors' hands are on it
+        totem = []
         for f in lay.raw.get("furniture", []):
             if f["id"] == "totem" and "rect" in f:
                 x0, x1, y0, y1 = f["rect"]
-                polys.append(self._raised_hull(rect_pts([x0 - 4, x1 + 4, y0 - 4, y1 + 4]), 0.0, float(f["height"]) + 15))
-        excluded = cv2.dilate(self._poly_mask(polys), np.ones((5, 5), np.uint8))
+                totem.append(self._raised_hull(rect_pts([x0 - 4, x1 + 4, y0 - 4, y1 + 4]), 0.0, float(f["height"]) + 15))
+        totem_mask = cv2.dilate(self._poly_mask(totem), np.ones((5, 5), np.uint8)) if totem else None
+        excluded = cv2.dilate(self._poly_mask(polys + totem), np.ones((5, 5), np.uint8))
         walls = (scene.kind == StaticScene.KINDS["wall"]) | (scene.kind == StaticScene.KINDS["fence"])
         wall_tops = (walls & scene.top).astype(np.uint8) * 255
         pole = (scene.kind == StaticScene.KINDS["pole"]).astype(np.uint8) * 255
@@ -158,6 +161,11 @@ class Segmenter:
         # the rim of what is analysed: arms reach the house across it, the car only at its gate
         inner = cv2.erode(self.view_mask, np.ones((7, 7), np.uint8))
         self.rim = (self.view_mask > 0) & (inner == 0)
+        if totem_mask is not None:
+            # an arm reaching into the living room passes over the totem, whose zone cuts it from the edge of
+            # the base: the outline of the totem counts as that edge (only blobs as big as an arm are hands)
+            ring = (cv2.dilate(totem_mask, np.ones((9, 9), np.uint8)) > 0) & (totem_mask == 0) & (self.view_mask > 0)
+            self.rim |= ring
         gates = np.zeros((self.h, self.w), np.uint8)
         for d in lay.doors:
             if d.vehicles:
@@ -167,6 +175,10 @@ class Segmenter:
         self.gate = gates > 0
         # which light each pixel is under: the room of the surface it shows, mixed across doorways
         self.label, self.label_b, self.blend, self.region_names = scene.room_labels()
+        # how far each pixel is from the edge of the base: an arm cut from the edge by the masked zones (the
+        # totem, the tops of the walls) still comes close to it. Not in the garage, where the car stands
+        self.rim_dist = cv2.distanceTransform((~self.rim).astype(np.uint8), cv2.DIST_L2, 3)
+        self.garage = self.label == (self.region_names.index("garage") if "garage" in self.region_names else -1)
         # the gains of each pixel come from a lookup table; only doorways mix two regions
         self._label3 = cv2.merge([self.label.astype(np.uint8)] * 3)
         mixed = np.flatnonzero(self.blend.ravel() > 0)
@@ -383,7 +395,9 @@ class Segmenter:
             rim_px = int(on_rim.sum())
             at_gate = rim_px > 0 and int((on_rim & self.gate[y:y + h, x:x + w]).sum()) > 0.8 * rim_px
             # an arm crossing the edge of the base is big: a module or a cable lying on the edge is not
-            hand = bool((rim_px >= 6 or border) and area_mm2 > self.params["hand_mm2"] and not at_gate)
+            near_edge = float(self.rim_dist[y:y + h, x:x + w][blob].min()) <= self.params["hand_near_px"] \
+                and float(np.mean(self.garage[y:y + h, x:x + w][blob])) < 0.5
+            hand = bool((rim_px >= 6 or border or near_edge) and area_mm2 > self.params["hand_mm2"] and not at_gate)
             sub = lab[y:y + h, x:x + w][blob].astype(np.float32)
             if lab.dtype == np.uint8:                   # back to the usual Lab units
                 sub[:, 0] *= 100.0 / 255.0

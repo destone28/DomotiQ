@@ -250,8 +250,15 @@ def _wire_vision(ctx: Context) -> None:
         if rooms:
             ctx.vision.lights_changed(rooms)
 
+    def gone(ev: Event) -> None:
+        # a "who is it?" about something that has disappeared (a reflection, taken away) is withdrawn
+        for cid, c in list(ctx.house.confirmations.items()):
+            if c["context"].get("kind") == "who" and c["context"].get("track") == ev.get("track"):
+                ctx.house.withdraw(cid)
+
     bus.subscribe("vision_question", ask_who)
     bus.subscribe("confirm_answer", answered)
+    bus.subscribe("track_disappear", gone)
     bus.subscribe("lights_changed", lights)
 
 

@@ -168,3 +168,15 @@ def test_moves_are_told_once_they_settle(ctx, monkeypatch):
     n._on_enter(ev("room_enter", track="e", name="Sara", category="person", room="kitchen", other="living"))
     lines = n.tick(time.monotonic() + 50)
     assert [x["it"] for x in lines] == ["Luca entra in casa.", "Sara va in cucina."]
+
+
+def test_a_question_about_something_gone_is_withdrawn(ctx):
+    async def scenario():
+        hear(ctx, [""] * 4)
+        newcomer(ctx)
+        await asyncio.sleep(0.05)
+        assert ctx.house.confirmations
+        ctx.bus.publish("track_disappear", track="t-new", room="living")
+        await settle(ctx)
+        assert not ctx.house.confirmations and ctx.assigned == []
+    asyncio.run(scenario())

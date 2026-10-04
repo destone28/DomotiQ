@@ -140,10 +140,15 @@ class Engine:
         if not self._plausible(o, now):
             return False
         if scan:
-            # at a start the empty house may be old (other lights on, the hall light changed): only what
-            # clearly stands out, not a glow or a reflection
+            # at a start the empty house may be old (other lights on, modules moved meanwhile): the house takes
+            # the characters it knows and the car; anything else joins the empty house, and a new figurine
+            # that was already there shows up as soon as somebody moves it
             chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
-            return chroma_d >= SCAN_CHROMA or light_d <= -SCAN_DARKER
+            if chroma_d < SCAN_CHROMA and light_d > -SCAN_DARKER:
+                return False
+            if o.area_mm2 > 6000:
+                return True
+            return any(len(i.signature) and distance(o.sig, i.signature) < ID_ACCEPT for i in self.identities)
         return births_open and bool(self._zone[y:y + h, x:x + w].any())
 
     def rescan(self) -> None:

@@ -345,6 +345,15 @@ class House:
         self._pub("confirm_closed", id=cid)
         return True
 
+    def withdraw(self, cid: str) -> bool:
+        """The question no longer makes sense (what it was about has gone): it disappears everywhere."""
+        item = self.confirmations.pop(cid, None)
+        if not item:
+            return False
+        self._pub("confirm_answer", id=cid, value=None, by="gone", context=item["context"])
+        self._pub("confirm_closed", id=cid)
+        return True
+
     def expire_confirmations(self, now: float | None = None) -> None:
         now = now or time.time()
         for cid, item in list(self.confirmations.items()):
