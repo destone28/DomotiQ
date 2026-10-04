@@ -2,14 +2,14 @@
 
 Casa: casa1 / casa2 · Wi-Fi `DomotiQ-Casa1` / `DomotiQ-Casa2` · webapp `http://10.42.1.1/` / `http://10.42.2.1/`
 
-Password del Wi-Fi: ____________________ PIN dello staff: ____________
+Password del Wi-Fi: ____________________
 
-(Scrivili a mano solo sulla copia stampata.)
+(Scrivila a mano solo sulla copia stampata.)
 
 ## Alimentazione
 
 - **Accensione**: collega l'alimentatore. Le luci respirano debolmente per circa 40 secondi mentre la scheda si avvia, poi si spengono: la casa è pronta. Il Wi-Fi della casa parte da solo.
-- **Spegnimento a fine giornata**: webapp, **Altro → Impostazioni → Spegni la scheda** (staff), poi stacca la spina.
+- **Spegnimento a fine giornata**: webapp, **Altro → Impostazioni → Spegni la scheda**, poi stacca la spina.
 - **Dopo un'interruzione di corrente** la casa riparte da sola. La ventola del barbecue resta ferma.
 
 ## I tre tasti (da sinistra a destra, come li vede il visitatore)
@@ -22,11 +22,11 @@ I tre LED dei tasti tutti accesi: la casa ascolta, rispondi senza premere niente
 
 ## I telefoni dei visitatori
 
-Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo chiede: *Resta connesso* / *Usa senza Internet*. Android: spegni per un attimo i dati mobili. Tutti possono dare comandi, cambiare le regole e registrare personaggi.
+Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo chiede: *Resta connesso* / *Usa senza Internet*. Android: spegni per un attimo i dati mobili. Tutti possono fare tutto: comandi, regole, personaggi, calibrazione e impostazioni. Ogni modifica finisce nel registro e le cose eliminate restano nel cestino per 24 ore.
 
 ## Registrare una statuina
 
-**Altro → Personaggi e oggetti → + Aggiungi** → nome (e, se vuoi, una foto) → **Avanti** → appoggia la statuina in un punto libero del pavimento → scegli che cos'è → **Salva**. I nomi devono essere unici: se serve, aggiungi un cognome. Gli avvisi su colori simili al pavimento o a un altro personaggio sono consigli, non errori.
+**Personaggi → + Aggiungi** → nome (e, se vuoi, una foto) → **Avanti** → appoggia la statuina in un punto libero del pavimento → scegli che cos'è → **Salva**. I nomi devono essere unici: se serve, aggiungi un cognome. Gli avvisi su colori simili al pavimento o a un altro personaggio sono consigli, non errori.
 
 ## Se qualcosa non va
 
@@ -34,10 +34,10 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 |---|---|
 | Fascia *La webcam si è spostata: rifare la calibrazione* | Calibra (vedi sotto). |
 | Oggetti fantasma, o statuine non viste, dopo che la luce del padiglione è cambiata | Di solito la webcam si riregola da sola in pochi secondi. Se no: svuota la casa, **Calibrazione → Regola la luce e salva la casa vuota**. |
-| Un **?** su un personaggio, oppure *La casa chiede* | Rispondi a voce subito dopo la domanda, senza Parla, con una frase qualsiasi: un nome, "no, è un cane", "non c'è nessuno". Oppure tocca il nome sulla fascia; per un nuovo arrivato puoi scrivere un nome nuovo, sceglierne il tipo e toccare **Aggiungi**, oppure toccare **Non c'è niente**. |
+| Un **?** su un personaggio, oppure *La casa chiede* | Rispondi a voce subito dopo la domanda, senza Parla, con una frase qualsiasi: un nome, "no, è un cane", "non c'è nessuno", "tutti e due". Oppure tocca il nome sulla domanda o **Tutti e due**; per un nuovo arrivato puoi scrivere un nome nuovo, sceglierne il tipo e toccare **Aggiungi**, oppure toccare **Non c'è niente**. |
 | La casa non nota i personaggi, e in *Diagnostica* risulta sempre una mano | Qualcosa di grande è appoggiato sul bordo della base (un modulo, un cavo): toglilo o fissalo. Dopo 8 secondi fermo la casa smette comunque di prenderlo per una mano. |
 | La casa chiede di qualcuno che non c'è | Rispondi "non c'è nessuno" o tocca **Non c'è niente**: la casa lo dimentica. Se torna nello stesso punto, cerca un modulo, un LED o un cavo da fissare, poi **Salva solo la casa vuota** a casa vuota. |
-| Una fascia rossa di allarme | Chiudila con la **✕**: sparisce da tutti i telefoni e torna solo se l'allarme si ripresenta. |
+| Una notifica rossa di allarme | **Disinserisci** spegne l'allarme come un antifurto (si reinserisce dalla pagina **Casa**); la **✕** la chiude su tutti i telefoni e torna solo se l'allarme si ripresenta. Una notifica ambra è un avviso. |
 | La casa è muta | **Comandi**: Loquacità *Normale*, alza il Volume. Manopola delle casse al massimo. |
 | "Non so che ore sono: che ore sono adesso?" | Rispondi a voce, senza Parla: "Sono le quindici e trenta". Oppure apri la webapp su un telefono. |
 | Le luci respirano debolmente e niente reagisce | Il software si sta (ri)avviando: aspetta un minuto. Poi **Impostazioni → Riavvia l'app**, poi **Riavvia la scheda**. |
@@ -46,13 +46,12 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 | Festa o barbecue non partono | Sono in pausa: aspetta 30 secondi. |
 | Un telefono non riesce ad aprire la pagina | Dati mobili spenti; scrivi `http://10.42.N.1/`. |
 
-## Strumenti dello staff
-
-**Altro → PIN dello staff → Accesso staff** (vale 12 ore su quel telefono; dopo 5 PIN sbagliati aspetta un minuto).
+## Messa a punto (Altro)
 
 - **Calibrazione**: togli statuine e auto → tocca i 4 angoli della base (davanti a sinistra, davanti a destra, dietro a destra, dietro a sinistra; davanti = vialetto) → **Usa questi angoli**: la casa regola da sola la luce e salva la casa vuota (circa 15 secondi, con una rotellina; non toccare la casa) → controlla che le pareti disegnate coincidano con quelle vere. Calibra prima di aprire la casa ai visitatori: fino ad allora la sfocatura può solo indovinare dove si trova il bagno.
 - **Diagnostica**: moduli, scansione I2C, **Prova audio**, **Prova microfono (3 s)**, registri.
-- **Impostazioni**: luminosità e durate, PIN, password del Wi-Fi, **Usa l'ora di questo telefono**, backup, cestino, riavvio dell'app, riavvio e spegnimento della scheda.
+- **Impostazioni**: luminosità e durate, password del Wi-Fi, **Usa l'ora di questo telefono**, backup, cestino, riavvio dell'app, riavvio e spegnimento della scheda.
 - **Comandi → Fai dire alla casa**; **Simulazione** accesa e spenta.
+- **Allarme**: riquadro in cima alla pagina **Casa**, **Inserisci** / **Disinserisci**.
 
 Guida completa: `docs/it/` nel repository.

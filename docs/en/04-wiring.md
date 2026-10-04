@@ -73,7 +73,7 @@ Notes:
 
 ### The totem
 
-The totem holds the **Buttons** module; the lavalier microphone sits in the cap. Seen by the visitor, the buttons are, from the left: **Talk**, **Intercom**, **Language**. The yellow LEDs of the Buttons module sit next to the buttons, and the totem has a window for them. If the module ends up mounted the other way round, you do not need to rewire it: switch on *Buttons mounted upside down* in the staff settings (see [chapter 6](06-web-app.md#settings)).
+The totem holds the **Buttons** module; the lavalier microphone sits in the cap. Seen by the visitor, the buttons are, from the left: **Talk**, **Intercom**, **Language**. The yellow LEDs of the Buttons module sit next to the buttons, and the totem has a window for them. If the module ends up mounted the other way round, you do not need to rewire it: switch on *Buttons mounted upside down* in the settings (see [chapter 6](06-web-app.md#settings)).
 
 ## Power of the Pixels
 
@@ -83,7 +83,7 @@ Each Pixels at full white can draw up to 264 mA from the 3.3 V line of the Qwiic
 - when the estimate goes above the **budget, 450 mA by default**, it scales all the lights down in proportion;
 - on top of that, it limits every light to a **maximum brightness of 30 %** by default.
 
-Both values are staff settings (*Maximum brightness (%)* and *Pixels current limit (mA)*, see [chapter 6](06-web-app.md#settings)), and the house sends them to the firmware whenever they change. The defaults are deliberately cautious, since no current meter was used to measure the real draw. Before raising them, run all lights at full white at the new limits for 10 minutes and check that the bus keeps working (the module list in *Diagnostics* stays green).
+Both values are in the settings (*Maximum brightness (%)* and *Pixels current limit (mA)*, see [chapter 6](06-web-app.md#settings)), and the house sends them to the firmware whenever they change. The defaults are deliberately cautious, since no current meter was used to measure the real draw. Before raising them, run all lights at full white at the new limits for 10 minutes and check that the bus keeps working (the module list in *Diagnostics* stays green).
 
 ## Relay and fan
 
@@ -97,7 +97,7 @@ Check the terminal labels printed on your module before wiring.
 
 A latching relay keeps its position without power. So the firmware switches it **off at every start** and also whenever Linux has been silent for 30 seconds. The firmware is built in the "Immediate" start mode: it starts at power-up instead of waiting for Linux, so after a power cut during a barbecue the fan stops within milliseconds instead of running for the 40 seconds Linux needs to boot.
 
-In normal use the fan runs for 20 seconds per barbecue (a staff setting, 5 to 120 seconds), never more than 120 seconds in a row, with a 30-second pause before the next one.
+In normal use the fan runs for 20 seconds per barbecue (a setting, 5 to 120 seconds), never more than 120 seconds in a row, with a 30-second pause before the next one.
 
 ## Audio
 

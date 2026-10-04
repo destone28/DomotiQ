@@ -140,6 +140,6 @@ Quando lo sviluppo è finito:
 
 - permetti l'accesso SSH solo con chiave (per esempio `PasswordAuthentication no` in un file dentro `/etc/ssh/sshd_config.d/`, poi `sudo systemctl restart ssh`), dopo aver controllato che la tua chiave funzioni;
 - se durante lo sviluppo hai dato all'utente `arduino` un `sudo` senza password, rimetti la password a `sudo` (la piccola regola installata da DomotiQ, che permette solo di riavviare i suoi servizi, riavviare o spegnere la scheda e cambiare l'hotspot, può restare);
-- scrivi la password del Wi-Fi e il PIN dello staff sulla copia stampata della [guida rapida per lo staff](guida-rapida-staff.md), mai nel repository.
+- scrivi la password del Wi-Fi sulla copia stampata della [guida rapida per lo staff dello stand](guida-rapida-staff.md), mai nel repository.
 
 Avanti: [installare il software](02-installazione.md).

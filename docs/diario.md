@@ -207,3 +207,20 @@ Nella prima prova la casa ha chiesto dell'auto e ha capito "Honda Civic", ma non
 - **"Mister Blu" e la Honda Civic.** Ora conta anche la dimensione: l'auto non è mai una statuina.
 - **Notifiche non chiudibili.** Nello screenshot di Emilio la barra mostrava "nav.identities": il telefono teneva i vecchi script e prendeva solo l'HTML nuovo. Ora i file della webapp si caricano sotto una versione che cambia a ogni aggiornamento, e anche le domande hanno la loro ✕.
 - **Niente si muove da solo, storico, pose** (D-24). La registrazione delle 15:31 mostrava due tracce che si scambiavano di posto senza mani, e un "oggetto" chiesto in giardino che era solo un secondo pezzo di Viola, sdraiata sul tronco dell'albero. Dopo le correzioni zero domande, i quattro personaggi seguiti ovunque, e le prime pose imparate da sole: Viola e Rosaria sdraiate in giardino.
+
+**Sera, terza parte (4/10).** Nuove richieste di Emilio:
+- togliere ogni traccia del vecchio sensore del totem;
+- capire "tutti e due";
+- niente falsi allarmi e niente personaggi che si muovono da soli;
+- un allarme disinseribile;
+- niente staff e niente PIN;
+- una webapp più pulita.
+
+In ordine:
+- **Le misure sulla scheda** (D-25). Con 8 presenze un'immagine costava 445 ms, a casa vuota 88. Il confronto con le pose, fino a sette per personaggio, si ripeteva per ogni macchia più volte per immagine; ora è un solo calcolo. La luce delle stanze, dopo un cambio, si rimisurava a ogni immagine; ora al massimo ogni 0,3 s. La diagnostica mostra il tempo delle fasi.
+- **Pose sbagliate.** Sulla scheda Viola aveva sei pose: tra queste un grigio, un nero e il marrone di Mister Braun. Mister Brown e Mister Green ne avevano con i colori l'uno dell'altro. Erano state imparate su macchie che avevano preso il nome per errore. Il nuovo controllo del colore le ha tolte all'avvio: Viola da 6 a 1, Mister Brown da 4 a 0.
+- **Viola nel locale tecnico** era la scheda UNO Q: la scheda sporge di 2 cm dalla parete e la zona esclusa stava dietro di lei. Ora la copre.
+- **Personaggi che si muovono da soli**: era il nome che passava da una macchia a un'altra lontana. Ora i nomi si muovono solo con le mani.
+- **Un errore subito corretto.** Il nuovo segno "presenza certa" usciva come booleano di numpy, e per qualche minuto `/api/state` ha risposto 500: la webapp sulla scheda non si caricava.
+- **Avvio.** Dopo i riavvii delle 20:36 e delle 20:37, a casa vuota, l'alone delle lampade e il modulo dei tasti erano diventati Mister Brown, Mister Green e una persona sul vialetto. Ora l'avvio aspetta che le luci stiano ferme e prende solo personaggi certi; dopo il riavvio successivo la casa vuota è rimasta vuota.
+- **Tutti e due**, **allarme disinseribile**, **niente staff né PIN** e **webapp uniforme**: vedi D-25, D-26 e D-27. Le schermate della guida sono rifatte con la casa simulata.

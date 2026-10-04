@@ -2,7 +2,7 @@
 
 Each entry gives the symptom, the likely cause and the fix. Two tools help with almost everything:
 
-- **More → Diagnostics** in the web app (staff): the state of board, microcontroller, modules, camera, audio, voice and clock.
+- **More → Diagnostics** in the web app: the state of board, microcontroller, modules, camera, audio, voice and clock.
 - The log of the application, over SSH:
 
   ```bash
@@ -149,7 +149,7 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### The live view shows a drawing marked *SIMULAZIONE - SIMULATION*
 **Cause.** The simulation is on: the house ignores the webcam.
 
-**Fix.** **More → Simulation** (staff) and switch it off.
+**Fix.** **More → Simulation** and switch it off.
 
 ### Nothing is recognized, or *Diagnostics* says *not calibrated*
 **Cause.** The corners or the empty house are missing.
@@ -267,29 +267,17 @@ The installer (which needs internet) reloads the firmware when needed; without i
 
 **Fix.** Answer at once aloud, with no button ("it's half past three"), open the web app from a phone (it sets the time), or use **Settings → Use this phone's time** ([chapter 8](08-voice.md#setting-the-clock-by-voice)). **Diagnostics → Clock** shows where the time came from. Rules with *it is a given time* need a known time.
 
-## Web app and staff
+## Web app and alarm
 
-### *Too many attempts: wait a minute*
-**Cause.** Five wrong PINs.
+### An alarm goes off and nobody is there
+**Cause.** The alarm rules count only sure presences: a character the house knows, or something still and clearly visible for at least 6 seconds. If it goes off anyway, the house really sees something in that spot: an LED, a reflection, a module lying there.
 
-**Fix.** Wait one minute.
+**Fix.** **Switch off** the alarm from the red notice or from the box on the **House** page: the alarm rules stay quiet until you switch it on again. Then answer "there's nobody" to the question of the house, if there is one, and look at what is in that spot (**Live**, with **Names and rooms**); if it is a fixed object, remove it or fix it down and save the empty house.
 
-### The staff pages send me back to *More*
-**Cause.** The staff login expired (12 hours) or the application restarted.
+### The alarm no longer goes off
+**Cause.** It is switched off: the **Alarm** box on the **House** page says *Off*.
 
-**Fix.** Log in again.
-
-### The staff PIN is lost
-**Fix.** With internet on the board, `cd ~/domotiq && bash scripts/install.sh --pin 1234` sets a new PIN (the rest of the installation is skipped where already done). Without internet, stop the application, set the PIN with the same code the installer uses, and start it again:
-
-```bash
-cd ~/domotiq
-sudo systemctl stop domotiq
-PYTHONPATH=src ./venv/bin/python -c "from domotiq.settings import Paths, Settings; Settings(Paths()).set_pin('1234')"
-sudo systemctl start domotiq
-```
-
-Keep the same PIN on both houses.
+**Fix.** Tap **Switch on**.
 
 ## Rules and characters
 
@@ -299,7 +287,7 @@ Keep the same PIN on both houses.
 **Fix.** Check the rule in the editor and **Events** for what the house saw.
 
 ### A rule or a character was deleted by mistake
-**Fix.** Staff: **Settings → Bin → Restore**, within 24 hours. A restored character whose name was taken in the meantime gets " 2" after its name. **Settings → Default rules** brings back the original rules (it replaces all the current ones).
+**Fix.** **Settings → Bin → Restore**, within 24 hours. A restored character whose name was taken in the meantime gets " 2" after its name. **Settings → Default rules** brings back the original rules (it replaces all the current ones).
 
 ### *The name Marco is already used*
 **Cause.** Names are unique in the house, regardless of case, English pronunciations included.

@@ -2,7 +2,7 @@
 
 Segui questo capitolo su ogni casa dopo il montaggio e i collegamenti, e di nuovo prima di ogni fiera. Ogni passo dice cosa fare e cosa dovresti vedere. Quando qualcosa non torna, il capitolo sulla [risoluzione dei problemi](11-risoluzione-problemi.md) riporta le cause probabili.
 
-Ti servono il PIN dello staff stampato dall'installer e un telefono o un PC collegato alla stessa rete della scheda: il Wi-Fi del laboratorio (`http://casa1.local/`) o l'hotspot della casa (`http://10.42.1.1/`).
+Ti serve un telefono o un PC collegato alla stessa rete della scheda: il Wi-Fi del laboratorio (`http://casa1.local/`) o l'hotspot della casa (`http://10.42.1.1/`).
 
 ## 1. Accensione
 
@@ -18,9 +18,9 @@ systemctl status domotiq domotiq-tts domotiq-llm --no-pager
 journalctl -u domotiq -f
 ```
 
-## 2. Aprire la webapp ed entrare come staff
+## 2. Aprire la webapp
 
-Apri l'indirizzo della casa in un browser. In alto a destra, accanto al nome della casa, tre pallini mostrano lo stato di **Microcontrollore**, **Webcam** e **Audio** (verde = funziona). Vai in **Altro**, scrivi il PIN in *PIN dello staff* e tocca **Accesso staff**. Le pagine dello staff (**Calibrazione**, **Diagnostica**, **Impostazioni**) ora sono aperte su questo telefono per 12 ore.
+Apri l'indirizzo della casa in un browser. In alto a destra, accanto al nome della casa, tre pallini mostrano lo stato di **Microcontrollore**, **Webcam** e **Audio** (verde = funziona). Tutte le pagine sono aperte a chiunque: **Calibrazione**, **Diagnostica** e **Impostazioni** stanno in **Altro → Messa a punto**.
 
 ## 3. Microcontrollore e moduli
 
@@ -90,7 +90,7 @@ Ora in **Diagnostica**, alla riga *Webcam*, compaiono i fotogrammi al secondo (d
 
 ## 10. Il primo personaggio
 
-1. **Altro → Personaggi e oggetti → + Aggiungi.** Scrivi un nome, se vuoi scatta una foto, tocca **Avanti**.
+1. **Personaggi → + Aggiungi.** Scrivi un nome, se vuoi scatta una foto, tocca **Avanti**.
 2. Metti il personaggio in un punto libero della casa. La casa lo trova e chiede che cos'è, proponendo un tipo; tocca quello giusto e **Salva**.
 3. Nella schermata **Casa** il personaggio compare con il suo nome. Spostalo in un'altra stanza: la luce di quella stanza si accende, e si spegne 3 secondi dopo che la stanza si è svuotata.
 4. Prendilo in mano e appoggialo in un'altra stanza: mantiene il suo nome.
@@ -124,6 +124,6 @@ La UNO Q non ha una batteria per l'orologio e in fiera non c'è internet. Dopo u
 
 ## Provare senza statuine
 
-**Altro → Simulazione** (per attivarla serve il PIN dello staff) sostituisce la webcam con personaggi virtuali da trascinare sulla piantina, più sensori e tasti virtuali. Luci, voce e regole reagiscono come con le statuine vere. L'interruttore *Luci e voce vere in silenzio* tiene tranquilla la casa vera mentre fai le prove. Ricordati di spegnere la simulazione: finché è attiva, la casa ignora la webcam.
+**Altro → Simulazione** sostituisce la webcam con personaggi virtuali da trascinare sulla piantina, più sensori e tasti virtuali. Luci, voce e regole reagiscono come con le statuine vere. L'interruttore *Luci e voce vere in silenzio* tiene tranquilla la casa vera mentre fai le prove. Ricordati di spegnere la simulazione: finché è attiva, la casa ignora la webcam.
 
 Avanti: [la webapp](06-webapp.md).

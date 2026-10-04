@@ -28,7 +28,6 @@ The script asks the `sudo` password once, only if `sudo` needs one, and keeps it
 |---|---|
 | `--house N` | House number, `1` or `2`. Sets the name (`casaN`), the Wi-Fi network (`DomotiQ-CasaN`), the channel and the address (`10.42.N.1`). Needed the first time; later runs read it from the saved settings. |
 | `--hotspot MODE` | `now`, `boot` or `no`. Default `boot`: the hotspot is configured and starts at the next boot. See [The hotspot](#the-hotspot). |
-| `--pin NNNN` | Staff PIN for the web app. Without it, the installer picks a random 4-digit PIN the first time and prints it at the end. Giving `--pin` on a later run replaces the PIN. |
 | `--no-llm` | Skip llama.cpp and the language model. The house then understands only the phrases of its built-in parser. |
 | `--skip-firmware` | Do not rebuild or reload the microcontroller firmware. |
 
@@ -43,22 +42,21 @@ The script prints numbered steps. The numbers shift when a step is skipped by an
 5. **Models.** Downloaded into `models/` and checked against the SHA-256 sums in `scripts/models.sha256`: the Piper voices `it_IT-serena-medium` (at a fixed revision) and `en_US-ljspeech-medium`, the Vosk models `vosk-model-small-it-0.22` and `vosk-model-small-en-us-0.15`, YOLOX-Nano (`yolox_nano.onnx`) and, unless `--no-llm`, `qwen2.5-0.5b-instruct-q4_k_m.gguf`. A file already present with the right checksum is not downloaded again.
 6. **llama.cpp.** Fetches llama.cpp at the commit tested on the UNO Q (`74a7c897`) and builds `llama-server` (about twenty minutes). Skipped when the same commit is already built, or with `--no-llm`.
 7. **Microcontroller firmware.** Installs the core `arduino:zephyr` 1.0.0 and the library `Arduino_RouterBridge` 0.4.3, compiles `firmware/domotiq_mcu` in the "Immediate" start mode (`wait_linux_boot=no`) and loads it with the local `remoteocd`, which needs no password. It is reloaded only when the sketch, the core, the library or the board options change. Finally `arduino-app-cli properties set default none` makes sure no App Lab app replaces the firmware at boot. See `firmware/domotiq_mcu/README.md` to do the same by hand.
-8. **House settings.** Sets the host name `casaN` and the time zone Europe/Rome; creates the staff PIN (if none exists yet) and the Wi-Fi password (if none exists yet); writes house number, names and network into `var/config/settings.json`.
+8. **House settings.** Sets the host name `casaN` and the time zone Europe/Rome; creates the Wi-Fi password (if none exists yet); writes house number, names and network into `var/config/settings.json`.
 9. **Services.** Installs `domotiq`, `domotiq-tts` and `domotiq-llm` in `/etc/systemd/system`, a `sudoers` rule, and a journald limit (200 MB, 7 days of logs). It disables the automatic `apt` timers and holds `alsa-ucm-conf`, `libasound2t64` and the running kernel: nothing should update the system at a fair.
 10. **Hotspot.** Creates or updates the hotspot profile, then applies `--hotspot` (`now`, `boot` or `no`).
 11. **Start.** Restarts the services and prints a summary.
 
-The summary looks like this (password and PIN are chosen at random for each house):
+The summary looks like this (the password is chosen at random for each house):
 
 ```
 DomotiQ casa1 is installed.
   Wi-Fi:    DomotiQ-Casa1   password: abcd-efgh-jkmn
   Address:  http://10.42.1.1/   (on the hotspot)   http://casa1.local/
-  Staff PIN: 1234   (write it down: it is not shown again)
   Sign to print: http://10.42.1.1/sign
 ```
 
-The Wi-Fi password is three groups of four characters, from an alphabet without the easily confused `i`, `l`, `o`, `0` and `1`. Write the password and the PIN on the printed [staff quick guide](quick-guide-staff.md); the PIN line appears only when the installer has just chosen a new PIN.
+The Wi-Fi password is three groups of four characters, from an alphabet without the easily confused `i`, `l`, `o`, `0` and `1`. Write the password on the printed [quick guide for the stand staff](quick-guide-staff.md).
 
 ## Where things live
 
@@ -74,7 +72,7 @@ Everything is inside `/home/arduino/domotiq`:
 | `var/calibration/` | camera calibration, empty-house reference, locked camera settings |
 | `var/photos/` | photos of the characters |
 | `var/domotiq.db` | SQLite: events (7 days), positions (24 hours), change log, bin |
-| `var/dataset/`, `var/recordings/` | staff captures and recorded sequences |
+| `var/dataset/`, `var/recordings/` | captures and sequences recorded from the calibration page |
 | `var/firmware/` | the last firmware build |
 
 `var/` is what the house remembers. It is never copied between houses and is excluded from the repository.
@@ -97,7 +95,7 @@ journalctl -u domotiq -f                 # follow the application log
 sudo systemctl restart domotiq           # restart the application
 ```
 
-The staff pages of the web app can also restart the application, reboot or power off the board (see [chapter 6](06-web-app.md#settings)).
+The settings of the web app can also restart the application, reboot or power off the board (see [chapter 6](06-web-app.md#settings)).
 
 ## The hotspot
 
@@ -155,15 +153,15 @@ Without `--install`, a change to the firmware is copied but not loaded on the mi
 
 ## Installing the second house
 
-The second house is installed exactly like the first, with its own number. The staff PIN is meant to be the same in both houses, so pass the PIN of house 1:
+The second house is installed exactly like the first, with its own number:
 
 ```bash
-cd ~/domotiq && bash scripts/install.sh --house 2 --pin 1234
+cd ~/domotiq && bash scripts/install.sh --house 2
 ```
 
 House 2 gets the host name `casa2`, the network `DomotiQ-Casa2` on channel 11 and the address `10.42.2.1`, so the two houses can stand next to each other.
 
-The two houses are independent. The camera calibration belongs to each house and is never copied (a backup does not even contain it), and characters are registered on each house. Rules and settings can be copied with a backup from the staff settings of house 1 (see [chapter 6](06-web-app.md#settings)); a backup never carries the network, the house name, the PIN or the camera settings. A restore from the web app replaces rules, characters and settings together, so restore the backup on house 2 before registering its characters.
+The two houses are independent. The camera calibration belongs to each house and is never copied (a backup does not even contain it), and characters are registered on each house. Rules and settings can be copied with a backup from the settings of house 1 (see [chapter 6](06-web-app.md#settings)); a backup never carries the network, the house name or the camera settings. A restore from the web app replaces rules, characters and settings together, so restore the backup on house 2 before registering its characters.
 
 ## Before the house leaves the lab
 
@@ -176,16 +174,15 @@ The two houses are independent. The camera calibration belongs to each house and
 
    It lists the keys that will still get in and refuses to run if there are none; `bash scripts/lockdown.sh --undo` allows passwords again. `sudo` keeps asking for the password of the user `arduino`, except for the few commands the web app needs (restart, reboot, power off, hotspot).
 3. Switch the hotspot on at every boot (`bash scripts/hotspot.sh boot`, then reboot) and print the sign from `/sign`.
-4. Write the Wi-Fi password and the staff PIN on the stand's copy of the [quick guide](quick-guide-staff.md), never in the repository.
+4. Write the Wi-Fi password on the stand's copy of the [quick guide](quick-guide-staff.md), never in the repository.
 
-Both can be changed at any time from **More → Settings** in the web app (staff), or on the board:
+The password can be changed at any time from **More → Settings** in the web app, or on the board:
 
 ```bash
 cd ~/domotiq
-PYTHONPATH=src venv/bin/python -m domotiq.admin pin 4821
 PYTHONPATH=src venv/bin/python -m domotiq.admin wifi "a-new-password"
 ```
 
-The command restarts the house so it reads the new values (every staff session ends); a new Wi-Fi password also restarts the hotspot if it is on. From the web app both changes ask for the current PIN, so a phone that only holds a staff session cannot make them.
+The command restarts the house so it reads the new value, and restarts the hotspot too if it is on.
 
 Next: [print and assemble](03-print-and-assemble.md).

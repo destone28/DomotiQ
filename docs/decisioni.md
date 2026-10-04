@@ -130,3 +130,26 @@ Con le nuove regole la stessa registrazione dà zero domande inutili, e tutti e 
 - "Mister Blu" scambiato per la Honda Civic, blu anche lei.
 
 Nella registrazione delle 15:31, poi, due tracce si scambiavano di posto senza nessuna mano. Con queste regole la registrazione dà zero domande e i quattro personaggi sono seguiti e riconosciuti in ogni spostamento. Le pose sono la forma di apprendimento sul posto che la scheda regge senza un modello neurale: confrontare con le pose note costa una frazione di millisecondo per macchia, mentre una rete per le immagini avrebbe chiesto dati etichettati e un processore più libero.
+
+### D-25 — I nomi si muovono solo con le mani; pose del colore giusto; allarmi su presenze certe (4/10)
+**Scelta:**
+- **Nomi.** Senza una mano recente, un personaggio con un nome lo tiene finché gli somiglia; un nome non va mai a una macchia lontana più di 5 cm dall'ultimo posto del personaggio, se nessuna mano è passata di lì o l'ha preso.
+- **Pose.** Una posa deve avere i colori del personaggio registrato (distanza fino a 0,45) più che di chiunque altro (di almeno 0,05). Le pose che non lo rispettano si dimenticano all'avvio. Colori e dimensione registrati imparano solo da macchie che somigliano da vicino; una risposta data sulla macchia sbagliata dà il nome ma non cambia l'aspetto del personaggio.
+- **Avvio.** La casa aspetta che le luci stiano ferme, poi prende solo personaggi che somigliano da vicino e hanno la forma di una statuina. Una presenza seguita meno di 2,5 s è rumore, anche con un nome.
+- **Allarmi.** Contano solo un personaggio noto o una cosa sconosciuta ferma e ben visibile da 6 s.
+- **Tutti e due.** Due statuine a contatto sono una macchia: "tutti e due" (o due nomi) le segna presenti entrambe, una nascosta dietro l'altra.
+- **Velocità.** Il confronto con tutte le pose di tutti i personaggi è un solo calcolo per immagine, e la luce delle stanze si rimisura al massimo ogni 0,3 s dopo un cambio.
+- La zona esclusa della scheda UNO Q copre la scheda vera, che sporge di 2 cm dalla parete.
+
+**Perché:** dopo le prove della sera Emilio vedeva personaggi muoversi da soli sulla mappa e falsi allarmi nel locale tecnico e in bagno. Sulla scheda, con 8 presenze, un'immagine costava 445 ms (2,3 al secondo): a quel ritmo funzionano male anche le regole che contano le immagini. Il nome di Viola era sulla scheda UNO Q, e Viola aveva imparato come pose un grigio, un nero e il marrone di Mister Braun. All'avvio, a casa vuota, l'alone delle lampade e il modulo dei tasti diventavano personaggi. Dopo le correzioni: tra 100 e 120 ms per immagine, con il riconoscimento sotto i 3 ms; a casa vuota, dopo un riavvio, nessuna presenza. La registrazione delle 15:31 dà ancora zero domande, con i quattro personaggi seguiti.
+
+### D-26 — Niente staff e niente PIN (4/10)
+**Scelta:** tutte le pagine e tutte le API sono aperte a chiunque usi la webapp: calibrazione, dataset, diagnostica, impostazioni (Wi-Fi compreso), backup, cestino, riavvio e spegnimento. Restano il registro delle modifiche, il cestino di 24 ore e la conferma prima delle azioni che non si annullano. Niente PIN all'installazione, niente `--pin` e niente `admin pin`. Le API dello staff (`/api/staff/...`) diventano `/api/...`.
+**Perché:** lo ha chiesto Emilio. Il prezzo: un visitatore collegato al Wi-Fi della casa può anche ricalibrare la webcam, cambiare la password del Wi-Fi o spegnere la scheda. Per questo quelle azioni chiedono conferma.
+
+### D-27 — Allarme inseribile come un antifurto; webapp uniforme (4/10)
+**Scelta:**
+- **Allarme.** Si inserisce e si disinserisce dalla pagina della casa o dalla notifica rossa (`/api/commands/alarm`). Disinserito, le regole d'allarme non scattano e quelle in corso si spengono con le loro luci; reinserito, chi è già in un posto sorvegliato viene notato di nuovo. Lo stato resta dopo un riavvio.
+- **Webapp.** Ogni pagina comincia con titolo, una riga e l'azione principale; il menu Altro ha tre gruppi (la casa, messa a punto, stand). Le notifiche hanno un colore per tipo: rosso allarme, ambra avviso, grigio connessione, scheda bianca per le domande. Sulla piantina la stanza è rossa per un allarme e ambra per un avviso.
+
+**Perché:** richieste di Emilio, per poter spegnere l'allarme come si fa con un antifurto e per una webapp più pulita, in cui allarmi, avvisi e domande si distinguono a colpo d'occhio.

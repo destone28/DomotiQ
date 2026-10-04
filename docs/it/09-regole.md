@@ -111,11 +111,15 @@ I testi possono contenere questi campi tra graffe, riempiti a partire dall'event
 Una regola segnata come **È un allarme (resta attivo finché dura)**:
 
 - disegna le sue luci sul livello degli allarmi, sopra tutto tranne il lampeggio della lingua;
-- mostra una fascia rossa su tutti i telefoni e contorna di rosso la stanza sulla piantina;
+- mostra una notifica su tutti i telefoni: **rossa** (allarme) se la regola suona l'allarme o manda una notifica di tipo *allarme*, **ambra** (avviso) altrimenti; sulla piantina la stanza è rossa o ambra allo stesso modo;
 - viene registrata negli eventi come avviso;
-- dura quanto la situazione che l'ha fatta scattare: quando la persona esce dalla stanza, o il conteggio torna indietro, luci e fascia se ne vanno.
+- dura quanto la situazione che l'ha fatta scattare: quando la persona esce dalla stanza, o il conteggio torna indietro, luci e notifica se ne vanno.
 
 Questo si adatta a **resta in una stanza** e a **in una stanza sono più di / meno di**, le cui situazioni hanno una fine. Con qualsiasi altro evento (qualcuno entra in una stanza, un tasto, un orario) niente dice quando la situazione è finita, quindi l'allarme finisce da solo dopo 30 secondi.
+
+**Solo presenze certe.** Le regole d'allarme contano soltanto le presenze di cui la casa è sicura: un personaggio che conosce (confermato o riconosciuto bene), oppure una cosa sconosciuta che sta lì, ferma e ben visibile, da almeno 6 secondi. Una macchia appena nata, un riflesso o una statuina ancora in mano non fanno suonare niente; se la presenza diventa certa mentre è ancora nel posto sorvegliato, l'allarme scatta in quel momento. Le altre regole e le luci che seguono le persone lavorano su tutto ciò che la casa vede.
+
+**Inserito e disinserito.** L'allarme della casa si inserisce e si disinserisce come un antifurto, dal riquadro **Allarme** della pagina **Casa** o dal pulsante **Disinserisci** della notifica rossa (capitolo 6). Disinserito, nessuna regola d'allarme scatta e quelle in corso si spengono subito, con le loro luci; le altre regole vanno avanti. Reinserito, chi è già in un posto sorvegliato viene notato di nuovo, come se fosse appena entrato. Lo stato resta anche dopo un riavvio.
 
 ## Priorità e livelli delle luci
 
@@ -132,7 +136,7 @@ Ogni luce ha una pila di livelli. Il livello attivo più alto decide cosa mostra
 
 Durante una festa il microcontrollore gestisce da solo lo spettacolo di luci, a tempo con la musica; quando la festa finisce la casa ridisegna ogni luce a partire dai suoi livelli.
 
-**Luci che seguono le persone.** Una stanza con almeno una persona riceve una luce bianca calda al 60 % (del massimo della casa); si spegne 3 secondi dopo che l'ultima persona è uscita. Gli animali non accendono le luci. In garage conta anche l'auto: la luce resta accesa mentre l'auto arriva e finché non è parcheggiata da 10 secondi. Il giardino e il vialetto non hanno luce; la luce del locale tecnico è la matrice LED della UNO Q. Colore, luminosità e ritardo sono impostazioni dello staff, e **Comandi → Luci che seguono le persone** le spegne.
+**Luci che seguono le persone.** Una stanza con almeno una persona riceve una luce bianca calda al 60 % (del massimo della casa); si spegne 3 secondi dopo che l'ultima persona è uscita. Gli animali non accendono le luci. In garage conta anche l'auto: la luce resta accesa mentre l'auto arriva e finché non è parcheggiata da 10 secondi. Il giardino e il vialetto non hanno luce; la luce del locale tecnico è la matrice LED della UNO Q. Colore, luminosità e ritardo sono nelle impostazioni, e **Comandi → Luci che seguono le persone** le spegne.
 
 ## Scenari
 
@@ -170,8 +174,8 @@ Chi conta: le regole di partenza che riguardano le persone usano il tipo *person
 
 - **Chiunque**, dalla webapp. La prima volta la webapp chiede un soprannome facoltativo, che compare nel registro delle modifiche.
 - **Ogni modifica viene registrata** sulla scheda: ora, identificativo del telefono, soprannome, cosa è stato creato, modificato, attivato o disattivato, eliminato o ripristinato, con la regola prima e dopo. Si legge in **Eventi → Modifiche**.
-- **Le regole eliminate finiscono nel cestino** per 24 ore. Lo staff le ripristina da **Impostazioni → Cestino**.
-- **Regole di partenza** (staff, in **Impostazioni → Backup**) sostituisce tutte le regole con quelle con cui la casa è partita. Anche questo ripristino viene registrato.
-- Le regole viaggiano nello zip del **backup**, che lo staff può scaricare e ripristinare (vedi il [capitolo 6](06-webapp.md#impostazioni)).
+- **Le regole eliminate finiscono nel cestino** per 24 ore e si ripristinano da **Impostazioni → Cestino**.
+- **Regole di partenza** (in **Impostazioni → Backup**) sostituisce tutte le regole con quelle con cui la casa è partita. Anche questo ripristino viene registrato.
+- Le regole viaggiano nello zip del **backup**, che si può scaricare e ripristinare (vedi il [capitolo 6](06-webapp.md#impostazioni)).
 
 Avanti: [attribuzioni](10-attribuzioni.md).

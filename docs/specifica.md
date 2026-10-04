@@ -44,7 +44,7 @@ Aggiornamenti dopo il 7 ottobre (D3), giornata accelerata (D80), riconoscimento 
 | Riconoscimento | Metodo classico senza addestramento: differenza dalla casa vuota, colore, tracciamento (D47) |
 | Voce | Vosk per nomi e sì/no, motore libero per le frasi, Qwen2.5-0.5B per capire le frasi libere, Piper per parlare |
 | Rete | Hotspot a 2,4 GHz, niente captive portal, QR su cartello A4 |
-| Permessi | Chiunque: casa, diretta, comandi, regole, personaggi. Staff (PIN): calibrazione, dataset, diagnostica, impostazioni, ora (D93, D101) |
+| Permessi | Chiunque, tutto: casa, diretta, comandi, regole, personaggi, allarme, calibrazione, dataset, diagnostica, impostazioni, ora (D-26) |
 
 ---
 
@@ -90,7 +90,7 @@ Dentro: Buttons; lavalier nel tappo. Tasti visti dal visitatore, da sinistra: **
 Ogni Pixels a bianco pieno assorbe fino a 264 mA dal 3,3 V del Qwiic; il connettore regge 1 A e il regolatore della UNO Q (2 A) è condiviso con MCU e Wi-Fi. Il firmware:
 - stima la corrente di ogni fotogramma di luce (circa 11 mA per canale colore a luminosità piena, per LED);
 - riduce tutte le luci in proporzione se la stima supera **450 mA** in totale;
-- parte con una luminosità massima del **30 %**, regolabile dallo staff.
+- parte con una luminosità massima del **30 %**, regolabile dalle impostazioni.
 
 Non c'è un misuratore USB: i valori restano prudenti.
 
@@ -213,12 +213,12 @@ Lo stesso file serve alla piantina della webapp, alla visione (stanze, zone escl
 - Controlli bloccati dopo la calibrazione: esposizione manuale, bilanciamento del bianco fisso, guadagno fisso, antisfarfallio 50 Hz, compensazione del controluce spenta, nessun calo automatico dei fotogrammi al secondo. I valori si trovano misurando le immagini (la C270 in automatico non dice quelli che usa) e quello che la temperatura di colore non corregge lo corregge un guadagno fisso per canale. Si riapplicano ogni 60 s e dopo ogni riconnessione della camera. Finché non sono regolati la casa non riconosce niente. Se l'immagine resta per 5 s molto più buia o più chiara della casa vuota (meno di 0,55 o più di 1,8 volte), senza mani e senza luci della casa appena cambiate, la camera si riregola da sola, al massimo una volta al minuto, senza toccare calibrazione, casa vuota e presenze (D-22).
 - Si scartano i fotogrammi vecchi nel buffer dopo ogni cambio di impostazioni.
 
-### 8.2 Calibrazione (staff)
+### 8.2 Calibrazione
 1. Casa senza personaggi e senza auto, arredi al loro posto.
 2. Quattro tocchi sugli angoli della base nell'immagine: omografia immagine → pavimento in mm.
 3. La webapp sovrappone stanze, porte, zone escluse e bagno all'immagine: si conferma o si ripete.
 4. Subito dopo gli angoli, "Regola la luce e salva la casa vuota": luce della camera e mediana di 20 fotogrammi, salvata come riferimento (circa 15 s, con un indicatore di avanzamento nella webapp). Si ripete quando cambia molto la luce della sala; "Salva solo la casa vuota" dopo aver spostato un arredo.
-5. Si analizza solo la base della casa; nelle immagini che lasciano la scheda tutto ciò che sta intorno è sfocato, e il bagno di serie (impostazione dello staff).
+5. Si analizza solo la base della casa; nelle immagini che lasciano la scheda tutto ciò che sta intorno è sfocato, e il bagno di serie (si può togliere dalle impostazioni).
 6. Se la camera viene urtata (i bordi fissi delle pareti non coincidono più), la diagnostica avvisa e chiede di ricalibrare.
 
 ### 8.3 Da immagine a oggetti
@@ -234,7 +234,9 @@ Lo stesso file serve alla piantina della webapp, alla visione (stanze, zone escl
 - Abbinamento fra un'immagine e la successiva con il metodo ungherese, su una distanza che combina posizione, colore e dimensione.
 - **Trasporto a mano (D41)**: quando un personaggio sparisce sotto una mano, la traccia passa "in mano"; quando riappare vicino alla mano (o dove la mano lo lascia) riprende la stessa identità. Così due personaggi dello stesso colore restano distinti.
 - **Incertezza (D52)**: se due candidati sono plausibili (due uguali spostati insieme, uno riapparso lontano, all'accensione) la traccia diventa "incerta". La casa chiede conferma sulla webapp e, se la loquacità lo permette, a voce: "In cucina c'è Marco o Leo?". Senza risposta entro 60 s tiene l'ipotesi migliore, segnata come incerta.
-- La galleria di colore di ogni identità si aggiorna lentamente quando il riconoscimento è sicuro, e subito quando qualcuno dice chi è un personaggio.
+- La galleria di colore di ogni identità si aggiorna lentamente quando il riconoscimento è sicuro, e subito quando qualcuno dice chi è un personaggio, ma solo da una macchia che le somiglia da vicino. Le pose devono avere i colori del personaggio, più che di chiunque altro: quelle imparate sulla macchia sbagliata si dimenticano (D-25).
+- **I nomi si muovono solo con le mani (D-25)**: senza una mano recente un personaggio con un nome lo tiene finché gli somiglia, e un nome non va mai a una macchia lontana dall'ultimo posto del personaggio se nessuna mano è passata di lì.
+- **Tutti e due (D-25)**: due statuine a contatto sono una sola macchia; alla risposta "tutti e due" (o con due nomi) la casa le segna presenti entrambe, una nascosta dietro l'altra.
 - **Riconoscimento largo**: un personaggio sdraiato o sopra un arredo è riconosciuto anche a distanza di colore fino a 0,45 se il secondo candidato è più lontano di almeno 0,15, dopo 4 immagini concordi. Una statuina su cui la mano è solo passata ritrova la sua traccia; una posata contro un'altra resta nascosta dietro di lei.
 - **Nuovo arrivato (D-20, D-21)**: per ogni cosa che la casa è sicura di non riconoscere, la domanda parte subito, a voce e sui telefoni, con quello che le sembra ("vedo una persona nuova, giusto?"). A una persona si chiede il nome; per animali, auto e oggetti si propongono i registrati dello stesso tipo. Ogni risposta libera viene capita (nome, tipo, sì/no, "non c'è nessuno", non lo so, comandi); un nome già presente e visibile in casa vuol dire che il nuovo arrivato non c'era. Vale la prima risposta.
 - Stanza del punto d'appoggio con isteresi di 15 mm sulle porte, così chi sta sulla soglia non "salta" fra due stanze.
@@ -255,7 +257,7 @@ Il riconoscimento non dipende dal modello dell'auto né dai colori scelti, ma se
 - **Bagno sfocato** su ogni immagine che esce dalla scheda: diretta, istantanee, esportazioni. Si sfoca l'impronta del bagno a quota pavimento e a quota delle pareti, più un margine.
 - Sovrapposizioni attivabili sul telefono: nomi, stanze.
 
-### 8.8 Dataset e sequenze (staff)
+### 8.8 Dataset e sequenze
 - Cattura di fotogrammi singoli o a raffica, etichette automatiche (dalla differenza e dal tracciamento), correzione a mano, esportazione zip (COCO e YOLO).
 - Registrazione di sequenze per i test: fotogrammi JPEG a bassa risoluzione più le rilevazioni. Nel repository solo versioni ridotte.
 
@@ -291,7 +293,7 @@ Nome, alias per la pronuncia inglese (facoltativo), categoria (persona, cane, ga
 "Aggiungi un personaggio" → "Come si chiama?" → "In che stanza l'hai messo?". Se nella stanza ci sono più sconosciuti chiede quale per colore ("quello rosso o quello blu?"), oppure indica di toccarlo sulla webapp.
 
 ### 9.3 Modifica e cancellazione
-Chiunque può rinominare o cancellare. Le cancellazioni vanno in un cestino per 24 ore, da cui lo staff ripristina. Ogni modifica finisce nel registro (§11.5).
+Chiunque può rinominare o cancellare. Le cancellazioni vanno in un cestino per 24 ore, da cui chiunque ripristina dalle impostazioni. Ogni modifica finisce nel registro (§11.5).
 
 ---
 
@@ -325,7 +327,7 @@ La registrazione di un nome controlla che Vosk lo conosca in entrambe le lingue;
 
 Intenti: dov'è X, chi c'è in una stanza, quante persone, dov'è l'auto, temperatura, umidità, che ore sono, imposta l'ora, luce accesa/spenta/colore per stanza o tutte, scenario, party, grigliata, riassunto della casa, cosa sai fare, lingua, loquacità, volume, aggiungi personaggio, sì/no/annulla, una storia, cosa ha fatto X oggi, ricorda che X…, cosa sai di X, ricordi e domande libere sulla vita di casa.
 
-**Storie e vita della casa (D-19).** Storie, ricordi e risposte sulla vita di casa (bollette, assicurazioni, compleanni, feste passate, spesa, faccende, animali, auto, vacanze) si generano combinando i pezzi di `data/stories.json`, scritti a mano in italiano e in inglese e compatibili con qualunque nome. Ogni personaggio riceve dal database lavoro, carattere, passione e mania, che restano fino al riavvio; le informazioni date dallo staff (webapp o "ricorda che…") vengono prima. Le storie su uno stesso personaggio non si ripetono finché ci sono pezzi nuovi; una risposta inventata resta la stessa, nelle due lingue, fino al riavvio. Qui la casa inventa di proposito: il punto 3 vale per i comandi e per le domande sullo stato reale della casa.
+**Storie e vita della casa (D-19).** Storie, ricordi e risposte sulla vita di casa (bollette, assicurazioni, compleanni, feste passate, spesa, faccende, animali, auto, vacanze) si generano combinando i pezzi di `data/stories.json`, scritti a mano in italiano e in inglese e compatibili con qualunque nome. Ogni personaggio riceve dal database lavoro, carattere, passione e mania, che restano fino al riavvio; le informazioni date alla casa (webapp o "ricorda che…") vengono prima. Le storie su uno stesso personaggio non si ripetono finché ci sono pezzi nuovi; una risposta inventata resta la stessa, nelle due lingue, fino al riavvio. Qui la casa inventa di proposito: il punto 3 vale per i comandi e per le domande sullo stato reale della casa.
 
 ### 10.5 Sintesi
 Piper (`piper1-gpl`, GPL-3.0) **come programma separato**: un processo per lingua, sempre caricato, che riceve una frase per riga e restituisce audio grezzo. Il codice di DomotiQ resta MIT perché non incorpora Piper. Voci: `it_IT-serena-medium` (CC BY 4.0) ed `en_US-ljspeech-medium` (pubblico dominio). Le frasi fisse si sintetizzano all'avvio e restano in memoria.
@@ -383,7 +385,7 @@ luci (stanza o tutte, colore, effetto, luminosità, durata), suono, frase (con s
 ### 11.5 Chi le modifica
 - Chiunque dalla webapp (D82, D93). Ogni telefono ha un identificativo automatico; alla prima modifica la webapp chiede un soprannome facoltativo.
 - Registro sulla scheda: data e ora, telefono, soprannome, cosa, prima e dopo. Visibile in "Eventi → Modifiche".
-- Cestino di 24 ore, ripristino dallo staff.
+- Cestino di 24 ore, ripristino dalle impostazioni.
 - Esportazione e importazione in JSON.
 
 ### 11.6 Regole di partenza
@@ -402,6 +404,8 @@ luci (stanza o tutte, colore, effetto, luminosità, durata), suono, frase (con s
 
 ### 11.7 Precedenza
 Allarmi e vincoli → party → scenario → regole → luci che seguono. Il livello più alto attivo decide le luci di una stanza; quando finisce, torna quello sotto.
+
+Le regole d'allarme contano solo le presenze certe: un personaggio noto (confermato o riconosciuto bene) o una cosa sconosciuta ferma e ben visibile da almeno 6 s (D-25). L'allarme si inserisce e si disinserisce come un antifurto: disinserito, le regole d'allarme non scattano e quelle in corso si spengono; reinserito, chi è già in un posto sorvegliato viene notato di nuovo (D-27). Notifica rossa per le regole che suonano l'allarme o mandano una notifica di tipo allarme, ambra per le altre.
 
 ### 11.8 Scenari
 Normale (luci che seguono), Cinema (soggiorno blu tenue, resto spento), Relax (luci calde tenui dove c'è gente), Notte (tutto spento), Via (tutto spento). Si scelgono dalla webapp o a voce; la casa ne dice il nome.
@@ -439,7 +443,7 @@ La scheda non ha batteria per l'orologio. In ordine:
 1. NTP quando la scheda ha internet (sviluppo);
 2. il primo telefono che apre la webapp dopo l'avvio invia la sua ora (solo finché la casa non la conosce: un telefono con l'orologio sbagliato non deve spostarla a tutti);
 3. a voce: "Sono le 15 e 30";
-4. lo staff la corregge nelle impostazioni.
+4. la si corregge nelle impostazioni.
 
 Se dopo 2 minuti dall'avvio l'ora è ancora sconosciuta, la casa lo chiede una volta (salvo modalità silenziosa): "Non so che ore sono: che ore sono adesso?", e ascolta la risposta senza tasto. Fuso Europe/Rome.
 
@@ -457,31 +461,31 @@ Se dopo 2 minuti dall'avvio l'ora è ancora sconosciuta, la casa lo chiede una v
 - Tema chiaro e scuro automatici, verde acqua con accento arancione, grandi aree di tocco, uso a una mano.
 
 ### 15.2 Ruoli
-- **Chiunque**: casa virtuale, diretta, comandi, eventi, regole, identità, simulazione.
-- **Staff** (PIN di 4 cifre scelto all'installazione, uguale nelle due case; blocco di un minuto dopo 5 errori; valido 12 ore sul telefono): calibrazione, dataset, diagnostica, impostazioni (ora compresa), ripristino dal cestino.
+- **Chiunque** può fare tutto (D-26): casa virtuale, diretta, comandi, eventi, regole, identità, simulazione, allarme, calibrazione, dataset, diagnostica, impostazioni (ora compresa), ripristino dal cestino. Le azioni che non si annullano chiedono conferma; ogni modifica va nel registro.
 
 ### 15.3 Schermate
-Barra in basso: **Casa**, **Diretta**, **Comandi**, **Eventi**, **Altro**.
+Barra in basso: **Casa**, **Diretta**, **Comandi**, **Personaggi**, **Altro**. Ogni pagina comincia con titolo, una riga che dice a cosa serve e l'azione principale a destra del titolo. **Altro** è diviso in tre gruppi: *La casa* (Eventi, Regole, Simulazione), *Messa a punto* (Calibrazione, Diagnostica, Impostazioni), *Per lo stand* (Cartello, Tabellone, Informazioni), più il soprannome.
 
-1. **Casa**: piantina 2D fedele al CAD. Mostra:
+Notifiche in cima, un colore per tipo: rosso un allarme (con **Disinserisci**), ambra un avviso, grigio la connessione persa, scheda bianca con bordo verde acqua una domanda della casa (con **Tutti e due** quando i nomi proposti sono più di uno).
+
+1. **Casa**: riquadro dell'allarme (inserito, disinserito, in corso; D-27), piantina 2D fedele al CAD, stato della casa, chi c'è. La piantina mostra:
    - stanze, pareti, porte, arredi;
    - luci col loro colore, temperature e umidità, conteggi per stanza;
    - personaggi con sagoma della categoria nel loro colore e nome, e con il segno "incerto" quando serve;
-   - auto, griglia accesa, allarmi (stanza bordata di rosso);
-   - richieste di conferma in un riquadro in alto.
+   - auto, griglia accesa, allarmi (stanza rossa) e avvisi (stanza ambra).
 2. **Diretta**: immagine della webcam col bagno sfocato; nomi e stanze sovrapponibili.
 3. **Regole**: elenco con interruttori; editor Quando/Se/Allora a moduli; scenari; cestino.
 4. **Identità**: elenco con foto o sagoma; "Aggiungi" guidato (§9.2); rinomina, cancella.
 5. **Eventi**: eventi e notifiche, frasi dette dalla casa, registro delle modifiche, storico per identità.
 6. **Comandi**: party, grigliata, scenari, luci per stanza (colore ed effetto), lingua, loquacità, volume.
-7. **Calibrazione** (staff): quattro angoli, verifica delle sovrapposizioni, casa vuota, "regola di nuovo".
+7. **Calibrazione**: quattro angoli, verifica delle sovrapposizioni, casa vuota, "regola di nuovo".
 8. **Simulazione**: personaggi virtuali da trascinare, sensori virtuali (temperature, umidità, tasti), interruttore per silenziare luci e voce vere. Sul PC gira senza alcun hardware.
-9. **Diagnostica** (staff):
+9. **Diagnostica**:
    - Modulino per canale dell'Hub e scansione I2C;
    - webcam, audio (suono di prova, registrazione di 3 s), Wi-Fi e client collegati;
-   - CPU, memoria, temperatura, disco;
+   - CPU, memoria, temperatura, disco; tempo di un'immagine della visione e sue fasi;
    - registri da scaricare.
-10. **Impostazioni** (staff): nome della casa, lingua della voce, volumi, soglie, luminosità massima, rete, PIN, ora, backup e ripristino della configurazione, riavvio e spegnimento.
+10. **Impostazioni**: nome della casa, lingua della voce, volumi, soglie, luminosità massima, rete, ora, backup e ripristino della configurazione, riavvio e spegnimento.
 
 Pagine in più:
 - **Informazioni**: cos'è il progetto, crediti, licenze delle voci e dei modelli.
@@ -496,11 +500,10 @@ Pagine in più:
 | `GET /api/stream` | diretta MJPEG |
 | `GET/POST/PUT/DELETE /api/rules` | regole |
 | `GET/POST/PUT/DELETE /api/identities` | identità; `POST /api/identities/{id}/photo` |
-| `POST /api/commands/{nome}` | party, grigliata, luci, scenario, lingua, volume, loquacità |
-| `POST /api/confirm/{id}` | risposta a una richiesta di conferma |
+| `POST /api/commands/{nome}` | party, grigliata, luci, scenario, lingua, volume, loquacità, allarme |
+| `POST /api/confirm/{id}` | risposta a una richiesta di conferma (anche "tutti e due" e "non c'è niente") |
 | `POST /api/time` | ora dal telefono |
-| `POST /api/staff/login` | PIN → gettone di sessione |
-| `/api/staff/...` | calibrazione, dataset, diagnostica, impostazioni, backup |
+| `/api/settings`, `/api/vision/...`, `/api/diagnostics`, `/api/backup.zip`, `/api/trash`, `/api/system/...` | impostazioni, calibrazione, dataset, diagnostica, backup, cestino, sistema |
 | `GET /api/events` | eventi e registro |
 
 ---
@@ -535,7 +538,7 @@ Sulla scheda, in `/home/arduino/domotiq`:
 | `var/calibration/` | omografia, casa vuota, impostazioni della camera |
 | `var/photos/` | foto delle identità |
 | `var/domotiq.db` | SQLite: eventi (7 giorni), posizioni (24 ore), registro delle modifiche |
-| `var/dataset/`, `var/recordings/` | catture dello staff |
+| `var/dataset/`, `var/recordings/` | catture e sequenze dalla pagina di calibrazione |
 
 Backup e ripristino: un file zip dalle impostazioni, con scelta di cosa copiare; la calibrazione non si copia mai fra case (D110). Le due case sono indipendenti anche nei personaggi (D109).
 
@@ -552,7 +555,7 @@ Backup e ripristino: un file zip dalle impostazioni, con scelta di cosa copiare;
    - compila llama.cpp;
    - compila e carica il firmware;
    - `arduino-app-cli properties set default none`, così nessuna app App Lab sostituisce il firmware;
-   - configura l'hotspot e genera password del Wi-Fi e PIN;
+   - configura l'hotspot e genera la password del Wi-Fi;
    - installa i servizi;
    - blocca i pacchetti audio e disattiva gli aggiornamenti automatici.
 3. Riavvio: la casa parte da sola.
@@ -573,7 +576,7 @@ Confinamento come Amelie (`ProtectSystem`, `NoNewPrivileges`, `PrivateTmp`).
 
 ### 18.5 Prima della consegna
 - sudo di nuovo con password; SSH solo con chiave;
-- password e PIN annotati nella guida rapida per lo stand, non nel repository.
+- password del Wi-Fi annotata nella guida rapida per lo stand, non nel repository.
 
 ---
 

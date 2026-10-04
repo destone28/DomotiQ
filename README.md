@@ -45,7 +45,7 @@ The totem has three buttons: talk (hold it down and speak), intercom and languag
 
 # The web app
 
-Phones join the hotspot of the house (DomotiQ-Casa1 or DomotiQ-Casa2) from the QR code on the A4 sign and open the house page. Everyone can see the house, watch the live view, give commands, read events, edit rules and register characters. Staff tools (calibration, dataset capture, diagnostics, settings) need a PIN.
+Phones join the hotspot of the house (DomotiQ-Casa1 or DomotiQ-Casa2) from the QR code on the A4 sign and open the house page. Everyone can do everything, with no PIN: see the house, watch the live view, give commands, read events, edit rules, register characters, switch the alarm on and off, calibrate the camera, read the diagnostics and change the settings. Every change stays in the log and deleted things in the bin for 24 hours.
 
 ![Home, live view, characters and rules on a phone](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/screens/en/home.png)
 

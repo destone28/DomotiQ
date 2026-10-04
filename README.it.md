@@ -45,7 +45,7 @@ Il totem ha tre tasti: parla (si tiene premuto mentre si parla), citofono e ling
 
 # La webapp
 
-I telefoni entrano nell'hotspot della casa (DomotiQ-Casa1 o DomotiQ-Casa2) dal QR sul cartello A4 e aprono la pagina della casa. Tutti possono vedere la casa, guardare la diretta, dare comandi, leggere gli eventi, modificare le regole e registrare personaggi. Gli strumenti dello staff (calibrazione, raccolta del dataset, diagnostica, impostazioni) chiedono un PIN.
+I telefoni entrano nell'hotspot della casa (DomotiQ-Casa1 o DomotiQ-Casa2) dal QR sul cartello A4 e aprono la pagina della casa. Tutti possono fare tutto, senza PIN: vedere la casa, guardare la diretta, dare comandi, leggere gli eventi, modificare le regole, registrare personaggi, inserire e disinserire l'allarme, calibrare la webcam, leggere la diagnostica e cambiare le impostazioni. Ogni modifica resta nel registro e le cose eliminate nel cestino per 24 ore.
 
 ![Casa, diretta, personaggi e regole sul telefono](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/screens/it/home.png)
 

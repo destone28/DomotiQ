@@ -111,11 +111,15 @@ The texts can contain these fields in braces, filled in from the event:
 A rule marked **It is an alarm (stays on while it lasts)**:
 
 - draws its lights on the alarm layer, above everything except the language flash;
-- shows a red banner on every phone and outlines the room in red on the plan;
+- shows a notice on every phone: **red** (alarm) if the rule sounds the alarm or sends a notification of kind *alarm*, **amber** (warning) otherwise; on the plan the room is red or amber in the same way;
 - is recorded as a warning in the events;
-- lasts as long as the situation that fired it: when the person leaves the room, or the count goes back, the lights and the banner go away.
+- lasts as long as the situation that fired it: when the person leaves the room, or the count goes back, the lights and the notice go away.
 
 This fits **stays in a room** and **a room has more than / fewer than**, whose situations have an end. With any other trigger (someone enters a room, a button, a time of day) nothing says when the situation is over, so the alarm ends by itself after 30 seconds.
+
+**Only sure presences.** The alarm rules count only the presences the house is sure of: a character it knows (confirmed or recognized well), or something unknown that has stood there, still and clearly visible, for at least 6 seconds. A blob just born, a reflection or a figurine still in a hand set nothing off; if the presence becomes sure while it is still in the watched place, the alarm fires then. The other rules and the follow-me lights work on everything the house sees.
+
+**On and off.** The alarm of the house is switched on and off like a burglar alarm, from the **Alarm** box on the **House** page or with the **Switch off** button of the red notice (chapter 6). Off, no alarm rule fires and those going off stop at once, with their lights; the other rules go on. Switched on again, whoever is already in a watched place is noticed again, as if they had just come in. The state survives a restart.
 
 ## Priorities and light layers
 
@@ -132,7 +136,7 @@ Each light has a stack of layers. The highest active layer decides what the ligh
 
 During a party the microcontroller runs the light show by itself, in time with the music; when the party ends the house redraws every light from its layers.
 
-**Follow-me lights.** A room with at least one person gets a warm white light at 60 % (of the house maximum); it goes off 3 seconds after the last person leaves. Animals do not turn lights on. In the garage the car counts too: the light stays on while the car arrives and until it has been parked for 10 seconds. The garden and the driveway have no light; the light of the utility room is the LED matrix of the UNO Q. Colour, brightness and delay are staff settings, and **Controls → Lights follow people** switches them off.
+**Follow-me lights.** A room with at least one person gets a warm white light at 60 % (of the house maximum); it goes off 3 seconds after the last person leaves. Animals do not turn lights on. In the garage the car counts too: the light stays on while the car arrives and until it has been parked for 10 seconds. The garden and the driveway have no light; the light of the utility room is the LED matrix of the UNO Q. Colour, brightness and delay are in the settings, and **Controls → Lights follow people** switches them off.
 
 ## Scenes
 
@@ -170,8 +174,8 @@ Who counts: the default rules about people use the kind *person*, so pets never 
 
 - **Anyone**, from the web app. The first time, the web app asks for an optional nickname, shown in the change log.
 - **Every change is logged** on the board: time, phone identifier, nickname, what was created, changed, switched, deleted or restored, with the rule before and after. Read it in **Events → Changes**.
-- **Deleted rules go to the bin** for 24 hours. The staff restores them from **Settings → Bin**.
-- **Default rules** (staff, in **Settings → Backup**) replaces all rules with the ones the house started with. The reset is logged too.
-- Rules travel with the **backup** zip, which the staff can download and restore (see [chapter 6](06-web-app.md#settings)).
+- **Deleted rules go to the bin** for 24 hours and are restored from **Settings → Bin**.
+- **Default rules** (in **Settings → Backup**) replaces all rules with the ones the house started with. The reset is logged too.
+- Rules travel with the **backup** zip, which can be downloaded and restored (see [chapter 6](06-web-app.md#settings)).
 
 Next: [attributions](10-attributions.md).

@@ -2,7 +2,7 @@
 
 Go through this chapter on every house after assembly and wiring, and again before each fair. Each step says what to do and what you should see. When something does not match, the [troubleshooting](11-troubleshooting.md) chapter has the likely causes.
 
-You need the staff PIN printed by the installer, and a phone or PC connected to the same network as the board: the lab Wi-Fi (`http://casa1.local/`) or the hotspot of the house (`http://10.42.1.1/`).
+You need a phone or PC connected to the same network as the board: the lab Wi-Fi (`http://casa1.local/`) or the hotspot of the house (`http://10.42.1.1/`).
 
 ## 1. Power on
 
@@ -18,9 +18,9 @@ systemctl status domotiq domotiq-tts domotiq-llm --no-pager
 journalctl -u domotiq -f
 ```
 
-## 2. Open the web app and log in as staff
+## 2. Open the web app
 
-Open the address of the house in a browser. At the top right, next to the house name, three dots show the state of the **Microcontroller**, the **Webcam** and the **Audio** (green = working). Go to **More**, type the PIN under *Staff PIN* and tap **Staff login**. The staff pages (**Calibration**, **Diagnostics**, **Settings**) are now open on this phone for 12 hours.
+Open the address of the house in a browser. At the top right, next to the house name, three dots show the state of the **Microcontroller**, the **Webcam** and the **Audio** (green = working). Every page is open to anybody: **Calibration**, **Diagnostics** and **Settings** are in **More → Setting up**.
 
 ## 3. Microcontroller and modules
 
@@ -90,7 +90,7 @@ Later:
 
 ## 10. The first figurine
 
-1. **More → Characters and objects → + Add.** Type a name, optionally take a photo, tap **Next**.
+1. **Characters → + Add.** Type a name, optionally take a photo, tap **Next**.
 2. Put the figurine on a free spot of the house. The house finds it and asks what it is, proposing a kind; tap the right one and **Save**.
 3. On the **House** screen the figurine appears with its name. Move it into another room: that room's light turns on, and turns off 3 seconds after the room is empty.
 4. Pick it up with your hand and put it down in another room: it keeps its name.
@@ -124,6 +124,6 @@ The UNO Q has no battery for its clock and there is no internet at a fair. After
 
 ## Testing without figurines
 
-**More → Simulation** (switching it on needs the staff PIN) replaces the webcam with virtual characters you drag on the plan, plus virtual sensors and buttons. Lights, voice and rules react as they do to real figurines. The switch *Real lights and voice muted* keeps the real house quiet while you try things. Remember to switch the simulation off: while it is on, the house ignores the webcam.
+**More → Simulation** replaces the webcam with virtual characters you drag on the plan, plus virtual sensors and buttons. Lights, voice and rules react as they do to real figurines. The switch *Real lights and voice muted* keeps the real house quiet while you try things. Remember to switch the simulation off: while it is on, the house ignores the webcam.
 
 Next: [the web app](06-web-app.md).

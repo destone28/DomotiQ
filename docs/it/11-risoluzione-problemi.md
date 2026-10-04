@@ -2,7 +2,7 @@
 
 Ogni voce riporta il sintomo, la causa probabile e la soluzione. Due strumenti aiutano in quasi tutti i casi:
 
-- **Altro → Diagnostica** nella webapp (staff): lo stato di scheda, microcontrollore, moduli, webcam, audio, voce e orologio.
+- **Altro → Diagnostica** nella webapp: lo stato di scheda, microcontrollore, moduli, webcam, audio, voce e orologio.
 - Il log dell'applicazione, via SSH:
 
   ```bash
@@ -149,7 +149,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### La diretta mostra un disegno con la scritta *SIMULAZIONE - SIMULATION*
 **Causa.** La simulazione è attiva: la casa ignora la webcam.
 
-**Soluzione.** **Altro → Simulazione** (staff) e spegnila.
+**Soluzione.** **Altro → Simulazione** e spegnila.
 
 ### Non viene riconosciuto niente, oppure la *Diagnostica* dice *da calibrare*
 **Causa.** Mancano gli angoli o la casa vuota.
@@ -267,29 +267,17 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 
 **Soluzione.** Rispondi subito a voce, senza premere niente ("sono le tre e mezza"), apri la webapp da un telefono (imposta l'ora), oppure usa **Impostazioni → Usa l'ora di questo telefono** ([capitolo 8](08-voce.md#impostare-lora-a-voce)). In **Diagnostica**, alla riga *Orologio*, si vede da dove arriva l'ora. Le regole con *è un certo orario* hanno bisogno di un'ora nota.
 
-## Webapp e staff
+## Webapp e allarme
 
-### *Troppi tentativi: aspetta un minuto*
-**Causa.** Cinque PIN sbagliati.
+### Un allarme suona e non c'è nessuno
+**Causa.** Le regole d'allarme contano solo presenze certe: un personaggio che la casa conosce, o una cosa ferma e ben visibile da almeno 6 secondi. Se suona lo stesso, la casa vede davvero qualcosa in quel punto: un LED, un riflesso, un modulo appoggiato.
 
-**Soluzione.** Aspetta un minuto.
+**Soluzione.** **Disinserisci** l'allarme dalla notifica rossa o dal riquadro della pagina **Casa**: le regole d'allarme stanno zitte finché non lo reinserisci. Poi rispondi "non c'è nessuno" alla domanda della casa, se c'è, e cerca cosa c'è in quel punto (in **Diretta**, con **Nomi e stanze**); se è un oggetto fisso, toglilo o fissalo e salva la casa vuota.
 
-### Le pagine dello staff mi rimandano ad *Altro*
-**Causa.** L'accesso staff è scaduto (12 ore) oppure l'applicazione si è riavviata.
+### L'allarme non suona più
+**Causa.** È disinserito: il riquadro **Allarme** nella pagina **Casa** dice *Disinserito*.
 
-**Soluzione.** Entra di nuovo.
-
-### Il PIN dello staff è perso
-**Soluzione.** Con internet sulla scheda, `cd ~/domotiq && bash scripts/install.sh --pin 1234` imposta un nuovo PIN (il resto dell'installazione viene saltato dove è già fatto). Senza internet, ferma l'applicazione, imposta il PIN con lo stesso codice che usa l'installer e riavviala:
-
-```bash
-cd ~/domotiq
-sudo systemctl stop domotiq
-PYTHONPATH=src ./venv/bin/python -c "from domotiq.settings import Paths, Settings; Settings(Paths()).set_pin('1234')"
-sudo systemctl start domotiq
-```
-
-Tieni lo stesso PIN in tutte e due le case.
+**Soluzione.** Tocca **Inserisci**.
 
 ## Regole e personaggi
 
@@ -299,7 +287,7 @@ Tieni lo stesso PIN in tutte e due le case.
 **Soluzione.** Controlla la regola nell'editor, e in **Eventi** guarda cosa ha visto la casa.
 
 ### Una regola o un personaggio è stato eliminato per sbaglio
-**Soluzione.** Staff: **Impostazioni → Cestino → Ripristina**, entro 24 ore. Un personaggio ripristinato il cui nome è stato preso nel frattempo riceve " 2" dopo il nome. **Impostazioni → Regole di partenza** riporta le regole originali (sostituisce tutte quelle attuali).
+**Soluzione.** **Impostazioni → Cestino → Ripristina**, entro 24 ore. Un personaggio ripristinato il cui nome è stato preso nel frattempo riceve " 2" dopo il nome. **Impostazioni → Regole di partenza** riporta le regole originali (sostituisce tutte quelle attuali).
 
 ### *Il nome Marco è già usato*
 **Causa.** I nomi sono unici nella casa, senza distinzione tra maiuscole e minuscole, pronunce inglesi comprese.

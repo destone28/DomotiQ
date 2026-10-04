@@ -28,7 +28,6 @@ Lo script chiede la password di `sudo` una sola volta (e solo se `sudo` la richi
 |---|---|
 | `--house N` | Numero della casa, `1` o `2`. Imposta il nome (`casaN`), la rete Wi-Fi (`DomotiQ-CasaN`), il canale e l'indirizzo (`10.42.N.1`). Serve la prima volta; le esecuzioni successive lo leggono dalle impostazioni salvate. |
 | `--hotspot MODE` | `now`, `boot` o `no`. Predefinito `boot`: l'hotspot viene configurato e parte al prossimo avvio. Vedi [L'hotspot](#lhotspot). |
-| `--pin NNNN` | PIN dello staff per la webapp. Senza questa opzione, la prima volta l'installer sceglie un PIN casuale di 4 cifre e lo stampa alla fine. Se dai `--pin` in un'esecuzione successiva, il PIN viene sostituito. |
 | `--no-llm` | Salta llama.cpp e il modello linguistico. La casa capisce allora solo le frasi del suo analizzatore interno. |
 | `--skip-firmware` | Non ricompila e non ricarica il firmware del microcontrollore. |
 
@@ -43,22 +42,21 @@ Lo script stampa dei passi numerati. Quando un'opzione fa saltare un passo, i nu
 5. **Modelli.** Vengono scaricati in `models/` e verificati con le somme SHA-256 di `scripts/models.sha256`: le voci Piper `it_IT-serena-medium` (a una revisione fissa) e `en_US-ljspeech-medium`, i modelli Vosk `vosk-model-small-it-0.22` e `vosk-model-small-en-us-0.15`, YOLOX-Nano (`yolox_nano.onnx`) e, se non c'è `--no-llm`, `qwen2.5-0.5b-instruct-q4_k_m.gguf`. Un file già presente con il checksum giusto non viene riscaricato.
 6. **llama.cpp.** Scarica llama.cpp al commit provato sulla UNO Q (`74a7c897`) e compila `llama-server` (una ventina di minuti). Il passo viene saltato quando lo stesso commit è già compilato, o con `--no-llm`.
 7. **Firmware del microcontrollore.** Installa il core `arduino:zephyr` 1.0.0 e la libreria `Arduino_RouterBridge` 0.4.3, compila `firmware/domotiq_mcu` con la modalità di avvio "Immediate" (`wait_linux_boot=no`) e lo carica con il `remoteocd` locale, che non chiede password. Viene ricaricato solo quando cambiano lo sketch, il core, la libreria o le opzioni della scheda. Alla fine `arduino-app-cli properties set default none` fa sì che nessuna app di App Lab sostituisca il firmware all'avvio. Per fare lo stesso a mano, vedi `firmware/domotiq_mcu/README.md`.
-8. **Impostazioni della casa.** Imposta il nome host `casaN` e il fuso orario Europe/Rome; crea il PIN dello staff (se non esiste ancora) e la password del Wi-Fi (se non esiste ancora); scrive numero della casa, nomi e rete in `var/config/settings.json`.
+8. **Impostazioni della casa.** Imposta il nome host `casaN` e il fuso orario Europe/Rome; crea la password del Wi-Fi (se non esiste ancora); scrive numero della casa, nomi e rete in `var/config/settings.json`.
 9. **Servizi.** Installa `domotiq`, `domotiq-tts` e `domotiq-llm` in `/etc/systemd/system`, una regola `sudoers` e un limite per journald (200 MB, 7 giorni di log). Disattiva i timer automatici di `apt` e blocca `alsa-ucm-conf`, `libasound2t64` e il kernel in uso: in fiera niente deve aggiornare il sistema.
 10. **Hotspot.** Crea o aggiorna il profilo dell'hotspot, poi applica `--hotspot` (`now`, `boot` o `no`).
 11. **Avvio.** Riavvia i servizi e stampa un riepilogo.
 
-Il riepilogo è simile a questo (password e PIN vengono scelti a caso per ogni casa):
+Il riepilogo è simile a questo (la password viene scelta a caso per ogni casa):
 
 ```
 DomotiQ casa1 is installed.
   Wi-Fi:    DomotiQ-Casa1   password: abcd-efgh-jkmn
   Address:  http://10.42.1.1/   (on the hotspot)   http://casa1.local/
-  Staff PIN: 1234   (write it down: it is not shown again)
   Sign to print: http://10.42.1.1/sign
 ```
 
-La password del Wi-Fi è fatta di tre gruppi di quattro caratteri, presi da un alfabeto senza i caratteri che si confondono facilmente: `i`, `l`, `o`, `0` e `1`. Scrivi la password e il PIN sulla copia stampata della [guida rapida per lo staff](guida-rapida-staff.md); la riga del PIN compare solo quando l'installer ha appena scelto un PIN nuovo.
+La password del Wi-Fi è fatta di tre gruppi di quattro caratteri, presi da un alfabeto senza i caratteri che si confondono facilmente: `i`, `l`, `o`, `0` e `1`. Scrivi la password sulla copia stampata della [guida rapida per lo staff dello stand](guida-rapida-staff.md).
 
 ## Dove si trovano le cose
 
@@ -74,7 +72,7 @@ Tutto sta dentro `/home/arduino/domotiq`:
 | `var/calibration/` | calibrazione della webcam, riferimento della casa vuota, impostazioni della webcam bloccate |
 | `var/photos/` | foto dei personaggi |
 | `var/domotiq.db` | SQLite: eventi (7 giorni), posizioni (24 ore), registro delle modifiche, cestino |
-| `var/dataset/`, `var/recordings/` | catture dello staff e sequenze registrate |
+| `var/dataset/`, `var/recordings/` | catture e sequenze registrate dalla pagina di calibrazione |
 | `var/firmware/` | l'ultima compilazione del firmware |
 
 `var/` è la memoria della casa. Non si copia mai da una casa all'altra ed è escluso dal repository.
@@ -97,7 +95,7 @@ journalctl -u domotiq -f                 # follow the application log
 sudo systemctl restart domotiq           # restart the application
 ```
 
-Anche le pagine dello staff della webapp possono riavviare l'applicazione, riavviare o spegnere la scheda (vedi il [capitolo 6](06-webapp.md#impostazioni)).
+Anche le impostazioni della webapp possono riavviare l'applicazione, riavviare o spegnere la scheda (vedi il [capitolo 6](06-webapp.md#impostazioni)).
 
 ## L'hotspot
 
@@ -155,15 +153,15 @@ Senza `--install`, una modifica al firmware viene copiata ma non caricata sul mi
 
 ## Installare la seconda casa
 
-La seconda casa si installa esattamente come la prima, con il suo numero. Il PIN dello staff è pensato per essere lo stesso nelle due case, quindi passa il PIN della casa 1:
+La seconda casa si installa esattamente come la prima, con il suo numero:
 
 ```bash
-cd ~/domotiq && bash scripts/install.sh --house 2 --pin 1234
+cd ~/domotiq && bash scripts/install.sh --house 2
 ```
 
 La casa 2 riceve il nome host `casa2`, la rete `DomotiQ-Casa2` sul canale 11 e l'indirizzo `10.42.2.1`, così le due case possono stare una accanto all'altra.
 
-Le due case sono indipendenti. La calibrazione della webcam appartiene a ciascuna casa e non si copia mai (un backup nemmeno la contiene), e i personaggi si registrano casa per casa. Regole e impostazioni si possono copiare con un backup preso dalle impostazioni dello staff della casa 1 (vedi il [capitolo 6](06-webapp.md#impostazioni)); un backup non porta mai con sé la rete, il nome della casa, il PIN o le impostazioni della webcam. Un ripristino dalla webapp sostituisce insieme regole, personaggi e impostazioni, quindi ripristina il backup sulla casa 2 prima di registrarne i personaggi.
+Le due case sono indipendenti. La calibrazione della webcam appartiene a ciascuna casa e non si copia mai (un backup nemmeno la contiene), e i personaggi si registrano casa per casa. Regole e impostazioni si possono copiare con un backup preso dalle impostazioni della casa 1 (vedi il [capitolo 6](06-webapp.md#impostazioni)); un backup non porta mai con sé la rete, il nome della casa o le impostazioni della webcam. Un ripristino dalla webapp sostituisce insieme regole, personaggi e impostazioni, quindi ripristina il backup sulla casa 2 prima di registrarne i personaggi.
 
 ## Prima che la casa lasci il laboratorio
 
@@ -176,16 +174,15 @@ Le due case sono indipendenti. La calibrazione della webcam appartiene a ciascun
 
    Elenca le chiavi che potranno ancora entrare e si rifiuta di proseguire se non ce n'è nessuna; `bash scripts/lockdown.sh --undo` riammette le password. `sudo` continua a chiedere la password dell'utente `arduino`, tranne per i pochi comandi che servono alla webapp (riavvio del servizio, riavvio, spegnimento, hotspot).
 3. Fai partire l'hotspot a ogni avvio (`bash scripts/hotspot.sh boot`, poi riavvia) e stampa il cartello da `/sign`.
-4. Scrivi la password del Wi-Fi e il PIN dello staff sulla copia della [guida rapida](guida-rapida-staff.md) che resta allo stand, mai nel repository.
+4. Scrivi la password del Wi-Fi sulla copia della [guida rapida](guida-rapida-staff.md) che resta allo stand, mai nel repository.
 
-Tutti e due si possono cambiare in qualsiasi momento da **Altro → Impostazioni** nella webapp (staff), oppure sulla scheda:
+La password si può cambiare in qualsiasi momento da **Altro → Impostazioni** nella webapp, oppure sulla scheda:
 
 ```bash
 cd ~/domotiq
-PYTHONPATH=src venv/bin/python -m domotiq.admin pin 4821
 PYTHONPATH=src venv/bin/python -m domotiq.admin wifi "una-password-nuova"
 ```
 
-Il comando riavvia la casa perché legga i valori nuovi (tutte le sessioni dello staff finiscono); una password del Wi-Fi nuova riavvia anche l'hotspot, se è acceso. Dalla webapp entrambi i cambi chiedono il PIN attuale: un telefono che ha soltanto una sessione dello staff non può farli.
+Il comando riavvia la casa perché legga il valore nuovo, e riavvia anche l'hotspot, se è acceso.
 
 Avanti: [stampa e montaggio](03-stampa-e-montaggio.md).

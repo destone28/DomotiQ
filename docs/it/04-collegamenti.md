@@ -73,7 +73,7 @@ Note:
 
 ### Il totem
 
-Il totem ospita il modulo **Buttons**; il microfono lavalier sta nel tappo. Visti dal visitatore, i tasti sono, da sinistra: **Parla**, **Citofono**, **Lingua**. I LED gialli del modulo Buttons sono accanto ai tasti, e il totem ha una finestrella per vederli. Se il modulo finisce montato al contrario non serve ricablarlo: basta attivare *Tasti montati al contrario* nelle impostazioni dello staff (vedi il [capitolo 6](06-webapp.md#impostazioni)).
+Il totem ospita il modulo **Buttons**; il microfono lavalier sta nel tappo. Visti dal visitatore, i tasti sono, da sinistra: **Parla**, **Citofono**, **Lingua**. I LED gialli del modulo Buttons sono accanto ai tasti, e il totem ha una finestrella per vederli. Se il modulo finisce montato al contrario non serve ricablarlo: basta attivare *Tasti montati al contrario* nelle impostazioni (vedi il [capitolo 6](06-webapp.md#impostazioni)).
 
 ## Alimentazione dei Pixels
 
@@ -83,7 +83,7 @@ Ogni Pixels, a piena luce bianca, può assorbire fino a 264 mA dalla linea a 3,3
 - quando la stima supera il **budget, 450 mA di serie**, riduce tutte le luci in proporzione;
 - in più, limita ogni luce a una **luminosità massima del 30 %** di serie.
 
-Entrambi i valori sono impostazioni dello staff (*Luminosità massima (%)* e *Limite di corrente dei Pixels (mA)*, vedi il [capitolo 6](06-webapp.md#impostazioni)), e la casa li manda al firmware ogni volta che cambiano. I valori di serie sono volutamente prudenti, perché l'assorbimento reale non è stato misurato con un amperometro. Prima di alzarli, tieni tutte le luci su bianco pieno con i nuovi limiti per 10 minuti e controlla che il bus continui a funzionare (l'elenco dei moduli in *Diagnostica* resta verde).
+Entrambi i valori sono nelle impostazioni (*Luminosità massima (%)* e *Limite di corrente dei Pixels (mA)*, vedi il [capitolo 6](06-webapp.md#impostazioni)), e la casa li manda al firmware ogni volta che cambiano. I valori di serie sono volutamente prudenti, perché l'assorbimento reale non è stato misurato con un amperometro. Prima di alzarli, tieni tutte le luci su bianco pieno con i nuovi limiti per 10 minuti e controlla che il bus continui a funzionare (l'elenco dei moduli in *Diagnostica* resta verde).
 
 ## Relè e ventola
 
@@ -97,7 +97,7 @@ Prima di collegare, controlla le sigle dei morsetti stampate sul tuo modulo.
 
 Un relè bistabile mantiene la sua posizione anche senza alimentazione. Per questo il firmware lo spegne **a ogni avvio**, e anche ogni volta che Linux resta in silenzio per 30 secondi. Il firmware è compilato con la modalità di avvio "Immediate": parte all'accensione invece di aspettare Linux, così dopo un'interruzione di corrente durante una grigliata la ventola si ferma in pochi millisecondi invece di girare per i 40 secondi che servono a Linux per avviarsi.
 
-Nell'uso normale la ventola gira 20 secondi per ogni grigliata (un'impostazione dello staff, da 5 a 120 secondi), mai più di 120 secondi di fila, con una pausa di 30 secondi prima della successiva.
+Nell'uso normale la ventola gira 20 secondi per ogni grigliata (un'impostazione, da 5 a 120 secondi), mai più di 120 secondi di fila, con una pausa di 30 secondi prima della successiva.
 
 ## Audio
 
