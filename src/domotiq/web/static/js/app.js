@@ -58,6 +58,9 @@ export async function api(method, path, body, opts = {}) {
 }
 
 // ------------------------------------------------------------------ websocket
+// the version of the files this page was loaded with (in the address of this very script): after an update of
+// the house the phone reloads by itself, instead of going on with the old pages
+const LOADED = (import.meta.url.match(/\/static\/v([0-9a-f]+)\//) || [])[1] || null;
 let ws = null;
 let retry = 1000;
 let pingTimer = null;
@@ -93,6 +96,10 @@ function handle(msg) {
   const s = store.state;
   switch (msg.type) {
     case "hello":
+      if (LOADED && msg.data.static_version && msg.data.static_version !== LOADED) {
+        location.reload();
+        return;
+      }
       store.state = msg.data;
       syncClock();
       emit("hello");

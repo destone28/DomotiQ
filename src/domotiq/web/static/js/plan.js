@@ -3,7 +3,7 @@
 // The plan of the house in SVG, drawn from data/house.json in millimetres.
 // The front of the house (the driveway, where visitors stand) is at the bottom.
 
-import { tr } from "./i18n.js";
+import { celsius, t, tr } from "./i18n.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const X0 = -30, X1 = 720, Y0 = -100, Y1 = 390;      // floor area shown, mm
@@ -120,23 +120,29 @@ export class Plan {
     this.dyn.innerHTML = "";
     const L = s.layout;
     const sensors = s.sensors || {};
-    const badge = (x, y, text) => {
+    // each thermometer: the temperature in degrees Celsius and, below, the humidity
+    const badge = (x, y, lines) => {
       const g = el("g", { class: "sensor" }, this.dyn);
-      const w = 16 + text.length * 10;
-      el("rect", { x: sx(x) - w / 2, y: sy(y) - 13, width: w, height: 26, rx: 13 }, g);
-      el("text", { x: sx(x), y: sy(y) + 5.5, "text-anchor": "middle" }, g).textContent = text;
+      const w = 16 + Math.max(...lines.map(l => l.length)) * 9.5;
+      const h = 10 + lines.length * 19;
+      el("rect", { x: sx(x) - w / 2, y: sy(y) - h / 2, width: w, height: h, rx: 12 }, g);
+      lines.forEach((line, i) => {
+        el("text", { x: sx(x), y: sy(y) - h / 2 + 22 + i * 19, "text-anchor": "middle", class: i ? "sub" : "" }, g).textContent = line;
+      });
     };
-    const th = sensors.thermostat || {};
-    if (th.t != null) badge(380, 60, `${th.t.toFixed(1)}°`);
-    const ba = sensors.bathroom || {};
-    if (ba.rh != null) badge(230, 290, `${Math.round(ba.rh)}%`);
+    const reading = (r) => [r.t != null ? celsius(r.t) : null, r.rh != null ? `${t("plan.humidity")} ${Math.round(r.rh)}%` : null].filter(Boolean);
+    const th = reading(sensors.thermostat || {});
+    if (th.length) badge(380, 60, th);
+    const ba = reading(sensors.bathroom || {});
+    if (ba.length) badge(230, 290, ba);
+    // how many people in each room, the garden too: the same people the card of the House page counts
     for (const r of L.rooms) {
       const c = (s.counts || {})[r.id];
-      if (!c || !c.total || !r.indoor) continue;
+      if (!c || !c.persons || r.id === "driveway" || r.id === "outside") continue;
       const [x0, x1, y0, y1] = r.rect;
       const cx = sx(x1) - 16, cy = sy(y1) + 16;
       el("circle", { cx, cy, r: 13, class: "count-bg" }, this.dyn);
-      el("text", { x: cx, y: cy + 5.5, "text-anchor": "middle", class: "count" }, this.dyn).textContent = String(c.total);
+      el("text", { x: cx, y: cy + 5.5, "text-anchor": "middle", class: "count" }, this.dyn).textContent = String(c.persons);
     }
     this.drawTracks(s.tracks || []);
   }

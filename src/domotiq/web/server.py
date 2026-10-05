@@ -197,6 +197,7 @@ def full_state(ctx: "Context") -> dict[str, Any]:
         "brief": _brief(ctx),
         "camera": ctx.vision.available,
         "follow": ctx.settings.get("lights.follow", True),
+        "static_version": asset_version(),      # a phone with older files reloads the page by itself
     })
     return s
 
@@ -499,6 +500,24 @@ def create_app(ctx: "Context") -> FastAPI:
     async def close_question(cid: str):
         """Closed on a phone: the question disappears everywhere and the house stops listening for it."""
         ctx.house.withdraw(cid)
+        return {"ok": True}
+
+    @app.post("/api/tracks/{track_id}/dismiss")
+    async def dismiss_track(track_id: str, w: Who = Depends(who)):
+        """Somebody says this presence is not real (a reflection, a light, a module): it goes from the house at
+        once, the vision forgets it, and nothing is born there for a while."""
+        t = ctx.house.tracks.get(track_id)
+        if t is None:
+            raise HTTPException(404, "no such presence")
+        if t.virtual:
+            ctx.sim.remove(track_id)
+            ctx.bus.publish("sim")
+        else:
+            ctx.vision.dismiss(track_id)
+        ctx.house.drop_track(track_id)
+        ctx.store.add_event("command", {"name": "dismiss", "body": {"name": ctx.identities.name_of(t.identity),
+                                                                    "room": t.room},
+                                        "device": w.device, "nickname": w.nickname})
         return {"ok": True}
 
     @app.post("/api/alerts/{key}/dismiss")

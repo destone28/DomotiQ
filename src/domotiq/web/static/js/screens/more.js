@@ -30,7 +30,6 @@ export function mount(root) {
     <h2>${t("more.stand")}</h2>
     <div class="card menu"><ul class="list">
       ${link("/sign", "🪧", t("more.sign"), t("more.sign_sub"))}
-      ${link("/board", "📺", t("more.board"), t("more.board_sub"))}
       ${item("about", "ℹ️", t("more.about"))}
     </ul></div>
     <h2>${t("more.you")}</h2>

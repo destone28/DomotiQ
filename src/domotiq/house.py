@@ -70,6 +70,7 @@ class House:
         self.status = {"mcu": False, "camera": False, "audio": False, "llm": False,
                        "simulation": False, "modules": {}}
         self._follow_off_at: dict[str, float] = {}
+        self._dropped: dict[str, float] = {}     # presences said not real: until when they are left out
         self._last_sample = 0.0
         self._now: float | None = None
 
@@ -84,8 +85,11 @@ class House:
     def update_tracks(self, tracks: list[Track], now: float | None = None) -> None:
         now = now or time.time()
         self._now = now
+        self._dropped = {k: until for k, until in self._dropped.items() if until > now}
         new: dict[str, Track] = {}
         for t in tracks:
+            if t.id in self._dropped:
+                continue                       # said not real: the vision has not dropped it yet
             prev = self.tracks.get(t.id)
             t.room = self.layout.locate(t.x, t.y, prev.room if prev else None)
             if prev and not t.identity and prev.identity and t.uncertain is False:
@@ -132,6 +136,13 @@ class House:
                                       for t in new.values() if not t.carried])
         self._pub("tracks_changed", tracks=[t.to_dict() for t in new.values()])
 
+    def drop_track(self, track_id: str, now: float | None = None) -> None:
+        """A presence somebody said is not real leaves the house now (rooms, counts, lights, questions), and is
+        left out for a few seconds, until the vision has forgotten it too."""
+        now = now or time.time()
+        self._dropped[track_id] = now + 5.0
+        self.update_tracks([t for t in self.tracks.values() if t.id != track_id], now)
+
     def _who(self, t: Track) -> dict[str, Any]:
         return {"track": t.id, "identity": t.identity, "category": t.category,
                 "name": self.identities.name_of(t.identity), "sure": t.sure}
@@ -152,10 +163,12 @@ class House:
             c[_group(t.category)] += 1
             c["total"] += 1
             c["sure"] += int(t.sure)           # alarms count only these: a change wakes them up
+        # in place before the change is told: the web app sends the phones self.counts as soon as it hears it,
+        # and the old counts would keep every page one change behind
+        before, self.counts = self.counts, counts
         for room, c in counts.items():
-            if c != self.counts.get(room):
+            if c != before.get(room):
                 self._pub("count_changed", room=room, **c)
-        self.counts = counts
 
     def count(self, room: str | None = None, category: str | None = None, sure: bool = False) -> int:
         """How many tracks of a category (or group) are in a room, or in the whole house; with `sure`, only those

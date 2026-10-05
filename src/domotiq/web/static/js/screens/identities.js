@@ -32,9 +32,12 @@ function where(identity) {
 
 export function mount(root, params) {
   let wizard = null;
+  root._html = null;                                       // the same element holds every screen
+  // the tracks arrive five times a second: the list is drawn again only when it changed, or a tap whose button
+  // is replaced between press and release would be lost
   const renderList = () => {
     const ids = store.state.identities || [];
-    root.innerHTML = `
+    const html = `
       ${pageHead(t("id.title"), t("id.lead"), `<button class="btn primary small" id="add">+ ${t("id.add")}</button>`)}
       <div class="card"><ul class="list">${ids.length ? ids.map(i => `
         <li><button class="link" data-id="${i.id}">
@@ -43,11 +46,17 @@ export function mount(root, params) {
           <span class="grow"><span class="title">${esc(i.name)}</span>
           <span class="sub">${esc(t("cat." + i.category))} · ${esc(where(i.id))}</span></span><span>›</span></button></li>`).join("")
         : `<li class="empty">${t("id.empty")}</li>`}</ul></div>`;
+    if (root._html === html) return;
+    root._html = html;
+    root.innerHTML = html;
     root.querySelector("#add").onclick = () => startWizard();
     root.querySelectorAll("[data-id]").forEach(b => { b.onclick = () => editIdentity(b.dataset.id); });
   };
 
-  const startWizard = (track, session) => { wizard = new Wizard(root, track, () => { wizard = null; renderList(); }, session); };
+  const startWizard = (track, session) => {
+    root._html = null;                                     // the wizard draws over the list
+    wizard = new Wizard(root, track, () => { wizard = null; renderList(); }, session);
+  };
 
   const pending = params && params.reg && (store.state.registrations || []).find(r => r.id === params.reg);
   if (pending) startWizard(null, pending);
@@ -191,6 +200,7 @@ class Wizard {
 function editIdentity(id) {
   const i = store.state.identities.find(x => x.id === id);
   if (!i) return;
+  const shown = (i.facts || []).join("\n");
   modal((card, close) => {
     card.innerHTML = `
       <h2 style="margin-top:0">${esc(i.name)}</h2>
@@ -198,7 +208,7 @@ function editIdentity(id) {
       <label class="field"><span>${t("id.name")}</span><input type="text" id="name" value="${esc(i.name)}"></label>
       <label class="field"><span>${t("id.category")}</span><select id="cat">${CATS.map(c => `<option value="${c}" ${c === i.category ? "selected" : ""}>${t("cat." + c)}</option>`).join("")}</select></label>
       <label class="field"><span>${t("id.alias")}</span><input type="text" id="alias" value="${esc(i.alias_en || "")}"></label>
-      <label class="field"><span>${t("id.facts")}</span><textarea id="facts" rows="4" maxlength="900" placeholder="${esc(t("id.facts_ph"))}">${esc((i.facts || []).join("\n"))}</textarea></label>
+      <label class="field"><span>${t("id.facts")}</span><textarea id="facts" rows="4" maxlength="900" placeholder="${esc(t("id.facts_ph"))}">${esc(shown)}</textarea></label>
       <p class="muted small">${t("id.facts_hint")}</p>
       <div class="row" style="justify-content:space-between">
         <button class="btn danger" id="del">${t("common.delete")}</button>
@@ -206,12 +216,15 @@ function editIdentity(id) {
       </div>`;
     card.querySelector("#close").onclick = close;
     card.querySelector("#save").onclick = async () => {
+      const body = {
+        name: card.querySelector("#name").value, category: card.querySelector("#cat").value,
+        alias_en: card.querySelector("#alias").value || null,
+      };
+      // facts left as they were are not sent: an answer the house learned while the card was open stays
+      const facts = card.querySelector("#facts").value;
+      if (facts !== shown) body.facts = facts.split("\n").map(s => s.trim()).filter(Boolean);
       try {
-        await api("PUT", `/api/identities/${id}`, {
-          name: card.querySelector("#name").value, category: card.querySelector("#cat").value,
-          alias_en: card.querySelector("#alias").value || null,
-          facts: card.querySelector("#facts").value.split("\n").map(s => s.trim()).filter(Boolean),
-        });
+        await api("PUT", `/api/identities/${id}`, body);
         close();
       } catch (e) { toast(e.status === 409 ? t("id.taken", { name: card.querySelector("#name").value }) : e.message, "warning"); }
     };

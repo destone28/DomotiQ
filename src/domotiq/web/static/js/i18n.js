@@ -41,7 +41,12 @@ const T = {
     "more.diagnostics_sub": "Moduli, webcam, voce, scheda",
     "more.settings_sub": "Casa, voce, ora, Wi-Fi, backup, sistema",
     "more.sign_sub": "Il QR per entrare nel Wi-Fi",
-    "more.board_sub": "Lo schermo grande dello stand",
+    "home.humidity": "Umidità",
+    "home.remove": "Non c'è davvero: togli",
+    "home.remove_q": "Togliere {name} dalla casa? La casa la tratterà come un errore della webcam.",
+    "home.removed": "Tolto: era un errore della webcam",
+    "home.gone": "Non c'è più",
+    "plan.humidity": "umidità",
     "nav.home": "Casa", "nav.live": "Diretta", "nav.commands": "Comandi", "nav.events": "Eventi", "nav.identities": "Personaggi", "nav.more": "Altro",
     "common.save": "Salva", "common.cancel": "Annulla", "common.delete": "Elimina", "common.close": "Chiudi",
     "common.yes": "Sì", "common.no": "No", "common.ok": "OK", "common.add": "Aggiungi", "common.edit": "Modifica",
@@ -59,8 +64,7 @@ const T = {
     "home.guest": "Ospite", "home.uncertain": "Non sono sicura di chi sia", "home.in": "in",
     "home.tap_hint": "Tocca un personaggio per vedere chi è.",
     "car.arrived": "appena arrivata", "car.parked": "parcheggiata", "car.departed": "appena uscita", "car.absent": "non c'è",
-    "live.title": "Diretta dalla webcam", "live.privacy": "Il bagno è sempre sfocato, sulla scheda, prima di arrivare al telefono.",
-    "live.names": "Nomi e stanze", "live.nocam": "La webcam non è collegata.",
+    "live.title": "Diretta dalla webcam",     "live.names": "Nomi e stanze", "live.nocam": "La webcam non è collegata.",
     "cmd.title": "Comandi", "cmd.party": "Festa!", "cmd.grill": "Barbecue", "cmd.grill_stop": "Spegni barbecue",
     "cmd.scenes": "Scenari", "cmd.lights": "Luci", "cmd.room": "Stanza", "cmd.color": "Colore", "cmd.effect": "Effetto",
     "cmd.brightness": "Luminosità", "cmd.light_on": "Accendi", "cmd.light_off": "Spegni", "cmd.light_auto": "Automatico",
@@ -83,8 +87,7 @@ const T = {
     "audit.rule": "la regola", "audit.identity": "il personaggio", "audit.settings": "le impostazioni",
     "audit.calibration": "la calibrazione", "audit.backup": "il backup", "audit.someone": "Un telefono",
     "more.title": "Altro", "more.events": "Eventi", "more.rules": "Regole",     "more.sim": "Simulazione", "more.calibration": "Calibrazione", "more.diagnostics": "Diagnostica",
-    "more.settings": "Impostazioni", "more.sign": "Cartello da stampare", "more.board": "Tabellone per lo stand",
-    "more.about": "Informazioni",     "more.nickname": "Il tuo soprannome", "more.nickname_hint": "Compare nel registro delle modifiche.",
+    "more.settings": "Impostazioni", "more.sign": "Cartello da stampare",     "more.about": "Informazioni",     "more.nickname": "Il tuo soprannome", "more.nickname_hint": "Compare nel registro delle modifiche.",
         "rules.title": "Regole", "rules.new": "Nuova regola", "rules.when": "Quando", "rules.if": "Se",
     "rules.then": "Allora", "rules.name": "Nome", "rules.enabled": "Attiva", "rules.priority": "Priorità",
     "rules.cooldown": "Pausa tra due esecuzioni (s)", "rules.alert": "È un allarme (resta attivo finché dura)",
@@ -195,7 +198,12 @@ const T = {
     "more.diagnostics_sub": "Modules, webcam, voice, board",
     "more.settings_sub": "House, voice, time, Wi-Fi, backup, system",
     "more.sign_sub": "The QR code to join the Wi-Fi",
-    "more.board_sub": "The big screen of the stand",
+    "home.humidity": "Humidity",
+    "home.remove": "Not really there: remove",
+    "home.remove_q": "Remove {name} from the house? The house will treat it as a mistake of the camera.",
+    "home.removed": "Removed: it was a mistake of the camera",
+    "home.gone": "Already gone",
+    "plan.humidity": "humidity",
     "nav.home": "House", "nav.live": "Live", "nav.commands": "Controls", "nav.events": "Events", "nav.identities": "Characters", "nav.more": "More",
     "common.save": "Save", "common.cancel": "Cancel", "common.delete": "Delete", "common.close": "Close",
     "common.yes": "Yes", "common.no": "No", "common.ok": "OK", "common.add": "Add", "common.edit": "Edit",
@@ -213,8 +221,7 @@ const T = {
     "home.guest": "Guest", "home.uncertain": "I'm not sure who this is", "home.in": "in",
     "home.tap_hint": "Tap a character to see who it is.",
     "car.arrived": "just arrived", "car.parked": "parked", "car.departed": "just left", "car.absent": "not here",
-    "live.title": "Live from the webcam", "live.privacy": "The bathroom is always blurred, on the board, before it reaches your phone.",
-    "live.names": "Names and rooms", "live.nocam": "The webcam is not connected.",
+    "live.title": "Live from the webcam",     "live.names": "Names and rooms", "live.nocam": "The webcam is not connected.",
     "cmd.title": "Controls", "cmd.party": "Party!", "cmd.grill": "Barbecue", "cmd.grill_stop": "Stop the barbecue",
     "cmd.scenes": "Scenes", "cmd.lights": "Lights", "cmd.room": "Room", "cmd.color": "Colour", "cmd.effect": "Effect",
     "cmd.brightness": "Brightness", "cmd.light_on": "On", "cmd.light_off": "Off", "cmd.light_auto": "Automatic",
@@ -237,8 +244,7 @@ const T = {
     "audit.rule": "the rule", "audit.identity": "the character", "audit.settings": "the settings",
     "audit.calibration": "the calibration", "audit.backup": "the backup", "audit.someone": "A phone",
     "more.title": "More", "more.events": "Events", "more.rules": "Rules",     "more.sim": "Simulation", "more.calibration": "Calibration", "more.diagnostics": "Diagnostics",
-    "more.settings": "Settings", "more.sign": "Printable sign", "more.board": "Booth display",
-    "more.about": "About",     "more.nickname": "Your nickname", "more.nickname_hint": "Shown in the change log.",
+    "more.settings": "Settings", "more.sign": "Printable sign",     "more.about": "About",     "more.nickname": "Your nickname", "more.nickname_hint": "Shown in the change log.",
         "rules.title": "Rules", "rules.new": "New rule", "rules.when": "When", "rules.if": "If",
     "rules.then": "Then", "rules.name": "Name", "rules.enabled": "Enabled", "rules.priority": "Priority",
     "rules.cooldown": "Pause between two runs (s)", "rules.alert": "It is an alarm (stays on while it lasts)",
@@ -328,6 +334,11 @@ export function setLang(value) {
   current = value === "en" ? "en" : "it";
   try { localStorage.setItem(KEY, current); } catch (e) { /* ignore */ }
   document.documentElement.lang = current;
+}
+
+// a temperature in degrees Celsius, written the way the language of the phone writes numbers
+export function celsius(v) {
+  return Number(v).toLocaleString(current === "it" ? "it-IT" : "en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " °C";
 }
 
 export function t(key, vars) {

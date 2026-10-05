@@ -153,6 +153,7 @@ p.muted, .muted { color: var(--muted); }
 
 label.field { display: block; margin: 10px 0; }
 label.field > span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+label.field input[type=file] { max-width: 100%; }
 input[type=text], input[type=number], input[type=password], input[type=time], select, textarea {
   width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 10px;
   background: var(--surface); padding: 8px 10px;
@@ -251,6 +252,7 @@ svg.plan { width: 100%; height: auto; display: block; touch-action: none; user-s
 .plan .glow.wave, .plan .glow.cool { animation: breathe 1.8s ease-in-out infinite; }
 .plan .glow.party { animation: rainbow 1.5s linear infinite; }
 .plan .sensor text { font-size: 16px; font-weight: 700; fill: var(--text); }
+.plan .sensor text.sub { font-size: 14px; font-weight: 600; fill: var(--muted); }
 .plan .sensor rect { fill: var(--surface); stroke: var(--line); }
 .plan .track { cursor: pointer; }
 .plan .track .body { stroke: #1d2226; stroke-width: 2; }
@@ -266,7 +268,7 @@ svg.plan { width: 100%; height: auto; display: block; touch-action: none; user-s
 @keyframes rainbow { 0% { fill: #ff3030; } 20% { fill: #ffd020; } 40% { fill: #30e050; } 60% { fill: #30c0ff; } 80% { fill: #b040ff; } 100% { fill: #ff3030; } }
 
 .live img { width: 100%; display: block; border-radius: var(--radius); background: #222; min-height: 200px; }
-.stat { font-size: 26px; font-weight: 700; }
+.stat { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .pill-list { display: flex; gap: 6px; flex-wrap: wrap; }
 .silhouette { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none; }
 .silhouette svg { width: 24px; height: 24px; fill: #fff; }

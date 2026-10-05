@@ -11,8 +11,7 @@ export function mount(root) {
   root.innerHTML = `
     ${pageHead(t("live.title"), t("live.lead"))}
     <div class="live"><img id="img" alt="${t("live.title")}"></div>
-    <div class="row spread" style="margin-top:10px">
-      <span class="muted small" style="flex:1">${t("live.privacy")}</span>
+    <div class="row" style="margin-top:10px;justify-content:flex-end">
       <label class="row small"><span>${t("live.names")}</span><span class="switch"><input type="checkbox" id="ov" ${overlay ? "checked" : ""}><span></span></span></label>
     </div>
     <p class="muted" id="nocam" hidden>${t("live.nocam")}</p>`;
@@ -27,7 +26,8 @@ export function mount(root) {
   check();
   const timer = setInterval(check, 1000);
   const img = root.querySelector("#img");
-  const start = () => { img.src = `/api/stream?fps=5&overlay=${overlay ? 1 : 0}&_=${Date.now()}`; };
+  let gone = false;
+  const start = () => { if (!gone) img.src = `/api/stream?fps=5&overlay=${overlay ? 1 : 0}&_=${Date.now()}`; };
   start();
   root.querySelector("#ov").onchange = (e) => {
     overlay = e.target.checked;
@@ -35,5 +35,7 @@ export function mount(root) {
     start();
   };
   img.onerror = () => setTimeout(start, 2000);
-  return { unmount() { img.src = ""; clearInterval(timer); } };
+  // leaving the page closes the stream for good: src = "" would fire onerror, and the stream would come back
+  // on an image nobody sees
+  return { unmount() { gone = true; img.onerror = null; img.removeAttribute("src"); clearInterval(timer); } };
 }

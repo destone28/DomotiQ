@@ -123,6 +123,31 @@ def test_websocket_hello(web):
         assert ws.receive_json()["type"] in ("pong", "status", "sim", "tracks")
 
 
+def test_the_phones_get_the_new_counts_at_once(web):
+    """Somebody enters, moves or leaves: the phones get the counts after the change, not those from before
+    (the House page would stay one change behind until reloaded)."""
+    import asyncio
+    import json
+    ctx, c = web
+    phone = asyncio.Queue()
+    c.app.state.hub.clients.add(phone)
+
+    def last_counts():
+        msgs = [json.loads(phone.get_nowait()) for _ in range(phone.qsize())]
+        return [m["data"] for m in msgs if m["type"] == "counts"][-1]
+
+    obj = c.post("/api/sim/objects", json={"x": 300, "y": 100, "category": "person"}).json()
+    settle(ctx)
+    assert last_counts()["living"]["persons"] == 1
+    c.put(f"/api/sim/objects/{obj['id']}", json={"x": 90, "y": 100})
+    settle(ctx)
+    counts = last_counts()
+    assert counts["kitchen"]["persons"] == 1 and counts["living"]["persons"] == 0
+    c.delete(f"/api/sim/objects/{obj['id']}")
+    settle(ctx)
+    assert last_counts()["kitchen"]["persons"] == 0
+
+
 def test_the_wifi_password_is_changed_from_the_settings(web):
     ctx, c = web
     assert c.post("/api/network", json={"password": "short"}).status_code == 400
@@ -188,3 +213,28 @@ def test_the_alarm_is_switched_off_and_on_like_a_burglar_alarm(web):
     assert c.get("/api/state").json()["brief"]["armed"] is True
     ctx.rules.tick(now=time.time() + 6)
     assert h.alerts                                      # on again: whoever is still there is noticed
+
+
+def test_a_presence_seen_by_mistake_is_removed_from_a_phone(web):
+    ctx, c = web
+    ctx.sim.enabled = True
+    obj = c.post("/api/sim/objects", json={"x": 300, "y": 100, "category": "person", "color": "#d03030"}).json()
+    settle(ctx)
+    assert obj["id"] in ctx.house.tracks and ctx.house.counts["living"]["persons"] == 1
+    assert c.post(f"/api/tracks/{obj['id']}/dismiss").json()["ok"]
+    assert obj["id"] not in ctx.house.tracks and ctx.house.counts["living"]["persons"] == 0
+    settle(ctx)
+    assert obj["id"] not in ctx.house.tracks                # gone for good, not back at the next update
+    assert c.post("/api/tracks/nothing/dismiss").status_code == 404
+
+
+def test_a_presence_the_vision_still_sends_stays_out_for_a_moment(web):
+    ctx, c = web
+    from domotiq.model import Track
+    h = ctx.house
+    h.update_tracks([Track("t1", 300, 100, category="person")], now=1000)
+    h.drop_track("t1", now=1000.5)
+    h.update_tracks([Track("t1", 300, 100, category="person")], now=1001)    # sent before the vision forgot it
+    assert "t1" not in h.tracks
+    h.update_tracks([Track("t1", 300, 100, category="person")], now=1010)    # long after: a real presence again
+    assert "t1" in h.tracks

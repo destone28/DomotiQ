@@ -6,13 +6,13 @@ import { pageHead, store } from "../app.js";
 import { lang, t } from "../i18n.js";
 
 const TEXT = {
-  it: `<p><b>DomotiQ</b> è una casa intelligente in scala 1:20 che gira tutta su una sola <b>Arduino UNO Q</b>, senza internet.
+  it: `<p><b>DomotiQ</b> è una casa intelligente che gira tutta su una sola <b>Arduino UNO Q</b>, senza internet.
   Una webcam guarda la casa dall'alto e riconosce persone, animali, l'auto e gli oggetti che sposti; la casa accende le luci
   dove c'è gente, fa rispettare le sue regole, risponde al citofono, ascolta le domande e fa festa.</p>
   <p>Linux, sulla UNO Q, vede e ragiona: visione artificiale, regole, riconoscimento e sintesi vocale, un piccolo modello
   linguistico, questa pagina web. Il microcontrollore della stessa scheda accende le luci Modulino, legge tasti e sensori
   e comanda la ventola del barbecue.</p>`,
-  en: `<p><b>DomotiQ</b> is a 1:20 smart home that runs entirely on a single <b>Arduino UNO Q</b>, with no internet.
+  en: `<p><b>DomotiQ</b> is a smart home that runs entirely on a single <b>Arduino UNO Q</b>, with no internet.
   A webcam looks at the house from above and recognizes people, pets, the car and the objects you move; the house turns
   the lights on where people are, enforces its rules, answers the doorbell, listens to questions and throws parties.</p>
   <p>Linux, on the UNO Q, sees and thinks: computer vision, rules, speech recognition and synthesis, a small language
