@@ -272,3 +272,77 @@ Viola e Mister Blu si confondono perché i loro colori medi distano 5,6 punti, m
 **Scelta:** in `hardware/stl` ci sono gli 84 file della versione 8, numerati da 01 a 59 nell'ordine di montaggio (muri uniti in 7 pezzi, totem con scocca, tre tasti e coperchio, staffe della scheda audio e fermacavi). Il capitolo 3 ha le tabelle nuove con il colore di stampa; la specifica descrive il totem nuovo. Le immagini del capitolo restano quelle della versione precedente, con una nota: `render_v8.py` non c'è ancora nella cartella del progetto.
 
 **Perché:** indicazione di Emilio: per i pezzi da stampare fa fede la v8.
+
+### D-41 — Un nome mai due volte, nemmeno nella casa (5/10)
+**Scelta:**
+- I nomi delle presenze li decide la visione. La casa non rimette più a una presenza il nome che aveva prima quando la visione la manda senza nome.
+- Un nome dato dalla webapp, a voce o dal citofono resta sulla presenza per 3 secondi, finché la visione (un altro processo) non lo riceve, e in quei secondi sparisce da ogni altra presenza.
+- Se due presenze arrivano con lo stesso nome, lo tiene quella in vista (non in mano, non nascosta).
+- Un dubbio tra nomi tutti riconosciuti altrove non tiene più il nome dubbio come certo: la statuina diventa un nuovo arrivato e la casa chiede chi è.
+- Un nome non va a una macchia più di quattro volte più grande o più piccola di tutte le pose di quel personaggio, e una statuina non è mai l'auto (né l'auto una statuina), anche nei dubbi tra due personaggi dello stesso colore.
+
+**Perché:** Emilio ha visto di nuovo un personaggio già riconosciuto riconosciuto una seconda volta. Le cause trovate sono due:
+- Dalla prima versione della casa, nata per la simulazione, una presenza mandata senza nome riprendeva il nome di prima. Quando la visione spostava un nome su un'altra presenza (una correzione dalla webapp, un nome perso dopo otto immagini diverse), il nome restava anche sulla prima.
+- Un dubbio i cui candidati erano tutti già riconosciuti altrove si chiudeva lasciando il nome dubbio come certo.
+
+Il dubbio "Honda Civic o Mister Blu?" veniva invece da due personaggi dello stesso colore confrontati senza la taglia.
+
+### D-42 — Il racconto non si ripete (5/10)
+**Scelta:**
+- Per ogni personaggio la casa ricorda l'ultima cosa detta (stanza e mobile) e non la ripete per 10 minuti finché il personaggio resta lì.
+- La visione dice che un personaggio è salito su un mobile dopo 5 immagini concordi (prima 3) e che ne è sceso dopo 15.
+
+**Perché:** "Rossana è sul letto della camera" si ripeteva. Ogni volta che il bordo del letto o un'ombra facevano cambiare il mobile per 3 immagini, oppure la casa ritrovava il nome, il racconto ripartiva come per un arrivo.
+
+### D-43 — I nomi prima di tutto; risposte sui personaggi immediate (5/10)
+**Scelta:**
+- **Le richieste sui personaggi vengono prima.** Con un nome nella frase, quelle sul personaggio (cosa sai di lui, cosa gli piace, dov'è, la sua luce preferita, "stanno insieme") passano davanti a quelle generali (com'è la casa, cosa sai fare, chi sei).
+- **I nomi storpiati si ritrovano.** Un nome si ritrova se gli somiglia almeno all'82% o se ne contiene una parola tutta sua. Le parole comuni a molti nomi (*Mister*, *Signora*, i colori, le stanze) da sole non bastano.
+- **"X e Y stanno insieme"** dice che una macchia è i due personaggi; con un nome solo la casa chiede chi è l'altro.
+- **Le domande senza nome.** Per 90 secondi una domanda senza nome ("che lavoro fa?") riguarda l'ultimo personaggio nominato.
+- **Le risposte alle sue domande.** Vale la parola dell'elenco solo se il riconoscimento libero la conferma o le somiglia, oppure se è molto sicura (almeno 0,8) e la risposta è corta. Altrimenti vale il riconoscimento libero, che capisce anche le risposte non previste.
+- **Nessun modello nelle domande sui personaggi.** Le cerca, nell'ordine:
+  - le parole chiave;
+  - le parole in comune tra domanda e informazioni (le prime cinque lettere delle parole di almeno quattro);
+  - quello che il personaggio ama;
+  - le storie;
+  - altrimenti "non lo so".
+  Il modello resta solo per dare in sottofondo l'argomento alle informazioni scritte nella webapp.
+- **Le informazioni scritte come frase intera** ("il suo piatto preferito è la carbonara") si dicono come sono, nella loro lingua. Anche il colore preferito si legge da una riga scritta nella webapp.
+- **"Cosa sai di X?"** comincia da dove si trova.
+
+**Perché:** richieste di Emilio:
+- "Raccontami cosa piace a Rossellina" faceva partire la descrizione della casa.
+- Le informazioni scritte nelle schede non venivano ritrovate.
+- Le risposte non previste e quelle con due personaggi non erano capite.
+- Le domande sui personaggi richiedevano secondi, mentre i comandi delle luci erano immediati. Ogni chiamata del modello costa da 3 a 10 secondi sulla scheda, e le domande sui personaggi ne facevano anche due.
+
+### D-44 — La parola di attivazione sentita subito (5/10)
+**Scelta:**
+- **Ascolto continuo.** Mentre aspetta la parola, il microfono resta aperto per tratti di 60 secondi (prima 6). Il riconoscimento ristretto alla parola riceve l'audio ogni 100 ms e la casa ne guarda il risultato parziale.
+- **LED e preascolto.** Appena il risultato parziale contiene la parola, la casa si prende il turno e i LED lampeggiano. Il riconoscimento libero parte dagli ultimi 2 secondi di audio e continua in diretta fino a una pausa di 0,9 secondi; se dopo la parola non viene detto niente, si ferma dopo 1,5 secondi e la casa chiede "Dimmi…".
+- **Controllo.** Il riconoscimento libero deve ritrovare la parola; altrimenti la casa non risponde. Fa eccezione la parola detta da sola, sentita con una confidenza di almeno 0,6.
+- **Una parola sola** dopo il nome è una richiesta solo se l'analizzatore la capisce.
+
+**Perché:** richiesta di Emilio: i LED si accendevano tardi, e la frase detta subito dopo la parola non veniva quasi mai sentita (solo le richieste corte come "che ore sono"). Prima, ogni tratto di ascolto finiva alla prima pausa di 0,6 secondi, quindi bastava una breve pausa dopo la parola per perdere la richiesta. Poi tutto l'audio veniva riconosciuto di nuovo da capo, e i LED si accendevano solo dopo "Dimmi…". In più la confidenza usata per decidere era la media di tutte le parole, comprese quelle fuori dalla parola: una frase lunga detta subito dopo poteva abbassarla sotto la soglia.
+
+### D-45 — Le frasi della voce restano su disco (5/10)
+**Scelta:**
+- Ogni frase sintetizzata da Piper si salva in `var/voice/` come il WAV ricevuto, con un nome ricavato dalla voce e dal testo.
+- All'avvio le frasi frequenti si rileggono da lì, e a Piper si chiede solo una frase breve, per sapere che risponde.
+- Si tengono al massimo 3000 frasi; si cancellano quelle non dette da più tempo.
+
+**Perché:** richiesta di Emilio. A ogni avvio Piper preparava le frasi frequenti per circa 4 minuti, e intanto la visione scendeva a 3-4 immagini al secondo.
+
+### D-46 — Durante la festa il riconoscimento aspetta (5/10)
+**Scelta:**
+- Dall'inizio della festa alla fine dello spettacolo di luci la visione non guarda le immagini: le presenze restano come sono e la diretta continua.
+- Alla fine si misura di nuovo la luce delle stanze e ogni personaggio vale come toccato da una mano. Quello che si vede si riprende come all'avvio, appena le luci si fermano.
+- Un nome può passare da una presenza nascosta, dove è passata una mano, a quella che lo porta altrove.
+
+**Perché:** richiesta di Emilio: le luci colorate della festa confondono il riconoscimento.
+
+### D-47 — Le immagini della guida dalla versione 8 (5/10)
+**Scelta:** i 14 render di `render_v8.py` sono in `docs/images/render/`, senza i metadati delle immagini; i render della versione precedente sono tolti. Il capitolo 3 li usa nei passaggi del montaggio, con la pianta dall'alto, le pareti, le sezioni del totem, della fioriera e del palo e le viste dall'altezza di un adulto e di un bambino. La nota sulle immagini vecchie (D-40) non c'è più.
+
+**Perché:** il render della versione 8 è pronto.

@@ -2,13 +2,13 @@
 
 La casa si stampa a partire da 84 file STL in `hardware/stl/` (versione 8), distribuiti sotto CC BY 4.0. Il nome di ogni file comincia con un numero da 01 a 59, nell'ordine di montaggio, e **lo stesso numero è inciso sul pezzo stampato**: sulla faccia interna delle pareti, vicino al bordo inferiore, e sul lato inferiore delle pedane. I pezzi uguali hanno lo stesso numero (per esempio le quattordici chiavi da `07_Chiave_01` a `07_Chiave_14`, o i segmenti del palo da `20_Palo_2` a `20_Palo_4`).
 
-![La casa montata con il palo della webcam](../images/render/01_assieme_con_palo.png)
-
-*Le immagini di questo capitolo sono della versione precedente dei pezzi: vi compaiono i muri ancora separati e il totem vecchio. Numeri e nomi delle tabelle sono quelli della versione 8.*
+![La casa montata, con il palo della webcam](../images/render/01_casa_completa.png)
 
 Nei nomi dei file compaiono alcune abbreviazioni: *Fac* facciata, *Sx* sinistra, *Dx* destra.
 
 In questa guida il **davanti** è il lato del vialetto, dove stanno i visitatori, e **sinistra** e **destra** si intendono guardando la casa da davanti: cucina e giardino sono a sinistra, camera e garage a destra. Il repository contiene solo i file STL, senza profili per lo slicer. Il colore nelle tabelle è quello previsto per la stampa.
+
+![La pianta dall'alto: in basso il davanti, con il vialetto, il totem e le due fioriere; a sinistra cucina e giardino, a destra camera e garage](../images/render/03_pianta_dall_alto.png)
 
 ## I pezzi
 
@@ -25,6 +25,8 @@ In questa guida il **davanti** è il lato del vialetto, dove stanno i visitatori
 ### Pareti
 
 Le pareti sono alte 135 mm sopra il pavimento; le facciate di cucina, soggiorno e camera sono alte 46 mm, così la webcam riesce a guardare dentro le stanze sul davanti. I muri che si toccano per una faccia intera sono uniti in un solo pezzo, da stampare in piedi (tutti entro 250 mm); porte e finestre vanno a ponte, il portone del garage (100 mm) va stampato con i supporti.
+
+![Le sette pareti, ognuna di un colore: cucina e camera chiuse, il fronte a T di bagno e locale tecnico, bagno, locale tecnico, garage e la facciata del soggiorno](../images/render/04_muri_uniti.png)
 
 | N. | File | Pareti | Colore |
 |---|---|---|---|
@@ -108,29 +110,43 @@ Il riconoscimento confronta ogni immagine con una foto della casa vuota, quindi 
 
 La webapp disegna la piantina con i colori di riferimento salvati in `data/house.json`: bianco per bancone, frigorifero, WC e lavabo, marrone legno per tavoli, credenza e comodini, blu per divano e letto, grigio scuro per il mobile TV e il totem, rosso mattone per il barbecue, verde per l'albero e verde scuro per le fioriere. Nei render le applique sono in un materiale traslucido, così i Pixels possono illuminare attraverso.
 
+![La casa senza il palo, con i colori previsti per la stampa](../images/render/02_casa.png)
+
 ## Montaggio
 
 I render in `docs/images/render/` mostrano ogni passaggio.
 
 1. **Base.** Appoggia le sei pedane capovolte, controlla i numeri incisi e premi le quattordici chiavi negli alloggiamenti a farfalla a cavallo delle giunture. Inserisci l'hub Revodok nel suo alloggiamento e bloccalo con le due staffe `08`; sotto la pedana 2 monta la scheda audio con le staffe `09` e fissa i cavi delle casse con i fermacavi `10`.
 
-   ![Le pedane viste da sotto, con le chiavi e il Revodok](../images/render/09_pedane_da_sotto.png)
+   ![Le pedane viste da sotto: i numeri incisi, le quattordici chiavi a farfalla e le staffe](../images/render/05_sotto_le_pedane.png)
 
 2. **Prati.** Gira la base e appoggia al loro posto il prato del giardino e i tre prati del vialetto.
 3. **Pareti.** Infila le pareti nelle loro scanalature, seguendo la tabella qui sopra e i numeri incisi. La porta d'ingresso è lo spazio tra la cucina `11` e la facciata del soggiorno `17`; il portone del garage è nella parete `16`.
 4. **Placche e luci.** Monta i moduli sulle loro placche e i Pixels nelle applique, poi appendili alle pareti indicate sopra (quale modulo va dove è spiegato nel [capitolo 4](04-collegamenti.md)). Il Thermo del bagno e la luce del bagno condividono la parete tra bagno e locale tecnico, nel pezzo `13`. La UNO Q entra a pressione sui perni della sua placca `23`.
 
-   ![Bagno: Thermo e applique](../images/render/11_bagno_thermo_e_applique.png)
+   ![La placca 23 con la UNO Q e il numero inciso](../images/render/12_placca_uno_q.png)
 
 5. **Palo e webcam.** Pianta il segmento inferiore `18` nel locale tecnico, infilaci il collare `19`, impila i segmenti da `20_Palo_2` a `20_Palo_4` facendo passare il cavo USB della webcam dalle loro finestre, e aggiungi il braccio `21`. Metti la C270 nella culla e chiudila con il fermo `22`. Secondo i dati della casa l'obiettivo sta a 930 mm sopra il pavimento, sopra il centro della base: la calibrazione si adatta a piccole differenze, ma l'intera base deve essere inquadrata.
 
-   ![Il palo, esploso](../images/render/14_palo_esploso.png)
+   ![Il palo e il braccio in sezione: i segmenti infilati uno nell'altro e la webcam nella culla, in cima](../images/render/11_sezione_palo_braccio.png)
 
 6. **Totem e casse.** Metti i tre tasti `29`–`31` nel coperchio `32`, aggancia il modulo Buttons ai perni del coperchio e chiudilo sulla scocca `28`; lo spinotto del microfono lavalier passa dalla presa della pedana 2. Infila le casse dal basso, attraverso le pedane 1 e 2, e coprile con le fioriere `44`.
 
-   ![Totem e fioriere sopra le casse](../images/render/06_totem_e_casse_montaggio.png)
+   ![Il totem esploso: coperchio con i tre tasti, modulo Buttons e scocca, tra le due fioriere sopra le casse](../images/render/07_totem_esploso.png)
+
+   ![Il totem in sezione, dal lato dei tasti](../images/render/08_sezione_tasto_B.png)
+   ![Il totem in sezione, dal lato del microfono](../images/render/09_sezione_microfono.png)
+
+   ![Una fioriera in sezione, sopra la sua cassa](../images/render/10_sezione_fioriera.png)
+
+   ![Il totem montato](../images/render/06_totem.png)
 
 7. **Arredi e giardino.** Sistema gli arredi, la credenza con il termostato, il barbecue con la ventola, l'albero, il tavolo, le panche e le staccionate.
+
+Così la vede, dal vialetto, un adulto e così un bambino:
+
+![La casa dall'altezza degli occhi di un adulto](../images/render/13_vista_adulto.png)
+![La casa dall'altezza degli occhi di un bambino](../images/render/14_vista_bambino.png)
 
 Una volta calibrata la casa (vedi il [capitolo 5](05-collaudo.md#9-calibrazione-della-webcam)), gli arredi devono restare dove sono: la casa li considera parte della casa vuota. Se sposti un pezzo, salva di nuovo la casa vuota. Anche la webcam non deve muoversi; se viene urtata, la webapp chiede una nuova calibrazione.
 

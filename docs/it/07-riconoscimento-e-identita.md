@@ -108,7 +108,9 @@ Quando il filo si perde (prese tutte e due insieme, le due si toccano, una ricom
 - chiede anche ad alta voce, se la sua loquacità lo permette, e subito dopo ascolta la risposta da sola, senza il tasto **Parla**: basta dire il nome, oppure "tutti e due". Vale la prima risposta, a voce o da un telefono;
 - se non arriva una risposta entro 60 secondi, tiene la sua ipotesi migliore, segnata come incerta: un **?** sulla piantina, e "Marco è in cucina. Almeno credo." nelle risposte a voce.
 
-**Un nome non sta mai in due posti.** Prima di chiedere, la casa toglie dai candidati chi è già riconosciuto da un'altra parte della casa (tranne se una mano è passata dov'era), chi è stato visto per l'ultima volta lontano da lì senza che una mano ci sia passata, e l'auto fuori dal garage se non ne è certa. Se ne resta uno solo, la casa decide da sola senza chiedere: se Rossellina è in cucina, la statuina nuova in soggiorno che somiglia a Rossellina e a Rosaria è Rosaria. Se il dubbio si scioglie mentre la domanda è aperta (Rossellina ricompare in cucina), la domanda viene ritirata dai telefoni e la casa smette di ascoltare.
+**Un nome non sta mai in due posti.** Prima di chiedere, la casa toglie dai candidati chi è già riconosciuto da un'altra parte della casa (tranne se una mano è passata dov'era), chi è stato visto per l'ultima volta lontano da lì senza che una mano ci sia passata, chi ha una taglia troppo diversa da quella che vede (più di quattro volte più grande o più piccola di tutte le sue pose; una statuina non è mai l'auto, l'auto non è mai una statuina) e l'auto fuori dal garage se non ne è certa. Se ne resta uno solo, la casa decide da sola senza chiedere: se Rossellina è in cucina, la statuina nuova in soggiorno che somiglia a Rossellina e a Rosaria è Rosaria. Se non ne resta nessuno (Rossellina è in cucina e Rosaria in camera), quella statuina non è nessuna delle due: la casa la tratta come un nuovo arrivato e chiede chi è. Se il dubbio si scioglie mentre la domanda è aperta (Rossellina ricompare in cucina), la domanda viene ritirata dai telefoni e la casa smette di ascoltare.
+
+La stessa regola vale per quello che la casa mostra e dice. Se due presenze arrivano con lo stesso nome (per esempio una ancora in mano e una appena posata), il nome resta a quella in vista. Un nome dato dalla webapp, a voce o dal citofono resta dove è stato dato e sparisce da dove era subito, anche nel mezzo secondo in cui la visione, che gira in un processo separato, non lo sa ancora; poi i nomi tornano a essere quelli della visione, che non li rimette più su una presenza a cui li ha tolti.
 
 **L'auto sta in garage.** L'auto non viene mai proposta per una statuina, né per qualcosa fuori dal garage, a meno che la casa non ne sia certa: grande come un'auto, ferma e ben visibile da 10 secondi.
 
@@ -140,6 +142,12 @@ Le risposte brevi e comuni le capiscono delle regole, all'istante. Le altre fras
 - Se quello di cui chiede sparisce prima della risposta, la domanda viene ritirata dai telefoni e la casa smette di ascoltare.
 
 Con un nome nuovo la casa crea il personaggio, con il tipo detto (o intuito) e i colori che vede. Con un nome già registrato aggiorna subito i colori di quel personaggio con quelli che vede in quel momento, se gli somigliano, così la volta dopo lo riconosce da sola; una risposta data sulla macchia sbagliata dà il nome ma non cambia l'aspetto del personaggio. Una registrazione in corso dalla webapp ha la precedenza: mentre aspetta il suo personaggio, la casa non fa questa domanda.
+
+## Durante la festa
+
+Mentre la casa fa festa le luci colorate cambiano a ogni battuta, e la webcam vede colori che non sono quelli dei personaggi. Per questo la casa **sospende il riconoscimento** dall'inizio della festa alla fine dello spettacolo di luci: le presenze restano dove erano e con il loro nome, non nasce niente di nuovo, non sparisce niente, la casa non fa domande e non annuncia spostamenti. L'immagine in **Diretta** continua ad aggiornarsi.
+
+A festa finita la casa misura di nuovo la luce di ogni stanza, aspetta che le luci si fermino e riprende quello che vede, come all'avvio. Durante la festa qualcuno potrebbe aver spostato un personaggio, quindi per ognuno vale come se una mano fosse passata dov'era: un personaggio spostato viene ritrovato e il suo nome lo segue anche lontano da dov'era; se la casa non lo riconosce, chiede chi è.
 
 ## Correggere la casa dalla webapp
 

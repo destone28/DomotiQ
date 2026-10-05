@@ -2,13 +2,13 @@
 
 The house is printed from 84 STL files in `hardware/stl/` (version 8), released under CC BY 4.0. Each file name starts with a number from 01 to 59, in the order of assembly, and **the same number is engraved on the printed part**: on the inside face of the walls, near the bottom edge, and on the underside of the platforms. Identical parts share a number (for example the fourteen keys `07_Chiave_01` to `07_Chiave_14`, or the pole segments `20_Palo_2` to `20_Palo_4`).
 
-![The assembled house with the camera pole](../images/render/01_assieme_con_palo.png)
-
-*The pictures in this chapter show the previous version of the parts: the walls are still separate and the totem is the old one. The numbers and names in the tables are those of version 8.*
+![The assembled house, with the camera pole](../images/render/01_casa_completa.png)
 
 The file names are in Italian. A few words help: *Pedana* platform, *Chiave* key, *Staffa* bracket, *Scheda Audio* audio board, *Fermacavo* cable clip, *Parete* wall, *Fac* facade, *Sx* left, *Dx* right, *Palo* pole, *Collare* collar, *Braccio* arm, *Fermo* retainer, *Placca* plate, *Scocca* shell, *Tasto* button, *Coperchio* lid, *Cappucci* caps, *Credenza* sideboard, *Griglia* barbecue, *Basetta* base, *Albero* tree, *Chioma* canopy, *Tronco* trunk, *Panca* bench, *Staccionata* fence, *Fioriera* planter, *Cassa* speaker, *Prato* lawn, *Vialetto* driveway, *Arredo* furniture.
 
 In this guide, **front** is the driveway side, where visitors stand, and **left** and **right** are seen from the front: the kitchen and the garden are on the left, the bedroom and the garage on the right. The repository contains the STL files only, without slicer profiles. The colour in the tables is the one meant for printing.
+
+![The plan from above: the front at the bottom, with the driveway, the totem and the two planters; kitchen and garden on the left, bedroom and garage on the right](../images/render/03_pianta_dall_alto.png)
 
 ## The parts
 
@@ -25,6 +25,8 @@ In this guide, **front** is the driveway side, where visitors stand, and **left*
 ### Walls
 
 The walls stand 135 mm above the floor; the facades of kitchen, living room and bedroom are 46 mm tall, so the camera can look into the front rooms. Walls that touch along a whole face are joined into one part, printed standing (all within 250 mm); doors and windows bridge, the garage gate (100 mm) is printed with supports.
+
+![The seven walls, one colour each: the closed kitchen and bedroom, the T-shaped front of bathroom and utility room, bathroom, utility room, garage and the living room facade](../images/render/04_muri_uniti.png)
 
 | No. | File | Walls | Colour |
 |---|---|---|---|
@@ -108,29 +110,43 @@ The recognition compares every image with a picture of the empty house, so it do
 
 The web app draws the plan with the reference colours stored in `data/house.json`: white for counter, fridge, toilet and sink, wood brown for tables, sideboard and nightstands, blue for sofa and bed, dark grey for the TV stand and the totem, brick red for the barbecue, green for the tree and dark green for the planters. The renders show the wall lights in a translucent material, so the Pixels can shine through.
 
+![The house without the pole, in the colours meant for printing](../images/render/02_casa.png)
+
 ## Assembly
 
 The renders in `docs/images/render/` show every step.
 
 1. **Base.** Lay the six platforms upside down, check the engraved numbers, and press the fourteen keys into the bow-tie pockets across the joints. Fit the Revodok hub into its pocket and lock it with the two brackets `08`; under platform 2 mount the audio board with the brackets `09` and fix the speaker cables with the clips `10`.
 
-   ![The platforms from below, with the keys and the Revodok](../images/render/09_pedane_da_sotto.png)
+   ![The platforms from below: the engraved numbers, the fourteen bow-tie keys and the brackets](../images/render/05_sotto_le_pedane.png)
 
 2. **Lawns.** Turn the base over and lay the garden lawn and the three driveway lawns in their places.
 3. **Walls.** Insert the walls into their grooves, following the table above and the engraved numbers. The front door is the gap between the kitchen `11` and the living room facade `17`; the garage gate is in the wall `16`.
 4. **Plates and lights.** Mount the modules on their plates and the Pixels in the wall lights, then hang them on the walls listed above (see [chapter 4](04-wiring.md) for which module goes where). The bathroom Thermo and the bathroom light share the wall between bathroom and utility room, in part `13`. The UNO Q presses onto the pins of its plate `23`.
 
-   ![Bathroom: Thermo and wall light](../images/render/11_bagno_thermo_e_applique.png)
+   ![Plate 23 with the UNO Q and the engraved number](../images/render/12_placca_uno_q.png)
 
 5. **Pole and camera.** Stand the bottom segment `18` in the utility room, slide the collar `19` onto it, stack the segments `20_Palo_2` to `20_Palo_4` running the USB cable of the camera through their windows, and add the arm `21`. Put the C270 in the cradle and close it with the retainer `22`. The house data puts the lens 930 mm above the floor, above the centre of the base: the calibration adapts to small differences, but the whole base must be in view.
 
-   ![The pole, exploded](../images/render/14_palo_esploso.png)
+   ![The pole and the arm in section: the segments fitted into each other and the camera in the cradle, at the top](../images/render/11_sezione_palo_braccio.png)
 
 6. **Totem and speakers.** Put the three buttons `29`–`31` into the lid `32`, clip the Buttons module onto the pins of the lid and close it on the shell `28`; the plug of the lavalier microphone goes through the socket in platform 2. Slide the speakers in from below, through platforms 1 and 2, and cover them with the planters `44`.
 
-   ![Totem and planters over the speakers](../images/render/06_totem_e_casse_montaggio.png)
+   ![The totem exploded: lid with the three buttons, Buttons module and shell, between the two planters over the speakers](../images/render/07_totem_esploso.png)
+
+   ![The totem in section, on the side of the buttons](../images/render/08_sezione_tasto_B.png)
+   ![The totem in section, on the side of the microphone](../images/render/09_sezione_microfono.png)
+
+   ![A planter in section, over its speaker](../images/render/10_sezione_fioriera.png)
+
+   ![The assembled totem](../images/render/06_totem.png)
 
 7. **Furniture and garden.** Place the furniture, the sideboard with the thermostat, the barbecue with the fan, tree, table, benches and fences.
+
+This is how an adult sees it from the driveway, and how a child does:
+
+![The house at an adult's eye level](../images/render/13_vista_adulto.png)
+![The house at a child's eye level](../images/render/14_vista_bambino.png)
 
 Once the house is calibrated (see [chapter 5](05-testing.md#9-camera-calibration)), the furniture must stay where it is: the house takes it as part of the empty house. If you move a piece, save the empty house again. The camera must not move either; if it gets bumped, the web app asks for a new calibration.
 

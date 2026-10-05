@@ -46,6 +46,7 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 | Un pallino di stato rosso in alto | La **Diagnostica** mostra quale parte. |
 | Un visitatore ha rovinato una regola o eliminato un personaggio | **Eventi → Modifiche** mostra cosa è successo; **Impostazioni → Cestino → Ripristina** (24 ore); **Impostazioni → Regole di partenza** ripristina tutte le regole. |
 | Festa o barbecue non partono | Sono in pausa: aspetta 30 secondi. |
+| Durante la festa la piantina non segue le statuine | È voluto: con le luci colorate la casa non guarda. Riprende da sola a festa finita, appena le luci si fermano. |
 | Un telefono non riesce ad aprire la pagina | Dati mobili spenti; scrivi `http://10.42.N.1/`. |
 
 ## Messa a punto (Altro)
@@ -54,7 +55,7 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 - **Diagnostica**: moduli, scansione I2C, **Prova audio**, **Prova microfono (3 s)**, registri.
 - **Impostazioni**: luminosità e durate, password del Wi-Fi, **Usa l'ora di questo telefono**, backup, cestino, riavvio dell'app, riavvio e spegnimento della scheda.
 - **Comandi → Fai dire alla casa**; **Comandi → Fai una domanda** (la casa chiede qualcosa a un personaggio e se lo segna); **Simulazione** accesa e spenta.
-- **Impostazioni → Voce → Attivazione con la parola chiave**: detta la parola (per esempio *Casa*), la casa ascolta come con Parla.
+- **Impostazioni → Voce → Attivazione con la parola chiave**: detta la parola (per esempio *Casa*), i LED lampeggiano subito e la casa ascolta come con Parla. Si può dire tutto di fila: "Casa, accendi la luce in cucina".
 - **Allarme**: riquadro in fondo alla pagina **Casa**, **Inserisci** / **Disinserisci**.
 
 Guida completa: `docs/it/` nel repository.

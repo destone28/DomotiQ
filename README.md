@@ -1,6 +1,6 @@
 # DomotiQ – a smart house on one Arduino UNO Q
 
-![The DomotiQ diorama with the webcam pole](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/render/01_assieme_con_palo.png)
+![The DomotiQ diorama with the webcam pole](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/render/01_casa_completa.png)
 
 DomotiQ is a 1:20 scale smart house built for Arduino fairs. A webcam on a pole looks down on the house and recognizes who is in which room: figurines, pets, a toy car and any object a visitor puts inside. The lights follow people from room to room, the house enforces its own rules (nobody in the utility room, one person at a time in the bathroom), reacts to a shower, a car coming home or a barbecue, plays a party with music it composes itself, and talks: visitors ask it questions in Italian or English, ring the intercom and introduce new characters with their voice.
 

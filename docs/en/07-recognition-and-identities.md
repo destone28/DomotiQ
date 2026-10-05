@@ -108,7 +108,9 @@ When the thread is lost (both picked up together, the two touched, one reappeare
 - asks aloud too, if its talkativeness allows it, and right after listens for the answer by itself, with no need for **Talk**: just say the name, or "both of them". The first answer wins, aloud or from a phone;
 - without an answer within 60 seconds, keeps its best guess, marked as uncertain: a **?** on the plan, and "Marco is in the kitchen. I think." in voice answers.
 
-**A name is never in two places.** Before asking, the house leaves out of the candidates whoever is already recognized somewhere else in the house (unless a hand has been where it was), whoever was last seen far from there with no hand having been there since, and the car out of the garage unless it is certain of it. If only one is left, the house decides by itself without asking: with Rossellina in the kitchen, the new figurine in the living room that looks like both Rossellina and Rosaria is Rosaria. If the doubt clears while the question is open (Rossellina shows up in the kitchen), the question is withdrawn from the phones and the house stops listening.
+**A name is never in two places.** Before asking, the house leaves out of the candidates whoever is already recognized somewhere else in the house (unless a hand has been where it was), whoever was last seen far from there with no hand having been there since, whoever is of a size too different from what it sees (more than four times bigger or smaller than all of its poses; a figurine is never the car, the car is never a figurine), and the car out of the garage unless it is certain of it. If only one is left, the house decides by itself without asking: with Rossellina in the kitchen, the new figurine in the living room that looks like both Rossellina and Rosaria is Rosaria. If nobody is left (Rossellina is in the kitchen and Rosaria in the bedroom), that figurine is neither of them: the house treats it as a newcomer and asks who it is. If the doubt clears while the question is open (Rossellina shows up in the kitchen), the question is withdrawn from the phones and the house stops listening.
+
+The same rule holds for what the house shows and says. If two presences come with the same name (for instance one still in a hand and one just put down), the name stays with the one in sight. A name given from the web app, by voice or at the intercom stays where it was given and leaves where it was at once, even in the half second when the vision, which runs in a separate process, does not know it yet; then the names are the vision's again, and the house never puts back a name the vision has taken away from a presence.
 
 **The car stays in the garage.** The car is never proposed for a figurine, or for something out of the garage, unless the house is certain of it: as big as a car, still and clearly seen for 10 seconds.
 
@@ -140,6 +142,12 @@ Short, common answers are understood by rules, at once. Any other sentence is cl
 - If what it asks about disappears before the answer, the question is withdrawn from the phones and the house stops listening.
 
 With a new name the house creates the character, with the kind said (or guessed) and the colours it sees. With a registered name it updates that character's colours at once with what it sees, if they look like the character's, so next time it recognizes it by itself; an answer given about the wrong blob gives the name but does not change how the character looks. A registration in progress from the web app comes first: while it waits for its figurine, the house does not ask this question.
+
+## During a party
+
+While the house throws a party the coloured lights change at every beat, and the camera sees colours that are not those of the characters. So the house **pauses the recognition** from the start of the party to the end of the light show: the presences stay where they were and keep their names, nothing new is born, nothing disappears, the house asks nothing and announces no moves. The picture in **Live** keeps updating.
+
+When the party is over the house measures the light of every room again, waits for the lights to stand still and takes what it sees afresh, as at a start. Somebody may have moved a character during the party, so for each of them it is as if a hand had been where it stood: a character that was moved is found again and its name follows it even far from where it was; if the house does not recognize it, it asks who it is.
 
 ## Correcting the house from the web app
 

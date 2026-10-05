@@ -1,6 +1,6 @@
 # DomotiQ – una casa intelligente su una sola Arduino UNO Q
 
-![Il diorama DomotiQ con il palo della webcam](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/render/01_assieme_con_palo.png)
+![Il diorama DomotiQ con il palo della webcam](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/render/01_casa_completa.png)
 
 DomotiQ è una casa intelligente in scala 1:20 costruita per le fiere Arduino. Una webcam su un palo guarda la casa dall'alto e riconosce chi c'è e in quale stanza: personaggi, animali, un'auto giocattolo e qualsiasi oggetto un visitatore ci metta dentro. Le luci seguono le persone di stanza in stanza, la casa fa rispettare le sue regole (nessuno nel locale tecnico, in bagno uno alla volta), reagisce alla doccia, all'auto che torna a casa o al barbecue, fa partire una festa con musica composta da sé, e parla: i visitatori le fanno domande in italiano o in inglese, suonano il citofono e presentano personaggi nuovi a voce.
 

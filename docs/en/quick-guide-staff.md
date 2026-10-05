@@ -46,6 +46,7 @@ Scan QR 1 on the sign (Wi-Fi), then QR 2 (the house). If the phone asks: *Stay c
 | A red status dot at the top | **Diagnostics** shows which part. |
 | A visitor broke a rule or deleted a character | **Events → Changes** shows what happened; **Settings → Bin → Restore** (24 hours); **Settings → Default rules** resets all rules. |
 | Party or barbecue refuses | It is resting: wait 30 seconds. |
+| During a party the plan does not follow the figurines | That is on purpose: with the coloured lights the house does not look. It starts again by itself when the party is over and the lights stand still. |
 | A phone cannot open the page | Mobile data off; type `http://10.42.N.1/`. |
 
 ## Setting up (More)
@@ -54,7 +55,7 @@ Scan QR 1 on the sign (Wi-Fi), then QR 2 (the house). If the phone asks: *Stay c
 - **Diagnostics**: modules, I2C scan, **Audio test**, **Microphone test (3 s)**, logs.
 - **Settings**: brightness and durations, Wi-Fi password, **Use this phone's time**, backup, bin, restart, reboot, power off.
 - **Controls → Make the house say**; **Controls → Ask a question** (the house asks a character something and keeps it); **Simulation** on and off.
-- **Settings → Voice → Wake up with a keyword**: once the word is said (for example *Casa*), the house listens as with Talk.
+- **Settings → Voice → Wake up with a keyword**: once the word is said (for example *Casa*), the LEDs blink at once and the house listens as with Talk. You can say it all in one go: "Casa, turn on the kitchen light".
 - **Alarm**: box at the bottom of the **House** page, **Switch on** / **Switch off**.
 
 Full guide: `docs/en/` in the repository.

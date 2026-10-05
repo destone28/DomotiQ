@@ -249,3 +249,17 @@ In ordine:
 - **Parola di attivazione e LED** (D-39): detta la parola scelta nella webapp, la casa ascolta come con Parla; i LED lampeggiano mentre ascolta e restano fissi mentre parla.
 - **Pezzi v8** (D-40): gli STL del repository sono quelli della versione 8.
 - Dopo ogni avvio dell'app Piper prepara le frasi frequenti per circa 4 minuti e intanto la visione scende a 3-4 immagini al secondo; poi torna a 7.
+
+**Pomeriggio, seconda parte (5/10).** Altre richieste di Emilio dopo le prove al banco:
+- **Ancora un nome in due posti** (D-41). Le cause erano due:
+  - dalla prima versione la casa rimetteva a una presenza senza nome il nome che aveva prima, anche quando la visione lo aveva spostato altrove;
+  - un dubbio tra nomi tutti già riconosciuti si chiudeva tenendo il nome dubbio.
+
+  Ora i nomi li decide la visione, e un nome dato a mano resta dov'è stato dato. Conta anche la taglia: una statuina non è mai l'auto.
+- **"Rossana è sul letto della camera" ripetuto** (D-42): ogni tremolio sul bordo del letto ripartiva come un arrivo. Ora la stessa cosa sullo stesso personaggio non si ripete per 10 minuti.
+- **I nomi prima delle altre parole e risposte immediate sui personaggi** (D-43). "Raccontami cosa piace a Rossellina" risponde su Rossellina; "Mister Brown e Rossellina stanno insieme" viene capito. Le informazioni scritte nelle schede si ritrovano, anche quelle scritte come frase intera. Nessuna domanda su un personaggio aspetta più il modello linguistico.
+- **Parola di attivazione** (D-44): i LED lampeggiano mentre la parola è ancora detta, e la frase che segue, anche dopo una breve pausa, è già la richiesta.
+- **Frasi della voce su disco** (D-45): dopo un riavvio si rileggono invece di essere sintetizzate di nuovo.
+- **Festa** (D-46): durante lo spettacolo di luci il riconoscimento è sospeso; riparte alla fine.
+- **Immagini v8** (D-47): i render della versione 8 sono nel capitolo 3.
+- Durante la verifica della guida è emerso un difetto, ora corretto: con la casa in inglese, un'informazione scritta in italiano come frase intera finiva dentro una frase inglese.
