@@ -180,7 +180,7 @@ class Registration:
         else:
             self.ctx.vision.assign(s.track, ident.id)
         if track:
-            track.identity, track.category = ident.id, category
+            self.ctx.house.name(track, ident.id, category)
         s.identity, s.status = ident.id, "done"
         self._publish(s)
         self.ctx.bus.publish("registered", identity=ident.id, name=ident.name, category=category,
@@ -226,11 +226,7 @@ class Registration:
         else:
             ctx.vision.assign(track_id, ident.id, explicit=True)
         # the house shows it at once, without waiting for the next picture
-        for other in ctx.house.tracks.values():
-            if other is not track and other.identity == ident.id:
-                other.identity, other.uncertain = None, False
-        before = track.identity
-        track.identity, track.category, track.uncertain, track.candidates = ident.id, ident.category, False, []
+        before = ctx.house.name(track, ident.id, ident.category)
         for cid, c in list(ctx.house.confirmations.items()):
             if c["context"].get("kind") == "who" and c["context"].get("track") == track_id:
                 ctx.house.withdraw(cid)

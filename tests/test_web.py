@@ -287,3 +287,14 @@ def test_ask_questions_from_a_phone(web):
     ctx, c = web
     r = c.post("/api/voice/ask", json={}).json()
     assert r["ok"] is False and r["error"] in ("no_voice", "nobody", "no_mic", "silent")
+
+
+def test_the_recognition_waits_for_the_end_of_a_party(web):
+    ctx, c = web
+    from domotiq.app import _wire
+    _wire(ctx)
+    paused = []
+    ctx.vision.pause = paused.append
+    ctx.bus.publish("party", state="started", duration=20)
+    ctx.bus.publish("party", state="ended")
+    assert paused == [True, False]

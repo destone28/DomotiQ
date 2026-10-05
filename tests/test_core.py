@@ -111,6 +111,37 @@ def test_room_events_and_counts(env):
     assert env.house.count("living") == 0
 
 
+def test_a_name_is_never_in_two_places_in_the_house(env):
+    h = env.house
+    ross = env.identities.add("Rossellina", "person")
+    # the vision recognized Rossellina in the kitchen, then moved the name to the one in the living room
+    h.update_tracks([T("a", 80, 100, identity=ross.id), T("b", 300, 100)], now=100)
+    h.update_tracks([T("a", 80, 100), T("b", 300, 100, identity=ross.id)], now=101)
+    assert {t.id: t.identity for t in h.tracks.values()} == {"a": None, "b": ross.id}
+    # two presences coming with the same name (one of them in a hand): the one in sight keeps it
+    h.update_tracks([T("a", 80, 100, identity=ross.id, carried=True), T("b", 300, 100, identity=ross.id)], now=102)
+    assert {t.id: t.identity for t in h.tracks.values()} == {"a": None, "b": ross.id}
+
+
+def test_a_name_given_in_the_web_app_waits_for_the_vision(env):
+    h = env.house
+    ross = env.identities.add("Rossellina", "person")
+    h.update_tracks([T("a", 80, 100, identity=ross.id), T("b", 300, 100)], now=100)
+    assert h.name(h.tracks["b"], ross.id) is None
+    # the vision (another process) still sends the old picture: the name stays where it was given, and only there
+    h.update_tracks([T("a", 80, 100, identity=ross.id), T("b", 300, 100)], now=100.5)
+    assert {t.id: t.identity for t in h.tracks.values()} == {"a": None, "b": ross.id}
+    h.update_tracks([T("a", 80, 100), T("b", 300, 100, identity=ross.id)], now=101)     # now the vision has it
+    # and from then on the names are the vision's
+    h.update_tracks([T("a", 80, 100), T("b", 300, 100)], now=101.5)
+    assert h.tracks["b"].identity is None
+    # given to one, then at once to the other: the latest wins, even before the vision has either
+    h.name(h.tracks["a"], ross.id)
+    h.name(h.tracks["b"], ross.id)
+    h.update_tracks([T("a", 80, 100), T("b", 300, 100)], now=102)
+    assert {t.id: t.identity for t in h.tracks.values()} == {"a": None, "b": ross.id}
+
+
 def test_follow_lights_with_delay(env):
     env.house.update_tracks([T("t1", 80, 100, category="person")], now=100)
     assert env.lights.resolve("kitchen", now=100).source == "follow"

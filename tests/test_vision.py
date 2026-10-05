@@ -1026,6 +1026,73 @@ def test_the_car_is_never_a_guess_out_of_the_garage(layout):
     assert asked == [("garage", ["id-blu", "id-car"])]
 
 
+def test_a_doubt_between_names_that_are_all_elsewhere_is_somebody_new(layout):
+    """Rossellina in the kitchen, Rosaria in the bedroom: a third one that looks like both is neither of them."""
+    ross, rosa, both = _look(45, 50, 30), _look(45, 44, 36), _look(45, 47, 33)
+    tr = _tracker(layout, [Identity("id-ross", "Rossellina", signature=list(ross)),
+                           Identity("id-rosa", "Rosaria", signature=list(rosa))])
+    for k in range(10):
+        tr.update([_blob(80, 100, ross), _blob(527, 170, rosa)], now=100 + 0.1 * k, quiet_s=100)
+    assert sorted(t.identity for t in tr.tracks.values()) == ["id-rosa", "id-ross"]
+    three = [_blob(80, 100, ross), _blob(527, 170, rosa), _blob(300, 100, both)]
+    for k in range(10):
+        tr.update(three, now=101 + 0.1 * k, quiet_s=100)
+    third = next(t for t in tr.tracks.values() if t.identity not in ("id-ross", "id-rosa"))
+    # in doubt between the two (a hand may have swapped them): both are recognized somewhere else
+    third.identity, third.uncertain, third.candidates = "id-ross", True, ["id-ross", "id-rosa"]
+    tr.update(three, now=102.5, quiet_s=100)
+    assert third.identity is None and not third.uncertain
+    assert sorted(t.identity for t in tr.tracks.values() if t.identity) == ["id-rosa", "id-ross"]
+
+
+def test_a_figurine_is_never_in_doubt_with_the_car(layout):
+    from domotiq.vision.tracker import Tracker
+    car, blu, between = _look(40, 10, -40), _look(42, 8, -36), _look(41, 9, -38)
+    tr = _tracker(layout, [Identity("id-car", "Honda Civic", category="car", signature=list(car), size=9000.0),
+                           Identity("id-blu", "Mister Blu", signature=list(blu), size=700.0)])
+    asked = []
+    tr.on_question = lambda t, cands: asked.append(sorted(cands))
+    for k in range(10):
+        tr.update([_blob(540, 300, between, area=700.0)], now=100 + 0.1 * k, quiet_s=100)
+    [t] = tr.tracks.values()
+    assert t.identity == "id-blu"
+    tr._doubt(t, 101.0)                     # put down by a hand in the garage: who is it?
+    assert t.identity == "id-blu" and not t.uncertain and asked == []      # as big as a figurine: not the car
+    blu_ident = tr.identities["id-blu"]
+    assert Tracker.fits_size(blu_ident, 2000.0) and not Tracker.fits_size(blu_ident, 3500.0)
+    blu_ident.poses = [{"sig": list(blu), "size": 1500.0, "elong": 4.0}]   # lying down it looks bigger
+    assert Tracker.fits_size(blu_ident, 3500.0) and not Tracker.fits_size(blu_ident, 7000.0)
+    assert not Tracker.fits_size(tr.identities["id-car"], 700.0)
+
+
+def test_during_a_party_the_house_does_not_look(engine, renderer):
+    red = Thing(300, 100, "#d03030")
+    tracks = bring(engine, renderer, [red])
+    before = [(t.id, t.x, t.y) for t in tracks]
+    engine.pause(True, 12.0)
+    # coloured lights everywhere: blobs come and go, and the figurine looks like something else
+    frames = [([Thing(300, 100, "#30d030"), Thing(450, 200, "#d0d030")], {"brightness": 1.3})] * 30
+    tracks = run(engine, renderer, frames, t0=12.0)
+    assert [(t.id, t.x, t.y) for t in tracks] == before and engine.status()["paused"]
+    # the party ends: the house looks again, and finds the figurine where it was
+    engine.pause(False, 15.0)
+    tracks = run(engine, renderer, [([red], {})] * 80, t0=15.0)
+    assert [t.id for t in tracks] == [before[0][0]] and not engine.paused
+
+
+def test_after_the_house_could_not_look_a_name_follows_the_figurine(layout):
+    a = _look(45, 50, 30)
+    tr = _tracker(layout, [Identity("id-a", "A", signature=list(a))])
+    for k in range(30):
+        tr.update([_blob(200, 60, a)], now=100 + 0.1 * k, quiet_s=100)
+    [old] = tr.tracks.values()
+    assert old.identity == "id-a"
+    tr.touch_all()                          # a party: the house did not look, and A may have been moved
+    for k in range(20):
+        tr.update([_blob(450, 60, a)], now=105 + 0.1 * k, quiet_s=100)
+    assert [t.identity for t in tr.tracks.values()] == ["id-a"] and old.id not in tr.tracks
+
+
 def test_something_pointed_at_in_the_web_app_becomes_a_presence(engine, renderer):
     """A figurine that appeared with no hand joins the empty house (it may be a light): pointed at on the plan or
     in the picture, it shows again and is followed from then on, and the house does not ask who it is."""

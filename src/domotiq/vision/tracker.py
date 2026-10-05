@@ -65,7 +65,8 @@ SUPPRESS_S, SUPPRESS_MM = 30.0, 25.0   # where one was found, nothing new is bor
 PRESENCE_MIN, CHECK_GAP_S = 0.8, 1.0
 PRESENCE_DOUBTED, CHECK_GAP_DOUBTED_S, DOUBT_S = 0.92, 2.5, 120.0
 HIDDEN_FLAG_S = 1.0         # not seen for longer: told to the house as hidden
-ON_FRAMES = 3               # frames on the same piece of furniture before the house is told
+ON_FRAMES = 5               # frames on the same piece of furniture before the house is told
+OFF_FRAMES = 15             # ...and off it: the edge of the bed, a shadow, do not take a figurine down and up again
 # A character lying down, or on the bed, does not look quite as when it was registered: much closer to it than to
 # anybody else is enough, after a few more frames
 ID_ACCEPT_LOOSE, ID_MARGIN_LOOSE, CONFIRM_LOOSE = 0.45, 0.15, 4
@@ -76,6 +77,7 @@ KEEP_MISSES = 8             # a track keeps its name until it fails to look like
 # one learned (more than SIZE_FREE times, a figurine lying down is three times one standing) counts as less alike
 CAR_MIN_MM2, FIGURINE_MAX_MM2 = 2500.0, 6000.0
 SIZE_FREE, SIZE_WEIGHT = 2.5, 0.2
+SIZE_ODD = 4.0              # a blob more than this many times bigger or smaller than every look of a character is not it
 # The looks of each character, learned on the board: besides its registered colours, up to MAX_POSES poses (lying
 # down, on the bed, under another light), each with its colours, size and shape. A pose is added when a character
 # the house follows with confidence (or that somebody has just named) looks unlike all the poses it knows.
@@ -460,8 +462,8 @@ class Tracker:
         fid = o.standing_on(self.calib, self.tops)[1] if t.category != CAR and o.area_mm2 < 6000 else None
         t.on_frames = t.on_frames + 1 if fid == t.on_next else 1
         t.on_next = fid
-        if t.on_frames >= ON_FRAMES:
-            t.on = fid                     # three frames alike: no flicker on the edge of the bed
+        if t.on_frames >= (ON_FRAMES if fid is not None else OFF_FRAMES):
+            t.on = fid                     # some frames alike: no flicker on the edge of the bed
         if t.jumps and now - t.jumps[0] > CAR_SURE_S:     # kept as long as the longest look back (the car's)
             t.jumps = [j for j in t.jumps if now - j <= CAR_SURE_S]
         dt = max(now - t.last_seen, 1e-3)
@@ -577,6 +579,16 @@ class Tracker:
                 if bx - 8 <= px[0] <= bx + bw + 8 and by - 8 <= px[1] <= by + bh + 8:
                     self._touched.add(ident)
                     break
+
+    def touch_all(self) -> None:
+        """Every character may have been moved meanwhile (the house was not looking): none is tied to where it was
+        last seen until it is seen again."""
+        self._touched |= set(self.places) | {t.identity for t in self.tracks.values() if t.identity}
+
+    def _gone_from(self, t: VTrack) -> bool:
+        """Not in sight, and a hand has been over its place since: that character may be anywhere now, and its name
+        may go to what is seen elsewhere."""
+        return t.obs is None and not t.carried and bool(t.identity) and t.identity in self._touched
 
     def _elsewhere(self, identity: str, t: VTrack) -> bool:
         """This character was last seen far from this track, and no hand has been over that place since: nothing
@@ -708,36 +720,51 @@ class Tracker:
 
     # ------------------------------------------------------------ identities
     def _twins(self, t: VTrack) -> bool:
-        """Other registered identities that look the same as this one."""
+        """Other registered identities that look the same as this one, and could be as big as what is seen."""
         me = self.identities.get(t.identity or "")
         if not me or len(me.signature) == 0:
             return False
+        area = t.obs.area_mm2 if t.obs is not None else 0.0
         return any(o.id != me.id and len(o.signature) and distance(me.signature, o.signature) < ID_ACCEPT
-                   for o in self.identities.values())
+                   and self.fits_size(o, area) for o in self.identities.values())
+
+    @staticmethod
+    def fits_size(ident: Identity, area: float) -> bool:
+        """Can a blob this big be this character? The car only car-sized, a figurine never car-sized, and nobody
+        more than SIZE_ODD times bigger or smaller than every look it has (as registered, and the poses learned)."""
+        if not area:
+            return True
+        if (ident.category == CAR) != (area >= CAR_MIN_MM2) and (ident.category == CAR or area > FIGURINE_MAX_MM2):
+            return False
+        sizes = [s for s in [ident.size] + [p.get("size", 0.0) for p in ident.poses] if s]
+        return not sizes or any(1.0 / SIZE_ODD <= area / s <= SIZE_ODD for s in sizes)
 
     def _doubt(self, t: VTrack, now: float) -> None:
         t.locked = False
         t.uncertain = True
         me = self.identities.get(t.identity or "")
-        t.candidates = [o.id for o in self.identities.values()
-                        if me and len(o.signature) and distance(me.signature, o.signature) < ID_ACCEPT]
+        alike = [o for o in self.identities.values()
+                 if me and len(o.signature) and distance(me.signature, o.signature) < ID_ACCEPT]
+        t.candidates = [o.id for o in sorted(alike, key=lambda o: distance(t.sig, o.signature))]   # likeliest first
         self._ask(t, now)
 
     def _possible(self, t: VTrack, ids: Iterable[str], now: float) -> list[str]:
         """The names this track can have. A name is never in two places: not one already recognized somewhere else
         in the house (unless a hand has been over its place since), not one last seen far from here with no hand
-        there since; and the car only in the garage, or when the house is certain of it."""
+        there since; nobody much bigger or smaller than what is seen (a figurine is never the car); and the car only
+        in the garage, or when the house is certain of it."""
         held = {u.identity for u in self.tracks.values()
                 if u is not t and u.identity and not u.uncertain and not u.carried
                 and (u.obs is not None or u.identity not in self._touched)}
         car_ok = self.layout.locate(t.x, t.y) == "garage" or (
             t.obs is not None and t.obs.area_mm2 > FIGURINE_MAX_MM2 and not self._car_out_of_place(t, now))
+        area = t.obs.area_mm2 if t.obs is not None else 0.0
         out = []
         for i in ids:
             ident = self.identities.get(i)
             if ident is None or i in held or (i != t.identity and self._elsewhere(i, t)):
                 continue
-            if ident.category == CAR and not car_ok:
+            if (ident.category == CAR and not car_ok) or not self.fits_size(ident, area):
                 continue
             out.append(i)
         return out
@@ -749,11 +776,18 @@ class Tracker:
         left = self._possible(t, t.candidates, now)
         if len(left) > 1:
             t.candidates = left
+            if t.identity not in left:
+                t.identity = left[0]          # the name it had is somewhere else now: the likeliest of the others
             return False
         if left:
             ident = self.identities[left[0]]
             t.identity, t.category = ident.id, ident.category
             t.confidence = max(t.confidence, 0.5)
+        else:
+            # none of them can be here (each one is somewhere else, or of another size): somebody else, and the
+            # house asks who
+            t.identity, t.confidence, t.locked = None, 0.0, False
+            t.votes.clear()
         t.uncertain, t.candidates = False, []
         return True
 
@@ -847,7 +881,8 @@ class Tracker:
                                                           rows[t.id][index[t.identity]] < ID_ACCEPT_LOOSE)]
             if not free_tracks:
                 return
-        taken = {t.identity for t in self.tracks.values() if t.identity and t not in free_tracks}
+        taken = {t.identity for t in self.tracks.values() if t.identity and t not in free_tracks
+                 and not self._gone_from(t)}
         cands = [i for i in ids if i.id not in taken]
         raw = np.ones((len(free_tracks), max(len(cands), 1)))     # how much it looks like each one
         for i, t in enumerate(free_tracks):
@@ -908,8 +943,9 @@ class Tracker:
                 continue
             t.identity, t.confidence = ident.id, conf
             t.category = ident.category
-            # the same character still "in a hand": it was put down here
-            for tid in [k for k, c in self.tracks.items() if c is not t and c.carried and c.identity == ident.id]:
+            # the same character still "in a hand", or unseen where a hand has been: it was put down here
+            for tid in [k for k, c in self.tracks.items()
+                        if c is not t and c.identity == ident.id and (c.carried or self._gone_from(c))]:
                 del self.tracks[tid]
                 self._rooms.pop(tid, None)
             if not ambiguous:
@@ -939,7 +975,7 @@ class Tracker:
         learned yet (the answer teaches them)."""
         if not self.on_question:
             return
-        held = {t.identity for t in self.tracks.values() if t.identity}
+        held = {t.identity for t in self.tracks.values() if t.identity and not self._gone_from(t)}
         free = [i for i in self.identities.values() if i.id not in held]
         for t in self.tracks.values():
             if t.identity or t.obs is None or t.carried or t.asked_new >= t.since or now - t.since < UNKNOWN_ASK_S \

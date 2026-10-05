@@ -27,6 +27,7 @@ from .store import Store
 
 BUTTONS = ("talk", "intercom", "language")
 MOVE_MM = 6.0
+NAMED_S = 3.0      # a name somebody gave stays on its presence this long, while the vision (another process) catches up
 
 
 @dataclass
@@ -71,6 +72,7 @@ class House:
                        "simulation": False, "modules": {}}
         self._follow_off_at: dict[str, float] = {}
         self._dropped: dict[str, float] = {}     # presences said not real: until when they are left out
+        self._named: dict[str, tuple[str, float]] = {}   # presence -> (name somebody just gave it, until when)
         self._last_sample = 0.0
         self._now: float | None = None
 
@@ -86,20 +88,38 @@ class House:
         now = now or time.time()
         self._now = now
         self._dropped = {k: until for k, until in self._dropped.items() if until > now}
+        self._named = {k: v for k, v in self._named.items() if v[1] > now}
+        named = {tid: ident for tid, (ident, _) in self._named.items()}
+        moved = set(named.values())
         new: dict[str, Track] = {}
         for t in tracks:
             if t.id in self._dropped:
                 continue                       # said not real: the vision has not dropped it yet
             prev = self.tracks.get(t.id)
             t.room = self.layout.locate(t.x, t.y, prev.room if prev else None)
-            if prev and not t.identity and prev.identity and t.uncertain is False:
-                t.identity = prev.identity
+            # the names come from the vision; one somebody has just given is kept until the vision has it too, and
+            # meanwhile it is nowhere else
+            if t.id in named:
+                if t.identity == named[t.id]:
+                    self._named.pop(t.id, None)
+                t.identity, t.uncertain, t.candidates = named[t.id], False, []
+            elif t.identity in moved:
+                t.identity, t.uncertain, t.candidates = None, False, []
             if t.identity:
                 ident = self.identities.get(t.identity)
                 if ident:
                     t.category = ident.category
                     t.color = ident.color if t.color == "#888888" else t.color
             new[t.id] = t
+        # a name is never in two places: if two presences come with the same one, the one in sight keeps it
+        holder: dict[str, Track] = {}
+        for t in sorted(new.values(), key=lambda t: (t.carried, t.hidden, t.uncertain, -t.confidence)):
+            if not t.identity:
+                continue
+            if t.identity in holder:
+                t.identity, t.uncertain, t.candidates = None, False, []
+            else:
+                holder[t.identity] = t
 
         for tid, prev in self.tracks.items():
             if tid not in new:
@@ -141,6 +161,21 @@ class House:
             self.store.add_positions([(now, t.id, t.identity, t.x, t.y, t.room)
                                       for t in new.values() if not t.carried])
         self._pub("tracks_changed", tracks=[t.to_dict() for t in new.values()])
+
+    def name(self, track: Track, identity: str, category: str | None = None) -> str | None:
+        """Somebody said who this presence is (web app, voice, doorbell): the house shows it at once, the name leaves
+        wherever else it was, and stays here while the vision catches up. Returns the name it had before."""
+        for other in self.tracks.values():
+            if other is not track and other.identity == identity:
+                other.identity, other.uncertain, other.candidates = None, False, []
+        before = track.identity
+        track.identity, track.uncertain, track.candidates = identity, False, []
+        if category:
+            track.category = category
+        # the latest name given wins: one given a moment ago to another presence is not kept there any more
+        self._named = {k: v for k, v in self._named.items() if v[0] != identity}
+        self._named[track.id] = (identity, (self._now or time.time()) + NAMED_S)
+        return before
 
     def drop_track(self, track_id: str, now: float | None = None) -> None:
         """A presence somebody said is not real leaves the house now (rooms, counts, lights, questions), and is

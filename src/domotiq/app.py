@@ -281,6 +281,12 @@ def _wire_vision(ctx: Context) -> None:
             if c["context"].get("kind") == "who" and c["context"].get("track") == ev.get("track"):
                 ctx.house.withdraw(cid)
 
+    def party(ev: Event) -> None:
+        # the coloured lights of a party fool the recognition: it waits until the light show ends
+        if ev.get("state") in ("started", "ended"):
+            ctx.vision.pause(ev.get("state") == "started")
+
+    bus.subscribe("party", party)
     bus.subscribe("vision_question", ask_who)
     bus.subscribe("confirm_answer", answered)
     bus.subscribe("track_disappear", gone)

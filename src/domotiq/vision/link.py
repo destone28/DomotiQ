@@ -55,6 +55,9 @@ class VisionLink:
         """The house changed the light of these rooms (the pipeline measures them again); `animated`: the
         rooms whose light is animated now, where figurines may seem to shake."""
 
+    def pause(self, on: bool) -> None:
+        """A party: what the webcam sees is not looked at until it ends (the presences stay as they are)."""
+
     def status(self) -> dict[str, Any]:
         return {"available": self.available}
 

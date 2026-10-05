@@ -130,6 +130,7 @@ class Engine:
         self._light_block: dict[str, float] = {}  # room -> until when a change of its light hides births
         self._light_at: dict[str, float] = {}     # room -> when the house last changed its light
         self._animated: set[str] = set()           # rooms whose light is animated now
+        self.paused = False                        # a party: what is seen is not looked at until it ends
         self._forget: list[tuple[float, float, float]] = []   # (x, y, until): somebody said nothing is there
         self._fg_since: np.ndarray | None = None   # per pixel: since when it differs from the empty house
         self._session_at = float("-inf")          # when the hands now at work came
@@ -262,6 +263,25 @@ class Engine:
         for room in rooms:
             self._light_block[room] = now + LIGHT_BLOCK_S
             self._light_at[room] = now
+
+    def pause(self, on: bool, now: float | None = None) -> None:
+        """A party: the coloured lights change every moment, and what the webcam sees then says nothing about what
+        is in the house. Until it ends the presences stay as they are, where they are. Then the light of every
+        room is measured again, every character may have been moved meanwhile, and what is in sight is taken as it
+        is once the lights stand still (as at a start)."""
+        now = time.time() if now is None else now
+        if bool(on) == self.paused:
+            return
+        self.paused = bool(on)
+        if self.paused:
+            return
+        self._settle_until = now + LIGHT_FREEZE_S
+        if self.segmenter:
+            self.segmenter.light_changed(self.segmenter.region_names, now, LIGHT_FREEZE_S)
+        if self.tracker:
+            self.tracker.touch_all()
+        self._scan_pending, self._scan_since = True, 0.0
+        self._zone, self._ghost = None, None
 
     def _plausible(self, o: Observation, now: float) -> bool:
         """Could this be something standing in the house (whatever put it there)?"""
@@ -521,6 +541,8 @@ class Engine:
         if not self.ready:
             self.tracks, self.observations = [], []
             return []
+        if self.paused:
+            return self.tracks                # the party: the presences as they were, the picture for the live view
         if self._scan_pending:
             # what is in sight is taken as it is only once the lights stand still: the microcontroller sends them
             # again at a start, and their glow is no character
@@ -875,6 +897,7 @@ class Engine:
             "shift_px": self._moved["shift"],
             "gains": self.segmenter.gains if self.segmenter else {},
             "recording": bool(self._record),
+            "paused": self.paused,
             "dataset": len(list(self.dataset_dir.glob("*.jpg"))),
         }
 

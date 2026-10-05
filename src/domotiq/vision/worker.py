@@ -196,6 +196,8 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                     engine.tracker.forget(msg[1])
                 elif kind == "lights":
                     engine.lights_changed(msg[1], time.time(), msg[2] if len(msg) > 2 else None)
+                elif kind == "pause":
+                    engine.pause(bool(msg[1]), time.time())
                 elif kind == "privacy":
                     engine.set_privacy(bool(msg[1]))
                 elif kind == "want":
@@ -451,6 +453,9 @@ class VisionProcess(VisionLink):
 
     def lights_changed(self, rooms: list[str], animated: list[str] | None = None) -> None:
         self._send("lights", rooms, animated)
+
+    def pause(self, on: bool) -> None:
+        self._send("pause", bool(on))
 
     def set_privacy(self, blur_private: bool) -> None:
         self.cfg["blur_private"] = bool(blur_private)
