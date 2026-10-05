@@ -88,6 +88,10 @@ POSE_MAX_SIG, POSE_MARGIN = 0.45, 0.05
 # has been over that place since (or carried it); and a named figurine keeps its name while no hand is around.
 PLACE_JUMP_MM = 50.0
 SURE_S = 6.0                # something unknown counts for an alarm only after standing there this long
+# The car lives in the garage: anywhere else something car-sized is far more often a light, a shadow or figurines
+# huddled together. The house asks about a car out of the garage only when it is certain: seen still and clearly
+# for this long
+CAR_SURE_S, CAR_SURE_PRESENCE = 10.0, 0.95
 CARRIED_SIG = 0.45          # put down: coloured like it
 PUT_DOWN_SIG = 0.7          # ...or the one new thing the hands left, even looking a little different (lying down)
 FROZEN_JUMP_MM = 30.0       # a figurine stays where it is unless a hand carries it: farther is another blob (with a
@@ -450,8 +454,8 @@ class Tracker:
         t.on_next = fid
         if t.on_frames >= ON_FRAMES:
             t.on = fid                     # three frames alike: no flicker on the edge of the bed
-        if t.jumps and now - t.jumps[0] > JITTER_WINDOW_S:
-            t.jumps = [j for j in t.jumps if now - j <= JITTER_WINDOW_S]
+        if t.jumps and now - t.jumps[0] > CAR_SURE_S:     # kept as long as the longest look back (the car's)
+            t.jumps = [j for j in t.jumps if now - j <= CAR_SURE_S]
         dt = max(now - t.last_seen, 1e-3)
         if t.hits:
             vx, vy = (x - t.x) / dt, (y - t.y) / dt
@@ -591,11 +595,15 @@ class Tracker:
         if t is None:
             return None
         self._rooms.pop(track_id, None)
+        if t.identity:
+            # the name was on something that is not there: where it stood says nothing about that character
+            self.places.pop(t.identity, None)
+            self._touched.discard(t.identity)
         self._suppressed.append((t.x, t.y, now + SUPPRESS_S))
-        self._doubt(t, now)
+        self._doubt_room(t, now)
         return t.raw or (t.x, t.y)
 
-    def _doubt(self, t: VTrack, now: float) -> None:
+    def _doubt_room(self, t: VTrack, now: float) -> None:
         """Nothing was there: in that room something new must be surer for a while."""
         room = self.layout.locate(t.x, t.y)
         if room:
@@ -659,7 +667,7 @@ class Tracker:
             del self.tracks[tid]
             self._rooms.pop(tid, None)
             self._suppressed.append((t.x, t.y, now + SUPPRESS_S))
-            self._doubt(t, now)
+            self._doubt_room(t, now)
             t.obs.extra.pop("track", None)
             self.jittery += 1
 
@@ -705,9 +713,18 @@ class Tracker:
         self._ask(t, now)
 
     def _ask(self, t: VTrack, now: float) -> None:
-        if self.on_question and now - t.asked > 30 and t.candidates:
+        if self.on_question and now - t.asked > 30 and t.candidates and not self._car_out_of_place(t, now):
             t.asked = now
             self.on_question(t, list(t.candidates))
+
+    def _car_out_of_place(self, t: VTrack, now: float) -> bool:
+        """A car (or something car-sized) out of the garage that the house is not certain of: no question."""
+        car = t.category == CAR or (t.obs is not None and t.obs.area_mm2 > FIGURINE_MAX_MM2)
+        if not car or self.layout.locate(t.x, t.y) == "garage":
+            return False
+        steady = (t.obs is not None and now - t.since >= CAR_SURE_S and self.presence(t, now) >= CAR_SURE_PRESENCE
+                  and not any(now - j <= CAR_SURE_S for j in t.jumps))
+        return not steady
 
     def assign(self, track_id: str, identity: str | None) -> None:
         t = self.tracks.get(track_id)
@@ -870,6 +887,8 @@ class Tracker:
             # proposed by kind: cars for a car, animals for an animal, objects for an object; a new person is
             # asked the name (a registered name said aloud or typed is recognized anyway)
             kind = CAR if t.obs.area_mm2 > 6000 or t.category == CAR else _group(t.category)
+            if kind == CAR and self._car_out_of_place(t, now):
+                continue                       # asked later, if it stays and the house becomes certain
             fit = [] if kind == PERSON else [i for i in free if _group(i.category) == kind]
             trained = sorted((i for i in fit if len(i.signature)), key=lambda i: distance(t.sig, i.signature))
             cands = [i.id for i in trained[:3] + [i for i in fit if not len(i.signature)]][:4]

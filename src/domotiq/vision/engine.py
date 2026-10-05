@@ -44,6 +44,7 @@ log = logging.getLogger(__name__)
 
 ANALYSIS = (640, 480)
 EMPTY_FRAMES = 20
+NOISE_FILE = "noise.npy"     # the noise of every pixel, measured with the empty house, next to its image
 SETTLE_S = 0.6           # after the last hand: its shadow is gone and what it put down stands still
 BIRTH_S = 3.0            # new things are looked for where the hands were, for this long
 SCAN_S = 3.0             # after a start or a new empty house, what is in sight is taken as it is
@@ -164,6 +165,9 @@ class Engine:
         self._settle_until = now + LIGHT_FREEZE_S
         if self.segmenter:
             self.segmenter.light_changed(self.segmenter.region_names, now, LIGHT_FREEZE_S)
+            # other exposure and gain, other noise: learned again from the next quiet frames, after a restart too
+            self.segmenter.set_noise(None)
+            (self.dir / NOISE_FILE).unlink(missing_ok=True)
 
     def dismiss(self, track_id: str, now: float | None = None) -> None:
         """Somebody said there is nothing there (a reflection, a hand): the track goes, what it was joins the
@@ -322,8 +326,17 @@ class Engine:
             ref = cv2.imread(str(self.dir / "reference.png"))
             if ref is not None and ref.shape[1::-1] == ANALYSIS:
                 self.segmenter.set_reference([ref])
+                self.segmenter.set_noise(self._load_noise())
                 self._empty0 = self.segmenter.reference_bgr.copy()
                 self._backgrounds()
+
+    def _load_noise(self) -> np.ndarray | None:
+        """The noise saved with the empty house (None: the first quiet frames after the start will teach it)."""
+        try:
+            noise = np.load(self.dir / NOISE_FILE, allow_pickle=False)
+        except (OSError, ValueError, EOFError):         # missing, or cut short by a power cut
+            return None
+        return noise.astype(np.float32) if noise.shape == (ANALYSIS[1], ANALYSIS[0], 2) else None
 
     def _setup(self, calib: Calibration) -> None:
         self.calib = calib
@@ -378,7 +391,8 @@ class Engine:
             return {"ok": False, "error": "the corners do not look like the base: tap them in order"}
         calib.save(self.dir / "calibration.json")
         self._setup(calib)
-        (self.dir / "reference.png").unlink(missing_ok=True)
+        for name in ("reference.png", NOISE_FILE):
+            (self.dir / name).unlink(missing_ok=True)
         return {"ok": True, "message": "Angoli salvati. Ora togli tutto e premi Casa vuota.",
                 "message_en": "Corners saved. Now clear the house and press Empty house."}
 
@@ -395,6 +409,13 @@ class Engine:
         self.segmenter.set_reference(frames)
         self._empty0 = self.segmenter.reference_bgr.copy()
         cv2.imwrite(str(self.dir / "reference.png"), np.clip(self.segmenter.reference_bgr, 0, 255).astype(np.uint8))
+        if self.segmenter.noise is not None:
+            # written aside and then renamed: a power cut leaves the old file or the new one, never half of it
+            tmp = self.dir / ("tmp-" + NOISE_FILE)
+            np.save(tmp, self.segmenter.noise.astype(np.float16))
+            tmp.replace(self.dir / NOISE_FILE)
+        else:
+            (self.dir / NOISE_FILE).unlink(missing_ok=True)
         self._backgrounds()
         self._moved.update(shift=0.0, count=0)
         if self.tracker:
@@ -403,7 +424,7 @@ class Engine:
         return {"ok": True, "message": "Casa vuota salvata.", "message_en": "Empty house saved."}
 
     def reset(self) -> dict[str, Any]:
-        for name in ("calibration.json", "reference.png"):
+        for name in ("calibration.json", "reference.png", NOISE_FILE):
             (self.dir / name).unlink(missing_ok=True)
         self.calib = self.segmenter = self.tracker = self.privacy = None
         self.tracks = []
@@ -513,9 +534,16 @@ class Engine:
             steady = not light_event and share <= 0.35 and 0.33 < ratio < 3.0
             self._absorb_ghosts(small, fg, obs, hands, frozen or scan or share > 0.35, now, steady)
         # the hall light drifts slowly: follow it on the free floor, when nothing moves
-        if now - self._last_ref_update > 5.0 and not frozen and not any(o.hand for o in obs):
+        calm = not frozen and not any(o.hand for o in obs)
+        drift = calm and now - self._last_ref_update > 5.0
+        if drift:
             self._last_ref_update = now
             seg.update_reference(small, fg, rate=0.02)
+        # the noise of every pixel too: from every calm frame while it is young (a start with no noise saved, the
+        # webcam set again), then with the empty house. Never while a light of the house changes or is animated
+        if (drift or seg.noise_young) and calm and not light_event and not self._animated \
+                and all(now - t >= LIGHT_BLOCK_S for t in self._light_at.values()):
+            seg.learn_noise(self._presences(obs))
         if now - self._moved["checked"] > 30.0:
             self._check_moved(small, now)
         if self._record:
@@ -526,6 +554,16 @@ class Engine:
                            ("rest", (t_rules - t_seg) + (t_end - t_track))):
             self.stage_ms[key] = 0.9 * self.stage_ms[key] + 0.1 * spent * 1000.0
         return self.tracks
+
+    def _presences(self, obs: list[Observation]) -> np.ndarray | None:
+        """Where the blobs that are presences are."""
+        labels = self.segmenter.labels
+        tracked = [o.extra["label"] for o in obs if o.extra.get("track")]
+        if not tracked or labels is None:
+            return None
+        lut = np.zeros(int(labels.max()) + 1, bool)
+        lut[tracked] = True
+        return lut[labels]
 
     def _still_hands(self, small: np.ndarray, obs: list[Observation], now: float) -> None:
         """A hand moves: a "hand" that stays exactly where it is for HAND_STILL_S is a module or a cable lying

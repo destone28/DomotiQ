@@ -18,6 +18,7 @@ import numpy as np
 BINS = 12
 RANGE = 64.0                  # a*, b* in [-64, 64] cover every printable colour
 SIG_LEN = BINS * BINS + 3
+EDGES = np.linspace(-RANGE, RANGE, BINS + 1)
 
 
 def signature(lab_pixels: np.ndarray) -> np.ndarray:
@@ -26,7 +27,9 @@ def signature(lab_pixels: np.ndarray) -> np.ndarray:
         return np.zeros(SIG_LEN, np.float32)
     a = np.clip(lab_pixels[:, 1], -RANGE, RANGE - 1e-3)
     b = np.clip(lab_pixels[:, 2], -RANGE, RANGE - 1e-3)
-    hist, _, _ = np.histogram2d(a, b, bins=BINS, range=[[-RANGE, RANGE], [-RANGE, RANGE]])
+    # the bins of np.histogram2d, counted directly: the same counts, several times faster on the board
+    cell = (np.searchsorted(EDGES, a, side="right") - 1) * BINS + np.searchsorted(EDGES, b, side="right") - 1
+    hist = np.bincount(cell, minlength=BINS * BINS).reshape(BINS, BINS)
     # a little blur between neighbouring bins: a slight change of light must not jump a bin
     hist = cv2.GaussianBlur(hist.astype(np.float32), (5, 5), 1.0, borderType=cv2.BORDER_CONSTANT).ravel()
     hist /= max(float(hist.sum()), 1e-6)

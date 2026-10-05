@@ -13,6 +13,10 @@ light:
   common ratio to the reference, so a figurine or the car does not bias it,
   and the one closest to the previous frame when two are possible);
 - a shadow is darker but keeps the colour of the floor: it does not count;
+- some pixels flicker more than others (the lawns, the edges of the
+  furniture, dim corners, all of them in a darker hall with more gain on the
+  webcam): a blob counts only if somewhere it stands out from the flicker of
+  its own pixels, learned on the empty house, and then it counts whole;
 - zones that are not the floor (wall lights, the tree top, the camera pole)
   are masked, projected at the height where they really are, and so are the
   tops of the walls, where nothing can stand and the light of two rooms mixes.
@@ -20,6 +24,7 @@ light:
 
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass, field
 
@@ -35,6 +40,33 @@ CATEGORY_HEIGHT = {"person": 90.0, "dog": 35.0, "cat": 35.0, "animal": 35.0, "ca
 # what a figurine can stand on besides the floor: the bed, the sofa, a table... (not inside the shower, nor on the
 # totem, the pole or the tree)
 NOT_SURFACES = ("shower", "totem", "pole", "tree")
+# The flicker of each pixel (its noise) is learned from the frames of the empty house, and from the quiet frames
+# after a start when only the image of the empty house was saved. A pixel counts once NOISE_MIN samples are behind
+# it; after a start the first NOISE_START quiet frames teach it, and the samples fade with a weight of
+# 1 - 1/NOISE_SLOW each, so the noise follows the house slowly.
+NOISE_MIN, NOISE_START, NOISE_SLOW = 8, 20, 50
+NOISE_FADE = 1.0 - 1.0 / NOISE_SLOW
+NOISE_KNOWN = 1.0 - NOISE_FADE ** NOISE_MIN       # the faded count of NOISE_MIN samples
+
+
+def spread(frames: list[np.ndarray], center: np.ndarray) -> np.ndarray:
+    """How much each pixel of these frames flickers around `center` (their median, in 8-bit Lab): the sigma of L (in
+    8-bit steps) and of a and b (each), from the median distance, so a frame with a hand in it does not count. In
+    integers, with the samples of a pixel side by side: three times faster on the board than in floats."""
+    n, (h, w) = len(frames), center.shape[:2]
+    d_l = np.empty((h, w, n), np.uint8)
+    d_ab = np.empty((h, w, n), np.uint16)                    # squared
+    c_l, c_a, c_b = cv2.split(center)
+    for i, f in enumerate(frames):
+        f_l, f_a, f_b = cv2.split(cv2.cvtColor(np.clip(f, 0, 255).astype(np.uint8), cv2.COLOR_BGR2LAB))
+        d_l[..., i] = cv2.absdiff(f_l, c_l)
+        d_a, d_b = cv2.absdiff(f_a, c_a), cv2.absdiff(f_b, c_b)
+        d_ab[..., i] = cv2.add(cv2.multiply(d_a, d_a, dtype=cv2.CV_16U), cv2.multiply(d_b, d_b, dtype=cv2.CV_16U))
+    mid = ((n - 1) // 2, n // 2)
+    m_l = np.partition(d_l, mid, axis=-1)[..., mid].astype(np.float32).mean(axis=-1)
+    m_ab = np.sqrt(np.partition(d_ab, mid, axis=-1)[..., mid].astype(np.float32)).mean(axis=-1)
+    # the distance in a, b of gaussian noise of sigma s has its median at 1.1774 s
+    return np.dstack([1.4826 * m_l, m_ab / 1.1774]).astype(np.float32)
 
 
 def surfaces(layout: Layout) -> list[tuple[Rect | Circle, float, str]]:
@@ -144,8 +176,22 @@ class Segmenter:
         # measured on casa1 in the dim light of the lab: a dark brown figurine on the grey floor is 14 points
         # darker and 8.5 apart in colour, the empty house stays well below these. What differs with no hand
         # around never becomes a presence (engine), so the comparison can be this sensitive.
+        # A blob must also stand out somewhere by more than noise_k times the noise of its pixels. On casa1
+        # (4 October) most pixels flicker by 0.6-0.9 points of lightness and about 1 of colour, so the fixed
+        # thresholds decide almost everywhere; with two or three times that noise (a darker hall, more gain on the
+        # webcam) 5 times the noise takes away most of the flicker they let through (60-95%), and no figurine.
         self.params = {"dc": 8.0, "dl": 12.0, "shadow_dc": 4.0, "min_px": 120, "hand_mm2": 2500.0,
-                       "hand_near_px": 60}
+                       "hand_near_px": 60, "noise_k": 5.0}
+        # the noise of each pixel, as a mean of its samples that fades slowly: the faded sums of the samples of L
+        # and of a, b and the faded count, all divided by NOISE_SLOW (None while nothing is known)
+        self._noise_l: np.ndarray | None = None
+        self._noise_c: np.ndarray | None = None
+        self._noise_w: np.ndarray | None = None
+        self._noise_frames = 0                         # frames behind the noise as a whole
+        self._limits: tuple | None = None
+        self._seen: list[tuple] = []                   # the last two frames (lab, light measured at, time)
+        self._ones = np.ones((self.h, self.w), np.float32)
+        self._components: tuple | None = None          # the blobs _above_noise() found, for blobs()
         self.labels: np.ndarray | None = None          # the blobs of the last frame, by number
         self.hand_mask: np.ndarray | None = None       # where the hands of the last frame are
         self.scene = StaticScene(layout, calib)
@@ -233,9 +279,14 @@ class Segmenter:
 
     # ------------------------------------------------------------ reference
     def set_reference(self, frames_bgr: list[np.ndarray]) -> None:
-        stack = np.stack([self._fit(f).astype(np.float32) for f in frames_bgr])
+        frames = [self._fit(f) for f in frames_bgr]
+        stack = np.stack([f.astype(np.float32) for f in frames])
         self.reference_bgr = np.median(stack, axis=0).astype(np.float32)
+        del stack
         self._reference_changed()
+        # enough frames of the empty house also give the noise of each pixel; with fewer, the quiet frames that
+        # follow teach it
+        self.set_noise(spread(frames, self._ref_lab8) if len(frames) >= NOISE_MIN else None, len(frames))
         self.fg_prev = None
         self._prev_gains = None
         self._g = None
@@ -285,6 +336,80 @@ class Segmenter:
         if frame.shape[1] != self.w or frame.shape[0] != self.h:
             return cv2.resize(frame, (self.w, self.h), interpolation=cv2.INTER_AREA)
         return frame
+
+    # ------------------------------------------------------------ noise
+    @property
+    def noise(self) -> np.ndarray | None:
+        """The noise of every pixel: sigma of L (8-bit steps) and of a and b (None while unknown)."""
+        if self._noise_w is None:
+            return None
+        w = np.maximum(self._noise_w, 1e-6)
+        return np.dstack([self._noise_l / w, self._noise_c / w])
+
+    def set_noise(self, noise: np.ndarray | None, samples: int = NOISE_START) -> None:
+        """The noise of every pixel, as spread() gives it, from this many frames (None: unknown, learned again
+        from the next quiet frames)."""
+        if noise is None or noise.shape != (self.h, self.w, 2):
+            self._noise_l = self._noise_c = self._noise_w = None
+            self._noise_frames = 0
+        else:
+            self._noise_w = np.full((self.h, self.w), 1.0 - NOISE_FADE ** samples, np.float32)
+            self._noise_l = noise[..., 0].astype(np.float32) * self._noise_w
+            self._noise_c = noise[..., 1].astype(np.float32) * self._noise_w
+            self._noise_frames = samples
+        self._limits = None
+        self._seen = []
+
+    @property
+    def noise_young(self) -> bool:
+        """The noise is still being learned: every quiet frame teaches it."""
+        return self._noise_frames < NOISE_START
+
+    def learn_noise(self, away: np.ndarray | None = None) -> None:
+        """Learn the noise from the last two frames, taken while nothing moved (no hand, no light changing): what
+        differs between them is noise, except maybe where the presences are (`away`, a figurine just put down may
+        still be settling). Between two frames a pixel changes by its noise twice over: on average |dL| is
+        2 sigma / sqrt(pi) and |d(a, b)| is sigma sqrt(pi)."""
+        if len(self._seen) < 2:
+            return
+        (lab0, g0, t0), (lab1, g1, t1) = self._seen
+        if g0 != g1 or not 0.0 < t1 - t0 <= 1.0:
+            return                       # the light was measured again in between, or frames are missing
+        if self._noise_w is None:
+            self._noise_l, self._noise_c, self._noise_w = (np.zeros((self.h, self.w), np.float32) for _ in range(3))
+        still = self.mask
+        if away is not None and away.any():
+            near = cv2.dilate(away.astype(np.uint8), np.ones((9, 9), np.uint8))
+            still = cv2.bitwise_and(cv2.compare(near, 0, cv2.CMP_EQ), self.mask)
+        d_l, d_a, d_b = (c.astype(np.float32) for c in cv2.split(cv2.absdiff(lab1, lab0)))
+        root_pi = math.sqrt(math.pi)
+        rate = 1.0 - NOISE_FADE
+        cv2.accumulateWeighted(d_l * (root_pi / 2), self._noise_l, rate, mask=still)
+        cv2.accumulateWeighted(cv2.magnitude(d_a, d_b) / root_pi, self._noise_c, rate, mask=still)
+        cv2.accumulateWeighted(self._ones, self._noise_w, rate, mask=still)
+        self._noise_frames += 1
+        self._limits = None
+
+    def _tolerance(self) -> tuple[np.ndarray, ...] | None:
+        """The thresholds of every pixel once its noise counts: lightness (as an integer, and its negative), colour,
+        colour of a shadow, and where they are above the fixed ones (None: the fixed ones everywhere)."""
+        p = self.params
+        key = (p["dl"], p["dc"], p["shadow_dc"], p["noise_k"])
+        if self._limits is None or self._limits[0] != key:
+            limits = None
+            if self._noise_w is not None and self._noise_frames >= NOISE_MIN:
+                # noise_k times the mean of the samples, where there are enough of them
+                w = self._noise_w
+                scale = np.where(w >= NOISE_KNOWN, p["noise_k"] / np.maximum(w, NOISE_KNOWN), 0.0).astype(np.float32)
+                light = np.maximum(self._noise_l * scale, p["dl"] * 2.55)
+                color = np.maximum(self._noise_c * scale, p["dc"])
+                # dl is an integer: dl > 30.6 is dl > 30. The shadow keeps its share of the colour threshold
+                light = light.astype(np.int16)
+                raised = ((light > int(p["dl"] * 2.55)) | (color > p["dc"])).view(np.uint8) * np.uint8(255)
+                if cv2.countNonZero(raised):
+                    limits = (light, -light, color, color * np.float32(p["shadow_dc"] / p["dc"]), raised)
+            self._limits = (key, limits)
+        return self._limits[1]
 
     # ------------------------------------------------------------ light correction
     FRESH_EVERY_S = 0.3
@@ -388,26 +513,61 @@ class Segmenter:
         lab8 = cv2.cvtColor(self.corrected(frame_bgr, True, now).astype(np.uint8), cv2.COLOR_BGR2LAB)
         dl = lab8[..., 0].astype(np.int16) - self._ref_l                  # lightness, in steps of 100/255
         dc = cv2.magnitude(lab8[..., 1].astype(np.float32) - self._ref_a, lab8[..., 2].astype(np.float32) - self._ref_b)
-        dl_limit = p["dl"] * 2.55
+        dl_limit = int(p["dl"] * 2.55)              # dl is an integer: dl > 30.6 is dl > 30, without converting dl
         chroma = dc > p["dc"]
         light = (dl > dl_limit) | ((dl < -dl_limit) & (dc >= p["shadow_dc"]))    # darker with the same colour: a shadow
         fg = np.bitwise_or(chroma, light).view(np.uint8) * np.uint8(255)
         fg = cv2.bitwise_and(fg, self.mask)
         fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
         fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
-        return fg, lab8
+        return self._above_noise(fg, dl, dc), lab8
+
+    def _above_noise(self, fg: np.ndarray, dl: np.ndarray, dc: np.ndarray) -> np.ndarray:
+        """Only the blobs that somewhere differ from the empty house by more than noise_k times the noise of their
+        pixels (a 3x3 block at least) count, and they count whole, as the fixed thresholds see them: a figurine on a
+        flickering lawn keeps its shape, a blob made of flicker alone goes."""
+        limits = self._tolerance()
+        if limits is None:
+            return fg
+        light_max, light_min, color, shadow, raised = limits
+        hit = cv2.bitwise_and(fg, raised)
+        if not cv2.countNonZero(hit):
+            return fg                    # away from the flickering pixels the tests are the same
+        n, labels, stats, centroids = cv2.connectedComponentsWithStats(fg, connectivity=8)
+        for i in np.unique(labels[hit > 0]):
+            x, y, w, h = stats[i, :4]
+            # one pixel around the blob, so that the 3x3 blocks on its edge are judged as in the whole frame
+            ys = slice(max(y - 1, 0), min(y + h + 1, self.h))
+            xs = slice(max(x - 1, 0), min(x + w + 1, self.w))
+            own = labels[ys, xs] == i
+            d, c = dl[ys, xs], dc[ys, xs]
+            strong = own & ((c > color[ys, xs]) | (d > light_max[ys, xs])
+                            | ((d < light_min[ys, xs]) & (c >= shadow[ys, xs])))
+            if not cv2.countNonZero(cv2.erode(strong.view(np.uint8), np.ones((3, 3), np.uint8))):
+                fg[ys, xs][own] = 0
+                labels[ys, xs][own] = 0
+                stats[i, 4] = 0          # blobs() skips it
+        # finding the blobs is the expensive part on the board: blobs() takes them from here
+        self._components = (fg, n, labels, stats, centroids)
+        return fg
 
     def process(self, frame_bgr: np.ndarray, now: float | None = None
                 ) -> tuple[list[Observation], np.ndarray, np.ndarray | None]:
         frame_bgr = self._fit(frame_bgr)
         if self.reference is None:
             return [], np.zeros((self.h, self.w), np.uint8), None
-        fg, lab = self.foreground(frame_bgr, time.time() if now is None else now)
+        now = time.time() if now is None else now
+        fg, lab = self.foreground(frame_bgr, now)
         self.fg_prev = fg
+        self._seen = self._seen[-1:] + [(lab, self._g_at, now)]
         return self.blobs(fg, lab), fg, lab
 
     def blobs(self, fg: np.ndarray, lab: np.ndarray) -> list[Observation]:
-        n, labels, stats, centroids = cv2.connectedComponentsWithStats(fg, connectivity=8)
+        found, self._components = self._components, None
+        if found is not None and found[0] is fg:
+            n, labels, stats, centroids = found[1:]
+        else:
+            n, labels, stats, centroids = cv2.connectedComponentsWithStats(fg, connectivity=8)
         self.labels = labels
         obs: list[Observation] = []
         cal = self.calib

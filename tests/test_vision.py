@@ -12,7 +12,7 @@ cv2 = pytest.importorskip("cv2")
 from domotiq.layout import Layout  # noqa: E402
 from domotiq.model import Identity  # noqa: E402
 from domotiq.vision.assignment import linear_sum_assignment  # noqa: E402
-from domotiq.vision.engine import ANALYSIS, Engine  # noqa: E402
+from domotiq.vision.engine import ANALYSIS, NOISE_FILE, Engine  # noqa: E402
 from domotiq.vision.geometry import BASE_CORNERS_MM, Calibration  # noqa: E402
 from domotiq.vision.pipeline import Observation, Segmenter  # noqa: E402
 from domotiq.vision.privacy import Privacy  # noqa: E402
@@ -153,6 +153,69 @@ def test_no_false_blobs_from_room_lights_or_shadows(layout, renderer):
     seg.light_changed(list(lights), 0.0)
     obs, _, _ = seg.process(renderer.render([], lights=lights, brightness=0.85, cast=(1.05, 1.0, 0.93)), now=0.1)
     assert obs == []
+
+
+def flickering(renderer, seed, amp):
+    """Frames where a patch of the living-room floor flickers as a whole, in brightness and colour (the glow of a lamp
+    on a glossy floor), `amp` levels on each channel. Returns the patch and a function that renders a frame."""
+    rng = np.random.default_rng(seed)
+    cx, cy = renderer.calib.image_of(np.array([[360.0, 170.0]])).astype(int)[0]
+    box = (cx - 25, cy - 15, cx + 25, cy + 15)
+
+    def frame(things=(), shift=None):
+        img = renderer.render(list(things)).astype(np.float32)
+        x0, y0, x1, y1 = box
+        img[y0:y1, x0:x1] += rng.normal(0, amp, 3) if shift is None else shift
+        return np.clip(img, 0, 255).astype(np.uint8)
+    return box, frame
+
+
+def test_a_flickering_patch_is_no_blob_and_a_figurine_on_it_keeps_its_shape(layout):
+    renderer = Renderer(layout, seed=11)
+    box, frame = flickering(renderer, 5, 10.0)
+    empty = [frame() for _ in range(20)]
+    seg = Segmenter(layout, renderer.calib)
+    seg.set_reference(empty)                       # as "Empty house" does: the noise comes with it
+    fixed = Segmenter(layout, renderer.calib)
+    fixed.set_reference(empty)
+    fixed.set_noise(None)                          # the fixed thresholds alone
+    x0, y0, x1, y1 = box
+    inside = seg.noise[y0:y1, x0:x1].reshape(-1, 2)
+    elsewhere = seg.noise[(seg.mask > 0) & (seg.scene.z < 0.5)].reshape(-1, 2)
+    assert np.median(inside[:, 0]) > 3 * max(np.median(elsewhere[:, 0]), 1.0)
+    assert np.median(inside[:, 1]) > 3 * np.median(elsewhere[:, 1])
+    seen_fixed = seen = 0
+    for i in range(30):
+        f = frame()
+        seen_fixed += bool(fixed.process(f, 0.1 + i * 0.1)[0])
+        seen += bool(seg.process(f, 0.1 + i * 0.1)[0])
+    assert seen_fixed >= 8 and seen == 0, (seen_fixed, seen)
+    # figurines on the patch and away from it: found as they are with the fixed thresholds, whole
+    for thing in (Thing(360, 170, "#d03030"), Thing(360, 170, "#3050d0"), Thing(120, 160, "#20a0a0")):
+        f = frame([thing], shift=np.zeros(3))
+        a = [o.pixels for o in fixed.process(f, 10.0)[0]]
+        b = [o.pixels for o in seg.process(f, 10.0)[0]]
+        assert len(a) == 1 and a == b, (thing, a, b)
+
+
+def test_the_noise_follows_the_house_slowly_where_nothing_stands(layout):
+    renderer = Renderer(layout, seed=12)
+    box, frame = flickering(renderer, 6, 4.0)
+    seg = Segmenter(layout, renderer.calib)
+    seg.set_reference([frame(shift=np.zeros(3)) for _ in range(20)])    # an empty house with no flicker
+    before = seg.noise
+    x0, y0, x1, y1 = box
+    thing = Thing(120, 160, "#20a0a0")
+    for i in range(40):
+        obs, _, _ = seg.process(frame([thing]), 0.1 + i * 0.1)
+        o = min(obs, key=lambda o: np.hypot(o.centroid_mm[0] - thing.x, o.centroid_mm[1] - thing.y))
+        figurine = seg.labels == o.extra["label"]
+        seg.learn_noise(figurine)                  # the figurine is a presence
+    after = seg.noise
+    # the patch flickers now: its noise grows, a bit with every sample. Where the figurine is, nothing is learned
+    grown = np.median(after[y0:y1, x0:x1, 1]) / np.median(before[y0:y1, x0:x1, 1])
+    assert 1.5 < grown < 4.0, grown
+    assert np.allclose(after[figurine], before[figurine])
 
 
 def test_car_and_hand_are_told_apart(layout, renderer):
@@ -312,6 +375,45 @@ def test_engine_commands_and_dataset(engine, renderer, tmp_path):
     st = engine.status()
     assert st["calibrated"] and st["reference"] and not st["moved"]
     assert engine.set_corners([[0, 0], [0.1, 0], [0.1, 0.1], [0, 0.1]])["ok"] is False
+
+
+def test_the_noise_is_saved_with_the_empty_house_and_learned_again_without_it(layout, tmp_path):
+    renderer = Renderer(layout, seed=13)
+    box, frame = flickering(renderer, 7, 10.0)
+    dirs = (tmp_path / "cal", tmp_path / "ds", tmp_path / "rec")
+    e = Engine(layout, *dirs)
+    assert e.set_corners([[u / ANALYSIS[0], v / ANALYSIS[1]] for u, v in renderer.calib.corners])["ok"]
+    assert e.take_empty([frame() for _ in range(20)])["ok"]                # 20 frames, as from the webcam
+    saved = e.segmenter.noise
+    assert (e.dir / NOISE_FILE).exists() and not e.segmenter.noise_young
+    # at the next start the house knows it at once
+    e2 = Engine(layout, *dirs)
+    assert np.allclose(e2.segmenter.noise, saved, rtol=0.01, atol=0.01) and not e2.segmenter.noise_young
+    # the webcam set again for the light of the hall: another noise, learned again, after a restart too
+    e2.light_retuned(100.0)
+    assert e2.segmenter.noise is None and e2.segmenter.noise_young
+    assert Engine(layout, *dirs).segmenter.noise_young
+    # a file cut short by a power cut is no noise either
+    (e.dir / NOISE_FILE).write_bytes(b"")
+    assert Engine(layout, *dirs).segmenter.noise_young
+    # without it (saved by an older version), the first calm frames teach it
+    (e.dir / NOISE_FILE).unlink(missing_ok=True)
+    e3 = Engine(layout, *dirs)
+    assert e3.segmenter.noise is None and e3.segmenter.noise_young
+    for i in range(40):
+        e3.feed(frame(), i * 0.1)
+    assert not e3.segmenter.noise_young
+    x0, y0, x1, y1 = box
+    learned = np.median(e3.segmenter.noise[y0:y1, x0:x1, 1])
+    assert 0.5 < learned / np.median(saved[y0:y1, x0:x1, 1]) < 2.0
+    assert e3.tracks == []
+    # new corners or a reset: the noise goes with the empty house
+    corners = [[u / ANALYSIS[0], v / ANALYSIS[1]] for u, v in renderer.calib.corners]
+    assert e.take_empty([frame() for _ in range(20)])["ok"] and (e.dir / NOISE_FILE).exists()
+    assert e.set_corners(corners)["ok"] and not (e.dir / NOISE_FILE).exists()
+    assert e.take_empty([frame() for _ in range(20)])["ok"] and (e.dir / NOISE_FILE).exists()
+    e.reset()
+    assert not (e.dir / NOISE_FILE).exists()
 
 
 def test_the_hall_light_changes_and_the_house_follows(engine, renderer):
@@ -823,3 +925,49 @@ def test_tracks_go_out_as_plain_json(layout):
         out = tr.update([_blob(300, 60, a)], now=100 + 0.2 * k, quiet_s=100, frozen=False)
     assert out and json.dumps([t.to_dict() for t in out])        # no numpy type left in a track
     assert all(type(t.sure) is bool for t in out)
+
+
+def test_nothing_there_forgets_where_the_name_was_and_doubts_the_room(layout):
+    from domotiq.vision.tracker import PRESENCE_DOUBTED
+    a = _look(45, 50, 30)
+    tr = _tracker(layout, [Identity("id-a", "A", signature=list(a))])
+    for k in range(6):
+        tr.update([_blob(300, 60, a)], now=100 + 0.1 * k, quiet_s=100)
+    [t] = tr.tracks.values()
+    assert t.identity == "id-a" and "id-a" in tr.places
+    tr.dismiss(t.id, 101.0)
+    # the name was on something that is not there: its place no longer ties the character to that spot
+    assert "id-a" not in tr.places
+    room = layout.locate(t.x, t.y)
+    assert tr._doubted.get(room, 0) > 101.0 and PRESENCE_DOUBTED > 0.9
+
+
+def test_a_car_is_asked_about_out_of_the_garage_only_when_certain(layout):
+    blue = _look(40, 10, -40)
+    tr = _tracker(layout, [])
+    asked = []
+    tr.on_question = lambda t, cands: asked.append(layout.locate(t.x, t.y))
+    # something car-sized in the living room: a light, a shadow, figurines together; no question for 10 s
+    living = _blob(300, 100, blue, area=9000.0)
+    for k in range(40):
+        tr.update([living], now=100 + 0.2 * k, quiet_s=100)
+    assert asked == []
+    # still there, still, clearly seen for longer: now the house is certain and asks
+    for k in range(30):
+        tr.update([_blob(300, 100, blue, area=9000.0)], now=108 + 0.2 * k, quiet_s=100)
+    assert asked == ["living"]
+    # car-sized, out of the garage, with a jump every four seconds (a light, a shadow): never still for 10 s,
+    # never asked about
+    tr3 = _tracker(layout, [])
+    asked3 = []
+    tr3.on_question = lambda t, cands: asked3.append(layout.locate(t.x, t.y))
+    for k in range(150):
+        tr3.update([_blob(312 if k % 20 == 5 else 300, 100, blue, area=9000.0)], now=300 + 0.2 * k, quiet_s=100)
+    assert asked3 == []
+    # in the garage it asks at once
+    tr2 = _tracker(layout, [])
+    asked2 = []
+    tr2.on_question = lambda t, cands: asked2.append(layout.locate(t.x, t.y))
+    for k in range(15):
+        tr2.update([_blob(540, 300, blue, area=9000.0)], now=200 + 0.2 * k, quiet_s=100)
+    assert asked2 == ["garage"]
