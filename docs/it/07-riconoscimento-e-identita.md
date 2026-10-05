@@ -67,8 +67,8 @@ Chiunque può registrare personaggi, animali, auto e oggetti, in tre modi.
 ### Con il citofono
 
 1. Un visitatore preme **Citofono** sul totem. Suona un campanello e la casa chiede "Chi è?" / "Who is it?".
-2. **Un nome registrato**: "Ciao Marco, entra pure!". La prima statuina di tipo persona che, nei 60 secondi successivi, arriva dal vialetto in soggiorno passando dalla porta d'ingresso riceve quel nome. Se il nome appartiene a qualcuno che è già dentro, la casa lo dice ("Ma Marco è già in cucina!"). Se la webcam riconosce chiaramente nella statuina che entra qualcun altro, la casa lo dice ("Mmm, a me sembri Sofia, non Marco!") e mantiene l'identità che vede.
-3. **Un nome nuovo**: "Ho capito Marco, giusto?" Dopo un *sì*: "Piacere, Marco! Entra dalla porta." La prima statuina che la casa non conosce e che, nei 60 secondi successivi, entra in soggiorno dalla porta d'ingresso diventa Marco, senza altri passaggi: il tipo che la casa ha indovinato si può cambiare in seguito nella scheda del personaggio.
+2. **Un nome registrato**: "Ciao Marco, entra pure!". La prima statuina che compare dopo il campanello, nei 3 minuti successivi, sul vialetto o in una stanza della casa (non in garage), riceve quel nome, qualunque cosa la webcam l'abbia presa (una statuina sembra spesso un oggetto o un animale) e senza che la casa chieda chi è. Se il nome appartiene a qualcuno che è già dentro, la casa lo dice ("Ma Marco è già in cucina!"). Se la webcam riconosce chiaramente nella statuina che entra qualcun altro, la casa lo dice ("Mmm, a me sembri Sofia, non Marco!") e mantiene l'identità che vede.
+3. **Un nome nuovo**: "Ho capito Marco, giusto?" Dopo un *sì*: "Piacere, Marco! Entra dalla porta." La prima statuina che compare dopo il campanello, nei 3 minuti successivi, sul vialetto o in una stanza della casa, diventa Marco, una persona, con i colori che la casa vede, senza altri passaggi e senza domande; anche se la casa le aveva dato un nome di cui non era sicura. Una statuina che la casa riconosce con certezza come qualcun altro non conta, e nemmeno una che era già in casa prima del campanello.
 4. **Un nome non capito**: un secondo tentativo ("Scusa, non ho capito. Chi sei?"), poi "Non ti conosco, ma entra pure: sei un ospite."
 
 Quando una registrazione avviata a voce è completa, la casa dice "Benvenuto, Marco! Ora ti riconosco."
@@ -108,6 +108,10 @@ Quando il filo si perde (prese tutte e due insieme, le due si toccano, una ricom
 - chiede anche ad alta voce, se la sua loquacità lo permette, e subito dopo ascolta la risposta da sola, senza il tasto **Parla**: basta dire il nome, oppure "tutti e due". Vale la prima risposta, a voce o da un telefono;
 - se non arriva una risposta entro 60 secondi, tiene la sua ipotesi migliore, segnata come incerta: un **?** sulla piantina, e "Marco è in cucina. Almeno credo." nelle risposte a voce.
 
+**Un nome non sta mai in due posti.** Prima di chiedere, la casa toglie dai candidati chi è già riconosciuto da un'altra parte della casa (tranne se una mano è passata dov'era), chi è stato visto per l'ultima volta lontano da lì senza che una mano ci sia passata, e l'auto fuori dal garage se non ne è certa. Se ne resta uno solo, la casa decide da sola senza chiedere: se Rossellina è in cucina, la statuina nuova in soggiorno che somiglia a Rossellina e a Rosaria è Rosaria. Se il dubbio si scioglie mentre la domanda è aperta (Rossellina ricompare in cucina), la domanda viene ritirata dai telefoni e la casa smette di ascoltare.
+
+**L'auto sta in garage.** L'auto non viene mai proposta per una statuina, né per qualcosa fuori dal garage, a meno che la casa non ne sia certa: grande come un'auto, ferma e ben visibile da 10 secondi.
+
 Sulla stessa statuina richiede al massimo ogni 30 secondi. Una risposta, una registrazione o un ingresso dal citofono **confermano** un'identità: una statuina confermata la mantiene finché la casa riesce a seguirla.
 
 ## Un nuovo arrivato
@@ -131,11 +135,22 @@ Quando è sicura che c'è qualcosa che non riconosce, la casa lo chiede subito, 
 
 Le risposte brevi e comuni le capiscono delle regole, all'istante. Le altre frasi le classifica il modello linguistico locale (capitolo 8). Sulla scheda servono da 3 a 6 secondi, e intanto la casa dice "Mmm..." e i tasti respirano.
 
-- **Dal telefono** si tocca un nome sulla domanda, **Tutti e due** quando i nomi proposti sono più di uno, oppure si scrive un nome nuovo, si sceglie il tipo e si tocca **Aggiungi**. **Non c'è niente** fa dimenticare alla casa quello che aveva visto.
+- **Dal telefono** si tocca un nome sulla domanda, **Tutti e due** quando i nomi proposti sono più di uno, oppure si sceglie **Uno già noto…** fra tutti i personaggi e gli oggetti che la casa conosce e si tocca **Questo** (il nome si sposta lì da dov'era), oppure si scrive un nome nuovo, si sceglie il tipo e si tocca **Aggiungi**. **Non c'è niente** fa dimenticare alla casa quello che aveva visto.
 - Vale la prima risposta, da uno dei due canali; quando arriva, la casa smette di ascoltare.
 - Se quello di cui chiede sparisce prima della risposta, la domanda viene ritirata dai telefoni e la casa smette di ascoltare.
 
 Con un nome nuovo la casa crea il personaggio, con il tipo detto (o intuito) e i colori che vede. Con un nome già registrato aggiorna subito i colori di quel personaggio con quelli che vede in quel momento, se gli somigliano, così la volta dopo lo riconosce da sola; una risposta data sulla macchia sbagliata dà il nome ma non cambia l'aspetto del personaggio. Una registrazione in corso dalla webapp ha la precedenza: mentre aspetta il suo personaggio, la casa non fa questa domanda.
+
+## Correggere la casa dalla webapp
+
+- **Chi è.** Sulla scheda di una presenza (pagina **Casa**), **Chi è?** o **È un altro: cambia** apre l'elenco di tutti i personaggi e gli oggetti che la casa conosce, con un nome nuovo in fondo. Scegliendo un personaggio già noto, il nome passa a quella presenza e lascia quella che lo aveva per errore; la casa impara quell'aspetto come una delle sue pose anche se è diverso dal solito (una luce diversa, un personaggio sdraiato), fino a una distanza di colore di 0,6 invece di 0,45, e lo ricorda dopo un riavvio. Una risposta a voce, che potrebbe riguardare la macchia sbagliata, resta più prudente.
+- **Elemento non riconosciuto.** Una statuina che la casa non ha visto posare, o che ha preso per la casa vuota, non viene seguita. **Elemento non riconosciuto**, sulla pagina **Casa** (toccando il punto sulla piantina) o in **Diretta** (toccandolo nell'immagine), dice alla casa dov'è: intorno a quel punto, per circa 3 cm, la casa riprende la casa vuota com'era stata salvata, così quello che c'è torna diverso da lei, ne fa una presenza seguita da subito e chiede chi è. Lì si annullano anche i "non c'è niente" detti poco prima. Se lì non vede niente di diverso dalla casa vuota (l'elemento c'era già quando è stata salvata), basta spostarlo un poco e riprovare.
+
+## La luce della sala
+
+La webcam ha esposizione e colori bloccati sulla luce in cui è stata salvata la casa vuota. Quando la luce della sala cambia molto (una luce accesa o spenta), l'immagine resta più scura o più chiara della casa vuota: sotto il 70% o sopra il 143% per 5 secondi, la webcam si regola di nuovo da sola. Misurato su casa1: la luce della stanza spenta porta l'immagine al 45-57%, mentre gli scenari della casa (cinema, notte) non scendono sotto il 95%, quindi non la fanno regolare.
+
+Con una luce molto diversa le pareti e i bordi dei mobili cambiano aspetto e possono sembrare grandi macchie che entrano dai bordi, cioè mani. Una mano vera se ne va: "mani" che restano senza interruzione per 30 secondi non sono mani. Non impediscono più alla webcam di regolarsi; e se la luce è comunque vicina a quella della casa vuota, entrano nella casa vuota così come si vedono adesso (tranne dove c'è un personaggio). Prima la casa restava bloccata: con le "mani" sempre presenti non seguiva più gli spostamenti e scendeva a 3 immagini al secondo.
 
 ## Privacy
 

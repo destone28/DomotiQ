@@ -49,8 +49,8 @@ Il bus principale va dalla UNO Q al **Modulino Hub** e prosegue fino al **Latch 
 
 | Canale dell'Hub | Modulo | Dove | Indirizzo (7 bit) |
 |---|---|---|---|
-| bus principale | Modulino Hub (TCA9548A) | sulla sua placca (`33_Placca_Hub`) | 0x70 (cercato tra 0x70 e 0x77) |
-| bus principale | Latch Relay | sulla sua placca (`33_Placca_Relay`) | 0x02 o 0x15 (di fabbrica, secondo il lotto) o 0x10 |
+| bus principale | Modulino Hub (TCA9548A) | sulla sua placca (`24_Placca_Hub`) | 0x70 (cercato tra 0x70 e 0x77) |
+| bus principale | Latch Relay | sulla sua placca (`24_Placca_Relay`) | 0x02 o 0x15 (di fabbrica, secondo il lotto) o 0x10 |
 | 0 | Pixels | garage, sulla parete posteriore | 0x36 |
 | 1 | Pixels | camera, sulla parete verso il garage | 0x36 |
 | 2 | Pixels | cucina, sulla parete verso il soggiorno | 0x36 |

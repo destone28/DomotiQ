@@ -58,7 +58,7 @@ Aggiornamenti dopo il 7 ottobre (D3), giornata accelerata (D80), riconoscimento 
 | Alimentatore | UGREEN 65 W, 2 USB-C + 1 USB-A | nel Revodok |
 | Webcam | Logitech C270 | USB 046d:0825 |
 | Scheda audio | UGREEN US205 | uscita cuffie + ingresso microfono separati |
-| Microfono | Neewer lapel 3,5 mm TRS | nel tappo del totem; compatibile con l'ingresso TRS |
+| Microfono | Neewer lapel 3,5 mm TRS | nel totem, lo spinotto passa dalla presa della pedana 2; compatibile con l'ingresso TRS |
 | Casse | Goedch USB + jack 3,5 mm | manopola al massimo, volume gestito dalla casa |
 | Ventola | 5 V 40×40×10 | modello da confermare (D14) |
 | Modulino | 5 Pixels, 2 Thermo, 1 Buttons, 1 Latch Relay, 1 Hub | |
@@ -83,8 +83,8 @@ Aggiornamenti dopo il 7 ottobre (D3), giornata accelerata (D80), riconoscimento 
 - Latch Relay: 0x02 di fabbrica. Se sulla scheda crea problemi si sposta a 0x10 con AddressChanger, e la guida lo dice.
 - Nessun cambio di indirizzo per il Buttons: è uno solo.
 
-### 3.3 Totem (da ristampare, R1)
-Dentro: Buttons; lavalier nel tappo. Tasti visti dal visitatore, da sinistra: **parla**, **citofono**, **lingua**. I LED del Buttons sono gialli, accanto ai tasti: il nuovo totem prevede una finestra anche per loro.
+### 3.3 Totem (versione 8)
+Scocca `28`, tre tasti `29`–`31` (bianco, giallo, blu) nel coperchio con i cappucci `32`, a cui si aggancia il Buttons; il microfono lavalier sta nel totem e il suo spinotto passa dalla presa della pedana 2. Tasti visti dal visitatore, da sinistra: **parla**, **citofono**, **lingua**. I LED del Buttons sono accanto ai tasti.
 
 ### 3.4 Alimentazione dei Pixels
 Ogni Pixels a bianco pieno assorbe fino a 264 mA dal 3,3 V del Qwiic; il connettore regge 1 A e il regolatore della UNO Q (2 A) è condiviso con MCU e Wi-Fi. Il firmware:
@@ -239,6 +239,10 @@ Lo stesso file serve alla piantina della webapp, alla visione (stanze, zone escl
 - **Tutti e due (D-25)**: due statuine a contatto sono una sola macchia; alla risposta "tutti e due" (o con due nomi) la casa le segna presenti entrambe, una nascosta dietro l'altra.
 - **Riconoscimento largo**: un personaggio sdraiato o sopra un arredo è riconosciuto anche a distanza di colore fino a 0,45 se il secondo candidato è più lontano di almeno 0,15, dopo 4 immagini concordi. Una statuina su cui la mano è solo passata ritrova la sua traccia; una posata contro un'altra resta nascosta dietro di lei.
 - **Nuovo arrivato (D-20, D-21)**: per ogni cosa che la casa è sicura di non riconoscere, la domanda parte subito, a voce e sui telefoni (tranne per qualcosa grande come un'auto fuori dal garage, chiesto solo se fermo e ben visibile da 10 s; D-31), con quello che le sembra ("vedo una persona nuova, giusto?"). A una persona si chiede il nome; per animali, auto e oggetti si propongono i registrati dello stesso tipo. Ogni risposta libera viene capita (nome, tipo, sì/no, "non c'è nessuno", non lo so, comandi); un nome già presente e visibile in casa vuol dire che il nuovo arrivato non c'era. Vale la prima risposta.
+- **Un nome non sta mai in due posti (D-34)**: prima di ogni dubbio o domanda si tolgono dai candidati i personaggi già riconosciuti altrove (salvo una mano passata dov'erano), quelli visti l'ultima volta lontano senza una mano passata di lì, e l'auto fuori dal garage se non è certa (grande come un'auto, ferma e ben visibile da 10 s). Con un solo candidato rimasto la casa decide da sola; una domanda ormai risolta viene ritirata.
+- **Dalla webapp (D-35)**: sulla scheda di una presenza e nelle domande si sceglie chi è fra tutti i personaggi noti (il nome si sposta lì) o un nome nuovo; la casa impara quell'aspetto come posa anche se insolito (fino a 0,6). **Elemento non riconosciuto**: toccato un punto della piantina o dell'immagine, la casa riprende lì la casa vuota salvata e segue quello che c'è.
+- **Citofono (D-36)**: dopo il campanello, la prima statuina che compare entro 3 minuti sul vialetto o in casa (non in garage) prende il nome detto, qualunque tipo le abbia dato la webcam, senza domande.
+- **Luce della sala (D-38)**: la webcam si regola di nuovo sotto il 70% o sopra il 143% della luce della casa vuota salvata; "mani" presenti senza interruzione per 30 s non bloccano la regolazione e, con una luce vicina a quella della casa vuota, entrano nella casa vuota.
 - Stanza del punto d'appoggio con isteresi di 15 mm sulle porte, così chi sta sulla soglia non "salta" fra due stanze.
 
 ### 8.5 Categoria degli sconosciuti
@@ -302,11 +306,12 @@ Chiunque può rinominare o cancellare. Le cancellazioni vanno in un cestino per 
 ### 10.1 Dispositivi
 - Uscita e microfono sulla US205, cercata per nome.
 - Uscita: un solo flusso ALSA sempre aperto (come Amelie, per non perdere l'inizio delle frasi), con un mixer interno: voce, musica, effetti. La musica si abbassa quando la casa parla.
-- Microfono: 16 kHz mono, acceso solo mentre si ascolta; l'audio resta in memoria e non si salva mai.
+- Microfono: 16 kHz mono, acceso solo mentre si ascolta (con la parola di attivazione accesa, anche mentre la casa è libera e la aspetta); l'audio resta in memoria e non si salva mai.
 - Guardia dell'audio: se la scheda sparisce o il flusso si blocca (sul forum è un problema noto), la casa riapre il dispositivo e lo segnala in diagnostica.
 
 ### 10.2 Ascolto
-- Tasto **parla**: ascolta finché è premuto, senza limite di tempo (D57). Tutti e tre i LED dei tasti accesi mentre la casa ascolta, in respiro mentre elabora la risposta.
+- Tasto **parla**: ascolta finché è premuto, senza limite di tempo (D57). Tutti e tre i LED dei tasti lampeggiano mentre la casa ascolta, respirano mentre elabora la risposta e restano accesi fissi mentre parla (D-39).
+- **Parola di attivazione (D-39)**: da **Impostazioni → Voce** si accende e si sceglie una parola (per esempio "Casa"); detta quando la casa è libera, fa quello che fa il tasto Parla ("Dimmi, di cosa hai bisogno?", poi ascolta), anche tutto in una frase ("Casa, che ore sono?"). I numeri si confrontano in parole ("Casa 2" = "casa due"); la webapp segnala le parole che il riconoscimento non conosce.
 - Dopo ogni domanda della casa (citofono, conferme, "chi è?", dubbi, domande ai personaggi, saluto ai telefoni): ascolto automatico di circa 6 s, senza tasto, ripetuto una volta se la risposta non è chiara. Il microfono si apre mentre la casa finisce la domanda e la sua voce si scarta fino a 0,35 s dopo l'ultima parola. La stessa domanda è sui telefoni: vale la prima risposta, e una risposta dal telefono ferma l'ascolto.
 - **Racconto (D-20)**: in modalità normale e chiacchierona una frase breve per chi entra, esce o cambia stanza e per l'auto parcheggiata, detta quando il movimento si è fermato, unendo gli eventi contemporanei e mai sopra una domanda.
 
@@ -501,7 +506,9 @@ Pagine in più:
 | `GET/POST/PUT/DELETE /api/rules` | regole |
 | `GET/POST/PUT/DELETE /api/identities` | identità; `POST /api/identities/{id}/photo` |
 | `POST /api/commands/{nome}` | party, grigliata, luci, scenario, lingua, volume, loquacità, allarme |
-| `POST /api/confirm/{id}` | risposta a una richiesta di conferma (anche "tutti e due" e "non c'è niente") |
+| `POST /api/confirm/{id}` | risposta a una richiesta di conferma (anche "tutti e due", "non c'è niente" e un personaggio già noto qualsiasi) |
+| `POST /api/tracks/{id}/identity`, `POST /api/tracks/{id}/dismiss`, `POST /api/tracks/adopt` | chi è una presenza (uno già noto o uno nuovo), togliere una presenza falsa, aggiungere un elemento non riconosciuto indicato sulla piantina o nell'immagine |
+| `POST /api/voice/ask`, `POST /api/voice/wake_check` | "Fai domande"; come viene sentita la parola di attivazione |
 | `POST /api/time` | ora dal telefono |
 | `/api/settings`, `/api/vision/...`, `/api/diagnostics`, `/api/backup.zip`, `/api/trash`, `/api/system/...` | impostazioni, calibrazione, dataset, diagnostica, backup, cestino, sistema |
 | `GET /api/events` | eventi e registro |
@@ -621,7 +628,7 @@ src/domotiq/               applicazione (web/ = webapp)
 data/                      house.json, frasi, regole e scenari di partenza
 scripts/                   install, release, add-pc, systemd, strumenti di prova
 tests/                     test e sequenze ridotte
-hardware/stl/              solo gli STL v3 (D114)
+hardware/stl/              gli STL della versione 8, numerati da 01 a 59 (84 file)
 docs/it/, docs/en/         guide
 docs/images/               render v3 ripuliti, schemi, schermate
 docs/specifica.md          questo documento
@@ -689,9 +696,8 @@ Diario, decisioni e licenze si aggiornano a ogni passo.
 ### Cose da ricordarti a tempo debito
 - Link ai modelli dei personaggi e dell'auto (D15, D126): prima della guida, M4.
 - Nomi esatti dei prodotti per la distinta (D126): M4.
-- Modello della ventola (D14), visibilità dei LED nel nuovo totem (D17), lunghezza dei cavi Qwiic-dupont (D18): M2.
+- Modello della ventola (D14), lunghezza dei cavi Qwiic-dupont (D18): M2.
 - Foto delle case finite (D123): dopo il collaudo, M4.
-- Server MCP di FreeCAD, che in questa sessione non vedo (R1): solo se serve rifare il totem.
 
 ---
 

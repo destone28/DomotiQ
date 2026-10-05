@@ -224,3 +224,51 @@ Viola e Mister Blu si confondono perché i loro colori medi distano 5,6 punti, m
 - La lettura parte insieme alla preparazione delle frasi della voce, non dopo; e se `llama-server` riparte, la casa rimette le istruzioni da sola.
 
 **Perché:** domanda di Emilio sull'attesa di 10 minuti. Misurato sulla scheda all'accensione del 4/10: 11 s per caricare il modello, poi quasi 4 minuti di attesa mentre la voce preparava le sue frasi, poi 174 s per le istruzioni dei comandi (1.525 token) e 110 s per quelle di "chi è?" (1.073 token), a circa 9 token al secondo. Con le quattro istruzioni (5.458 token) sarebbero stati circa 14 minuti. Anche dopo un semplice riavvio dell'app il modello risultava pronto solo dopo la voce, 2-4 minuti più tardi, pur avendo già tutto in cache. Sul PC il ripristino dei quattro slot richiede circa 10 ms l'uno e le risposte sono identiche a quelle della prima lettura; i file occupano 67 MB. Su casa1 la prima lettura ha richiesto 730 s (324 s per i comandi, letti mentre la voce preparava le frasi); dopo un riavvio di `llama-server` le quattro istruzioni sono tornate in 3,2 s, e una domanda costa come prima circa 3 s.
+
+### D-34 — Un nome non sta mai in due posti; l'auto non è un'ipotesi fuori dal garage (5/10)
+**Scelta:**
+- Prima di un dubbio o di una domanda, i candidati perdono chi è già riconosciuto da un'altra parte della casa (salvo una mano passata dov'era), chi è stato visto per l'ultima volta lontano senza una mano passata di lì e l'auto, se la presenza è fuori dal garage e la casa non è certa che sia un'auto (grande come un'auto, ferma e ben visibile da 10 s).
+- Se resta un solo candidato la casa decide da sola; se il dubbio si scioglie mentre la domanda è aperta, la domanda viene ritirata dai telefoni e la casa smette di ascoltare.
+- Il posto di un nome su cui la casa è in dubbio non vale più come "ultimo posto" di quel personaggio.
+
+**Perché:** richiesta di Emilio. Nei log delle 11:39–11:46: "In camera c'è Viola o Honda Civic o Mister Blu?" e "In giardino c'è Honda Civic o Mister Blu?" (l'auto proposta per una statuina, anche dopo "Honda Civic ora è in garage"), e "In soggiorno c'è Rossellina o Rosaria?" con Rossellina in cucina. I candidati si calcolavano su tutti i personaggi di colore simile, anche quelli già riconosciuti altrove; per l'auto il limite di grandezza lasciava passare le macchie tra 2500 e 6000 mm². Senza l'ultimo punto, due gemelli spostati insieme si davano a vicenda il "posto" e il dubbio si scioglieva a caso.
+
+### D-35 — Chi è, deciso dalla webapp; un elemento non riconosciuto si indica (5/10)
+**Scelta:**
+- Sulla scheda di una presenza e nelle domande della casa si sceglie chi è fra tutti i personaggi e gli oggetti noti, o si scrive un nome nuovo. Un nome già noto si sposta lì da dov'era.
+- Scelto dalla webapp, l'aspetto di quella presenza diventa una posa del personaggio anche se diverso dal solito (distanza di colore fino a 0,6 invece di 0,45, senza il controllo di somiglianza con gli altri), segnata come "insegnata" e tenuta anche dopo un riavvio. Una risposta a voce resta prudente.
+- **Elemento non riconosciuto**: toccando un punto della piantina o dell'immagine, la casa riprende lì (28 pixel di raggio, circa 3 cm) la casa vuota com'era salvata, annulla i "non c'è niente" detti lì, fa una presenza di quello che vede e non chiede chi è, perché lo chiede la webapp. In simulazione mette una statuina virtuale.
+
+**Perché:** richiesta di Emilio: personaggi noti non riconosciuti, e un nome già usato non si poteva più dare; un elemento nuovo non sempre visto. Una statuina comparsa senza una mano viene presa per luce ed entra nella casa vuota: riprendere la casa vuota salvata solo intorno al punto indicato la fa ricomparire senza toccare il resto.
+
+### D-36 — Chi suona al citofono è il primo che entra (5/10)
+**Scelta:** dopo il campanello, la prima statuina che compare entro 3 minuti sul vialetto o in una stanza della casa (non in garage) prende il nome detto, qualunque tipo le abbia dato la webcam e anche se la casa le aveva dato un nome di cui non era sicura; la casa non chiede chi è. Un nome nuovo diventa una persona. Non contano le statuine già in casa prima del campanello, né una riconosciuta con certezza come qualcun altro.
+
+**Perché:** alle 11:41 Emilio si è presentato al citofono ("Piacere, Emilio! Entra dalla porta.") e la casa ha chiesto "Mi sembra di vedere un oggetto nuovo in soggiorno: è così?". La regola accettava solo statuine di tipo persona, solo in soggiorno, entro 60 secondi e senza alcun nome: la webcam l'aveva presa per un oggetto.
+
+### D-37 — Fai domande; le risposte che diventano azioni (5/10)
+**Scelta:**
+- **Fai una domanda** in **Comandi** (a un personaggio a caso tra quelli in casa) e sulla scheda di ogni personaggio (a lui, anche se non è in casa): una domanda subito, preferendo quelle a cui non ha ancora risposto, in qualsiasi stanza e modalità tranne quella silenziosa.
+- Due domande nuove: "ti piace ballare?" e "ti piacciono le grigliate?".
+- Le azioni: il colore preferito colora la luce della stanza in cui entra (scenario Normale; si spegne dalle impostazioni) e serve a "accendi la luce preferita di Marco", che lo chiede se non lo sa; a chi ama ballare la casa propone una festa quando è in soggiorno con qualcuno, a chi ama le grigliate il barbecue quando è in giardino, al massimo una proposta ogni 10 minuti per tipo, in modalità chiacchierona.
+
+**Perché:** richiesta di Emilio, con le sue scelte: "a caso o a scelta" e "luce, festa, barbecue".
+
+### D-38 — La luce della sala non blocca più la visione (5/10)
+**Scelta:** la webcam si regola di nuovo quando l'immagine resta sotto il 70% o sopra il 143% della luce della casa vuota salvata (prima 55% e 180%, rispetto alla casa vuota del momento). "Mani" viste senza interruzione per 30 secondi non bloccano più la regolazione; se la luce è comunque vicina a quella della casa vuota, entrano nella casa vuota così come si vedono, tranne dove c'è un personaggio.
+
+**Perché:** scelta di Emilio dopo le misure su casa1. Con la luce della stanza spenta l'immagine era al 45-57% della casa vuota: le pareti sembravano 5-13 "mani", la visione restava ferma a 3-4 immagini al secondo e non seguiva più gli spostamenti, perché la soglia del 55% non scattava e la regolazione aspettava comunque che non ci fossero mani. Gli scenari della casa portano l'immagine al 95-99%, quindi il 70% non li tocca. Sul PC il tempo per immagine non è cambiato (19,2-19,7 ms sulla registrazione delle 15:31).
+
+### D-39 — Parola di attivazione; LED dei tasti (5/10)
+**Scelta:**
+- Da **Impostazioni → Voce** si accende e si sceglie una parola. Detta mentre la casa è libera, fa quello che fa il tasto Parla: "Dimmi, di cosa hai bisogno?", poi ascolta; se la richiesta segue la parola nella stessa frase ("Casa, che ore sono?") la casa risponde subito.
+- La parola si confronta in parole: i numeri diventano parole nelle due lingue ("Casa 2" = "casa due", "House 21" = "house twenty one"); la webapp dice come verrà sentita e quali parole il riconoscimento non conosce.
+- L'ascolto della parola cede il microfono a tutto il resto, e non parte mentre la casa parla, per 1,2 secondi dopo, durante conversazioni e domande, né in modalità silenziosa.
+- I LED dei tasti lampeggiano mentre la casa ascolta, restano fissi mentre parla e respirano mentre pensa; mentre aspetta la parola restano come sempre.
+
+**Perché:** richiesta di Emilio. Il microfono acceso mentre la casa aspetta la parola è scritto nella guida; l'audio non viene salvato. Una parola comune può svegliare la casa per sbaglio: la guida consiglia una parola rara.
+
+### D-40 — I pezzi della versione 8 (5/10)
+**Scelta:** in `hardware/stl` ci sono gli 84 file della versione 8, numerati da 01 a 59 nell'ordine di montaggio (muri uniti in 7 pezzi, totem con scocca, tre tasti e coperchio, staffe della scheda audio e fermacavi). Il capitolo 3 ha le tabelle nuove con il colore di stampa; la specifica descrive il totem nuovo. Le immagini del capitolo restano quelle della versione precedente, con una nota: `render_v8.py` non c'è ancora nella cartella del progetto.
+
+**Perché:** indicazione di Emilio: per i pezzi da stampare fa fede la v8.

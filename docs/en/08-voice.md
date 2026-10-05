@@ -15,15 +15,23 @@ Seen by the visitor, from the left:
 
 | Button | What it does | Its LED |
 |---|---|---|
-| **Talk** | Hold it down and speak; release it when you are done. A beep marks the start and the end. There is no need to hurry: the house listens as long as the button is held (up to two minutes). Pressing Talk while the house is speaking interrupts it. | on while the house listens (with the other two) |
+| **Talk** | Hold it down and speak; release it when you are done. A beep marks the start and the end. There is no need to hurry: the house listens as long as the button is held (up to two minutes). Pressing Talk while the house is speaking interrupts it. With the [word of activation](#the-word-of-activation), just say it. | blinks while the house listens (with the other two) |
 | **Intercom** | A doorbell rings and the house asks "Chi è?" / "Who is it?". Say a name, without pressing anything: the house listens for 5 seconds after its question. See [the intercom](07-recognition-and-identities.md#with-the-intercom). | blinks during the conversation |
 | **Language** | Switches between Italian and English. All the lights flash for about a second, **green for Italian** and **red for English**, and the house says "Italiano" or "English". | on while the house speaks English |
 
-While the house listens, **all three button LEDs** are on; while it works out an answer to say, they **breathe**: the middle one lights up, then all three, then the middle one again, then none, until the house speaks.
+While the house listens, **all three button LEDs** **blink**; while it works out an answer to say, they **breathe** (the middle one lights up, then all three, then the middle one again, then none); while it speaks they stay **on, steady**. If the microphone opens while the house is still finishing its sentence, they stay steady until it has finished, then blink.
 
 The house starts in Italian. The language can also be changed from **Controls → Language of the house** in the web app, or by voice ("Parla inglese", "Speak Italian"). This is the language the house speaks and listens in; each phone chooses the language of the web app on its own.
 
 During the intercom conversation and the registration by voice, the house listens by itself for a few seconds after each of its questions ("Who is it?", "I heard Marco, right?", "Which room did you put it in?"). Its questions about who is who ("Is it Marco or Leo in the kitchen?", which can also be answered "both of them") and about the time are answered with no button too.
+
+## The word of activation
+
+In **Settings → Voice** you can switch on **Wake up with a keyword** and write the *Keyword*, for example *Casa*. From then on saying the word does what the Talk button does: the house asks "Yes? What do you need?", listens to the sentence with no button and answers. You can also say it all at once, "Casa, what time is it?": what follows the word is already the request. The Talk button keeps working.
+
+- **Numbers and letters.** The word is matched as the speech recognizer writes it: numbers become words, so *Casa 2*, *casa2* and *casa due* are the same word (in English *House 2* is *house two*). On saving, the web app shows how the house will hear the word and which of its words the speech recognizer does not know: an unknown word cannot be recognized, change it.
+- **When it listens.** Only while the house is free: not while it speaks (and for a little more than a second after, since its own voice may say the word), not during a conversation, a question of the house or a question to the characters, and not in silent mode. The microphone stays on while it waits for the word, but the audio is never saved or sent anywhere; while it waits for the word the LEDs do not blink, they do when the house listens to the request.
+- **Mistakes.** A common word like "casa" may come up in a conversation between visitors and wake the house by mistake; a rare word, or two words, makes fewer mistakes. The noise of a fair may lose a call now and then: the Talk button is always there.
 
 ## Talkativeness
 
@@ -37,7 +45,7 @@ Set it from **Controls → Talkativeness**, or by voice: "Stai zitta" / "Be quie
 
 ## Talking without pressing Talk
 
-After **every** question of its own the house listens by itself for a few seconds, with no Talk button: the greeting of a new phone, the questions to the characters, "who is it?" for a newcomer, a doubt between two characters, confirmations. If the answer is not clear it asks once more, and meanwhile the same question appears on the phones: the first answer wins, aloud or from the app, and as soon as it arrives the house stops listening. The microphone opens while the house is still ending its question, and what it hears is thrown away until a third of a second after its last word: an answer said at once ("yes") is not lost while the recorder starts. While it listens, the three button LEDs are on and the phones show *The house is listening…*; while it works out the answer, the LEDs breathe. The question "who is it?" about a newcomer can be answered with any sentence: the house understands it and replies accordingly ([chapter 7](07-recognition-and-identities.md#a-newcomer)). If the house says something else while it listens (a rule, a warning), the answer is thrown away: it could be its own voice. **Talk** and the **intercom** always come first: pressing them interrupts the greeting or the question, and the house listens to the button.
+After **every** question of its own the house listens by itself for a few seconds, with no Talk button: the greeting of a new phone, the questions to the characters, "who is it?" for a newcomer, a doubt between two characters, confirmations. If the answer is not clear it asks once more, and meanwhile the same question appears on the phones: the first answer wins, aloud or from the app, and as soon as it arrives the house stops listening. The microphone opens while the house is still ending its question, and what it hears is thrown away until a third of a second after its last word: an answer said at once ("yes") is not lost while the recorder starts. While it listens, the three button LEDs blink and the phones show *The house is listening…*; while it works out the answer, the LEDs breathe. The question "who is it?" about a newcomer can be answered with any sentence: the house understands it and replies accordingly ([chapter 7](07-recognition-and-identities.md#a-newcomer)). If the house says something else while it listens (a rule, a warning), the answer is thrown away: it could be its own voice. **Talk** and the **intercom** always come first: pressing them interrupts the greeting or the question, and the house listens to the button.
 
 **A new phone.** The first time a phone opens the web app, the house greets it: "Hello! A new phone has just joined. What's your name?". The name can be said aloud (the house asks to confirm: "Is your name Luca?") or typed on the card that appears on the phone; then the house invites the visitor to come in with a character, and the phone offers **Add a character**. The name becomes the phone's nickname, the one shown in the change log.
 - Each phone is greeted once, also after a restart; a phone that comes back from the same address with another page (the home-screen icon, a private window, `casaN.lan`) is the same phone. The house forgets phones (and names) after 7 days.
@@ -74,6 +82,7 @@ The examples below are understood directly by the rule-based parser. It tolerate
 | Time | Che ore sono? | What time is it? |
 | Set the time | Sono le tre e mezza · Sono le quindici e trenta | It's half past three · It's ten to seven pm |
 | Lights on | Accendi la luce in cucina · Luce rossa in camera | Turn on the kitchen light · Make the bedroom red |
+| Favourite light | Accendi la luce preferita di Marco · Metti il colore preferito di Giulia in cucina | Turn on Marco's favourite colour |
 | Lights off | Spegni la luce in bagno · Spegni tutto | Turn off the lights in the garage |
 | Scenes | Scenario cinema · Scenario relax · Modalità via · Buonanotte · Buongiorno | Cinema mode · Relax scene · Away mode · Good night · Good morning |
 | Party | Fai festa · Balliamo | Let's dance · Party |
@@ -134,6 +143,14 @@ An answer to a question of chatty mode that tells something lasting about a char
 
 The house then answers questions about what it knows, however they are put: "Cosa mangia Rossellina?", "Qual è il pranzo preferito da Rossellina?", "What does Rossellina like to eat?", "What can I cook for Rossellina?" → "I know that Rossellina loves eating pizza.". Keywords of both languages tell what the question is about (food, drinks, colours, music, sport, work, fears, hobbies, travel, sofa and armchair, where somebody comes from, animals, family, age, the house, mornings and evenings) and what every fact is about; when no keyword does ("Does Marco look after patients?", or a fact typed in the web app such as "is mad about comics") the language model tells it, and it can only write one of those topics. The answer is the fact itself after the name, so the house makes nothing up and the sentence agrees with any name; when it knows nothing about that topic it says so: "I don't know: Rossellina hasn't told me yet." With keywords the answer is immediate; when the model is needed, about 3 seconds on the board. Questions about life in the house (bills, shopping, chores…) stay with the stories; for holidays a fact comes before the made-up answer. A request that names a character is still a request ("Marco vuole sentire la musica", "musica per Marco", "Marco is hungry, light the barbecue"), and "Is Marco on the sofa?" asks where it is now, not where it likes to sit.
 
+**What it does with them.** Three answers the house acts on:
+
+- **The favourite colour** ("Marco, what's your favourite colour?"): in the Normal scene the light of a room takes the favourite colour of whoever is in (the last one to come in, among those who told it; switched off with **Light in the favourite colour of who comes in** in **Settings**), and "turn on Marco's favourite colour" lights the room Marco is in, or the one said ("...in the kitchen"), in that colour. If Marco has not told it yet and is in the house, the house asks at once and the answer lights the room.
+- **Loves dancing** ("Marco, do you like dancing?"): in chatty mode, when Marco is in the living room with somebody else, the house offers a party ("Marco, you love dancing: shall we party?").
+- **Loves barbecues** ("Marco, do you like barbecues?"): when Marco is in the garden, the house offers the barbecue ("Marco, you love barbecues: shall I light it?").
+
+These offers are heard without Talk like the others, at most one every 10 minutes of each kind. **Ask a question**, in **Controls** and on the card of each character, makes the house ask one of these questions at once, outside chatty mode too, preferring those the character has not answered yet: to a character picked at random among those in the house, or to the one of the card, even if it is not in the house.
+
 ## Speech recognition
 
 The Vosk models are `vosk-model-small-it-0.22` and `vosk-model-small-en-us-0.15` (Apache-2.0). The house uses them in two ways:
@@ -141,7 +158,7 @@ The Vosk models are `vosk-model-small-it-0.22` and `vosk-model-small-en-us-0.15`
 - **A closed list of phrases** for names, yes/no and the options of a question: the model accepts only those words, which makes it fast (under half a second for a name on the board) and very hard to fool;
 - **Free speech** for questions and commands, turned into an intent afterwards.
 
-The microphone is on only while the house listens, at 16 kHz mono: while Talk is held, after "Who is it?" and for a few seconds after greeting a new phone or asking a chatty question. The audio stays in memory and is never saved; of what the house hears without Talk the log keeps only the outcome (yes, no, an option), never the text, and the recognised text is not sent to the phones. The exception is an answer that becomes a fact of a character ([What the house knows about the characters](#what-the-house-knows-about-the-characters)): it stays among its facts, which the web app shows and anyone can correct or delete. A visitor's answer to a question about life in the house (chatty mode) stays in the storyteller's memory, for later stories, until the restart: it is not written to disk.
+The microphone is on only while the house listens, at 16 kHz mono: while Talk is held, after "Who is it?" and for a few seconds after greeting a new phone or asking a chatty question; with the [word of activation](#the-word-of-activation) on, also while the house is free and waits for the word. The audio stays in memory and is never saved; of what the house hears without Talk the log keeps only the outcome (yes, no, an option), never the text, and the recognised text is not sent to the phones. The exception is an answer that becomes a fact of a character ([What the house knows about the characters](#what-the-house-knows-about-the-characters)): it stays among its facts, which the web app shows and anyone can correct or delete. A visitor's answer to a question about life in the house (chatty mode) stays in the storyteller's memory, for later stories, until the restart: it is not written to disk.
 
 ## Speech synthesis
 

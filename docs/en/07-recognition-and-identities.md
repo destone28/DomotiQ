@@ -67,8 +67,8 @@ Anyone can register characters, pets, cars and objects, in three ways.
 ### With the intercom
 
 1. A visitor presses **Intercom** on the totem. A doorbell rings and the house asks "Chi è?" / "Who is it?".
-2. **A registered name**: "Hi Marco, come on in!". The first person figurine that comes from the driveway through the front door into the living room in the next 60 seconds gets that name. If the name belongs to someone already inside, the house says so ("But Marco is already in the kitchen!"). If the camera clearly recognizes the figurine that comes in as somebody else, the house says it ("Hmm, you look like Sofia to me, not Marco!") and keeps the identity it sees.
-3. **A new name**: "I heard Marco, right?" After a *yes*: "Nice to meet you, Marco! Come in through the door." The first figurine the house does not know that comes through the front door into the living room in the next 60 seconds becomes Marco, with no further step: the category it guessed can be changed later in the character's card.
+2. **A registered name**: "Hi Marco, come on in!". The first figurine that appears after the bell, in the next 3 minutes, on the driveway or in a room of the house (not the garage), gets that name, whatever the camera took it for (a figurine often looks like an object or an animal to it), and the house does not ask who it is. If the name belongs to someone already inside, the house says so ("But Marco is already in the kitchen!"). If the camera clearly recognizes the figurine that comes in as somebody else, the house says it ("Hmm, you look like Sofia to me, not Marco!") and keeps the identity it sees.
+3. **A new name**: "I heard Marco, right?" After a *yes*: "Nice to meet you, Marco! Come in through the door." The first figurine that appears after the bell, in the next 3 minutes, on the driveway or in a room of the house, becomes Marco, a person, with the colours the house sees, with no further step and no question; even if the house had given it a name it was not sure of. A figurine the house recognizes for sure as somebody else does not count, and neither does one that was in the house before the bell.
 4. **A name not understood**: a second try ("Sorry, I didn't catch that. Who are you?"), then "I don't know you, but come in: you're a guest."
 
 When a registration started by voice is complete, the house says "Welcome, Marco! Now I know you."
@@ -108,6 +108,10 @@ When the thread is lost (both picked up together, the two touched, one reappeare
 - asks aloud too, if its talkativeness allows it, and right after listens for the answer by itself, with no need for **Talk**: just say the name, or "both of them". The first answer wins, aloud or from a phone;
 - without an answer within 60 seconds, keeps its best guess, marked as uncertain: a **?** on the plan, and "Marco is in the kitchen. I think." in voice answers.
 
+**A name is never in two places.** Before asking, the house leaves out of the candidates whoever is already recognized somewhere else in the house (unless a hand has been where it was), whoever was last seen far from there with no hand having been there since, and the car out of the garage unless it is certain of it. If only one is left, the house decides by itself without asking: with Rossellina in the kitchen, the new figurine in the living room that looks like both Rossellina and Rosaria is Rosaria. If the doubt clears while the question is open (Rossellina shows up in the kitchen), the question is withdrawn from the phones and the house stops listening.
+
+**The car stays in the garage.** The car is never proposed for a figurine, or for something out of the garage, unless the house is certain of it: as big as a car, still and clearly seen for 10 seconds.
+
 It asks again about the same figurine at most every 30 seconds. An answer, a registration or an intercom entry **confirms** an identity: a confirmed figurine keeps it as long as the house can follow it.
 
 ## A newcomer
@@ -131,11 +135,22 @@ When it is sure there is something it does not recognize, the house asks at once
 
 Short, common answers are understood by rules, at once. Any other sentence is classified by the local language model (chapter 8). On the board that takes 3 to 6 seconds, and meanwhile the house says "Hmm..." and the buttons breathe.
 
-- **From a phone**, tap a name on the question, **Both** when more than one name is proposed, or type a new name, choose the kind and tap **Add**. **Nothing there** makes the house forget what it saw.
+- **From a phone**, tap a name on the question, **Both** when more than one name is proposed, or pick **Someone already known…** among all the characters and objects the house knows and tap **This one** (the name moves there from wherever it was), or type a new name, choose the kind and tap **Add**. **Nothing there** makes the house forget what it saw.
 - The first answer wins, from either; when it arrives, the house stops listening.
 - If what it asks about disappears before the answer, the question is withdrawn from the phones and the house stops listening.
 
 With a new name the house creates the character, with the kind said (or guessed) and the colours it sees. With a registered name it updates that character's colours at once with what it sees, if they look like the character's, so next time it recognizes it by itself; an answer given about the wrong blob gives the name but does not change how the character looks. A registration in progress from the web app comes first: while it waits for its figurine, the house does not ask this question.
+
+## Correcting the house from the web app
+
+- **Who it is.** On the card of a presence (**House** page), **Who is it?** or **Someone else: change** opens the list of every character and object the house knows, with a new name at the bottom. Choosing a character already known moves the name to that presence and away from the one that had it by mistake; the house learns that look as one of its poses even if it is unusual (another light, a character lying down), up to a colour distance of 0.6 instead of 0.45, and remembers it after a restart. An answer by voice, which may be about the wrong blob, stays more careful.
+- **Unrecognized item.** A figurine the house did not see being put down, or took for the empty house, is not followed. **Unrecognized item**, on the **House** page (tapping the spot on the plan) or in **Live** (tapping it in the picture), tells the house where it is: around that spot, for about 3 cm, the house takes back the empty house as it was saved, so what stands there differs from it again, makes it a presence followed at once and asks who it is. Any "nothing there" said there a moment before is cancelled too. If it sees nothing different from the empty house there (the item was already there when it was saved), move it a little and try again.
+
+## The light of the hall
+
+The camera has its exposure and colours locked on the light in which the empty house was saved. When the light of the hall changes a lot (a light switched on or off), the picture stays darker or brighter than the empty house: below 70% or above 143% for 5 seconds, the camera sets itself again. Measured on casa1: the room light switched off brings the picture to 45-57%, while the scenes of the house (cinema, night) never go below 95%, so they do not set it again.
+
+In a very different light the walls and the edges of the furniture look another way and may look like big blobs coming in from the edges, that is hands. A real hand leaves: "hands" that stay without a break for 30 seconds are no hands. They no longer stop the camera from being set again; and if the light is close to the one of the empty house anyway, they join the empty house as they look now (except where a character stands). Before, the house stayed stuck: with "hands" always there it no longer followed the moves and dropped to 3 pictures a second.
 
 ## Privacy
 

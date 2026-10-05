@@ -33,7 +33,9 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 | Vedi | Fai |
 |---|---|
 | Fascia *La webcam si è spostata: rifare la calibrazione* | Calibra (vedi sotto). |
-| Oggetti fantasma, o statuine non viste, dopo che la luce del padiglione è cambiata | Di solito la webcam si riregola da sola in pochi secondi. Se no: svuota la casa, **Calibrazione → Regola la luce e salva la casa vuota**. |
+| Oggetti fantasma, o statuine non viste, dopo che la luce del padiglione è cambiata | Di solito la webcam si riregola da sola in pochi secondi (al più tardi dopo 30 secondi se la casa vede "mani" ovunque). Se no: svuota la casa, **Calibrazione → Regola la luce e salva la casa vuota**. |
+| La casa non riconosce un personaggio che conosce, o lo chiama col nome sbagliato | Nella domanda scegli **Uno già noto…** e tocca **Questo**; oppure tocca il personaggio sulla piantina → **Chi è?** / **È un altro: cambia** e sceglilo dall'elenco. La casa impara quell'aspetto. |
+| Una statuina in casa non compare sulla piantina | **Casa → Elemento non riconosciuto**, poi tocca sulla piantina dove si trova (oppure in **Diretta**, nell'immagine), e scegli chi è. |
 | Un **?** su un personaggio, oppure *La casa chiede* | Rispondi a voce subito dopo la domanda, senza Parla, con una frase qualsiasi: un nome, "no, è un cane", "non c'è nessuno", "tutti e due". Oppure tocca il nome sulla domanda o **Tutti e due**; per un nuovo arrivato puoi scrivere un nome nuovo, sceglierne il tipo e toccare **Aggiungi**, oppure toccare **Non c'è niente**. |
 | La casa non nota i personaggi, e in *Diagnostica* risulta sempre una mano | Qualcosa di grande è appoggiato sul bordo della base (un modulo, un cavo): toglilo o fissalo. Dopo 8 secondi fermo la casa smette comunque di prenderlo per una mano. |
 | La casa chiede di qualcuno che non c'è | Rispondi "non c'è nessuno" o tocca **Non c'è niente**: la casa lo dimentica. Se è già sulla piantina, toccalo e scegli **Non c'è davvero: togli**. Se torna nello stesso punto, cerca un modulo, un LED o un cavo da fissare, poi **Salva solo la casa vuota** a casa vuota. |
@@ -51,7 +53,8 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 - **Calibrazione**: togli statuine e auto → tocca i 4 angoli della base (davanti a sinistra, davanti a destra, dietro a destra, dietro a sinistra; davanti = vialetto) → **Usa questi angoli**: la casa regola da sola la luce e salva la casa vuota (circa 15 secondi, con una rotellina; non toccare la casa) → controlla che le pareti disegnate coincidano con quelle vere. Calibra prima di aprire la casa ai visitatori: fino ad allora la sfocatura può solo indovinare dove si trova il bagno.
 - **Diagnostica**: moduli, scansione I2C, **Prova audio**, **Prova microfono (3 s)**, registri.
 - **Impostazioni**: luminosità e durate, password del Wi-Fi, **Usa l'ora di questo telefono**, backup, cestino, riavvio dell'app, riavvio e spegnimento della scheda.
-- **Comandi → Fai dire alla casa**; **Simulazione** accesa e spenta.
+- **Comandi → Fai dire alla casa**; **Comandi → Fai una domanda** (la casa chiede qualcosa a un personaggio e se lo segna); **Simulazione** accesa e spenta.
+- **Impostazioni → Voce → Attivazione con la parola chiave**: detta la parola (per esempio *Casa*), la casa ascolta come con Parla.
 - **Allarme**: riquadro in fondo alla pagina **Casa**, **Inserisci** / **Disinserisci**.
 
 Guida completa: `docs/it/` nel repository.

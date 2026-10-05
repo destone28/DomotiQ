@@ -49,8 +49,8 @@ The main bus goes from the UNO Q to the **Modulino Hub** and on to the **Latch R
 
 | Hub channel | Module | Where | Address (7 bit) |
 |---|---|---|---|
-| main bus | Modulino Hub (TCA9548A) | on its plate (`33_Placca_Hub`) | 0x70 (searched between 0x70 and 0x77) |
-| main bus | Latch Relay | on its plate (`33_Placca_Relay`) | 0x02 or 0x15 (factory, depending on the batch) or 0x10 |
+| main bus | Modulino Hub (TCA9548A) | on its plate (`24_Placca_Hub`) | 0x70 (searched between 0x70 and 0x77) |
+| main bus | Latch Relay | on its plate (`24_Placca_Relay`) | 0x02 or 0x15 (factory, depending on the batch) or 0x10 |
 | 0 | Pixels | garage, on the back wall | 0x36 |
 | 1 | Pixels | bedroom, on the wall towards the garage | 0x36 |
 | 2 | Pixels | kitchen, on the wall towards the living room | 0x36 |
