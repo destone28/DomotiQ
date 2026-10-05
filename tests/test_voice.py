@@ -57,6 +57,24 @@ CASES = [
     ("sì", "yes", {}),
     ("no", "no", {}),
     ("luna", "where_is", {"name": "Luna"}),
+    # as the Italian speech recognizer writes them, and with a word lost in a noisy room
+    ("come la casa", "house_summary", {}),
+    ("dove la macchina", "car_where", {}),
+    ("dove marco", "where_is", {"name": "Marco"}),
+    ("a nulla", "cancel", {}),
+    ("buon giorno", "scene", {"scene": "normal"}),
+    ("buona notte", "scene", {"scene": "night"}),
+    ("cos'ha fatto Marco", "remember", {"name": "Marco"}),
+    ("spegne la luce nel bagno", "lights_off", {"room": "bathroom"}),
+    ("spendi tutte le luci", "lights_off", {}),
+    ("accende la luce cucina", "lights_on", {"room": "kitchen"}),
+    ("accedi alla luce in giardino", "lights_on", {"room": "garden"}),
+    ("facciamo feste", "party", {}),
+    ("chi in cucina", "who_in", {"room": "kitchen"}),
+    ("chi si è cucina", "who_in", {"room": "kitchen"}),
+    ("ti c'è in camera da letto", "who_in", {"room": "bedroom"}),
+    ("se qualcuno in giardino", "who_in", {"room": "garden"}),
+    ("a basso volume", "volume", {"direction": "down"}),
 ]
 
 
@@ -74,6 +92,18 @@ def test_nonsense_is_not_understood():
     assert parse("ho la pancia vuota", NAMES) is None
     assert parse("il frigo è vuoto", NAMES) is None
     assert parse("", NAMES) is None
+    assert parse("dove sei", NAMES) is None
+    assert parse("non serve a nulla", NAMES) is None
+    assert parse("chi ha costruito questa casa", NAMES) is None
+    assert parse("quanti anni hai", NAMES) is None                  # an age, not a head count
+
+
+def test_whole_names():
+    from domotiq.voice.intents import whole_names
+    names = ["Honda Civic", "Mister Brown", "Mister Green", "Viola"]
+    assert whole_names("honda mr", names) == []
+    assert whole_names("mister green e viola", names) == ["Mister Green", "Viola"]
+    assert whole_names("viola honda civic", names) == ["Viola", "Honda Civic"]
 
 
 def test_parse_time():
@@ -137,3 +167,98 @@ def test_name_from_speech():
     assert name_from_speech("hello my name is Tom") == "Tom"
     assert name_from_speech("sono io") == ""
     assert name_from_speech("") == ""
+
+
+def test_respellings_of_a_word_the_model_does_not_know():
+    from domotiq.voice.stt import respellings
+    r = respellings("rossellina")
+    assert r[:3] == ["rosellina", "rosselina", "roselina"]
+    assert "rosse lina" in r and "rose lina" in r
+    assert respellings("leo") == []
+
+
+class _Recognizer:
+    """Vosk's recognizer, with the grammar it was given and a result already decided."""
+    made: list = []
+    final = {"text": "", "result": []}
+
+    def __init__(self, model, rate, grammar=None):
+        import json
+        self.grammar = json.loads(grammar) if grammar else None
+        _Recognizer.made.append(self)
+
+    def SetWords(self, on):
+        pass
+
+    def AcceptWaveform(self, pcm):
+        return False
+
+    def PartialResult(self):
+        import json
+        return json.dumps({"partial": self.final["text"]})
+
+    def FinalResult(self):
+        import json
+        return json.dumps(self.final)
+
+
+def _listener(monkeypatch, tmp_path, vocabulary):
+    import sys
+    import types
+
+    from domotiq.voice import stt
+    monkeypatch.setitem(sys.modules, "vosk", types.SimpleNamespace(KaldiRecognizer=_Recognizer, Model=object,
+                                                                   SetLogLevel=lambda level: None))
+    listener = stt.Listener(tmp_path)
+    listener._models["it"] = object()
+    listener.known = lambda phrase, lang: all(w in vocabulary for w in phrase.split())
+    return listener
+
+
+def test_a_name_the_model_does_not_know_is_heard_with_a_spelling_it_knows(monkeypatch, tmp_path):
+    """"Rossellina" is no word of the Italian model, and a grammar drops it: it is listened for as "rosellina" and
+    the result has the name itself."""
+    listener = _listener(monkeypatch, tmp_path, {"rosellina", "viola", "rosse", "lina", "mister", "green"})
+    _Recognizer.final = {"text": "rosellina", "result": [{"word": "rosellina", "conf": 0.9}]}
+    s = listener.session("it", ["Rossellina", "Viola", "Mister Green", "Qwzx"])
+    assert _Recognizer.made[-1].grammar == ["rosellina", "viola", "mister green", "[unk]"]
+    assert s.result() == ("rossellina", 0.9)
+    s = listener.session("it", ["Rossellina"])
+    assert s.feed_partial(b"") == "rossellina"
+    assert s.sureness("rossellina") == 0.9
+    _Recognizer.final = {"text": "viola rosellina", "result": [{"word": "viola", "conf": 1.0},
+                                                               {"word": "rosellina", "conf": 0.8}]}
+    assert listener.session("it", ["Rossellina", "Viola"]).result() == ("viola rossellina", 0.9)
+    # the word of activation is listened for only as the model writes it (the free recognizer must find it too)
+    listener.session("it", ["Rossellina"], False)
+    assert _Recognizer.made[-1].grammar == ["[unk]"]
+    # no spelling of one word as two that are part of the grammar: the name as two words the model knows
+    listener = _listener(monkeypatch, tmp_path, {"rosse", "lina"})
+    listener.session("it", ["Rossellina"])
+    assert _Recognizer.made[-1].grammar == ["rosse lina", "[unk]"]
+
+
+def test_alternatives_of_a_request(monkeypatch, tmp_path):
+    """With alternatives the recognizer gives no confidence word by word: the result is the best sentence, sure as
+    much as it is likelier than the others, and the other sentences come after it."""
+    listener = _listener(monkeypatch, tmp_path, set())
+    _Recognizer.final = {"alternatives": [{"text": "chi già in cucina", "confidence": 78.0},
+                                          {"text": "chi c'è in cucina", "confidence": 78.0},
+                                          {"text": "chi è cucina", "confidence": 70.0}]}
+
+    def alternatives(self, n):
+        self.n = n
+    monkeypatch.setattr(_Recognizer, "SetMaxAlternatives", alternatives, raising=False)
+    s = listener.session("it", None, True, 5)
+    assert _Recognizer.made[-1].n == 5
+    text, conf = s.result()
+    assert text == "chi già in cucina"
+    assert 0.49 < conf < 0.5
+    assert s.alternatives() == ["chi già in cucina", "chi c'è in cucina", "chi è cucina"]
+    # an utterance in two parts: each alternative of one part with the best of the other
+    s.parts = [{"alternatives": [{"text": "accendi la luce", "confidence": 9.0}, {"text": "accendi la luna",
+                                                                                 "confidence": 1.0}]},
+               {"alternatives": [{"text": "in cucina", "confidence": 5.0}, {"text": "in cantina",
+                                                                           "confidence": 4.0}]}]
+    assert s.alternatives() == ["accendi la luce in cucina", "accendi la luna in cucina",
+                                "accendi la luce in cantina"]

@@ -101,9 +101,16 @@ def spoken(text: str, lang: str) -> str:
 # answers that are whole sentences on their own
 SHORT_ONLY = ("cancel", "yes", "no")
 
+# the words of the rooms, for the patterns that need one
+_ROOMS = "|".join(sorted({w for ws in ROOMS.values() for w in ws}, key=len, reverse=True))
+
+# Several patterns also take the sentence as the Italian speech recognizer writes it: "dov'è" and "com'è" come out
+# as "dove" and "come", "annulla" as "a nulla", "spegni" and "accendi" as "spegne", "accende" or "accedi", and a
+# word lost in a noisy room ("chi in cucina" for "chi c'è in cucina").
+
 # (intent, patterns); the first match wins, so order matters
 PATTERNS: list[tuple[str, list[str]]] = [
-    ("cancel", [r"\b(annulla|lascia stare|niente|cancel|never mind|stop)\b"]),
+    ("cancel", [r"\b(annulla|lascia stare|niente|cancel|never mind|stop)\b", r"^a nulla$"]),
     ("set_time", [r"\bsono le\b", r"\be l una\b", r"\bit s \d", r"\bset the (time|clock)\b",
                   r"\bimposta l ora\b", r"\bl ora e\b", r"\bthe time is\b", r"\bo clock\b",
                   r"\bit (s|is) (half|quarter|\w+( \w+)? (minutes )?(past|to))\b", r"\bit (s|is) \w+( \w+)? (am|pm)\b",
@@ -120,7 +127,7 @@ PATTERNS: list[tuple[str, list[str]]] = [
                   r"\bdov e (stato|stata|andato|andata)\b", r"\bwhat (did|has) \w+( \w+)? (do|done|been doing)\b",
                   r"\bwhere (has|did) \w+( \w+)? (been|go)\b", r"\bchi e (stato|stata|passato|passata|entrato|entrata)\b",
                   r"\bchi c e stato\b", r"\bwho (has been|was|went) in\b", r"\bquante feste\b", r"\bhow many parties\b",
-                  r"\bquante grigliate\b", r"\bhow many barbecues\b"]),
+                  r"\bquante grigliate\b", r"\bhow many barbecues\b", r"\bcos ha fatto\b"]),
     ("story", [r"\b(raccont|narr|invent)\w* (una |un |la |qualche )?(storia|storie|favola|fiaba|racconto|avventura)\b",
                r"\b(storia|favola|fiaba|racconto) (su|di|della|del|dei|delle|sulla|sul|con)\b",
                r"\btell (me |us )?(a |another )?(story|tale|fairy tale)\b", r"\b(story|tale) about\b",
@@ -156,32 +163,36 @@ PATTERNS: list[tuple[str, list[str]]] = [
     ("verbosity", [r"\b(stai zitta|silenzio|zitta|be quiet|shut up|silent|quiet mode)\b",
                    r"\b(parla di piu|chiacchierona|talk more|chatty)\b", r"\b(parla normale|normal mode)\b"]),
     ("volume", [r"\bnon ti sento\b", r"\bi can t hear you\b", r"\b(alza|abbassa) (il |la )?(volume|musica)\b", r"\bvolume (su|giu|up|down)\b", r"\bpiu (forte|piano)\b",
+                r"\ba basso volume\b",
                 r"\b(louder|quieter|softer)\b", r"\b(turn|volume) (it )?(up|down)\b"]),
     # "fai presto", "let's body": "fai festa" and "let's party" as the recognizer heard them at the bench
-    ("party", [r"\b(festa|party|balliamo|ballare|musica|let s dance|dance)\b", r"\b(festeggia|celebr)\w*\b",
+    ("party", [r"\b(festa|feste|party|balliamo|ballare|musica|let s dance|dance)\b", r"\b(festeggia|celebr)\w*\b",
                r"\b(fai|facciamo|famo) presto\b", r"\blet s (body|bodies|potty)\b"]),
     ("grill", [r"\b(barbecue|grigliata|griglia|grill|bbq|grigliare|salsicce|braciole|sausages)\b"]),
     ("scene", [r"\bscenari[oa]\b", r"\bmodalita\b", r"\bscene\b", r"\bmode\b", r"\bcinema\b", r"\brelax\b",
-               r"\bbuonanotte\b", r"\bgood night\b", r"\bbuongiorno\b", r"\bgood morning\b",
+               r"\bbuonanotte\b", r"\bbuona notte\b", r"\bgood night\b", r"\bbuongiorno\b", r"\bbuon giorno\b",
+               r"\bgood morning\b",
                r"\bvado a (dormire|letto)\b", r"\bandiamo a (dormire|letto)\b", r"\b(going|go) to (bed|sleep)\b",
                r"\b(usciamo|esco|esciamo|stiamo uscendo)\b", r"\b(we re|we are|i m|i am) (leaving|going out)\b",
                r"\bguardiamo un film\b", r"\bwatch a (film|movie)\b", r"\b(romantic|romantica|atmosfera)\b",
                r"\bserie tv\b", r"\bla tv\b", r"\bwatch tv\b", r"\brilassiam\w*\b", r"\brelax\w*\b"]),
-    ("lights_off", [r"\b(spegni|spengi|turn off|switch off|lights off)\b", r"\bswitch (\w+ )?off\b", r"\bbuio\b",
+    ("lights_off", [r"\b(spegni|spengi|spegne|turn off|switch off|lights off)\b", r"\bswitch (\w+ )?off\b", r"\bbuio\b",
+                    r"\bspendi (la|le|il|i|tutte|tutto)\b",
                     r"\bturn (\w+ )?off\b", r"\btoo bright\b", r"\btroppa luce\b", r"\btogli la luce\b"]),
-    ("lights_on", [r"\b(accendi|illumina|turn on|switch on|lights on|light up)\b", r"\bluce\b.*\b(rossa|verde|blu|gialla|viola|rosa|bianca|azzurra|arancione)\b",
+    ("lights_on", [r"\b(accendi|illumina|turn on|switch on|lights on|light up)\b", r"\b(accende|accedi)\b.*\bluc[ei]\b", r"\bluce\b.*\b(rossa|verde|blu|gialla|viola|rosa|bianca|azzurra|arancione)\b",
                    r"\b(make|paint|colour|color)\b.*\b(red|green|blue|yellow|purple|pink|white|orange|cyan)\b",
                    r"\blights?\b.*\b(red|green|blue|yellow|purple|pink|white|orange|cyan)\b"]),
-    ("car_where", [r"\b(dov e|dove e|dove si trova|where is|where s) (l |la |the )?(auto|macchina|car|automobile)\b",
+    ("car_where", [r"\b(dov e|dove e|dove|dove si trova|where is|where s) (l |la |the )?(auto|macchina|car|automobile)\b",
                    r"\b(auto|macchina|car)\b.*\b(garage|dove|where)\b"]),
-    ("where_is", [r"\bdov e\b", r"\bdove e\b", r"\bdove si trova\b", r"\bdove sta\b", r"\bwhere is\b",
+    ("where_is", [r"\bdov e\b", r"\bdove e\b", r"^dove\b", r"\bdove si trova\b", r"\bdove sta\b", r"\bwhere is\b",
                   r"\bwhere s\b", r"\bwhere are\b", r"\bfind\b", r"\bcerca\b", r"\bin che stanza\b",
                   r"\bdove (si e |e )?(cacciat|finit|andat)\w*\b", r"\bwhere did \w+ go\b", r"\bwhere has \w+ gone\b"]),
     ("who_in", [r"\bchi c e\b", r"\bchi e in\b", r"\bchi sta\b", r"\bwho is in\b", r"\bwho s in\b",
                 r"\bwho is there\b", r"\banyone in\b", r"\bc e qualcuno\b", r"\bis anyone\b",
-                r"\bc e gente\b", r"\bis (there )?anybody\b", r"\bwho is (hanging|staying|sitting)\b"]),
-    # "quanti gradi ci sono in bagno" asks for the temperature, not for a head count
-    ("count", [r"\bquant[ie]\b(?!.*\b(gradi|umidita)\b)", r"\bhow many\b(?!.*\bdegrees\b)", r"\bnumero di persone\b", r"\b(crowded|affollat\w*)\b",
+                r"\bc e gente\b", r"\bis (there )?anybody\b", r"\bwho is (hanging|staying|sitting)\b",
+                r"\b(ci|se) qualcuno\b", rf"^chi\b.*\b({_ROOMS})\b", rf"^(\w+ )?c e (in|nel|nella|dentro) (il |la |l )?({_ROOMS})\b"]),
+    # "quanti gradi ci sono in bagno" asks for the temperature, "quanti anni hai" an age: not for a head count
+    ("count", [r"\bquant[ie]\b(?!.*\b(gradi|umidita|anni)\b)", r"\bhow many\b(?!.*\bdegrees\b)", r"\bnumero di persone\b", r"\b(crowded|affollat\w*)\b",
                r"\bsiamo in tanti\b"]),
     ("temperature", [r"\btemperatura\b", r"\bgradi\b", r"\bcaldo\b", r"\bfreddo\b", r"\btemperature\b",
                      r"\bsi gela\b", r"\bgela\b", r"\bfreezing\b",
@@ -193,7 +204,7 @@ PATTERNS: list[tuple[str, list[str]]] = [
     ("joke", [r"\bbarzellett\w*\b", r"\bfammi ridere\b", r"\bjoke\b", r"\bmake me laugh\b", r"\bqualcosa di divertente\b"]),
     ("house_summary", [r"\bcom e la casa\b", r"\bcosa succede\b", r"\bsituazione\b", r"\bstato della casa\b",
                        r"\bhow is the house\b", r"\bwhat s happening\b", r"\bwhat is happening\b", r"\bstatus\b",
-                       r"\braccont\w*\b", r"\bdescri\w*\b", r"\btell me about\b"]),
+                       r"\braccont\w*\b", r"\bdescri\w*\b", r"\btell me about\b", r"^come (e )?(a|da|la) casa$"]),
     ("who_are_you", [r"\bchi sei\b", r"\bcome ti chiami\b", r"\bwho are you\b", r"\bwhat s your name\b",
                      r"\bwhat is your name\b"]),
     ("help", [r"\bcosa sai fare\b", r"\baiuto\b", r"\bche cosa puoi\b", r"\bwhat can you do\b", r"\bhelp\b",
@@ -278,6 +289,20 @@ def find_names(text: str, names: Iterable[str]) -> list[str]:
             if not used[i] and w in own:
                 take(i, 1, n)
                 taken.add(n)
+                break
+    return [n for _, n in sorted(found)]
+
+
+def whole_names(text: str, names: Iterable[str]) -> list[str]:
+    """The known names said whole in the sentence, in the order they are said: for what a recognizer that knows only
+    the names heard, where a word of a name alone ("honda" out of "andato") is no name."""
+    words = text.split()
+    found: list[tuple[int, str]] = []
+    for n in sorted(dict.fromkeys(names), key=lambda n: -len(normalize(n))):
+        key = normalize(n).split()
+        for i in range(len(words) - len(key) + 1):
+            if key and words[i:i + len(key)] == key and not any(i <= j < i + len(key) for j, _ in found):
+                found.append((i, n))
                 break
     return [n for _, n in sorted(found)]
 
@@ -601,9 +626,9 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
             if intent == "count":
                 args["what"] = "animals" if re.search(r"\b(animali|animals|pets|cani|gatti|dogs|cats)\b", t) else "persons"
         elif intent == "scene":
-            if re.search(r"buonanotte|good night", t):
+            if re.search(r"buonanotte|buona notte|good night", t):
                 args["greeting"] = "night"
-            elif re.search(r"buongiorno|good morning", t):
+            elif re.search(r"buongiorno|buon giorno|good morning", t):
                 args["greeting"] = "morning"
             scene = find_scene(t) or {"night": "night", "morning": "normal"}.get(args.get("greeting", ""))
             if not scene:
@@ -622,7 +647,7 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
             args["level"] = ("silent" if re.search(r"zitta|silenzio|quiet|shut|silent", t)
                              else "chatty" if re.search(r"di piu|chiacchierona|more|chatty", t) else "normal")
         elif intent == "volume":
-            args["direction"] = "down" if re.search(r"abbassa|giu|piano|down|quieter|softer", t) else "up"
+            args["direction"] = "down" if re.search(r"abbassa|basso|giu|piano|down|quieter|softer", t) else "up"
         elif intent == "set_time":
             hm = parse_time(t)
             if not hm:

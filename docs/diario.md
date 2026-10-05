@@ -281,3 +281,8 @@ In ordine:
 - Due prove intermedie sono state scartate dopo le misure:
   - il quinto bit ricavato con operazioni vettoriali, più lento delle letture dalla tabella;
   - il contesto a 32 bit, più lento di quello a 16.
+- **Riconoscimento vocale** (D-58). Il banco di prova legge le frasi della casa con tre voci sintetiche per lingua, in tre condizioni (pulita, stanza, lontano), e controlla cosa capisce la casa. Così si sono visti tre problemi:
+  - "Rossellina" non poteva essere sentita dall'elenco dei nomi, perché il modello non conosce la parola;
+  - Vosk scrive "dove" per "dov'è" e "come la casa" per "com'è la casa", e le regole non lo capivano;
+  - l'elenco dei nomi trovava "honda" in "andato al mare".
+  Ora la casa prova anche le altre frasi probabili, ascolta i nomi sconosciuti con una scrittura nota, accetta le scritture di Vosk e conta solo i nomi interi. Con la voce pulita la casa capisce il 90,8% delle frasi in italiano (prima 82,3%), e prende per comandi il 5,6% delle frasi che non lo sono (prima 13,3%).

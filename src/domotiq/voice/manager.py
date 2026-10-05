@@ -41,7 +41,7 @@ from .chatter import ECHO_S, NAME_CONFIDENCE, PROPOSALS, QUESTIONS, WELCOME, Cha
 from .narrator import Narrator
 from .stories import StoryTeller
 from .intents import (DENY, Intent, find_name, find_names, find_room, name_from_speech, normalize, parse, parse_time,
-                      said_options, spoken)
+                      said_options, spoken, whole_names)
 from . import variants as V
 from .who import BOTH, OR, Dialogue
 from .llm import LanguageModel
@@ -62,6 +62,7 @@ HOLD_MAX_S = 6.0      # the microphone waits at most this long for the house to 
 TAG_DELAY_S = 2.0     # the facts of a character are looked at this long after a change (several come together)
 ENTRANCE_S = 180.0    # after the intercom, the first figurine that comes in within this long is the one who rang
 CONTEXT_S = 90.0      # a question with no name, this soon after one about a character, is about that character
+ALTERNATIVES = 5      # the likely sentences kept for a request: the first one the rules understand is taken
 ROOM_INTENTS = ("who_in", "count", "temperature", "humidity", "lights_on", "lights_off")
 # what is left of "e in bagno?", "and what about the kitchen?" once the room is taken away
 FOLLOW_WORDS = {"e", "ed", "ma", "invece", "allora", "in", "nel", "nella", "nello", "nell", "al", "alla", "sul", "sulla",
@@ -117,6 +118,9 @@ class Voice:
         # may miss a name that is no word of the language ("Honda Civic" heard as "dovevo music")
         self._spotted: tuple[bytes, asyncio.Future] | None = None
         self._wake_spotted: asyncio.Future | None = None
+        # the other sentences the free recognizer found likely in a request ("chi già in cucina" may also be "chi
+        # c'è in cucina"): the first one the rules understand is taken
+        self._alternatives: tuple[bytes, list[str]] = (b"", [])
         self.busy = asyncio.Lock()
         self._talk_stop: asyncio.Event | None = None
         self._talk_task: asyncio.Task | None = None
@@ -188,6 +192,18 @@ class Voice:
                 await loop.run_in_executor(self.pool, self.listener.model, self.lang)
             except Exception as e:  # noqa: BLE001
                 log.warning("speech model not loaded: %s", e)
+                return
+            await loop.run_in_executor(self.pool_free, self._warm_names, self._names_grammar(), self.lang)
+
+    def _warm_names(self, names: list[str], lang: str) -> None:
+        """The spellings the speech model knows for the names (one it does not know is listened for with a spelling
+        it knows): worked out ahead, not while the microphone waits to open."""
+        try:
+            self.listener.model(lang)
+            for n in names:
+                self.listener.spelling(n, lang)
+        except Exception:  # noqa: BLE001
+            log.exception("spellings of the names for the speech model")
 
     async def _keep_model(self) -> None:
         """Is the language model there? Once it is, its instructions go in the cache (put back from the last start,
@@ -271,7 +287,9 @@ class Voice:
         await self._yield_mic()
         loop = asyncio.get_running_loop()
         lang = self.lang
-        session = await loop.run_in_executor(self.pool, self.listener.session, lang, grammar)
+        request = grammar is None and names                # a request, said freely: its alternatives are kept
+        session = await loop.run_in_executor(self.pool, self.listener.session, lang, grammar, True,
+                                             ALTERNATIVES if request else 0)
         # with a list of words the same audio is also recognized freely, at the same time on another core: the
         # answer that is not one of the words ("direi di sì") is ready as soon as it has been said
         free = await loop.run_in_executor(self.pool_free, self.listener.session, lang, None) if grammar else None
@@ -334,6 +352,8 @@ class Voice:
         if feeds:
             await asyncio.gather(*feeds, return_exceptions=True)
         text, conf = await loop.run_in_executor(self.pool, session.result)
+        if request:
+            self._alternatives = (audio, session.alternatives()[1:])
         self.ctx.bus.publish("heard", text=text, confidence=round(conf, 2))
         log.info("heard %r (%.2f)", text, conf)
         return text, conf, audio
@@ -355,6 +375,10 @@ class Voice:
     def _spotted_for(self, audio: bytes) -> asyncio.Future | None:
         s = self._spotted
         return s[1] if s is not None and s[0] is audio else None
+
+    def _alternatives_for(self, audio: bytes) -> list[str]:
+        a = self._alternatives
+        return a[1] if a[0] is audio and audio else []
 
     def _names(self) -> list[str]:
         out = []
@@ -427,7 +451,9 @@ class Voice:
         the word in what was said (talk near the house)."""
         loop = asyncio.get_running_loop()
         lang = self.lang
-        spot = await loop.run_in_executor(self.pool, self.listener.session, lang, [phrase])
+        # the word as the model knows it (wake_check tells the words it does not know): the free recognizer must
+        # write it the same way
+        spot = await loop.run_in_executor(self.pool, self.listener.session, lang, [phrase], False)
         stop = asyncio.Event()
         chunks: asyncio.Queue = asyncio.Queue()
 
@@ -558,6 +584,7 @@ class Voice:
             # one word alone after it is a request only if it means something ("Casa, aiuto!"), not a noise
             text = rest if len(words) >= 2 or (words and parse(rest, self._names()) is not None) else ""
             spotted = self._wake_spotted if text else None
+            alternatives: list[str] = []
             if not text:
                 await self.reply(*V.pick("wake", V.WAKE_PROMPT))   # short and ready in memory: said at once
                 text, _, audio = await self._listen(None, max_s=8.0, auto_end=True, hold=self.chatter._speaking,
@@ -566,8 +593,8 @@ class Voice:
                     if audio and len(audio) > MIC_RATE:
                         await self.say(answers.not_understood(self.lang))
                     return
-                spotted = self._spotted_for(audio)
-            await self.handle(text, spotted=spotted)
+                spotted, alternatives = self._spotted_for(audio), self._alternatives_for(audio)
+            await self.handle(text, spotted=spotted, alternatives=alternatives)
         finally:
             if held:
                 self.busy.release()
@@ -609,14 +636,17 @@ class Voice:
                     if audio and len(audio) > MIC_RATE:      # spoke for more than half a second
                         await self.say(answers.not_understood(self.lang))
                     return
-                await self.handle(text, spotted=self._spotted_for(audio))
+                await self.handle(text, spotted=self._spotted_for(audio), alternatives=self._alternatives_for(audio))
             finally:
                 await self.ctx.actions.thinking(False)
 
     # ================================================================ understanding
-    async def handle(self, text: str, spotted: asyncio.Future | None = None) -> None:
+    async def handle(self, text: str, spotted: asyncio.Future | None = None,
+                     alternatives: list[str] | None = None) -> None:
         """Understand and do what was said. `spotted`: the names of the characters heard in the same audio by a
-        recognizer that knows only them, used when the sentence asks about somebody and names nobody."""
+        recognizer that knows only them, used when the sentence asks about somebody and names nobody (or a name
+        the house does not know). `alternatives`: the other sentences the recognizer found likely in the same
+        audio, the first one the rules understand is taken when the best one means nothing to them."""
         lang = self.lang
         names = self._names()
         if self.question and await self._answer_question(text):
@@ -627,7 +657,15 @@ class Voice:
         intent = self._in_context(text, intent, names)
         if intent is None:
             intent = self._room_follow_up(text, names)  # "chi c'è in cucina?" ... "e in bagno?"
-        if intent is None and spotted is not None and not find_names(normalize(text), names):
+        for alt in alternatives or ():
+            if intent is not None and not self._unknown_name(intent, names):
+                break
+            other = parse(alt, names)
+            if other is not None and not self._unknown_name(other, names):
+                log.info("understood in an alternative of %r: %r", text, alt)
+                text, intent = alt, other
+        if (intent is None or self._unknown_name(intent, names)) and spotted is not None \
+                and not find_names(normalize(text), names):
             who = await self._spotted_names(spotted, names)
             if who:
                 log.info("name heard by the list of names in %r: %s", text, who[0])
@@ -635,7 +673,7 @@ class Voice:
                     intent = Intent("where_is", {"name": who[0]}, 0.7, "rules")   # "dovevo music": the car
                 else:
                     text = f"{text} {who[0]}"
-                    intent = self._in_context(text, parse(text, names), names)
+                    intent = self._in_context(text, parse(text, names), names) or intent
         if intent is None and await self._whose(text, names):
             return                                    # "che lavoro fa?" with nobody named: "Di chi?"
         if intent is None and self.stories.knows(text):
@@ -873,12 +911,17 @@ class Voice:
                 and len(normalize(text).split()) > len(normalize(intent.args.get("name", "")).split()))
 
     @staticmethod
+    def _unknown_name(intent: Intent, names: list[str]) -> bool:
+        """"Dov'è misteri?": a name the house does not know, maybe a known one heard wrong."""
+        return intent.name == "where_is" and intent.args.get("name") not in names
+
+    @staticmethod
     async def _spotted_names(spotted: asyncio.Future, names: list[str]) -> list[str]:
         try:
             heard, _ = await spotted
         except Exception:  # noqa: BLE001 - no names heard, as if the list had not been listened to
             return []
-        return find_names(normalize(heard), names) if heard else []
+        return whole_names(normalize(heard), names) if heard else []
 
     def _room_follow_up(self, text: str, names: list[str]) -> Intent | None:
         """"E in bagno?" a moment after "chi c'è in cucina?": the same question about another room."""
@@ -1049,6 +1092,11 @@ class Voice:
     def _on_identities(self, ev) -> None:
         if ev.get("action") != "delete":
             self._tag_facts_later()
+            if self.listener and self.listener.ok:
+                try:
+                    self.pool_free.submit(self._warm_names, self._names_grammar(), self.lang)
+                except RuntimeError:
+                    pass                                  # the voice is stopping
 
     def _all_facts(self) -> tuple[str, ...]:
         return tuple(f for i in self.ctx.identities.all() for f in i.facts)

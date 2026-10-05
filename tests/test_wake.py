@@ -123,11 +123,14 @@ class _Session:
     def result(self):
         return " ".join(self.heard), 0.9
 
+    def alternatives(self):
+        return [" ".join(self.heard)]
+
 
 class _Listener:
     ok = True
 
-    def session(self, lang, grammar=None):
+    def session(self, lang, grammar=None, respell=True, alternatives=0):
         return _Session(grammar)
 
     def known(self, word, lang):
@@ -202,7 +205,7 @@ def test_a_list_of_words_and_the_free_recognition_at_the_same_time(ctx):
         made = []
 
         class Listener(_Listener):
-            def session(self, lang, grammar=None):
+            def session(self, lang, grammar=None, respell=True, alternatives=0):
                 s = _Session(grammar)
                 made.append(s)
                 return s
@@ -234,7 +237,7 @@ def test_a_name_the_free_recognition_gets_wrong_is_heard_by_the_list_of_names(ct
                 return ("dovevo music", 0.8) if self.grammar is None else ("honda civic", 0.9)
 
         class Listener(_Listener):
-            def session(self, lang, grammar=None):
+            def session(self, lang, grammar=None, respell=True, alternatives=0):
                 return Session(grammar)
         v.listener = Listener()
         v.mic = _Mic(_said("dov", "e", "honda", "civic"), [])
@@ -242,6 +245,48 @@ def test_a_name_the_free_recognition_gets_wrong_is_heard_by_the_list_of_names(ct
         assert text == "dovevo music"
         await v.handle(text, spotted=v._spotted_for(audio))
         assert ctx.said[-1] == "Honda Civic è in garage."
+    asyncio.run(scenario())
+
+
+def test_a_request_is_understood_in_an_alternative_and_an_unknown_name_by_the_list(ctx):
+    """"Chi c'è in cucina?" heard as "di già in cucina": the second sentence the recognizer found likely is taken.
+    "Dov'è Mister Green?" heard as "dov'è misteri", a name the house does not know: the list of names heard it."""
+    import time
+
+    async def scenario():
+        v = ctx.voice
+        green = ctx.identities.add("Mister Green", "person")
+        ctx.sim.add(120, 120, "person", green.id, "#20c020", "Mister Green")
+        ctx.house.update_tracks(ctx.sim.tracks(), time.time())
+        heard = {"free": ("di già in cucina", 0.4), "alternatives": ["di già in cucina", "chi c'è in cucina"],
+                 "names": ("", 0.0)}
+
+        class Session(_Session):
+            def result(self):
+                return heard["free"] if self.grammar is None else heard["names"]
+
+            def alternatives(self):
+                return heard["alternatives"]
+
+        made = []
+
+        class Listener(_Listener):
+            def session(self, lang, grammar=None, respell=True, alternatives=0):
+                made.append(alternatives)
+                return Session(grammar)
+        v.listener = Listener()
+        v.mic = _Mic(_said("chi", "c", "e", "in", "cucina"), [])
+        text, conf, audio = await v._listen(None, max_s=5.0, names=True)
+        assert made[0] == 5                                   # a request: its alternatives are kept
+        await v.handle(text, spotted=v._spotted_for(audio), alternatives=v._alternatives_for(audio))
+        assert "Mister Green" in ctx.said[-1] and "cucina" in ctx.said[-1]
+
+        heard.update({"free": ("dov'è misteri", 0.8), "alternatives": ["dov'è misteri"],
+                      "names": ("mister green", 0.9)})
+        v.mic = _Mic(_said("dov", "e", "mister", "green"), [])
+        text, conf, audio = await v._listen(None, max_s=5.0, names=True)
+        await v.handle(text, spotted=v._spotted_for(audio), alternatives=v._alternatives_for(audio))
+        assert ctx.said[-1] == "Mister Green è in cucina."
     asyncio.run(scenario())
 
 
@@ -261,7 +306,7 @@ def test_the_word_alone_is_answered_at_once(ctx):
                 if self.grammar is None:
                     raise AssertionError("the free recognizer is not waited for")
                 return super().result()
-        v.listener = type("L", (_Listener,), {"session": lambda self, lang, grammar=None: Session(grammar)})()
+        v.listener = type("L", (_Listener,), {"session": lambda self, lang, grammar=None, respell=True, alternatives=0: Session(grammar)})()
         v.mic = _Mic(_said("casa", quiet=30), log)
         assert await v._wake_listen("casa") == (True, "")
         chunks = [e[1] for e in log if e[0] == "chunk"]

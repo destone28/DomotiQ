@@ -68,6 +68,7 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna qu
 | httpx | BSD-3-Clause | test delle API |
 | Pillow | MIT-CMU (HPND) | pulizia dei metadati delle immagini |
 | uv | MIT / Apache-2.0 | ambiente Python sul PC |
+| piper-tts 1.8.0 e le voci Piper it_IT-serena, it_IT-paola, it_IT-riccardo, en_US-ljspeech, en_US-ryan, en_GB-alan | GPL-3.0 (piper-tts); licenze delle singole voci, alcune escludono l'uso commerciale (es. it_IT-paola, derivata da "lessac") | solo sul PC, per leggere le frasi di prova di `scripts/stt_bench.py`; non distribuite e non installate sulla scheda |
 | FreeCAD | LGPL-2.1+ | CAD del diorama |
 
 ## Valutati e scartati

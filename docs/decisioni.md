@@ -460,3 +460,40 @@ Il dubbio "Honda Civic o Mister Blu?" veniva invece da due personaggi dello stes
 
 La flash attention si è rivelata più lenta su questo processore quando il contesto è lungo, come le 1550 parole delle istruzioni dei comandi; il contesto a 32 bit è più lento ancora. Il modello è in gran parte Q5_0 e non Q4_K: la dimensione 896 non è multipla di 256.
 
+### D-58 — Riconoscimento vocale: le frasi più probabili, i nomi che il modello non conosce, le frasi come le scrive Vosk (5/10)
+**Scelta:**
+- **Le frasi più probabili.** Per una richiesta libera (tasto Parla, o dopo "Dimmi!") Vosk tiene le 5 frasi più probabili. Se le regole non capiscono la prima, o vi trovano un nome che la casa non conosce, provano le altre. In questa modalità Vosk non dà la sicurezza parola per parola: la sicurezza della frase è quanto la migliore è più probabile delle altre. La frase detta insieme alla parola di attivazione resta com'era: è la stessa trascrizione che deve ritrovare la parola.
+- **I nomi che il modello non conosce.** Prima un nome come "Rossellina" usciva in silenzio dagli elenchi di parole, perché il modello italiano non lo conosce, e il riconoscimento dei nomi non poteva sentirlo. Ora entra con una scrittura che il modello conosce: una doppia scritta singola ("rosellina"), o la parola divisa in due. Il risultato riporta il nome. Le scritture si calcolano all'avvio e quando cambiano i personaggi; alla registrazione l'avviso compare solo se non se ne trova nessuna. La parola di attivazione resta com'è, perché il riconoscimento libero la deve scrivere uguale.
+- **L'elenco dei nomi.**
+  - Un nome conta solo se lo sente intero: "honda", uscito da "oggi sono andato al mare", non è più l'Honda Civic.
+  - L'elenco si consulta anche quando la frase chiede di un nome che la casa non conosce: "dov'è misteri" diventa Mister Green.
+- **Le frasi come le scrive Vosk.** Le regole accettano:
+  - "dove" per "dov'è" e "come" per "com'è";
+  - "a nulla" per "annulla", "buon giorno", "buona notte", "cos'ha fatto";
+  - "spegne" e "spendi la luce", "accende" e "accedi ... luce", "feste", "a basso volume";
+  - una parola persa nel rumore: "chi in cucina", "ti c'è in camera da letto", "se qualcuno in giardino".
+- "Quanti anni hai" non è più una domanda su quante persone ci sono.
+
+**Perché:** richiesta di Emilio ("migliora anche il riconoscimento vocale del testo"). La misura usa `scripts/stt_bench.py`:
+- le frasi della casa con i nomi di casa1: 83 in italiano e 24 in inglese, comprese 10 e 4 che non sono comandi;
+- tre voci Piper per lingua, due velocità;
+- tre condizioni: voce pulita; stanza simulata (riverbero 0,35 s, rumore a 18 dB, livello basso); lontano (riverbero 0,6 s, rumore a 9 dB);
+- 1926 registrazioni in tutto, ascoltate con il codice della casa.
+
+Il risultato conta quante volte la casa capisce la stessa cosa che capirebbe dalla frase scritta (senza il contesto della conversazione e senza il modello linguistico):
+
+| | Prima | Ora |
+|---|---|---|
+| Italiano, voce pulita | 82,3% | 90,8% |
+| Italiano, stanza | 50,2% | 61,6% |
+| Italiano, lontano | 21,5% | 24,9% |
+| Italiano, frasi con i nomi (tutte le condizioni) | 43,4% | 49,4% |
+| Italiano, frasi che non sono comandi prese per un comando | 13,3% | 5,6% |
+| Inglese, voce pulita / stanza / lontano | 86,1 / 75,0 / 49,3% | 88,9 / 84,0 / 60,4% |
+| Inglese, frasi che non sono comandi prese per un comando | 8,3% | 4,2% |
+
+Con la voce pulita gli errori in italiano scendono da 17,7% a 9,2%. Le voci sintetiche e la stanza simulata non sono il pubblico di una fiera: i valori assoluti dal vivo saranno diversi, il confronto tra prima e ora vale.
+
+**Scartati, dopo le stesse misure:**
+- **Un secondo riconoscimento con il solo vocabolario della casa**, usato quando la frase non vuol dire niente. Capiva qualche comando in più, ma prendeva per comandi il 28% delle frasi che non lo sono.
+- **Una soglia di sicurezza sui nomi dell'elenco.** Toglieva più nomi giusti che comandi sbagliati.

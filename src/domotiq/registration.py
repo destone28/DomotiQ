@@ -138,18 +138,23 @@ class Registration:
             self.confirm(s.id)
 
     def _vocabulary_warnings(self, name: str) -> list[dict[str, str]]:
-        """A name the speech recognizer does not know can be registered, but not called by voice."""
+        """A name the speech recognizer does not know, nor any spelling of it ("rossellina" is heard as
+        "rosellina"), can be registered, but not called by voice."""
         voice = self.ctx.voice
         listener = getattr(voice, "listener", None) if voice is not None else None
         if listener is None or not getattr(listener, "ok", False):
             return []
+
+        def unknown(lang: str) -> bool:
+            spelling = getattr(listener, "spelling", None)
+            return spelling(name.lower(), lang) is None if spelling else not listener.known(name, lang)
         out = []
-        if not listener.known(name, "it"):
+        if unknown("it"):
             out.append({"kind": "vocabulary", "it": f"Il riconoscimento vocale italiano non conosce «{name}»: "
                         "a voce potrei non capirlo. Scegli un nome più comune, o va bene così per la webapp.",
                         "en": f"The Italian speech recognizer does not know “{name}”: I may not understand it by "
                         "voice. Pick a more common name, or keep it for the web app."})
-        if not listener.known(name, "en"):
+        if unknown("en"):
             out.append({"kind": "vocabulary", "it": f"Il riconoscimento vocale inglese non conosce «{name}»: dopo "
                         "la registrazione puoi scrivere come si pronuncia in inglese nella scheda del personaggio.",
                         "en": f"The English speech recognizer does not know “{name}”: after registering, write "

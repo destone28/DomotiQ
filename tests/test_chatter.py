@@ -543,7 +543,7 @@ def test_a_quick_answer_is_heard_while_the_house_ends_its_question(ctx):
         def result(self):
             return ("sì" if fed else ""), 1.0
 
-    v.listener = SimpleNamespace(ok=True, session=lambda lang, grammar: Session())
+    v.listener = SimpleNamespace(ok=True, session=lambda lang, grammar, *rest: Session())
     speaking = {"on": True}
 
     class Mic:
