@@ -13,7 +13,9 @@ Type=simple
 User=arduino
 Group=arduino
 WorkingDirectory=/home/arduino/domotiq
-ExecStart=/home/arduino/domotiq/llama.cpp/build/bin/llama-server -m /home/arduino/domotiq/models/llm/qwen2.5-0.5b-instruct-q4_k_m.gguf --host 127.0.0.1 --port 8081 -c 8192 -t 3 -np 4 --slot-save-path /var/lib/domotiq-llm
+# -fa off: on the Cortex-A53 the requests of the house are faster without flash attention
+# (docs/accelerazione-modello.md)
+ExecStart=/home/arduino/domotiq/llama.cpp/build/bin/llama-server -m /home/arduino/domotiq/models/llm/qwen2.5-0.5b-instruct-q4_k_m.gguf --host 127.0.0.1 --port 8081 -c 8192 -t 3 -np 4 -fa off --slot-save-path /var/lib/domotiq-llm
 Nice=10
 # last under load (see domotiq.service): it reads its instructions in the background
 CPUWeight=50

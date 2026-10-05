@@ -147,8 +147,11 @@ ok "$(du -sh "$MODELS" | cut -f1) of models"
 # ---------------------------------------------------------------------------
 if [ "$WITH_LLM" = 1 ]; then
     step "llama.cpp (language model server)"
-    if [ -x llama.cpp/build/bin/llama-server ] && [ "$(git -C llama.cpp rev-parse HEAD 2>/dev/null)" = "$LLAMA_COMMIT" ]; then
-        ok "already built at ${LLAMA_COMMIT:0:7}"
+    # the kernels for the Cortex-A53 of the UNO Q (docs/accelerazione-modello.md), applied to the commit tested
+    PATCH_SUM="$(sha256sum scripts/llama/arm-nodot.patch | cut -c1-16)"
+    if [ -x llama.cpp/build/bin/llama-server ] && [ "$(git -C llama.cpp rev-parse HEAD 2>/dev/null)" = "$LLAMA_COMMIT" ] \
+            && [ "$(cat llama.cpp/.domotiq-patch 2>/dev/null)" = "$PATCH_SUM" ]; then
+        ok "already built at ${LLAMA_COMMIT:0:7} with the kernels ${PATCH_SUM:0:7}"
     else
         if [ ! -d llama.cpp/.git ]; then
             rm -rf llama.cpp
@@ -157,6 +160,9 @@ if [ "$WITH_LLM" = 1 ]; then
         fi
         git -C llama.cpp fetch -q --depth 1 origin "$LLAMA_COMMIT"
         git -C llama.cpp checkout -q --force FETCH_HEAD
+        git -C llama.cpp clean -q -f ggml/src/ggml-cpu/arch/arm
+        git -C llama.cpp apply "$PWD/scripts/llama/arm-nodot.patch" || die "the kernels do not apply to llama.cpp"
+        echo "$PATCH_SUM" > llama.cpp/.domotiq-patch
         echo "    building llama-server (about twenty minutes)"
         cmake -S llama.cpp -B llama.cpp/build -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=ON -DLLAMA_CURL=OFF >/dev/null
         cmake --build llama.cpp/build -j"$(nproc)" --target llama-server >/dev/null

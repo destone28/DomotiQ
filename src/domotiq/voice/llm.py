@@ -51,6 +51,9 @@ URL = "http://127.0.0.1:8081"
 COMMANDS_SLOT, ANSWERS_SLOT, OFFERS_SLOT, FACTS_SLOT = 0, 1, 2, 3   # each kind of request in a slot of its own
 ANSWER_TIMEOUT_S = 12.0                 # the instructions not read yet (just started): the house asks again
 READ_S = 5.0                            # instructions that took longer than this were read, not put back: saved
+# the way llama-server keeps what it has read (attention and cache options of domotiq-llm.service): a slot saved one
+# way would be put back wrong the other way, so the files carry it in their name. 2: flash attention off
+SLOTS_LAYOUT = 2
 
 ROOMS = ["kitchen", "living", "bedroom", "bathroom", "utility", "garage", "garden", "driveway", "house"]
 COLORS = ["red", "green", "blue", "yellow", "orange", "purple", "pink", "white", "cyan", "warm"]
@@ -319,7 +322,7 @@ class LanguageModel:
         """Save a slot to a file of llama-server (action "save"), or put it back from there ("restore"). False if
         it cannot: no file yet, another model, or llama-server started without --slot-save-path."""
         tag = hashlib.sha1(self.model.encode()).hexdigest()[:8]
-        body = json.dumps({"filename": f"domotiq-{name}-{tag}.bin"}).encode()
+        body = json.dumps({"filename": f"domotiq-{name}-{tag}-l{SLOTS_LAYOUT}.bin"}).encode()
         req = urllib.request.Request(f"{self.url}/slots/{slot}?action={action}", data=body,
                                      headers={"Content-Type": "application/json"})
         try:
