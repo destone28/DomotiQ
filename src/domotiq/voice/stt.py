@@ -91,7 +91,9 @@ class Listener:
             saved = os.dup(2)
             try:
                 os.dup2(w, 2)
-                vosk.KaldiRecognizer(model, RATE, json.dumps([word, "[unk]"]))
+                # unescaped like the grammar itself: Vosk does not decode "\u00ec", and every accented
+                # word ("sì", "perché") looked missing and was left out of the grammars
+                vosk.KaldiRecognizer(model, RATE, json.dumps([word, "[unk]"], ensure_ascii=False))
             finally:
                 os.dup2(saved, 2)
                 os.close(saved)

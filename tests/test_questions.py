@@ -135,6 +135,21 @@ def test_both_of_them_when_two_figurines_touch(ctx):
     asyncio.run(scenario())
 
 
+def test_a_denied_name_is_not_the_answer(ctx):
+    async def scenario():
+        viola, rosaria = ctx.identities.add("Viola", "person"), ctx.identities.add("Rosaria", "person")
+        q = {"id": "q", "options": [{"value": viola.id, "label": {"it": "Viola", "en": "Viola"}},
+                                    {"value": rosaria.id, "label": {"it": "Rosaria", "en": "Rosaria"}}]}
+        answers = []
+        ctx.house.answer = lambda cid, value, by="web": answers.append(value) or True
+        assert await ctx.voice._answer_question("non è Viola, è Rosaria", q) and answers == [rosaria.id]
+        for text in ("né Viola né Rosaria", "non è Viola", "non sono tutti e due", "non sono insieme"):
+            assert not await ctx.voice._answer_question(text, q), text
+        assert answers == [rosaria.id]
+        assert await ctx.voice._answer_question("tutti e due", q) and answers[-1] == {"together": [viola.id, rosaria.id]}
+    asyncio.run(scenario())
+
+
 def test_both_but_one_is_seen_somewhere_else(ctx):
     async def scenario():
         from domotiq.model import Track

@@ -90,6 +90,9 @@ PATTERNS: list[tuple[str, list[str]]] = [
                 r"\bremember when\b", r"\bdo you recall\b"]),
     ("about", [r"\bcosa sai (di|su|del|della)\b", r"\bche sai (di|su)\b", r"\bparlami (di|del|della)\b",
                r"\bchi e\b", r"\bwhat do you know about\b", r"\btell me about\b", r"\bwho is\b"]),
+    # "cosa mangia Marco?", "che musica piace a Giulia?": what the house was told about a character, by the
+    # keywords of facts.py (before the commands: "musica" would start a party, a name alone is "where is")
+    ("ask_fact", [r"\w"]),
     ("register", [r"\b(aggiungi|registra|nuovo|nuova) (un |una )?(personaggio|persona|oggetto|animale)\b",
                   r"\b(add|register) (a |an |new )*(character|person|object|pet)\b", r"\bnew character\b"]),
     ("language", [r"\b(parla|parliamo|in) (inglese|italiano)\b", r"\bspeak (english|italian)\b",
@@ -109,7 +112,8 @@ PATTERNS: list[tuple[str, list[str]]] = [
     ("lights_off", [r"\b(spegni|spengi|turn off|switch off|lights off)\b", r"\bswitch (\w+ )?off\b", r"\bbuio\b",
                     r"\bturn (\w+ )?off\b", r"\btoo bright\b", r"\btroppa luce\b", r"\btogli la luce\b"]),
     ("lights_on", [r"\b(accendi|illumina|turn on|switch on|lights on|light up)\b", r"\bluce\b.*\b(rossa|verde|blu|gialla|viola|rosa|bianca|azzurra|arancione)\b",
-                   r"\b(make|paint|colour|color)\b.*\b(red|green|blue|yellow|purple|pink|white|orange|cyan)\b"]),
+                   r"\b(make|paint|colour|color)\b.*\b(red|green|blue|yellow|purple|pink|white|orange|cyan)\b",
+                   r"\blights?\b.*\b(red|green|blue|yellow|purple|pink|white|orange|cyan)\b"]),
     ("car_where", [r"\b(dov e|dove e|dove si trova|where is|where s) (l |la |the )?(auto|macchina|car|automobile)\b",
                    r"\b(auto|macchina|car)\b.*\b(garage|dove|where)\b"]),
     ("where_is", [r"\bdov e\b", r"\bdove e\b", r"\bdove si trova\b", r"\bdove sta\b", r"\bwhere is\b",
@@ -182,6 +186,36 @@ def find_color(text: str) -> str | None:
         if any(re.search(rf"\b{re.escape(w)}\b", text) for w in words):
             return color
     return None
+
+
+# words that deny what comes after them ("non è Viola", "né Viola né Rosaria", "non la pizza, la pasta"); a "no"
+# only denies what comes before it ("il mare no, la montagna"): "no, la pasta" chooses the pasta
+DENY = {"non", "not", "niente", "mai", "never", "ne", "neither", "nor", "neanche", "nemmeno", "don", "dont", "isn",
+        "nessun", "nessuna"}
+
+
+def said_options(text: str, options: list[list[str]]) -> list[int]:
+    """The options (each a list of words or phrases) said in the text and not denied, by their number:
+    "non la pizza, la pasta" says the pasta, "il mare no, la montagna" the mountains, "né Viola né Rosaria"
+    neither, "non so, il rosso" the red."""
+    words = normalize(text).split()
+    spots = []                                    # (first word, last word, option) of every mention
+    for k, phrases in enumerate(options):
+        for p in phrases:
+            pw, n = normalize(p).split(), len(normalize(p).split())
+            if pw:
+                spots += [(i, i + n - 1, k) for i in range(len(words) - n + 1) if words[i:i + n] == pw]
+
+    def denied(first: int, last: int) -> bool:
+        if last + 1 < len(words) and words[last + 1] == "no":
+            return True
+        for j in range(max(0, first - 5), first):
+            if words[j] in DENY and words[j + 1:j + 2] not in (["so"], ["saprei"], ["lo"]) \
+                    and not any(j < f < first for f, _, _ in spots):
+                return True                       # denied, and nothing else said between the denial and here
+        return False
+
+    return sorted({k for f, last, k in spots if not denied(f, last)})
 
 
 def find_name(text: str, names: Iterable[str], cutoff: float = 0.78) -> str | None:
@@ -310,6 +344,16 @@ def parse_time(text: str) -> tuple[int, int] | None:
     return hour, minute
 
 
+def _about_character(text: str, names: list[str]) -> bool:
+    """A question about the tastes, the job, the origin... of a character, not about the life of the house
+    ("Luca ha pagato le bollette?" is for stories.py), except the holidays, which a fact may tell."""
+    from . import facts                       # here: both modules import this one
+    from .stories import life_topic
+    if not facts.asks_about(text, names):
+        return False
+    return life_topic(text) in (None, "holiday") or facts.liking(text, names)
+
+
 def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
     t = normalize(text)
     if not t:
@@ -323,6 +367,8 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
         if not any(re.search(p, t) for p in patterns):
             continue
         args: dict[str, Any] = {}
+        if intent == "time_now" and found_names and _about_character(text, names):
+            continue                 # "a che ora si sveglia Marco?" asks about Marco
         if intent == "fact":
             if not found_names:
                 continue
@@ -353,6 +399,12 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
             if re.search(r"\bchi e (in|nel|nella|dentro)\b|\bwho is in\b", t):
                 continue
             args["name"] = found_names[0]
+        elif intent == "ask_fact":
+            if not found_names or not _about_character(text, names):
+                continue
+            from . import facts
+            args["name"] = found_names[0]
+            args["topic"] = facts.question_topic(text, names)
         elif intent == "where_is":
             name = find_name(t, names)
             if not name:

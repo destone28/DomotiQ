@@ -94,16 +94,13 @@ def test_yes_no_and_reactions():
     assert yes_or_no("perché no", "it") is True
     assert yes_or_no("non lo so", "it") is None
     assert yes_or_no("why not", "en") is True
-    assert yes_or_no("dai andiamo", "it") is None                     # "dai" is not a yes
+    assert yes_or_no("dai andiamo", "it") is None                     # in a chat "dai" is not a yes (offers: test_offers)
     assert yes_or_no("si vede bene da qui", "it", strict=True) is None  # a pronoun in free speech
     assert yes_or_no("sì", "it", strict=True) is True
     rng = random.Random(1)
-    reply, action, outcome = react(question("l-music"), "sì", "it", rng)
-    assert action == {"do": "party"} and "Ottima" in reply["it"] and outcome == "yes"
-    assert react(question("l-music"), "no", "it", rng)[1] is None
-    # an offer needs a short yes heard well
-    assert react(question("l-music"), "sì", "it", rng, confidence=0.4)[1] is None
-    assert react(question("l-music"), "sì ma prima voglio finire di parlare con lei", "it", rng)[1] is None
+    reply, action, outcome = react(question("k-hungry"), "sì", "it", rng)
+    assert action is None and reply["it"].startswith("Allora apri il frigo") and outcome == "yes"
+    assert react(question("k-hungry"), "no", "it", rng)[2] == "no"
     reply, action, outcome = react(question("k-cook"), "la pizza", "it", rng)
     assert "Pizza" in reply["it"] and action is None and outcome == "option 0"
     assert react(question("k-cook"), "il sushi", "it", rng)[0] is chatter_mod.UNCLEAR
@@ -115,6 +112,18 @@ def test_yes_no_and_reactions():
     assert "pizza" in grammar(question("k-cook"), "it") and grammar(question("a-from"), "it") is None
     words = grammar(question("k-hungry"), "it")
     assert "perché no" in words and "non lo so" in words     # whole phrases, or the grammar would only hear "no"
+
+
+def test_a_denied_choice_or_colour_is_not_the_answer():
+    rng = random.Random(1)
+    assert react(question("k-cook"), "non la pizza, la pasta", "it", rng)[2] == "option 1"
+    assert react(question("k-cook"), "no, la pasta", "it", rng)[2] == "option 1"
+    assert react(question("k-cook"), "pizza, not pasta", "en", rng)[2] == "option 0"
+    assert react(question("g-trip"), "il mare no, la montagna", "it", rng)[2] == "option 1"
+    assert react(question("k-cook"), "né la pizza né la pasta", "it", rng)[2] == "unclear"
+    assert react(question("a-colour"), "non mi piace il rosso", "it", rng)[:3] == (chatter_mod.UNCLEAR, None, "unclear")
+    assert react(question("a-colour"), "non so, il rosso", "it", rng)[2] == "colour red"
+    assert react(question("a-colour"), "I don't like red, blue", "en", rng)[2] == "colour blue"
 
 
 def test_every_question_has_both_languages():

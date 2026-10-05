@@ -12,30 +12,44 @@
   the house asks a named character in the house a question about the room it
   is in ("Marco, what shall we cook tonight: pizza or pasta?"), listens for
   the answer by itself and reacts. Never in the bathroom or the utility room.
+  An answer that tells something lasting about the character ("la pizza" to
+  "what's your favourite dish?") joins its facts (facts.py): the web app
+  shows it, the stories use it and "cosa mangia Marco?" finds it.
+- **Offers** (chatty mode only): a question that would do something ("Shall I
+  light the barbecue?") and the proposals for a crowd ("So many of you in the
+  living room: shall we party?"). The answer is understood by offers.py: a
+  yes runs what was offered, another command of the house runs that one.
 
 Rules that keep it from misbehaving at a fair:
 - Talk and the intercom come first: pressing them stops the small talk.
-- Answers are matched against short lists of words and are never run as free
-  commands (in a chat, "mi piace la musica" must not start a party); an offer
-  ("Shall I light the barbecue?") needs a short, clear yes.
+- Answers to chat questions are matched against short lists of words and are
+  never run as free commands (in a chat, "mi piace la musica" must not start
+  a party); only the answer to an offer may run a command.
 - An answer is thrown away if the house was speaking while it listened: it
   could be the house's own voice.
 - Names typed on the phones are never read aloud (a name box would be a way
   to make the house say anything); names heard aloud come from the words the
   speech model knows.
-- What the microphone heard is not stored, only the outcome.
+- What the microphone heard is not stored, only the outcome; the answers that
+  become facts of a character are kept as facts, which anyone can read and
+  change in the web app.
 """
 
 from __future__ import annotations
 
 import asyncio
+import difflib
 import logging
 import random
+import re
 import time
 from collections import deque
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
-from .intents import COLORS, find_color, name_from_speech, normalize
+from ..identities import MAX_FACTS
+from . import facts, offers
+from . import variants as V
+from .intents import COLORS, Intent, find_color, name_from_speech, normalize, parse, said_options
 
 if TYPE_CHECKING:
     from .manager import Voice
@@ -51,7 +65,11 @@ RETRY_S = 15.0         # a question is due but the house is busy or nobody is th
 MIN_EVERY_S = 45.0
 ACTIVE_S = 300.0       # questions only if something happened in the house in the last 5 minutes
 NAME_CONFIDENCE = 0.5  # a name heard with less confidence is not proposed
-OFFER_CONFIDENCE = 0.6 # an offer is carried out only on a yes heard at least this well
+OFFER_CONFIDENCE = 0.6 # a lone word heard freely with less confidence is not taken as the answer to an offer
+OFFER_KEEP_S = 30.0    # an offer nobody answered clearly can still be answered with Talk for this long
+# a light command for the whole house, said in the answer to an offer: not only for the room of the offer
+ALL_LIGHTS = re.compile(r"\b(tutto|tutte|tutti|tutta la casa|all|everything|every|whole house)\b")
+THINKING_S = 0.8       # the language model takes longer than this: a sound, so the visitor knows
 ASK_ROOMS = ("kitchen", "living", "bedroom", "garage", "garden")
 GENERATED_SHARE = 0.4   # about two lines in five come from the storyteller (anecdotes, memories, questions)
 ANIMALS = ("dog", "cat", "animal")
@@ -179,6 +197,21 @@ OPEN_REPLIES = [
 ]
 NO_ANSWER = {"it": "Niente? Sarà per la prossima volta, {name}.", "en": "Nothing? Maybe next time, {name}."}
 UNCLEAR = {"it": "Non ho capito bene, ma grazie, {name}!", "en": "I didn't quite get that, but thanks, {name}!"}
+AGAIN = {"it": "Scusa, non ho capito: sì o no?", "en": "Sorry, I didn't get that: yes or no?"}
+NOT_CLEAR = {"it": "Non ho capito bene: se volete, ditemelo con il tasto Parla.",
+             "en": "I didn't quite get that: if you like, tell me with the Talk button."}
+
+# offers to a crowd (chatty mode, at most one every 10 minutes), answered like the questions
+PROPOSALS: list[dict[str, Any]] = [
+    {"id": "c-party", "room": "living", "persons": 3, "action": {"do": "party"},
+     "text": {"it": "Siete in tanti in soggiorno: facciamo festa?",
+              "en": "So many of you in the living room: shall we party?"},
+     "no": {"it": "Va bene, niente festa per ora.", "en": "All right, no party for now."}},
+    {"id": "c-grill", "room": "garden", "persons": 2, "action": {"do": "grill"},
+     "text": {"it": "Che bella giornata in giardino: accendo il barbecue?",
+              "en": "Lovely day in the garden: shall I light the barbecue?"},
+     "no": {"it": "D'accordo, sarà per la prossima grigliata.", "en": "OK, maybe at the next barbecue."}},
+]
 
 
 def _has(t: str, phrase: str) -> bool:
@@ -209,9 +242,10 @@ def yes_or_no(text: str, lang: str, strict: bool = False) -> bool | None:
     return None
 
 
-def react(q: dict[str, Any], text: str, lang: str, rng: random.Random, *, confidence: float = 1.0,
+def react(q: dict[str, Any], text: str, lang: str, rng: random.Random, *,
           strict: bool = False) -> tuple[T | None, dict | None, str]:
-    """What the house says after an answer, what it does (None or an action) and the outcome to log."""
+    """What the house says after the answer to a chat question, what it does (None or an action) and the
+    outcome to log. Offers (questions with an action) are understood by offers.py instead."""
     if not normalize(text):
         return NO_ANSWER, None, "none"
     kind = q["kind"]
@@ -219,22 +253,19 @@ def react(q: dict[str, Any], text: str, lang: str, rng: random.Random, *, confid
         answer = yes_or_no(text, lang, strict)
         if answer is None:
             return UNCLEAR, None, "unclear"
-        if not answer:
-            return q["no"], None, "no"
-        action = q.get("action")
-        if action and (confidence < OFFER_CONFIDENCE or len(normalize(text).split()) > 5):
-            return UNCLEAR, None, "unclear"        # an offer needs a short, clear yes
-        return q["yes"], action, "yes"
+        return (q["yes"], None, "yes") if answer else (q["no"], None, "no")
     if kind == "choice":
-        t = f" {normalize(text)} "
-        for i, opt in enumerate(q["options"]):
-            if any(_has(t, w) for w in opt["words"][lang]):
-                return opt["reply"], opt.get("action"), f"option {i}"
-        return UNCLEAR, None, "unclear"
-    if kind == "color":
-        color = find_color(normalize(text))
-        if color is None:
+        # the first option said and not denied: "non la pizza, la pasta" is the pasta
+        chosen = said_options(text, [opt["words"][lang] for opt in q["options"]])
+        if not chosen:
             return UNCLEAR, None, "unclear"
+        opt = q["options"][chosen[0]]
+        return opt["reply"], opt.get("action"), f"option {chosen[0]}"
+    if kind == "color":
+        chosen = said_options(text, list(COLORS.values()))       # "non mi piace il rosso" is no colour
+        if not chosen:
+            return UNCLEAR, None, "unclear"
+        color = list(COLORS)[chosen[0]]
         return q["reply"], {"do": "light", "color": color, "brightness": 60}, f"colour {color}"
     return rng.choice(OPEN_REPLIES), None, "answered"
 
@@ -255,6 +286,34 @@ def grammar(q: dict[str, Any], lang: str) -> list[str] | None:
     return None
 
 
+class Heard(NamedTuple):
+    """What the microphone heard: through the list of words given (if any), and freely from the same audio."""
+    listed: str
+    listed_conf: float
+    free: str
+    free_conf: float
+    audio: bytes
+    spoke: bool             # the house spoke meanwhile: it may be its own voice
+
+
+def _confirmed(listed: str, free: str) -> bool:
+    """The free recognition of the same audio has every word the list heard."""
+    a, b = normalize(listed).split(), normalize(free).split()
+    return bool(a) and set(a) <= set(b)
+
+
+def _near(listed: str, free: str) -> bool:
+    """A short answer the two recognitions heard nearly alike ("evviva" and "è viva", "certo" and "certa")."""
+    a, b = normalize(listed), normalize(free)
+    return bool(a and b) and len(a.split()) <= 2 and len(b.split()) <= 2 \
+        and difflib.SequenceMatcher(None, a, b).ratio() >= 0.75
+
+
+def _quiet(intent: Intent) -> Intent:
+    """The command without its own "Done.": the house has just said what it does."""
+    return Intent(intent.name, {**intent.args, "quiet": True}, intent.confidence, intent.source)
+
+
 class Chatter:
     def __init__(self, voice: "Voice") -> None:
         self.voice = voice
@@ -270,6 +329,7 @@ class Chatter:
         self.activity = float("-inf")           # last sign of visitors (monotonic)
         self.unanswered = 0                     # questions in a row nobody answered
         self.last_question = float("-inf")
+        self._kept: dict[str, Any] | None = None   # an offer nobody answered clearly: Talk can still answer it
         # welcome
         self._phones: list[dict[str, Any]] = []
         self._greeting: asyncio.Task | None = None
@@ -321,26 +381,35 @@ class Chatter:
         if self._phones and (self._greeting is None or self._greeting.done()):
             self._greeting = self.voice._spawn(self._greet())     # the others wait for the house to be free
 
-    async def _listen(self, grammar_words: list[str] | None, stop: asyncio.Event | None = None,
-                      max_s: float = ANSWER_S) -> tuple[str, float, bytes, bool]:
+    async def _hear(self, grammar_words: list[str] | None, stop: asyncio.Event | None = None,
+                    max_s: float = ANSWER_S) -> Heard:
         """Listen as soon as the house is silent (the microphone opens while it ends the question, so a
-        quick answer is not lost); the last value is True if the house spoke meanwhile.
-
-        With a list of words the recogniser fits any sound to the nearest one, and says it is
-        sure ("mai" out of a noise, at 1.00): a word from the list counts only if a free
-        recognition of the same audio has it too. Otherwise the free text is returned.
-        """
+        quick answer is not lost). With a list of words, the same audio is also recognized freely."""
         v = self.voice
         start = time.monotonic()
         text, conf, audio = await v._listen(grammar_words, stop=stop, max_s=max_s, hold=self._speaking,
                                             echo=ECHO_S)
         spoke = v.in_flight > 0 or v.voice_end > max(start, v.opened_at)
-        if grammar_words and audio and not spoke:
-            free, free_conf = await v._recognize(audio, None)
-            words = set(normalize(free).split())
-            if not (text and set(normalize(text).split()) <= words):
-                text, conf = free, free_conf
-        return text, conf, audio, spoke
+        if not grammar_words:
+            return Heard("", 0.0, text, conf, audio, spoke)
+        free, free_conf = await v._recognize(audio, None) if audio and not spoke else ("", 0.0)
+        return Heard(text, conf, free, free_conf, audio, spoke)
+
+    async def _listen(self, grammar_words: list[str] | None, stop: asyncio.Event | None = None,
+                      max_s: float = ANSWER_S) -> tuple[str, float, bytes, bool]:
+        """What _hear heard, as one text; the last value is True if the house spoke meanwhile.
+
+        With a list of words the recogniser fits any sound to the nearest one, and says it is
+        sure ("mai" out of a noise, at 1.00): a word from the list counts only if a free
+        recognition of the same audio has it too. Otherwise the free text is returned.
+        """
+        h = await self._hear(grammar_words, stop, max_s)
+        if not grammar_words:
+            return h.free, h.free_conf, h.audio, h.spoke
+        if h.audio and not h.spoke and not (h.listed and set(normalize(h.listed).split()) <=
+                                            set(normalize(h.free).split())):
+            return h.free, h.free_conf, h.audio, h.spoke
+        return h.listed, h.listed_conf, h.audio, h.spoke
 
     # ================================================================ welcome
     def _on_phone_new(self, ev) -> None:
@@ -537,7 +606,8 @@ class Chatter:
         self.asking = True
         self.voice._spawn(self._ask(*pick))
 
-    def _ready(self, now: float) -> bool:
+    def _free(self) -> bool:
+        """Nothing going on that a question or an offer would talk over."""
         v, ctx = self.voice, self.ctx
         if v.busy.locked() or v.question or self._speaking() or self.active:
             return False
@@ -548,7 +618,11 @@ class Chatter:
             return False
         if any(sess.status in ("waiting", "choose", "confirm") for sess in ctx.registration.sessions.values()):
             return False
-        if ctx.sim.enabled and ctx.sim.mute:
+        return not (ctx.sim.enabled and ctx.sim.mute)
+
+    def _ready(self, now: float) -> bool:
+        v = self.voice
+        if not self._free():
             return False
         if now - v.last_chatter < 20.0:
             return False
@@ -568,22 +642,29 @@ class Chatter:
             out.setdefault(t.identity, t)
         return out
 
-    def _offer_possible(self, q: dict[str, Any]) -> bool:
-        what = (q.get("action") or {}).get("do")
+    def _can_offer(self, offer: Intent | None, room: str | None) -> bool:
+        """The house can do it now: not a party that has just ended, not the cinema while it is on."""
+        if offer is None:
+            return False
         house, act, now = self.ctx.house, self.ctx.actions, time.time()
-        if what == "party":
+        if offer.name == "party":
             return not house.party_on and now >= getattr(act, "_party_cooldown_until", 0.0)
-        if what == "grill":
+        if offer.name == "grill":
             return not house.grill_on and now >= getattr(act, "_grill_cooldown_until", 0.0)
-        if what == "scene":
-            return house.scene != q["action"].get("scene")
+        if offer.name == "scene":
+            return house.scene != offer.args.get("scene")
+        if offer.name == "lights_on":
+            return bool(room) and self.ctx.layout.light_of_room(room) is not None
         return True
+
+    def _offer_possible(self, q: dict[str, Any], room: str | None) -> bool:
+        return not q.get("action") or self._can_offer(offers.action_intent(q["action"], room), room)
 
     def _questions_for(self, track) -> list[dict[str, Any]]:
         cat = track.category
         fits = [q for q in QUESTIONS
                 if (q["who"] == "person" if cat == "person" else q["who"] == "animal" or (q["who"] == "dog" and cat == "dog"))
-                and (q["rooms"] is None or track.room in q["rooms"]) and self._offer_possible(q)]
+                and (q["rooms"] is None or track.room in q["rooms"]) and self._offer_possible(q, track.room)]
         if self.ctx.layout.light_of_room(track.room) is None:
             fits = [q for q in fits if q["kind"] != "color" and (q.get("action") or {}).get("do") != "light"]
         fresh = [q for q in fits if q["id"] not in self.recent]
@@ -607,8 +688,7 @@ class Chatter:
 
     async def _ask(self, identity: str, q: dict[str, Any]) -> None:
         v, ctx = self.voice, self.ctx
-        action = None
-        room = None
+        todo: list[Intent] = []             # what to run once the house is free again
         try:
             async with v.busy:
                 self.task = asyncio.current_task()
@@ -623,6 +703,7 @@ class Chatter:
                     self.last_asked = identity
                     self.last_question = time.monotonic()
                     self.recent.append(q["id"])
+                    self._kept = None                 # a "sì" with Talk from now on is not for an older offer
                     v.last_chatter = time.monotonic()
                     if q["kind"] == "generated":
                         await self._generated(identity, room, q["gen"])
@@ -630,29 +711,69 @@ class Chatter:
                     data = {"name": name, "room": room}
                     lang = self.lang
                     await self._say(q["text"], data, level="chatty")
-                    words = grammar(q, lang)
-                    text, conf, audio, spoke = await self._listen(words)
-                    # free text (not confirmed by the list) is read strictly: "si" there is also a pronoun
-                    strict = bool(words)
-                    if spoke:
-                        return        # the house said something else over the answer: better not guess
-                    reply, action, outcome = react(q, text, lang, self.rng, confidence=conf, strict=strict)
+                    offer = offers.action_intent(q["action"], room) if q.get("action") else None
+                    if offer is not None:
+                        lines = {"yes": q["yes"], "no": q["no"], "none": NO_ANSWER, "unclear": UNCLEAR}
+                        reply, todo, outcome = await self._offered(offer, ctx.actions.fill(q["text"], data, lang),
+                                                                   room, lines)
+                    else:
+                        words = grammar(q, lang)
+                        text, conf, _, spoke = await self._listen(words)
+                        if spoke:
+                            return    # the house said something else over the answer: better not guess
+                        # free text (not confirmed by the list) is read strictly: "si" there is also a pronoun
+                        reply, action, outcome = react(q, text, lang, self.rng, strict=bool(words))
+                        command = offers.action_intent(action, room) if action else None
+                        todo = [_quiet(command)] if command else []
+                        line = self._learn(identity, q, outcome, text, lang, conf)
+                        if line and q["kind"] == "open":
+                            reply = self._noted(name, line, lang)        # says what it understood
+                    if outcome == "spoke":
+                        return
                     self.unanswered = self.unanswered + 1 if outcome == "none" else 0
                     # the outcome only: what the microphone heard is not kept
                     ctx.store.add_event("chatter", {"name": name, "question": q["id"], "room": room,
-                                                    "outcome": outcome, "action": (action or {}).get("do")})
+                                                    "outcome": outcome, "action": todo[-1].name if todo else None})
                     if outcome == "none" and self.unanswered > 1:
                         reply = None      # once is enough
                     if reply:
                         await self._say(reply, data, level="chatty")
                 finally:
                     self.task = None
-            if action and room:
-                await self._do(action, room)
+            for intent in todo:
+                await v.execute(intent)
         finally:
             self.asking = False
             v.last_chatter = time.monotonic()
             self.next_at = time.monotonic() + self._every()
+            await ctx.actions.thinking(False)
+
+    def _learn(self, identity: str, q: dict[str, Any], outcome: str, text: str, lang: str,
+               confidence: float) -> str | None:
+        """An answer that tells something lasting about the character becomes one of its facts, in place of an
+        older answer to the same question; returns the fact."""
+        if q["kind"] == "open" and confidence < NAME_CONFIDENCE:
+            return None                       # free speech heard badly: better not to keep it
+        line = facts.answer_line(q["id"], outcome, text, lang)
+        ident = self.ctx.identities.get(identity)
+        if not line or ident is None:
+            return None
+        new = facts.put(ident.facts, q["id"], line, MAX_FACTS)
+        if new is None:
+            log.info("no room among the facts of %s for an answer", ident.name)
+            return None
+        if new != ident.facts:
+            self.ctx.identities.update(identity, facts=new)
+        return line
+
+    @staticmethod
+    def _noted(name: str, line: str, lang: str) -> T:
+        """"Me lo segno: Marco adora mangiare la pizza.", with the fact as it reads in each language."""
+        out = {}
+        for k, each in enumerate(("it", "en")):
+            fact = line if each == lang else facts.translated(line, each) or line
+            out[each] = facts.NOTED[k].replace("{name}", name).replace("{fact}", fact)
+        return out
 
     async def _generated(self, identity: str, room: str, kind: str) -> None:
         """An anecdote, a memory or a question made up by the storyteller (inside _ask, holding the lock)."""
@@ -671,14 +792,159 @@ class Chatter:
         self.ctx.store.add_event("chatter", {"name": ident.name, "question": f"gen-{kind}", "room": room,
                                              "outcome": outcome, "action": None})
 
-    async def _do(self, action: dict[str, Any], room: str) -> None:
-        a = self.ctx.actions
-        what = action.get("do")
-        if what == "party":
-            await a.party()
-        elif what == "grill":
-            await a.grill()
-        elif what == "scene":
-            await a.scene(action.get("scene", "normal"), announce=False)
-        elif what == "light":
-            await a.light(room, action.get("color", "warm"), "solid", int(action.get("brightness", 60)), 120)
+    # ================================================================ offers
+    def can_propose(self, p: dict[str, Any]) -> bool:
+        """A proposal for a crowd can be made now: chatty mode, nothing else going on, and the house can do it."""
+        if self.ctx.settings.get("voice.verbosity") != "chatty":
+            return False
+        return self._free() and self._can_offer(offers.action_intent(p["action"], p["room"]), p["room"])
+
+    async def propose(self, p: dict[str, Any]) -> None:
+        """A proposal for a crowd ("Siete in tanti in soggiorno: facciamo festa?"), answered with no need to press
+        Talk like the questions."""
+        v, ctx = self.voice, self.ctx
+        offer = offers.action_intent(p["action"], p["room"])
+        if offer is None or v.busy.locked():
+            return
+        todo: list[Intent] = []
+        try:
+            async with v.busy:
+                self.task = asyncio.current_task()
+                try:
+                    if not self._can_offer(offer, p["room"]) or not ctx.actions.speaks("chatty"):
+                        return
+                    self._kept = None
+                    v.last_chatter = time.monotonic()
+                    data = {"room": p["room"]}
+                    await self._say(p["text"], data, level="chatty")
+                    line = ctx.actions.fill(p["text"], data, self.lang)
+                    if not self._can_listen():
+                        self._keep(offer, line)            # no microphone: Talk can still answer it
+                        return
+                    lines = {"yes": None, "no": p["no"], "none": None, "unclear": NOT_CLEAR}
+                    reply, todo, outcome = await self._offered(offer, line, p["room"], lines)
+                    if outcome == "spoke":
+                        return
+                    ctx.store.add_event("chatter", {"name": None, "question": p["id"], "room": p["room"],
+                                                    "outcome": outcome, "action": todo[-1].name if todo else None})
+                    if reply:
+                        await self._say(reply, data, level="chatty")
+                finally:
+                    self.task = None
+            for intent in todo:
+                await v.execute(intent)
+        finally:
+            v.last_chatter = time.monotonic()
+            await ctx.actions.thinking(False)
+
+    async def _offered(self, offer: Intent, line: str, room: str | None,
+                       lines: dict[str, T | None]) -> tuple[T | None, list[Intent], str]:
+        """Listen for the answer to an offer just made (`line`, as said) and settle it: what the house says,
+        what it runs once it is free and the outcome to log ("spoke": the house spoke over the answer)."""
+        answer = await self._answer_offer(offer, line)
+        # the outcome only: what the microphone heard is not logged here
+        log.info("answer to the offer %s: %s (%s)", offer.name, answer.kind, answer.source)
+        if answer.kind in ("yes", "command", "no"):
+            self._kept = None
+        else:
+            self._keep(offer, line)
+        if answer.kind == "yes":
+            # the reply says what the house does ("Luci da cinema!"): the command needs no "Fatto." of its own
+            return lines["yes"], [_quiet(offer) if lines["yes"] else offer], "yes"
+        if answer.kind == "command":
+            command = answer.intent
+            if command.name in ("lights_on", "lights_off") and "room" not in command.args and room \
+                    and not ALL_LIGHTS.search(answer.text):        # "spegni tutte le luci": every room
+                command = Intent(command.name, {**command.args, "room": room}, command.confidence, command.source)
+            first = [_quiet(offer) if lines["yes"] else offer] if answer.accepted else []
+            return (lines["yes"] if answer.accepted else None), first + [command], "command"
+        if answer.kind == "no":
+            return lines["no"], [], "no"
+        if answer.kind == "silence":
+            return lines["none"], [], "none"
+        if answer.kind == "spoke":
+            return None, [], "spoke"
+        return lines["unclear"], [], "unclear"
+
+    async def _answer_offer(self, offer: Intent, line: str) -> offers.Answer:
+        """What the visitor answered to an offer; asked once more when it was neither a yes, a no nor a command."""
+        heard = await self._hear(offers.grammar(offer, self.lang))
+        if heard.spoke:
+            return offers.Answer("spoke")
+        answer = await self._understand_offer(heard, offer, line)
+        if answer.kind not in ("unsure", "other"):
+            return answer
+        await self._say(AGAIN, level="chatty")
+        heard = await self._hear(offers.grammar(offer, self.lang))
+        if heard.spoke:
+            return offers.Answer("spoke")
+        again = await self._understand_offer(heard, offer, line)
+        return answer if again.kind == "silence" else again      # silence after "sì o no?": still not clear
+
+    async def _understand_offer(self, heard: Heard, offer: Intent, line: str) -> offers.Answer:
+        """The free text has every word of the answer; the list catches a short answer the free recognition got
+        wrong ("evviva" heard "è viva"). A word of the list alone, with nothing heard freely, may come out of a
+        noise: it is no answer."""
+        lang, names = self.lang, self.voice._names()
+        texts = [heard.free] if heard.free else []
+        if heard.listed and _confirmed(heard.listed, heard.free):
+            texts.append(heard.listed)
+        found = [a for a in (offers.by_rules(t, lang, offer, names) for t in texts) if a is not None]
+        decided = ("yes", "no", "command")
+        answer = next((a for a in found if a.kind in decided), found[0] if found else None)
+        if (answer is None or answer.kind not in decided) and _near(heard.listed, heard.free):
+            # nearly alike is enough for a no, or for a clear yes: "andiamo" heard for "mangiamo" is not
+            near = offers.by_rules(heard.listed, lang, offer, names)
+            if near is not None and (near.kind == "no" or near.kind == "yes" and offers.clear_yes(heard.listed, lang)):
+                answer = near
+        if answer is None and heard.free:
+            answer = await self._ask_model(line, heard.free)
+        if answer is None:
+            return offers.Answer("other" if heard.free else "silence")
+        if answer.kind in ("yes", "command") and len(normalize(heard.free).split()) == 1 \
+                and heard.free_conf < OFFER_CONFIDENCE and not _near(heard.listed, heard.free):
+            return offers.Answer("other")     # a lone word heard badly, and not by the list: it may be anything
+        return answer
+
+    async def _ask_model(self, line: str, sentence: str) -> offers.Answer | None:
+        """The language model, when the rules could not tell; a sound if it takes a moment."""
+        llm = self.voice.llm
+        if llm is None or not self.voice.llm_ready:
+            return None                 # its instructions not read yet (just started): it would not answer in time
+        task = asyncio.ensure_future(llm.offer_answer(line, sentence))
+        done, _ = await asyncio.wait({task}, timeout=THINKING_S)
+        if not done:
+            it, en = V.pick("offer.thinking", V.THINKING)
+            await self._say({"it": it, "en": en}, level="chatty")
+            await self.ctx.actions.thinking(True)          # still working on it
+        return await task
+
+    def _keep(self, offer: Intent, line: str) -> None:
+        self._kept = {"offer": offer, "line": line, "until": time.monotonic() + OFFER_KEEP_S}
+
+    async def answer_by_talk(self, text: str) -> bool:
+        """Talk soon after an offer nobody answered clearly: a yes runs it, a no closes it. Anything else
+        (a command, a question) is left to Talk: a sentence that asks the house for something else, or a
+        longer one with a yes that is not about the offer ("si vede bene la casa")."""
+        kept = self._kept
+        if kept is None or time.monotonic() > kept["until"]:
+            self._kept = None
+            return False
+        t, names = normalize(text), self.voice._names()
+        words = t.split()
+        if not words or words[0] in offers.QUESTION_WORDS or t.startswith("si puo"):
+            return False
+        answer = offers.by_rules(text, self.lang, kept["offer"], names)
+        if answer is None or answer.kind not in ("yes", "no"):
+            return False
+        command = parse(text, names)
+        if command is not None and command.name not in ("yes", "no") and not offers.same(command, kept["offer"]):
+            return False                    # another request for the house
+        if len(words) > 4 and not offers.about(text, self.lang, kept["offer"]):
+            return False                    # a longer sentence answers only if it is about the offer
+        self._kept = None
+        if answer.kind == "yes":
+            await self.voice.execute(kept["offer"])
+        else:
+            await self.voice.reply("D'accordo, niente.", "All right, nothing then.")
+        return True

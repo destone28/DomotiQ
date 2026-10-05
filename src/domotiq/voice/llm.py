@@ -14,29 +14,41 @@ so everything is kept short: the instructions and the examples are always
 the same text at the start of the conversation, which llama-server keeps in
 its cache, and each request adds only the sentence and the known names.
 
-The same model also tells what an answer to "who is it?" means (who.py).
-Those instructions stay in a second slot of llama-server (-np 2), so neither
-kind of request pushes the other out of the cache.
+The same model also tells what an answer to "who is it?" means (who.py),
+whether an answer accepts an offer of the house (offers.py), and what a
+question about a character is about when no keyword does (facts.py). Each of
+these instructions stays in a slot of llama-server of its own (-np 4), so no
+kind of request pushes another out of the cache. With fewer slots the topics
+share the slot of "who is it?", and llama-server keeps the prompt it takes out
+of a slot in its memory cache (--cache-ram, on by default).
+
+Reading the instructions takes the board about ten minutes, after every start
+of llama-server. Once read, each slot is saved to a file of llama-server
+(--slot-save-path), and at the next start it is put back from there in a
+moment.
 """
 
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import math
 import re
+import time
 import urllib.request
 from typing import Iterable
 
-from . import who
+from . import facts, offers, who
 from .intents import Intent, find_name, find_room
 
 log = logging.getLogger(__name__)
 
 URL = "http://127.0.0.1:8081"
-COMMANDS_SLOT, ANSWERS_SLOT = 0, 1      # each kind of request keeps its instructions in its own slot
+COMMANDS_SLOT, ANSWERS_SLOT, OFFERS_SLOT, FACTS_SLOT = 0, 1, 2, 3   # each kind of request in a slot of its own
 ANSWER_TIMEOUT_S = 12.0                 # the instructions not read yet (just started): the house asks again
+READ_S = 5.0                            # instructions that took longer than this were read, not put back: saved
 
 ROOMS = ["kitchen", "living", "bedroom", "bathroom", "utility", "garage", "garden", "driveway", "house"]
 COLORS = ["red", "green", "blue", "yellow", "orange", "purple", "pink", "white", "cyan", "warm"]
@@ -170,6 +182,9 @@ class LanguageModel:
         self.url = url
         self.timeout = timeout
         self.ok = False
+        self.slots = 0          # slots of llama-server: the answers to offers need the third one
+        self.model = ""         # the model file of llama-server: the saved slots are of that model only
+        self.cold = False       # llama-server started again since the instructions went in: its cache is empty
 
     def health(self) -> bool:
         try:
@@ -177,7 +192,34 @@ class LanguageModel:
                 self.ok = r.status == 200
         except OSError:
             self.ok = False
+        if self.ok:
+            self.slots = self._slots()
+            self.cold = self._cold()
         return self.ok
+
+    def _slots(self) -> int:
+        try:
+            with urllib.request.urlopen(self.url + "/props", timeout=2) as r:
+                props = json.loads(r.read())
+            self.model = str(props.get("model_path") or "")
+            return int(props.get("total_slots") or 0)
+        except (OSError, ValueError, TypeError, AttributeError):
+            return 0
+
+    def _cold(self) -> bool:
+        """The slot of the commands holds no instructions: llama-server has just started (again)."""
+        try:
+            with urllib.request.urlopen(self.url + "/slots", timeout=2) as r:
+                slots = json.loads(r.read())
+            first = next((s for s in slots if s.get("id") == COMMANDS_SLOT), {})
+            return int(first.get("n_prompt_tokens") or 0) < 100
+        except (OSError, ValueError, TypeError, AttributeError):
+            return False        # no list of the slots: taken as ready, as before
+
+    @property
+    def facts_slot(self) -> int:
+        """The topics have a slot of their own with four; with fewer they share the one of "who is it?"."""
+        return FACTS_SLOT if self.slots > FACTS_SLOT else ANSWERS_SLOT
 
     def _ask(self, sentence: str, names: list[str], timeout: float | None = None) -> tuple[str, float]:
         """The command, and how sure the model was of its first word (0..1)."""
@@ -186,6 +228,14 @@ class LanguageModel:
     def _classify(self, sentence: str, timeout: float | None = None) -> tuple[str, float]:
         """What kind of answer to "who is it?" the sentence is, as a form of who.GRAMMAR."""
         return self._chat(who.messages(sentence), who.GRAMMAR, ANSWERS_SLOT, 10, timeout)
+
+    def _topic(self, sentence: str, timeout: float | None = None) -> tuple[str, float]:
+        """What a sentence about a character is about, as a label of facts.GRAMMAR."""
+        return self._chat(facts.messages(sentence), facts.GRAMMAR, self.facts_slot, 6, timeout)
+
+    def _offer(self, question: str, sentence: str, timeout: float | None = None) -> tuple[str, float]:
+        """Whether the sentence accepts the offer `question`, as a form of offers.GRAMMAR_GBNF."""
+        return self._chat(offers.messages(question, sentence), offers.GRAMMAR_GBNF, OFFERS_SLOT, 4, timeout)
 
     def _chat(self, msgs: list[dict[str, str]], gbnf: str, slot: int, max_tokens: int,
               timeout: float | None) -> tuple[str, float]:
@@ -208,16 +258,48 @@ class LanguageModel:
         confidence = math.exp(content[0]["logprob"]) if content and "logprob" in content[0] else 1.0
         return choice["message"]["content"], confidence
 
-    def warm(self) -> None:
-        """Read the instructions once, so they are in the cache before the first visitor speaks.
+    def warm(self) -> bool:
+        """Put the instructions in the cache before the first visitor speaks; False if llama-server answered none.
 
-        On the board this takes a couple of minutes, once after each start.
+        Each slot is first put back from the file saved after the last reading (a moment); otherwise, or if the
+        instructions changed since, they are read (on the board a few minutes each) and the slot is saved for
+        the next start. A slot shared by two instructions is not saved: only one of them could come back.
         """
-        for ask in (lambda: self._ask("ciao", [], timeout=600), lambda: self._classify("ciao", timeout=600)):
+        sets = [("commands", COMMANDS_SLOT, lambda: self._ask("ciao", [], timeout=600)),
+                ("answers", ANSWERS_SLOT, lambda: self._classify("ciao", timeout=600)),
+                ("facts", self.facts_slot, lambda: self._topic("ciao", timeout=600))]
+        if self.slots > OFFERS_SLOT:
+            sets.append(("offers", OFFERS_SLOT, lambda: self._offer("Facciamo festa?", "ciao", timeout=600)))
+        answered = False
+        for name, slot, ask in sets:
+            own = sum(1 for _, other, _ in sets if other == slot) == 1
+            restored = own and self._slot_file("restore", slot, name)
+            start = time.monotonic()
             try:
                 ask()
             except (OSError, ValueError, KeyError):
-                pass
+                continue
+            answered = True
+            took = time.monotonic() - start
+            if own and took > READ_S:
+                saved = self._slot_file("save", slot, name)
+                log.info("language model: %s instructions read in %.0f s%s", name, took, ", saved" if saved else "")
+            elif restored:
+                log.info("language model: %s instructions put back from the last start", name)
+        return answered
+
+    def _slot_file(self, action: str, slot: int, name: str) -> bool:
+        """Save a slot to a file of llama-server (action "save"), or put it back from there ("restore"). False if
+        it cannot: no file yet, another model, or llama-server started without --slot-save-path."""
+        tag = hashlib.sha1(self.model.encode()).hexdigest()[:8]
+        body = json.dumps({"filename": f"domotiq-{name}-{tag}.bin"}).encode()
+        req = urllib.request.Request(f"{self.url}/slots/{slot}?action={action}", data=body,
+                                     headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return r.status == 200
+        except (OSError, ValueError):
+            return False
 
     async def understand(self, sentence: str, names: Iterable[str]) -> Intent | None:
         names = list(names)
@@ -260,6 +342,39 @@ class LanguageModel:
         reply = who.parse(text, sentence, names, confidence)
         log.info("language model, answer: %r (%.2f) -> %s", text, confidence, reply)
         return reply
+
+    async def topic(self, sentence: str, least: float = facts.MIN_CONFIDENCE) -> str | None:
+        """What a question about a character (or one of its facts) is about, when no keyword tells: a label of
+        facts.LABELS, "other" when it is about nothing the facts tell (or the model was less sure than
+        `least`), None when the model is not available."""
+        sentence = re.sub(r"\s+", " ", sentence).strip()
+        try:
+            text, confidence = await asyncio.get_running_loop().run_in_executor(
+                None, self._topic, sentence, ANSWER_TIMEOUT_S)
+            self.ok = True
+        except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
+            log.info("language model not available: %s", e)
+            return None
+        topic = facts.parse_topic(text, confidence, least)
+        log.info("language model, topic: %r (%.2f) -> %s", text, confidence, topic)
+        return topic or "other"
+
+    async def offer_answer(self, question: str, sentence: str) -> offers.Answer | None:
+        """Whether an answer accepts an offer, when the rules of offers.py could not tell. None when the model
+        cannot be asked: with fewer than three slots these instructions would push out those of the commands."""
+        if self.slots <= OFFERS_SLOT:
+            return None
+        sentence = re.sub(r"\s+", " ", sentence).strip()
+        try:
+            text, confidence = await asyncio.get_running_loop().run_in_executor(
+                None, self._offer, question, sentence, ANSWER_TIMEOUT_S)
+            self.ok = True
+        except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
+            log.info("language model not available: %s", e)
+            return None
+        answer = offers.from_model(text, confidence)
+        log.info("language model, offer: %r (%.2f) -> %s", text, confidence, answer)
+        return answer
 
 
 def _plain(text: str) -> str:

@@ -20,9 +20,10 @@ character, in English no he or she).
 - **Personalities.** The first time a character is needed it gets a job, a
   character, a passion and a quirk from the database, different from those
   of the others; they stay the same until the house restarts. What somebody
-  told the house about a character (its facts: web app or "ricorda che
-  Marco fa il medico") comes first: a fact that is a job takes the place of
-  the job, the others are used in the stories written in their language.
+  told the house about a character (its facts: web app, "ricorda che Marco
+  fa il medico", the answers to the questions of chatty mode) comes first: a
+  fact that is a job takes the place of the job, the others are used in the
+  stories written in their language (an answer in both: facts.py).
 - **Always a new story.** For each character (or room) the house remembers
   the outlines and pieces already used and picks others until it has used
   them all.
@@ -46,7 +47,8 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable
 
 from ..layout import DATA_DIR
 from ..model import ANIMALS, CATEGORY_NAMES, PERSON
-from . import answers
+from . import answers, facts
+from . import variants as V
 from .intents import find_names, find_room, normalize
 
 if TYPE_CHECKING:
@@ -121,6 +123,9 @@ def sentence_lang(sentence: str, default: str) -> str:
 
 def fact_lang(fact: str) -> str | None:
     """The language of a short fact about a character, or None when it cannot be told."""
+    said = facts.line_lang(fact)          # an answer to a question of the house: its template knows
+    if said:
+        return said
     words = re.findall(r"[a-zàèéìòù']+", fact.lower())
     it, en = (sum(1 for w in words if w in FACT_WORDS[lang]) for lang in ("it", "en"))
     return "it" if it > en else "en" if en > it else None
@@ -136,12 +141,20 @@ def as_clause(fact: str) -> str:
     return fact
 
 
+# words with the ending of a job that are not one ("fa il tifo per la Juve", "è un amante della musica",
+# "is a heavy sleeper")
+NOT_JOB = {"per", "for", "of", "di", "del", "della", "dei", "delle", "da", "con", "with", "amante", "appassionato",
+           "appassionata", "tifoso", "tifosa", "fan", "lover", "vegetarian", "vegan", "vegetariano", "vegetariana",
+           "sleeper", "riser", "eater", "drinker", "dreamer", "walker", "talker", "reader"}
+
+
 def is_job(fact: str) -> bool:
     fact = as_clause(fact)
     if JOB_VERB.search(fact):
         return True
     m = JOB_NOUN.match(fact)
-    return bool(m) and any(JOB_ENDING.search(w.strip()) for w in m.group(4, 5) if w)
+    return bool(m) and any(JOB_ENDING.search(w.strip()) for w in m.group(4, 5)
+                           if w and w.strip().lower() not in NOT_JOB)
 
 
 def _verb_first(fact: str, lang: str) -> bool:
@@ -173,6 +186,12 @@ def date_text(lang: str, day: int, month: int) -> str:
         return f"{article}{'primo' if day == 1 else day} {MONTHS['it'][month]}"
     suffix = "th" if 11 <= day <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
     return f"{MONTHS['en'][month]} {day}{suffix}"
+
+
+def life_topic(question: str) -> str | None:
+    """What a free question about the life of the house is about (TOPICS), or None."""
+    t = normalize(question)
+    return next((name for name, pattern in TOPICS if re.search(pattern, t)), None)
 
 
 def load_db(path: Path = DB_PATH) -> dict[str, Any]:
@@ -289,7 +308,7 @@ class StoryTeller:
         """The facts of a character, not the job, written in this language and fit to follow its name."""
         out = []
         for f in getattr(ident, "facts", ()):
-            f = as_clause(f)
+            f = as_clause(facts.translated(f, lang) or f)       # an answer reads in both languages
             if not is_job(f) and fact_lang(f) == lang and _verb_first(f, lang):
                 out.append(f)
         return out
@@ -498,7 +517,7 @@ class StoryTeller:
                      else f"I don't know any character called {name}.", lang)]
         p = self.persona(ident)
         out: list[tuple[str, str]] = []
-        told = [as_clause(f) for f in ident.facts]
+        told = [as_clause(facts.translated(f, lang) or f) for f in ident.facts]
         mine = [f for f in told if fact_lang(f) in (lang, None)]
         other = [f for f in told if f not in mine]
         if mine:
@@ -519,6 +538,29 @@ class StoryTeller:
 
     async def tell_about(self, name: str) -> None:
         await self._speak(self.about(name))
+
+    def told(self, ident, indices: list[int], lang: str | None = None) -> list[tuple[str, str]]:
+        """The facts of a character that answer a question, as (sentence, language): the fact itself after the
+        name, in the language of the house when it can be said in it, otherwise in its own."""
+        lang = lang or self.lang
+        other_lang = "en" if lang == "it" else "it"
+        mine, other = [], []
+        for i in indices:
+            f = ident.facts[i]
+            line = as_clause(facts.translated(f, lang) or f)
+            (mine if fact_lang(line) in (lang, None) else other).append(line)
+        out: list[tuple[str, str]] = []
+        if mine:
+            pair = V.said("facts-known", facts.KNOWN, name=ident.name, fact=answers.join(mine, lang))
+            out.append((pair[0] if lang == "it" else pair[1], lang))
+        if other:
+            also = {"it": " anche", "en": " also"}[lang] if mine else ""
+            out.append((f"Me l'hai detto{also} in inglese:" if lang == "it" else f"You{also} told me in Italian:", lang))
+            out.append((_cap(f"{ident.name} {answers.join(other, other_lang)}."), other_lang))
+        return out
+
+    async def tell_facts(self, ident, indices: list[int]) -> None:
+        await self._speak(self.told(ident, indices))
 
     # ================================================================ the life of the house
     def _keep(self, key: tuple, make: Callable[[], Any]) -> Any:
@@ -582,7 +624,7 @@ class StoryTeller:
         found = names if names else find_names(t, ids.names())
         mentioned = [i for i in (ids.by_name(n) for n in found) if i]
         people = [i for i in mentioned if i.category == PERSON]
-        topic = next((name for name, pattern in TOPICS if re.search(pattern, t)), None)
+        topic = life_topic(t)
         life = self.db["life"]
         W = WHEN[lang]
         asked = people[0] if people else None
@@ -778,8 +820,7 @@ class StoryTeller:
     def knows(self, question: str) -> bool:
         """The question is about the life of the house: the database answers it, not the model of the commands
         (which took "Luca ha pagato le bollette?" for "where is Luca")."""
-        t = normalize(question)
-        return any(re.search(pattern, t) for _, pattern in TOPICS)
+        return life_topic(question) is not None
 
     async def answer(self, question: str, names: list[str] | None = None, memory: bool = False) -> bool:
         """Answer a free question about the life of the house."""

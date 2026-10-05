@@ -11,7 +11,9 @@
   asks aloud and on the web app; the next answer settles it. Who a newcomer
   is becomes a short dialogue (who.py) that understands any answer.
 - **Small talk** (chatter.py): the welcome of a new phone, and the questions
-  of chatty mode, answered without pressing Talk.
+  and offers of chatty mode, answered without pressing Talk.
+- **What the house knows of a character** (facts.py): "cosa mangia
+  Rossellina?" is answered with what it was told, or "I don't know".
 
 Only one conversation at a time; pressing Talk while the house speaks
 interrupts it.
@@ -33,11 +35,11 @@ from ..audio.mic import MIC_RATE, Microphone
 from ..identities import NameTaken
 from ..model import CATEGORY_NAMES
 from ..scenes import scene_name
-from . import answers, memory
-from .chatter import ECHO_S, NAME_CONFIDENCE, WELCOME, Chatter, yes_no_grammar, yes_or_no
+from . import answers, facts, memory
+from .chatter import ECHO_S, NAME_CONFIDENCE, PROPOSALS, WELCOME, Chatter, yes_no_grammar, yes_or_no
 from .narrator import Narrator
 from .stories import StoryTeller
-from .intents import Intent, find_name, find_room, name_from_speech, normalize, parse, parse_time
+from .intents import DENY, Intent, find_name, find_room, name_from_speech, normalize, parse, parse_time, said_options
 from . import variants as V
 from .who import BOTH, OR, Dialogue
 from .llm import LanguageModel
@@ -55,6 +57,7 @@ NO = {"it": ["no", "sbagliato"], "en": ["no", "wrong", "nope"]}
 ACTIONS = ("lights_on", "lights_off", "scene", "party", "grill", "grill_stop", "language", "volume", "register")
 SURE = 0.9
 HOLD_MAX_S = 6.0      # the microphone waits at most this long for the house to finish speaking
+TAG_DELAY_S = 2.0     # the facts of a character are looked at this long after a change (several come together)
 
 FREQUENT = {
     "it": ["Chi è?", "Scusa, non ho capito. Chi sei?", "Vediamo...", "Non ho capito.", "Si balla!",
@@ -80,6 +83,7 @@ class Voice:
         self.mic = Microphone(device, follow=(lambda: audio.device if not audio.dry else None) if audio else None)
         self.llm = None if ctx.args.no_llm else LanguageModel()
         self.llm_ok = False
+        self.llm_ready = False                 # its instructions are in the cache: a question costs a few seconds
         self._jokes = random.randrange(100)
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stt")
         self.busy = asyncio.Lock()
@@ -95,6 +99,9 @@ class Voice:
         self.voice_end = float("-inf")         # monotonic: when the last one ended
         self.opened_at = 0.0                   # monotonic: when the last listening began to count
         self._tasks: set[asyncio.Task] = set()
+        self.fact_topics: dict[str, str] = {}  # normalized fact -> topic told by the model (facts no keyword describes)
+        self._tagging: asyncio.Task | None = None
+        self._facts_seen: tuple[str, ...] | None = None   # every fact, when the model last looked at them
         bus = ctx.bus
         bus.subscribe("confirm", self._on_confirm)
         bus.subscribe("confirm_closed", self._on_confirm_closed)
@@ -102,6 +109,7 @@ class Voice:
         bus.subscribe("track_appear", self._on_track_appear)
         bus.subscribe("registered", self._on_registered)
         bus.subscribe("count_changed", self._on_count)
+        bus.subscribe("identities_changed", self._on_identities)
         self.chatter = Chatter(self)
         self.narrator = Narrator(self)
         self.who = Dialogue(self)
@@ -130,6 +138,8 @@ class Voice:
         return task
 
     async def _background(self) -> None:
+        # the language model gets its instructions ready meanwhile: they do not wait for the voice
+        self._spawn(self._keep_model())
         try:
             await self.speaker.warm(FREQUENT)
         except Exception:  # noqa: BLE001
@@ -140,14 +150,22 @@ class Voice:
                 await loop.run_in_executor(self.pool, self.listener.model, self.lang)
             except Exception as e:  # noqa: BLE001
                 log.warning("speech model not loaded: %s", e)
-        warmed = False
+
+    async def _keep_model(self) -> None:
+        """Is the language model there? Once it is, its instructions go in the cache (put back from the last start,
+        or read), and again if llama-server starts again."""
+        if self.llm is None:
+            return
+        loop = asyncio.get_running_loop()
         while True:
-            if self.llm is not None:
-                loop = asyncio.get_running_loop()
-                self.llm_ok = await loop.run_in_executor(None, self.llm.health)
-                if self.llm_ok and not warmed:
-                    warmed = True
-                    await loop.run_in_executor(None, self.llm.warm)
+            self.llm_ok = await loop.run_in_executor(None, self.llm.health)
+            if not self.llm_ok or getattr(self.llm, "cold", False):
+                self.llm_ready = False            # stopped or started again: its cache is empty
+            if self.llm_ok and not self.llm_ready:
+                # stopped while reading (an update of its service): tried again at the next round
+                self.llm_ready = await loop.run_in_executor(None, self.llm.warm)
+                if self.llm_ready:
+                    self._tag_facts_later()
             await asyncio.sleep(30)
 
     def status(self) -> dict[str, Any]:
@@ -316,20 +334,36 @@ class Voice:
         names = self._names()
         if self.question and await self._answer_question(text):
             return
+        if await self.chatter.answer_by_talk(text):
+            return                                    # "sì" to the offer the house has just made
         intent = parse(text, names)
         if intent is None and self.stories.knows(text):
             intent = Intent("other", {}, 0.8, "rules")      # bills, insurance, chores...: the life of the house
+        filler = None
+        if self.llm is not None and self.llm_ready and (intent is None or self._name_alone(intent, text)) \
+                and not self._about_a_place(text) and not facts.is_request(text, names):
+            # "Marco cura i malati?": maybe about a character, with no keyword; the model tells the topic
+            ident = self._told_about(text, names)
+            if ident is not None:
+                filler = asyncio.create_task(self._filler("Vediamo..." if lang == "it" else "Let me see..."))
+                topic = await self.llm.topic(text)
+                # a topic with no fact about it: "non lo so", not the answer to another question; except where
+                # somebody sits, which may be a question about where it is now ("Marco è sul divano?")
+                if topic and topic != "other" and (topic != "seat" or facts.select(
+                        topic, ident.facts, self.fact_topics, names=names)):
+                    intent = Intent("ask_fact", {"name": ident.name, "topic": topic}, 0.7, "llm")
         if intent is None and self.llm is not None:
-            filler = asyncio.create_task(self._filler("Vediamo..." if lang == "it" else "Let me see..."))
+            filler = filler or asyncio.create_task(self._filler("Vediamo..." if lang == "it" else "Let me see..."))
             intent = await self.llm.understand(text, names)
+        if filler is not None:
             await filler
+        if intent is not None and intent.source == "llm" and intent.name in ACTIONS and intent.confidence < SURE:
             # the small model may misunderstand: questions are answered at once (at worst the right
             # answer to another question), actions are asked first unless it was quite sure
-            if intent is not None and intent.name in ACTIONS and intent.confidence < SURE:
-                it, en = self._describe(intent)
-                if not await self._yes_no(it, en):
-                    await self.reply("D'accordo, niente.", "All right, nothing then.")
-                    return
+            it, en = self._describe(intent)
+            if not await self._yes_no(it, en):
+                await self.reply("D'accordo, niente.", "All right, nothing then.")
+                return
         if intent is None and len(text.split()) >= 3:
             intent = Intent("other", {}, 0.5, "rules")      # not a command: a free question about the house
         if intent is None:
@@ -431,14 +465,16 @@ class Voice:
                 await self.reply(f"{where_it[0].upper()}{where_it[1:]} non ci sono luci.",
                                  f"There are no lights {where_en}.")
                 return
-            await act.light(room, a.get("color", "warm"))
-            await self.reply("Fatto.", "Done.")
+            await act.light(room, a.get("color", "warm"), "solid", int(a.get("brightness", 60)))
+            if not a.get("quiet"):                    # quiet: the house has just said what it does
+                await self.reply("Fatto.", "Done.")
         elif name == "lights_off":
             await act.lights_off(a.get("room", "all"))
-            await self.reply("Spento.", "Off.")
+            if not a.get("quiet"):
+                await self.reply("Spento.", "Off.")
         elif name == "scene":
             greeting = a.get("greeting")
-            await act.scene(a.get("scene", "normal"), announce=not greeting)
+            await act.scene(a.get("scene", "normal"), announce=not greeting and not a.get("quiet"))
             if greeting == "night":
                 await self.reply("Buonanotte! Spengo tutto, sogni d'oro.", "Good night! Lights off, sweet dreams.")
             elif greeting == "morning":
@@ -481,6 +517,8 @@ class Voice:
             await self.reply("D'accordo.", "OK.")
         elif name == "fact":
             await self._learn_fact(a.get("name", ""), a.get("text", ""))
+        elif name == "ask_fact":
+            await self._ask_fact(a.get("name", ""), a.get("text", ""), a.get("topic"), asked=intent.source == "llm")
         elif name == "remember":
             what = a.get("what")
             if what == "day":
@@ -502,6 +540,86 @@ class Voice:
     def _mentioned(self, text: str) -> list[str]:
         from .intents import find_names
         return find_names(normalize(text), self._names())
+
+    def _name_alone(self, intent: Intent, text: str) -> bool:
+        """The rules took a short sentence with a name for "where is" ("Marco è medico?"), not "dov'è Marco"."""
+        return (intent.name == "where_is" and intent.source == "rules" and intent.confidence < 0.8
+                and len(normalize(text).split()) > len(normalize(intent.args.get("name", "")).split()))
+
+    @staticmethod
+    def _about_a_place(text: str) -> bool:
+        """"Dove Marco?", "Marco è in cucina?": where somebody is, which the commands answer without delay."""
+        t = normalize(text)
+        return bool(find_room(t) or re.search(r"\b(dove|dov|where|stanza|room)\b", t))
+
+    def _told_about(self, text: str, names: list[str]):
+        """The first character named in the sentence, if the house was told something about it."""
+        from .intents import find_names
+        for n in find_names(normalize(text), names):
+            ident = self.ctx.identities.by_name(n)
+            if ident is not None:
+                return ident if ident.facts else None
+        return None
+
+    async def _ask_fact(self, name: str, text: str, topic: str | None, asked: bool = False) -> None:
+        """"Cosa mangia Rossellina?": what the house was told about it, else the life of the house, else that it
+        does not know."""
+        ident = self.ctx.identities.by_name(name)
+        if ident is None:
+            await self.reply(f"Non conosco nessuno che si chiama {name}.", f"I don't know anyone called {name}.")
+            return
+        if topic in (None, facts.LIKES) and not asked and ident.facts and self.llm is not None and self.llm_ready:
+            # only a word of liking ("a Marco piacciono i Beatles?"): the model may tell what it is about
+            filler = asyncio.create_task(self._filler("Vediamo..." if self.lang == "it" else "Let me see..."))
+            told = await self.llm.topic(text)
+            await filler
+            topic = told if told and told != "other" else topic
+        chosen = facts.select(topic, ident.facts, self.fact_topics, names=self._names())
+        if chosen:
+            await self.stories.tell_facts(ident, chosen)
+        elif self.stories.knows(text):
+            await self.stories.answer(text, [ident.name])     # "dove va in vacanza Luca?": made up, then kept
+        else:
+            it, en = V.said("facts-unknown", facts.UNKNOWN, name=ident.name)
+            await self.reply(it, en)
+
+    def _on_identities(self, ev) -> None:
+        if ev.get("action") != "delete":
+            self._tag_facts_later()
+
+    def _all_facts(self) -> tuple[str, ...]:
+        return tuple(f for i in self.ctx.identities.all() for f in i.facts)
+
+    def _tag_facts_later(self) -> None:
+        if self.llm is None or not self.llm_ready or (self._tagging is not None and not self._tagging.done()):
+            return
+        if self._all_facts() == self._facts_seen:
+            return                                    # most changes are the vision learning a colour or a pose
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return                                    # not started yet: the start looks at the facts anyway
+        self._tagging = self._spawn(self._tag_facts())
+
+    async def _tag_facts(self) -> None:
+        """The topic of the facts no keyword describes ("ha un debole per i fumetti"), asked to the model while
+        the house is free, so that a question finds them too; the facts already known are skipped."""
+        await asyncio.sleep(TAG_DELAY_S)
+        while True:
+            told, names = self._all_facts(), self._names()
+            for f in told:
+                key = normalize(f)
+                if key in self.fact_topics or not facts.needs_model(f, names):
+                    continue
+                while self.busy.locked():
+                    await asyncio.sleep(1.0)          # a conversation comes first
+                topic = await self.llm.topic(f, least=facts.TAG_CONFIDENCE)
+                if topic is None:
+                    return                            # the model is not there: the next change tries again
+                self.fact_topics[key] = topic
+            self._facts_seen = told
+            if self._all_facts() == told:             # nothing changed meanwhile
+                return
 
     async def _learn_fact(self, name: str, text: str) -> None:
         """"Ricorda che Marco fa il medico": "fa il medico" joins what the house knows about Marco."""
@@ -770,9 +888,12 @@ class Voice:
         if not q:
             return False
         t = f" {normalize(text)} "
-        said = [o for o in q["options"] if any(w and f" {normalize(w)} " in t for w in (o.get("label") or {}).values())]
+        labels = [[w for w in (o.get("label") or {}).values() if w] for o in q["options"]]
+        said = [q["options"][i] for i in said_options(text, labels)]     # "non è Viola, è Rosaria": Rosaria
+        if not said and any(f" {normalize(w)} " in t for words in labels for w in words):
+            return False                              # only denied: "né Viola né Rosaria", "non è Viola"
         both = len(said) >= 2 and not any(f" {w} " in t for w in OR) or \
-            len(q["options"]) >= 2 and any(f" {normalize(p)} " in t for p in BOTH[self.lang])
+            len(q["options"]) >= 2 and any(self._said_not_denied(t, p) for p in BOTH[self.lang])
         if both:
             chosen = said if len(said) >= 2 else q["options"]
             ids = [o.get("value") for o in chosen if isinstance(o.get("value"), str)]
@@ -784,30 +905,37 @@ class Voice:
                     {"names": answers.join(names, "it"), "where": answers.room(self.ctx, room, "it") if room else "lì"},
                     {"names": answers.join(names, "en"), "where": answers.room(self.ctx, room, "en") if room else "there"}))
             return True
-        for o in q["options"]:
-            label = o.get("label") or {}
-            for word in label.values():
-                if word and f" {normalize(word)} " in t:
-                    if self.ctx.house.answer(q["id"], o.get("value"), by="voice"):
-                        await self.reply("Grazie!", "Thanks!")
-                    return True
+        if said:
+            if self.ctx.house.answer(q["id"], said[0].get("value"), by="voice"):
+                await self.reply("Grazie!", "Thanks!")
+            return True
+        return False
+
+    @staticmethod
+    def _said_not_denied(t: str, phrase: str) -> bool:
+        """The phrase is in the (normalized, padded) text, and not right after a denial: "non sono tutti e due"."""
+        p = f" {normalize(phrase)} "
+        i = t.find(p)
+        while i >= 0:
+            if not set(t[:i].split()[-2:]) & DENY:
+                return True
+            i = t.find(p, i + 1)
         return False
 
     # ================================================================ chatty mode
     def _on_count(self, ev) -> None:
+        """A crowd in the living room or in the garden: the house offers a party or the barbecue, at most once
+        in 10 minutes, and listens for the answer like after its questions."""
         if self.ctx.settings.get("voice.verbosity") != "chatty":
             return
         now = time.time()
         if now - self._last_proposal < 600:
             return
-        if ev.get("room") == "living" and ev.get("persons", 0) >= 3:
-            self._last_proposal = now
-            self._spawn(self.ctx.actions.say({"it": "Siete in tanti in soggiorno: facciamo festa?",
-                                              "en": "So many of you in the living room: shall we party?"}, level="chatty"))
-        elif ev.get("room") == "garden" and ev.get("persons", 0) >= 2:
-            self._last_proposal = now
-            self._spawn(self.ctx.actions.say({"it": "Che bella giornata in giardino: accendo il barbecue?",
-                                              "en": "Lovely day in the garden: shall I light the barbecue?"}, level="chatty"))
+        for p in PROPOSALS:
+            if ev.get("room") == p["room"] and ev.get("persons", 0) >= p["persons"] and self.chatter.can_propose(p):
+                self._last_proposal = now
+                self._spawn(self.chatter.propose(p))
+                return
 
     # ================================================================ diagnostics
     async def mic_test(self) -> dict[str, Any]:

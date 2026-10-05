@@ -1,7 +1,9 @@
 # SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
 # SPDX-License-Identifier: MIT
-# llama-server with Qwen2.5-0.5B-Instruct, loopback only, lower priority than vision and voice. Two slots:
-# the commands of the house and the answers to "who is it?", each keeping its instructions in its cache.
+# llama-server with Qwen2.5-0.5B-Instruct, loopback only, lower priority than vision and voice. Four slots
+# of 2048 tokens: the commands of the house, the answers to "who is it?", the answers to offers and the topics
+# of the questions about the characters, each keeping its instructions in its cache. Once read, the slots are
+# saved in /var/lib/domotiq-llm and put back at the next start in a moment, instead of ten minutes of reading.
 [Unit]
 Description=DomotiQ language model (llama.cpp)
 After=network.target
@@ -11,8 +13,9 @@ Type=simple
 User=arduino
 Group=arduino
 WorkingDirectory=/home/arduino/domotiq
-ExecStart=/home/arduino/domotiq/llama.cpp/build/bin/llama-server -m /home/arduino/domotiq/models/llm/qwen2.5-0.5b-instruct-q4_k_m.gguf --host 127.0.0.1 --port 8081 -c 4096 -t 3 -np 2
+ExecStart=/home/arduino/domotiq/llama.cpp/build/bin/llama-server -m /home/arduino/domotiq/models/llm/qwen2.5-0.5b-instruct-q4_k_m.gguf --host 127.0.0.1 --port 8081 -c 8192 -t 3 -np 4 --slot-save-path /var/lib/domotiq-llm
 Nice=10
+StateDirectory=domotiq-llm
 Restart=always
 RestartSec=5
 NoNewPrivileges=yes
