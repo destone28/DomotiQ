@@ -2,15 +2,18 @@
 // SPDX-License-Identifier: MIT
 // The virtual house: the alarm, the plan, who is where, lights, climate, car.
 
-import { api, ask, esc, go, identityName, modal, pageHead, roomName, store, toast } from "../app.js";
+import { api, ask, chooseIdentity, esc, identityName, modal, pageHead, roomName, store, toast } from "../app.js";
 import { celsius, t, tr } from "../i18n.js";
-import { ICONS, Plan } from "../plan.js";
+import { ICONS, Plan, toFloor } from "../plan.js";
 
 export function mount(root) {
   root.innerHTML = `
     ${pageHead(t("home.title"), t("home.lead"))}
     <div class="plan-wrap" id="plan"></div>
-    <p class="muted small" style="margin:6px 4px">${t("home.tap_hint")}</p>
+    <div class="row spread" style="margin:6px 4px">
+      <p class="muted small grow" id="plan-hint">${t("home.tap_hint")}</p>
+      <button class="btn small" id="add-unseen">➕ ${t("add.button")}</button>
+    </div>
     <h2>${t("home.status")}</h2>
     <div class="status-grid" id="cards"></div>
     <h2>${t("home.who")}</h2>
@@ -18,6 +21,7 @@ export function mount(root) {
     <h2>${t("alarm.title")}</h2>
     <div class="card alarm-card" id="alarm"></div>`;
   const plan = new Plan(root.querySelector("#plan"), store.state, { onTap: (id) => showTrack(id) });
+  pointToAdd(root, plan);
   const render = () => {
     renderAlarm(root.querySelector("#alarm"));
     plan.update(store.state);
@@ -39,6 +43,41 @@ function changed(el, html) {
   el._html = html;
   el.innerHTML = html;
   return true;
+}
+
+// something the house does not follow (it took it for the empty house, or never saw it put down): tapped on the plan,
+// it becomes a presence, and the phone asks who it is
+function pointToAdd(root, plan) {
+  const btn = root.querySelector("#add-unseen");
+  const hint = root.querySelector("#plan-hint");
+  let picking = false;
+  const stop = () => {
+    picking = false;
+    plan.svg.classList.remove("picking");
+    hint.textContent = t("home.tap_hint");
+    btn.textContent = "➕ " + t("add.button");
+  };
+  btn.onclick = () => {
+    if (picking) { stop(); return; }
+    picking = true;
+    plan.svg.classList.add("picking");
+    hint.textContent = t("add.tap_plan");
+    btn.textContent = t("common.cancel");
+  };
+  plan.svg.addEventListener("click", async (e) => {
+    if (!picking || e.target.closest("[data-id]")) return;
+    const p = toFloor(plan.svg, e.clientX, e.clientY);
+    stop();
+    await adopt({ x: Math.round(p.x), y: Math.round(p.y) });
+  });
+}
+
+export async function adopt(where) {
+  try {
+    const r = await api("POST", "/api/tracks/adopt", where);
+    if (r.ok) chooseIdentity(r.track);
+    else toast(t(r.error === "nothing" ? "add.nothing" : "add.not_ready"), "warning");
+  } catch (e) { toast(e.message, "alarm"); }
 }
 
 // on and off like a burglar alarm: off, the rules that raise alarms stay quiet
@@ -110,14 +149,14 @@ function showTrack(id) {
         <div class="muted">${esc(t("cat." + tk.category))} · ${t("home.in")} ${esc(roomName(tk.room))}</div></div>
       </div>
       ${tk.uncertain ? `<p class="muted">${t("home.uncertain")}</p>` : ""}
-      <div class="row" style="justify-content:flex-end;margin-top:12px">
+      <div class="row" style="justify-content:flex-end;margin-top:12px;flex-wrap:wrap">
         <button class="btn ghost" id="remove">🗑️ ${t("home.remove")}</button>
-        ${!ident ? `<button class="btn primary" id="reg">${t("home.register")}</button>` : ""}
+        <button class="btn ${ident ? "" : "primary"}" id="who">👤 ${t(ident ? "home.not_this" : "home.who_is")}</button>
         <button class="btn" id="close">${t("common.close")}</button>
       </div>`;
     card.querySelector("#close").onclick = close;
-    const reg = card.querySelector("#reg");
-    if (reg) reg.onclick = () => { close(); go("identities", { add: "1", track: tk.id }); };
+    // known or new: chosen from every character the house knows, or a new name
+    card.querySelector("#who").onclick = () => { close(); chooseIdentity(tk.id); };
     // seen by mistake (a reflection, a light, a module): it goes, and the house forgets it
     card.querySelector("#remove").onclick = async () => {
       close();

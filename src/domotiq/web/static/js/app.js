@@ -3,6 +3,7 @@
 // The web app shell: state from the house, navigation, notifications.
 
 import { lang, setLang, t, tr } from "./i18n.js";
+import { ICONS } from "./plan.js";
 
 // ------------------------------------------------------------------ identity of this phone
 function stored(key, make) {
@@ -274,6 +275,54 @@ export function ask(question) {
   });
 }
 
+// who a presence is, chosen on a phone: one the house already knows (its name moves here from wherever it was: a
+// name is never in two places, and the house learns this look of it), or a new one with what it really is
+export function chooseIdentity(trackId) {
+  const cats = ["person", "dog", "cat", "animal", "car", "object"];
+  const tk = (store.state.tracks || []).find(x => x.id === trackId);
+  modal((card, close) => {
+    const ids = [...(store.state.identities || [])].sort((a, b) => a.name.localeCompare(b.name));
+    const elsewhere = (id) => {
+      const o = (store.state.tracks || []).find(x => x.identity === id && x.id !== trackId);
+      return o ? t("who.now_in", { room: roomName(o.room) }) : "";
+    };
+    card.innerHTML = `
+      <div class="title" style="font-size:18px">${t("who.title")}</div>
+      ${tk ? `<p class="muted small">${esc(t("cat." + tk.category))} · ${esc(roomName(tk.room))}</p>` : ""}
+      <h3 class="card-title">${t("who.known")}</h3>
+      ${ids.length ? `<ul class="list pick-list">${ids.map(i => `<li><button class="link" data-known="${esc(i.id)}">
+        <span class="silhouette" style="background:${esc(i.color)}"><svg viewBox="0 0 24 24"><path d="${ICONS[i.category] || ICONS.object}"/></svg></span>
+        <span class="grow"><span class="title">${esc(i.name)}</span>
+        <span class="sub">${esc(t("cat." + i.category))}${elsewhere(i.id) ? " · " + esc(elsewhere(i.id)) : ""}</span></span></button></li>`).join("")}</ul>`
+        : `<p class="muted">${t("who.none")}</p>`}
+      <h3 class="card-title">${t("who.new")}</h3>
+      <div class="new-name"><input type="text" class="newname" maxlength="40" placeholder="${esc(t("ask.new_name"))}">
+        <select class="newcat" style="width:auto">${cats.map(k => `<option value="${k}"${tk && k === tk.category ? " selected" : ""}>${esc(t("cat." + k))}</option>`).join("")}</select>
+        <button class="btn primary" data-new="1">${t("ask.add")}</button></div>
+      <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" data-close="1">${t("common.close")}</button></div>`;
+    const send = async (body) => {
+      try {
+        const r = await api("POST", `/api/tracks/${encodeURIComponent(trackId)}/identity`, body);
+        close();
+        toast(t("who.done", { name: r.name }), "success");
+      } catch (e) {
+        if (e.status === 409) toast(t("who.taken"), "warning");
+        else if (e.status === 404) { close(); toast(t("home.gone"), "warning"); }
+        else toast(e.message, "alarm");
+      }
+    };
+    card.querySelectorAll("[data-known]").forEach(b => { b.onclick = () => send({ identity: b.dataset.known }); });
+    const input = card.querySelector(".newname");
+    card.querySelector("[data-new]").onclick = () => {
+      const name = input.value.trim();
+      if (!name) { input.focus(); return; }
+      send({ name, category: card.querySelector(".newcat").value });
+    };
+    input.onkeydown = (e) => { if (e.key === "Enter") card.querySelector("[data-new]").click(); };
+    card.querySelector("[data-close]").onclick = close;
+  }, { sticky: true });
+}
+
 export function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -324,6 +373,8 @@ export function renderBanners() {
         `<div class="opts"><button class="pri" data-reg="${esc(r.id)}">${esc(t("reg.choose"))}</button></div></div>`;
     }
   }
+  const others = (c) => [...(s.identities || [])].filter(i => !c.options.some(o => o.value === i.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
   for (const c of s.confirmations || []) {
     // a question of the house: a registered one, all of them together, a new name with what it really is,
     // or nothing there at all
@@ -336,6 +387,10 @@ export function renderBanners() {
       (c.options.length >= 2 ? `<button data-both="1">${esc(t(c.options.length > 2 ? "ask.all" : "ask.both"))}</button>` : "") +
       (c.who ? `<button class="quiet" data-nothing="1">${esc(t("ask.nothing"))}</button>` : "") +
       `</div>` +
+      // not among the proposed ones: any of the characters the house knows (the name moves here)
+      (c.who && others(c).length ? `<div class="new"><select class="known"><option value="">${esc(t("ask.known"))}</option>` +
+        others(c).map(i => `<option value="${esc(i.id)}">${esc(i.name)}</option>`).join("") +
+        `</select><button class="pri" data-known="1">${esc(t("ask.this_one"))}</button></div>` : "") +
       (c.allow_name ? `<div class="new"><input class="newname" maxlength="40" placeholder="${esc(t("ask.new_name"))}">` +
         (c.who ? `<select class="newcat">${cats.map(k => `<option value="${k}"${k === c.category ? " selected" : ""}>${esc(t("cat." + k))}</option>`).join("")}</select>` : "") +
         `<button class="pri" data-new="1">${esc(t("ask.add"))}</button></div>` : "") +
@@ -370,6 +425,10 @@ export function renderBanners() {
       }
       if (b.dataset.nothing) {
         value = { nothing: true };
+      } else if (b.dataset.known) {
+        const id = banner.querySelector("select.known").value;
+        if (!id) { banner.querySelector("select.known").focus(); return; }
+        value = { known: id };
       } else if (b.dataset.both) {
         value = { together: c.options.map(o => o.value) };
       } else if (b.dataset.new) {

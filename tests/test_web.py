@@ -238,3 +238,52 @@ def test_a_presence_the_vision_still_sends_stays_out_for_a_moment(web):
     assert "t1" not in h.tracks
     h.update_tracks([Track("t1", 300, 100, category="person")], now=1010)    # long after: a real presence again
     assert "t1" in h.tracks
+
+
+def test_a_presence_is_named_from_a_phone_new_or_known(web):
+    """Who a presence is, chosen on a phone: a new name, or one the house knows (the name moves there from wherever
+    it was: never in two places). A new name already used is refused, with who has it."""
+    ctx, c = web
+    ctx.sim.enabled = True
+    a = c.post("/api/sim/objects", json={"x": 300, "y": 100, "category": "object", "color": "#d03030"}).json()
+    b = c.post("/api/sim/objects", json={"x": 80, "y": 100, "category": "person", "color": "#20a0e0"}).json()
+    settle(ctx)
+    r = c.post(f"/api/tracks/{a['id']}/identity", json={"name": "Rosaria", "category": "person"}).json()
+    rosaria = ctx.identities.by_name("Rosaria")
+    assert r["ok"] and rosaria is not None and rosaria.category == "person"
+    assert ctx.house.tracks[a["id"]].identity == rosaria.id
+    r = c.post(f"/api/tracks/{b['id']}/identity", json={"name": "rosaria"})
+    assert r.status_code == 409 and r.json()["identity"] == rosaria.id
+    # the other one was Rosaria after all: the name moves
+    assert c.post(f"/api/tracks/{b['id']}/identity", json={"identity": rosaria.id}).json()["ok"]
+    settle(ctx)
+    assert ctx.house.tracks[b["id"]].identity == rosaria.id and ctx.house.tracks[a["id"]].identity is None
+    assert c.post("/api/tracks/nothing/identity", json={"identity": rosaria.id}).status_code == 404
+
+
+def test_a_question_answered_with_any_known_character(web):
+    ctx, c = web
+    from domotiq.app import _wire
+    _wire(ctx)                                  # the answers of the questions reach the vision
+    ctx.sim.enabled = True
+    viola = ctx.identities.add("Viola", "person")
+    a = c.post("/api/sim/objects", json={"x": 300, "y": 100, "category": "person", "color": "#d03030"}).json()
+    settle(ctx)
+    cid = ctx.house.ask({"it": "Chi è?", "en": "Who is it?"}, [], {"kind": "who", "track": a["id"]}, allow_name=True)
+    assert c.post(f"/api/confirm/{cid}", json={"value": {"known": viola.id}}).json()["ok"]
+    settle(ctx)
+    assert ctx.house.tracks[a["id"]].identity == viola.id
+
+
+def test_something_pointed_at_on_the_plan_in_the_simulation(web):
+    ctx, c = web
+    ctx.sim.enabled = True
+    r = c.post("/api/tracks/adopt", json={"x": 300, "y": 100}).json()
+    assert r["ok"] and r["track"] in ctx.house.tracks
+    assert c.post("/api/tracks/adopt", json={"u": 0.5}).status_code == 400
+
+
+def test_ask_questions_from_a_phone(web):
+    ctx, c = web
+    r = c.post("/api/voice/ask", json={}).json()
+    assert r["ok"] is False and r["error"] in ("no_voice", "nobody", "no_mic", "silent")

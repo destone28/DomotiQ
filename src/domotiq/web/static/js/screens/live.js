@@ -4,6 +4,7 @@
 
 import { pageHead, store } from "../app.js";
 import { t } from "../i18n.js";
+import { adopt } from "./home.js";
 
 export function mount(root) {
   let overlay = false;
@@ -11,9 +12,11 @@ export function mount(root) {
   root.innerHTML = `
     ${pageHead(t("live.title"), t("live.lead"))}
     <div class="live"><img id="img" alt="${t("live.title")}"></div>
-    <div class="row" style="margin-top:10px;justify-content:flex-end">
+    <div class="row spread" style="margin-top:10px">
+      <button class="btn small" id="add-unseen">➕ ${t("add.button")}</button>
       <label class="row small"><span>${t("live.names")}</span><span class="switch"><input type="checkbox" id="ov" ${overlay ? "checked" : ""}><span></span></span></label>
     </div>
+    <p class="muted small" id="add-hint" hidden>${t("add.tap_picture")}</p>
     <p class="muted" id="nocam" hidden>${t("live.nocam")}</p>`;
   const nocam = root.querySelector("#nocam");
   const camOk = () => {
@@ -35,6 +38,25 @@ export function mount(root) {
     start();
   };
   img.onerror = () => setTimeout(start, 2000);
+  // something the house does not follow, tapped in the picture: it becomes a presence, and the phone asks who it is
+  const btn = root.querySelector("#add-unseen");
+  const hint = root.querySelector("#add-hint");
+  let picking = false;
+  const stopPicking = () => {
+    picking = false; img.classList.remove("picking"); hint.hidden = true;
+    btn.textContent = "➕ " + t("add.button");
+  };
+  btn.onclick = () => {
+    if (picking) { stopPicking(); return; }
+    picking = true; img.classList.add("picking"); hint.hidden = false;
+    btn.textContent = t("common.cancel");
+  };
+  img.addEventListener("click", (e) => {
+    if (!picking) return;
+    const box = img.getBoundingClientRect();
+    stopPicking();
+    adopt({ u: (e.clientX - box.left) / box.width, v: (e.clientY - box.top) / box.height });
+  });
   // leaving the page closes the stream for good: src = "" would fire onerror, and the stream would come back
   // on an image nobody sees
   return { unmount() { gone = true; img.onerror = null; img.removeAttribute("src"); clearInterval(timer); } };

@@ -35,6 +35,7 @@ export function mount(root) {
         ${NUMBERS.map(([path, label, min, max]) => `<label class="field"><span>${t(label)}</span>
           <input type="number" data-path="${path}" min="${min}" max="${max}" step="any" value="${get(s, path)}"></label>`).join("")}
         <label class="field"><span>${t("set.follow_color")}</span><input type="color" id="fcol" value="${esc(s.lights.follow_color)}"></label>
+        <label class="row spread"><span>${t("set.follow_favourite")}</span><span class="switch"><input type="checkbox" id="ffav" ${s.lights.follow_favourite !== false ? "checked" : ""}><span></span></span></label>
         <button class="btn primary block" id="save">${t("common.save")}</button>
       </div>
       <div class="card"><h3 class="card-title">🔊 ${t("set.voice")}</h3>
@@ -42,6 +43,9 @@ export function mount(root) {
         <label class="row spread"><span>${t("set.chatty_questions")}</span><span class="switch"><input type="checkbox" id="chatq" ${s.voice.chatty_questions ? "checked" : ""}><span></span></span></label>
         <label class="field"><span>${t("set.question_every")}</span>
           <input type="number" data-path="voice.question_every_s" min="45" max="1800" step="5" value="${s.voice.question_every_s}"></label>
+        <label class="row spread"><span>${t("set.wake")}</span><span class="switch"><input type="checkbox" id="wake" ${s.voice.wake_enabled ? "checked" : ""}><span></span></span></label>
+        <label class="field"><span>${t("set.wake_word")}</span><input type="text" id="wake-word" maxlength="40" autocomplete="off" value="${esc(s.voice.wake_word || "")}"></label>
+        <p class="muted small" id="wake-hint">${t("set.wake_hint")}</p>
         <button class="btn primary block" id="save-voice">${t("common.save")}</button>
       </div>
       <div class="card"><h3 class="card-title">🕒 ${t("set.time")}</h3>
@@ -72,14 +76,25 @@ export function mount(root) {
     const $ = (q) => root.querySelector(q);
     $("#save").onclick = $("#save-voice").onclick = async () => {
       const body = { house: { name: { it: $("#hn-it").value, en: $("#hn-en").value } }, buttons: { reversed: $("#rev").checked },
-        lights: { follow_color: $("#fcol").value }, camera: { blur_bathroom: $("#blur").checked },
-        voice: { greet_phones: $("#greet").checked, chatty_questions: $("#chatq").checked } };
+        lights: { follow_color: $("#fcol").value, follow_favourite: $("#ffav").checked }, camera: { blur_bathroom: $("#blur").checked },
+        voice: { greet_phones: $("#greet").checked, chatty_questions: $("#chatq").checked,
+                 wake_enabled: $("#wake").checked, wake_word: $("#wake-word").value.trim() } };
       root.querySelectorAll("[data-path]").forEach(inp => {
         const [a, b] = inp.dataset.path.split(".");
         body[a] = body[a] || {};
         body[a][b] = Number(inp.value);
       });
-      try { await api("PUT", "/api/settings", body); toast(t("common.saved"), "success"); } catch (e) { toast(e.message, "alarm"); }
+      try {
+        await api("PUT", "/api/settings", body);
+        toast(t("common.saved"), "success");
+        // how the speech recognizer will hear the word of activation, and the words it does not know
+        if (body.voice.wake_enabled && body.voice.wake_word) {
+          const w = await api("POST", "/api/voice/wake_check", { word: body.voice.wake_word });
+          const unknown = w.unknown.length ? t("set.wake_unknown", { words: w.unknown.join(", ") }) : "";
+          $("#wake-hint").textContent = t("set.wake_heard", { spoken: w.spoken }) + (unknown ? " " + unknown : "");
+          if (unknown) toast(unknown, "warning", 8000);
+        }
+      } catch (e) { toast(e.message, "alarm"); }
     };
     $("#wifi-save").onclick = async () => {
       const password = $("#wifi").value;

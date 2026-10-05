@@ -520,6 +520,59 @@ def create_app(ctx: "Context") -> FastAPI:
                                         "device": w.device, "nickname": w.nickname})
         return {"ok": True}
 
+    @app.post("/api/tracks/{track_id}/identity")
+    async def name_track(track_id: str, body: dict, w: Who = Depends(who)):
+        """Who this presence is, said in the web app: {"identity": id} for one the house already knows (the name
+        moves here from wherever it was), {"name", "category"} for a new one."""
+        try:
+            ident = ctx.registration.name_track(track_id, identity=body.get("identity") or None,
+                                                name=body.get("name"), category=body.get("category"),
+                                                nickname=w.nickname, device=w.device)
+        except KeyError:
+            raise HTTPException(404, "no such presence or character")
+        except NameTaken as e:
+            return JSONResponse({"ok": False, "error": "name_taken", "identity": e.existing.id}, status_code=409)
+        except ValueError:
+            raise HTTPException(400, "empty name")
+        ctx.store.add_event("command", {"name": "identity", "body": {"name": ident.name},
+                                        "device": w.device, "nickname": w.nickname})
+        return {"ok": True, "identity": ident.id, "name": ident.name}
+
+    @app.post("/api/tracks/adopt")
+    async def adopt_track(body: dict, w: Who = Depends(who)):
+        """Something the house does not follow, pointed at on the plan ({"x", "y"} in mm) or in the picture of the
+        webcam ({"u", "v"} from 0 to 1): it becomes a presence, followed from then on. In the simulation a virtual
+        figurine is put there."""
+        if ctx.sim.enabled:
+            if body.get("x") is None or body.get("y") is None:
+                raise HTTPException(400, "where")
+            obj = ctx.sim.add(float(body["x"]), float(body["y"]), "object", None, "#888888", "")
+            ctx.bus.publish("sim")
+            ctx.house.update_tracks(ctx.sim.tracks(), time.time())
+            return {"ok": True, "track": obj.id, "existing": False}
+        result = await asyncio.get_running_loop().run_in_executor(
+            None, lambda: ctx.vision.command("adopt", **{k: body[k] for k in ("u", "v", "x", "y") if k in body}))
+        if result.get("ok"):
+            audit(w, "presence", result.get("track"), "create")
+        return result
+
+    @app.post("/api/voice/wake_check")
+    async def wake_check(body: dict):
+        """How the speech recognizer hears a word of activation, and which of its words it does not know."""
+        word = str(body.get("word") or "")
+        if ctx.voice is None:
+            from ..voice.intents import spoken
+            return {"spoken": spoken(word, ctx.settings.get("voice.language", "it")), "unknown": []}
+        return ctx.voice.wake_check(word)
+
+    @app.post("/api/voice/ask")
+    async def ask_questions(body: dict | None = None):
+        """"Fai domande": the house asks a question now, to this character ({"identity"}) or to one in the house
+        picked at random, and keeps the answer."""
+        if ctx.voice is None:
+            return {"ok": False, "error": "no_voice"}
+        return ctx.voice.chatter.ask_now((body or {}).get("identity") or None)
+
     @app.post("/api/alerts/{key}/dismiss")
     async def dismiss_alert(key: str):
         ctx.house.dismiss_alert(key)

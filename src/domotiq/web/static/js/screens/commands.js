@@ -8,6 +8,19 @@ import { t, tr } from "../i18n.js";
 const COLORS = ["#ffaa5a", "#ffffff", "#ff2010", "#ff8000", "#ffd020", "#20e040", "#20d0ff", "#2050ff", "#a030ff", "#ff40a0"];
 const EFFECTS = ["solid", "breathe", "blink", "wave", "rainbow", "sparkle", "fire"];
 
+const ASK_ERRORS = { busy: "askq.err_busy", nobody: "askq.err_nobody", silent: "askq.err_silent",
+  no_mic: "askq.err_no_mic", unknown: "askq.err_unknown", no_voice: "askq.err_no_voice" };
+
+// "Fai domande": the house asks a character a question now (one picked at random among those in the house, or this
+// one), hears the answer without Talk and keeps it, to use it later (its colour, a party, the barbecue)
+export async function askQuestion(identity) {
+  try {
+    const r = await api("POST", "/api/voice/ask", identity ? { identity } : {});
+    if (r.ok) toast(t("askq.asked", { name: r.name }), "success");
+    else toast(t(ASK_ERRORS[r.error] || "askq.err_busy"), "warning");
+  } catch (e) { toast(e.message || t("common.error"), "alarm"); }
+}
+
 async function cmd(name, body) {
   try {
     const r = await api("POST", `/api/commands/${name}`, body || {});
@@ -45,6 +58,11 @@ export function mount(root) {
       <label class="row spread" style="margin-top:12px"><span>${t("cmd.follow")}</span>
         <span class="switch"><input type="checkbox" id="follow" ${store.state.follow !== false ? "checked" : ""}><span></span></span></label>
     </div>
+    <h2>${t("askq.title")}</h2>
+    <div class="card">
+      <p class="muted small">${t("askq.lead")}</p>
+      <button class="btn block primary" id="askq">❓ ${t("askq.button")}</button>
+    </div>
     <h2>${t("cmd.voice")}</h2>
     <div class="card">
       <div class="field"><span class="muted small">${t("cmd.language")}</span>
@@ -75,6 +93,7 @@ export function mount(root) {
   $("#party").onclick = () => cmd("party");
   $("#grill").onclick = () => cmd(store.state.grill ? "grill_stop" : "grill");
   $("#bell").onclick = () => cmd("intercom");
+  $("#askq").onclick = () => askQuestion(null);
   $("#say-go").onclick = () => { const v = $("#say").value.trim(); if (v) { cmd("say", { text: v }); $("#say").value = ""; } };
   root.querySelectorAll("[data-lang]").forEach(b => { b.onclick = () => cmd("language", { language: b.dataset.lang }); });
   root.querySelectorAll("[data-verb]").forEach(b => { b.onclick = () => cmd("verbosity", { verbosity: b.dataset.verb }); });

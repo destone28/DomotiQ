@@ -5,6 +5,7 @@
 import { api, ask, esc, modal, pageHead, roomName, setNickname, store, toast } from "../app.js";
 import { t, tr } from "../i18n.js";
 import { ICONS, Plan } from "../plan.js";
+import { askQuestion } from "./commands.js";
 
 const CATS = ["person", "dog", "cat", "animal", "car", "object"];
 
@@ -210,11 +211,15 @@ function editIdentity(id) {
       <label class="field"><span>${t("id.alias")}</span><input type="text" id="alias" value="${esc(i.alias_en || "")}"></label>
       <label class="field"><span>${t("id.facts")}</span><textarea id="facts" rows="4" maxlength="900" placeholder="${esc(t("id.facts_ph"))}">${esc(shown)}</textarea></label>
       <p class="muted small">${t("id.facts_hint")}</p>
+      ${i.category === "person" || ["dog", "cat", "animal"].includes(i.category) ?
+        `<button class="btn block" id="askq" style="margin-bottom:12px">❓ ${t("askq.to", { name: i.name })}</button>` : ""}
       <div class="row" style="justify-content:space-between">
         <button class="btn danger" id="del">${t("common.delete")}</button>
         <div class="row"><button class="btn" id="close">${t("common.close")}</button><button class="btn primary" id="save">${t("common.save")}</button></div>
       </div>`;
     card.querySelector("#close").onclick = close;
+    const askq = card.querySelector("#askq");
+    if (askq) askq.onclick = () => { close(); askQuestion(id); };
     card.querySelector("#save").onclick = async () => {
       const body = {
         name: card.querySelector("#name").value, category: card.querySelector("#cat").value,
