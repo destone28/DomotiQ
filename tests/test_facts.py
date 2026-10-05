@@ -251,7 +251,7 @@ def test_what_a_question_is_about(text, topic):
     ("dov'è Marco", "where_is", {"name": "Marco"}), ("Marco", "where_is", {"name": "Marco"}),
     ("cosa sai di Marco", "about", {"name": "Marco"}),
     ("ricorda che Marco adora la pizza", "fact", {"name": "Marco"}),
-    ("accendi la luce preferita di Marco", "lights_on", {}), ("che ore sono", "time_now", {}),
+    ("accendi la luce preferita di Marco", "lights_fav", {"name": "Marco"}), ("che ore sono", "time_now", {}),
     ("facciamo festa", "party", {}), ("parla inglese con Marco", "language", {"language": "en"}),
     # a request that names a character is still a request
     ("Marco vuole sentire la musica", "party", {}), ("musica per Marco", "party", {}),

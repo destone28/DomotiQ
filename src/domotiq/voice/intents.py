@@ -62,6 +62,42 @@ EN_NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "s
               "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
               "fifteen": 15, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "noon": 12, "midnight": 0}
 
+_IT_UNITS = ["zero", "uno", "due", "tre", "quattro", "cinque", "sei", "sette", "otto", "nove", "dieci", "undici",
+             "dodici", "tredici", "quattordici", "quindici", "sedici", "diciassette", "diciotto", "diciannove"]
+_IT_TENS = {2: "venti", 3: "trenta", 4: "quaranta", 5: "cinquanta", 6: "sessanta", 7: "settanta", 8: "ottanta",
+            9: "novanta"}
+_EN_UNITS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
+             "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
+_EN_TENS = {2: "twenty", 3: "thirty", 4: "forty", 5: "fifty", 6: "sixty", 7: "seventy", 8: "eighty", 9: "ninety"}
+
+
+def number_words(n: int, lang: str) -> str:
+    """A number from 0 to 999 as the speech recognizer writes it: 21 is "ventuno" or "twenty one"."""
+    if lang == "it":
+        if n < 20:
+            return _IT_UNITS[n]
+        if n < 100:
+            tens, unit = _IT_TENS[n // 10], n % 10
+            if unit in (1, 8):
+                tens = tens[:-1]                  # ventuno, ventotto
+            return tens + (_IT_UNITS[unit] if unit else "")
+        hundreds, rest = divmod(n, 100)
+        return ("cento" if hundreds == 1 else _IT_UNITS[hundreds] + "cento") + (number_words(rest, lang) if rest else "")
+    if n < 20:
+        return _EN_UNITS[n]
+    if n < 100:
+        return _EN_TENS[n // 10] + (" " + _EN_UNITS[n % 10] if n % 10 else "")
+    hundreds, rest = divmod(n, 100)
+    return _EN_UNITS[hundreds] + " hundred" + (" " + number_words(rest, lang) if rest else "")
+
+
+def spoken(text: str, lang: str) -> str:
+    """A phrase as the speech recognizer would write it: normalized, numbers in words ("Casa 2" and "casa2" are
+    "casa due", "R2D2" is "r due d due")."""
+    t = normalize(re.sub(r"(?<=[a-zA-Z])(?=\d)|(?<=\d)(?=[a-zA-Z])", " ", text or ""))
+    return " ".join(number_words(int(w), lang) if w.isdigit() and int(w) < 1000 else w for w in t.split())
+
+
 # answers that are whole sentences on their own
 SHORT_ONLY = ("cancel", "yes", "no")
 
@@ -90,6 +126,8 @@ PATTERNS: list[tuple[str, list[str]]] = [
                 r"\bremember when\b", r"\bdo you recall\b"]),
     ("about", [r"\bcosa sai (di|su|del|della)\b", r"\bche sai (di|su)\b", r"\bparlami (di|del|della)\b",
                r"\bchi e\b", r"\bwhat do you know about\b", r"\btell me about\b", r"\bwho is\b"]),
+    # "accendi la luce preferita di Marco": the light in the colour a character told the house (a name is needed)
+    ("lights_fav", [r"\b(luce|luci|colore|colori) preferit\w*\b", r"\bfavou?rite (light|lights|colou?r)\b"]),
     # "cosa mangia Marco?", "che musica piace a Giulia?": what the house was told about a character, by the
     # keywords of facts.py (before the commands: "musica" would start a party, a name alone is "where is")
     ("ask_fact", [r"\w"]),
@@ -399,6 +437,14 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
             if re.search(r"\bchi e (in|nel|nella|dentro)\b|\bwho is in\b", t):
                 continue
             args["name"] = found_names[0]
+        elif intent == "lights_fav":
+            # a request ("accendi", "metti", "turn on"...), not a question ("qual è il colore preferito di Marco?")
+            if not found_names or not re.search(r"\b(accend\w*|mett\w*|fai|turn|switch|put|light up|show|make)\b", t):
+                continue
+            args["name"] = found_names[0]
+            room = find_room(t)
+            if room:
+                args["room"] = room
         elif intent == "ask_fact":
             if not found_names or not _about_character(text, names):
                 continue

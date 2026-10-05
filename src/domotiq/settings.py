@@ -33,12 +33,15 @@ DEFAULTS: dict[str, Any] = {
         "greet_phones": True,        # welcome aloud a phone that opens the web app for the first time
         "chatty_questions": True,    # in chatty mode, ask the characters questions now and then
         "question_every_s": 120,     # about how often (at least 45 s)
+        "wake_enabled": False,       # the word of activation does what Talk does
+        "wake_word": "Casa",
     },
     "lights": {
         "max_brightness": 30,        # cap applied by the firmware, 0-100
         "current_budget_ma": 450,    # firmware power limiter
         "follow": True,
         "follow_color": "#ffaa5a",
+        "follow_favourite": True,    # in the normal scene, the light of a room takes the favourite colour of who is in
         "follow_brightness": 60,
         "follow_off_delay_s": 3,
     },

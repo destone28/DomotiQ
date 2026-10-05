@@ -19,7 +19,7 @@ from .bus import Bus
 from .climate import Shower, Thermostat
 from .identities import Identities
 from .layout import OUTSIDE, Layout
-from .lights import FOLLOW, SCENE, LightController, LightRequest
+from .lights import FOLLOW, NAMED_COLORS, SCENE, LightController, LightRequest
 from .model import ANIMALS, CAR, OBJECT, PERSON, Track, category_matches, new_id
 from .scenes import SCENES
 from .settings import Settings
@@ -127,6 +127,12 @@ class House:
                 self._pub("furniture", **self._who(t), room=t.room, on=t.on, before=prev.on)
 
         self.tracks = new
+        # a "who is it?" the house has meanwhile answered by itself (only one of the names could be there, or it
+        # recognized the newcomer) is withdrawn, on the phones and aloud
+        for cid, c in list(self.confirmations.items()):
+            t = new.get(c["context"].get("track")) if c["context"].get("kind") == "who" else None
+            if t is not None and t.identity and not t.uncertain:
+                self.withdraw(cid)
         self._update_counts()
         self._update_cars(now)
         self._update_follow(now)
@@ -254,6 +260,7 @@ class House:
         color = scene.get("follow_color", cfg["follow_color"])
         brightness = scene.get("follow_brightness", cfg["follow_brightness"])
         gcfg = self.settings.get("garage")
+        favourite = cfg.get("follow_favourite", True) and "follow_color" not in scene
         for lid, light in self.layout.lights.items():
             wanted = follow and self.count(light.room, PERSON) > 0
             if follow and light.room == "garage":
@@ -264,12 +271,26 @@ class House:
                         wanted = True
             if wanted:
                 self._follow_off_at.pop(lid, None)
-                self.lights.set(lid, "follow", LightRequest("solid", color, brightness, priority=FOLLOW))
+                c = (self._favourite_in(light.room) if favourite else None) or color
+                self.lights.set(lid, "follow", LightRequest("solid", c, brightness, priority=FOLLOW))
             elif "follow" in self.lights.layers[lid]:
                 off_at = self._follow_off_at.setdefault(lid, now + cfg["follow_off_delay_s"])
                 if now >= off_at or not follow:
                     self.lights.clear(lid, "follow")
                     self._follow_off_at.pop(lid, None)
+
+    def _favourite_in(self, room: str) -> str | None:
+        """The favourite colour of the person who came into this room last, among those who told the house theirs."""
+        from .voice.facts import favourite_colour
+        people = sorted((t for t in self.tracks.values()
+                         if t.room == room and t.identity and not t.uncertain and category_matches(t.category, PERSON)),
+                        key=lambda t: t.since, reverse=True)
+        for t in people:
+            ident = self.identities.get(t.identity)
+            colour = favourite_colour(ident.facts) if ident is not None else None
+            if colour in NAMED_COLORS:
+                return NAMED_COLORS[colour]
+        return None
 
     def set_scene(self, scene: str) -> bool:
         if scene not in SCENES:

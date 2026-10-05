@@ -216,6 +216,14 @@ def _wire_vision(ctx: Context) -> None:
             ctx.vision.dismiss(c["track"])
             return
         from .voice.who import elsewhere
+        if isinstance(value, dict) and isinstance(value.get("known"), str):
+            # one of the characters the house already knows, chosen from the whole list on a phone: the name moves
+            # here from wherever it was, and this look is learned
+            try:
+                ctx.registration.name_track(c["track"], identity=value["known"], nickname=ev.get("by"))
+            except (KeyError, ValueError):
+                pass
+            return
         if isinstance(value, dict) and isinstance(value.get("together"), list):
             # "both of them": the blob is these characters touching each other; one seen in sight somewhere
             # else is not here

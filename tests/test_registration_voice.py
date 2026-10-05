@@ -38,12 +38,13 @@ def _step(ctx, now):
 
 def test_intercom_registers_the_first_stranger_through_the_door(ctx):
     async def scenario():
+        # someone already inside is not taken: only who comes in after the bell
+        ctx.sim.add(300, 150, "person", None, "#20a0e0", "")
+        now = time.time()
+        _step(ctx, now)
         await ctx.voice._register_named("Leo", "intercom")
         assert ctx.voice.expect_entrance and ctx.voice.expect_entrance["new"] == "Leo"
-        # someone already inside is not taken: only who comes in from the driveway
-        ctx.sim.add(300, 150, "person", None, "#20a0e0", "")
         obj = ctx.sim.add(197, -30, "person", None, "#e0a020", "")
-        now = time.time()
         _step(ctx, now)
         for y in (-10, 5, 20, 40):
             ctx.sim.move(obj.id, 197, y)
@@ -100,3 +101,28 @@ def test_known_name_at_the_intercom(ctx):
         assert ctx.house.tracks[obj.id].identity == marco.id
 
     asyncio.run(scenario())
+
+
+def test_the_one_who_rang_is_taken_whatever_the_webcam_thinks_it_is(ctx):
+    """A figurine is often an object or an animal for the webcam, and may get a name the house is not sure of:
+    after the intercom the first one that comes in is the one who rang, and nobody asks who it is."""
+    async def scenario():
+        await ctx.voice._register_named("Emilio", "intercom")
+        viola = ctx.identities.add("Viola", "person")
+        obj = ctx.sim.add(300, 100, "object", None, "#e0a020", "")
+        now = time.time()
+        _step(ctx, now)
+        await asyncio.sleep(0)
+        emilio = ctx.identities.by_name("Emilio")
+        assert emilio is not None and emilio.category == "person"
+        assert ctx.house.tracks[obj.id].identity == emilio.id and ctx.voice.expect_entrance is None
+        assert not ctx.house.confirmations
+        # the next one is nobody in particular: no more expectation
+        other = ctx.sim.add(80, 100, "person", None, "#20a0e0", "")
+        _step(ctx, now + 1)
+        await asyncio.sleep(0)
+        assert ctx.house.tracks[other.id].identity is None
+        _ = viola
+
+    asyncio.run(scenario())
+

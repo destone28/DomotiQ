@@ -178,6 +178,15 @@ QUESTIONS: list[dict[str, Any]] = [
                      "Me too! My lights look better in the evening.")]),
     _q("a-from", None, "person", "open",
        "{name}, da dove vieni?", "{name}, where are you from?"),
+    # the answers the house acts on: who loves dancing is offered a party, who loves barbecues the barbecue
+    _q("a-dance", None, "person", "yesno",
+       "{name}, ti piace ballare?", "{name}, do you like dancing?",
+       yes={"it": "Allora la prossima festa è per te, {name}!", "en": "Then the next party is for you, {name}!"},
+       no={"it": "Va bene, niente balli per te.", "en": "All right, no dancing for you."}),
+    _q("a-grill", None, "person", "yesno",
+       "{name}, ti piacciono le grigliate?", "{name}, do you like barbecues?",
+       yes={"it": "Me lo ricordo: in giardino ti accendo il barbecue.", "en": "I'll remember: in the garden I'll light the barbecue for you."},
+       no={"it": "D'accordo, niente barbecue per te.", "en": "OK, no barbecue for you."}),
     # animals: whoever holds them answers
     _q("p-walk", ("living", "kitchen", "bedroom"), "dog", "yesno",
        "{name}, vuoi fare una passeggiata?", "{name}, would you like a walk?",
@@ -200,6 +209,25 @@ UNCLEAR = {"it": "Non ho capito bene, ma grazie, {name}!", "en": "I didn't quite
 AGAIN = {"it": "Scusa, non ho capito: sì o no?", "en": "Sorry, I didn't get that: yes or no?"}
 NOT_CLEAR = {"it": "Non ho capito bene: se volete, ditemelo con il tasto Parla.",
              "en": "I didn't quite get that: if you like, tell me with the Talk button."}
+
+# offers to whoever told the house it loves that (chatty mode): asked before the questions of the list, each at most
+# once every FAN_EVERY_S, while it is there with what it takes
+FAN_OFFERS: list[dict[str, Any]] = [
+    _q("f-party", ("living",), "person", "yesno",
+       "{name}, tu che ami ballare: facciamo festa?", "{name}, you love dancing: shall we party?",
+       yes={"it": "Si balla, {name}!", "en": "Let's dance, {name}!"},
+       no={"it": "Va bene, sarà per un'altra volta.", "en": "All right, another time."},
+       action={"do": "party"}, fact="a-dance", persons=2),
+    _q("f-grill", ("garden",), "person", "yesno",
+       "{name}, tu che adori le grigliate: accendo il barbecue?", "{name}, you love barbecues: shall I light it?",
+       yes={"it": "Arriva subito, {name}!", "en": "Coming right up, {name}!"},
+       no={"it": "D'accordo, sarà per la prossima grigliata.", "en": "OK, maybe at the next barbecue."},
+       action={"do": "grill"}, fact="a-grill", persons=1),
+]
+FAN_EVERY_S = 600.0
+# "Fai domande" in the web app: the questions whose answers stay as facts, any room
+FACT_QUESTIONS = ("a-colour", "a-dance", "a-grill", "k-dish", "a-from", "k-cook", "l-sofa", "g-trip", "a-morning",
+                  "a-house", "o-garden")
 
 # offers to a crowd (chatty mode, at most one every 10 minutes), answered like the questions
 PROPOSALS: list[dict[str, Any]] = [
@@ -330,6 +358,7 @@ class Chatter:
         self.unanswered = 0                     # questions in a row nobody answered
         self.last_question = float("-inf")
         self._kept: dict[str, Any] | None = None   # an offer nobody answered clearly: Talk can still answer it
+        self._fan_at: dict[str, float] = {}         # targeted offer -> when it was last made (monotonic)
         # welcome
         self._phones: list[dict[str, Any]] = []
         self._greeting: asyncio.Task | None = None
@@ -670,8 +699,28 @@ class Chatter:
         fresh = [q for q in fits if q["id"] not in self.recent]
         return fresh or fits
 
+    def _fan_offer(self, present: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
+        """Somebody who loves dancing in the living room with others, or barbecues in the garden: the house offers
+        what it loves, now and then."""
+        now = time.monotonic()
+        for q in FAN_OFFERS:
+            if now - self._fan_at.get(q["id"], float("-inf")) < FAN_EVERY_S:
+                continue
+            for identity, track in present.items():
+                ident = self.ctx.identities.get(identity)
+                if ident is None or track.room not in q["rooms"] or facts.told(ident.facts, q["fact"]) != "yes":
+                    continue
+                if self.ctx.house.count(track.room, "person") < q["persons"] or not self._offer_possible(q, track.room):
+                    continue
+                return identity, q
+        return None
+
     def _pick(self) -> tuple[str, dict[str, Any]] | None:
         present = self._present()
+        fan = self._fan_offer(present)
+        if fan is not None:
+            self._fan_at[fan[1]["id"]] = time.monotonic()
+            return fan
         # never the same character twice in a row: with only one around, the house waits
         order = sorted((i for i in present if i != self.last_asked),
                        key=lambda i: (self.asked.get(i, -1e18), self.rng.random()))
@@ -686,19 +735,58 @@ class Chatter:
                 return identity, self.rng.choice(qs)
         return None
 
-    async def _ask(self, identity: str, q: dict[str, Any]) -> None:
+    def ask_now(self, identity: str | None = None) -> dict[str, Any]:
+        """"Fai domande" in the web app: a question now, to this character or to one in the house picked at random,
+        preferring what the house does not know about it yet; the answer is heard with no Talk and kept.
+        Returns what was asked, or why not."""
+        ctx = self.ctx
+        if not ctx.actions.speaks("normal"):
+            return {"ok": False, "error": "silent"}
+        if self.voice.busy.locked() or self.asking or self._speaking():
+            return {"ok": False, "error": "busy"}
+        if not self._can_listen():
+            return {"ok": False, "error": "no_mic"}
+        present = self._present()
+        if identity is None:
+            people = [i for i, t in present.items() if t.category == "person"] or list(present)
+            if not people:
+                return {"ok": False, "error": "nobody"}
+            identity = self.rng.choice(people)
+        ident = ctx.identities.get(identity)
+        if ident is None:
+            return {"ok": False, "error": "unknown"}
+        track = present.get(identity)
+        if ident.category == "person":
+            known = {(facts.read(f) or ("",))[0] for f in ident.facts}
+            pool = [q for q in QUESTIONS if q["id"] in FACT_QUESTIONS]
+            fresh = [q for q in pool if q["id"] not in known]
+            q = self.rng.choice(fresh or pool)
+        else:
+            pool = [q for q in QUESTIONS if q["who"] in ("animal", "dog") and (q["who"] == "animal" or ident.category == "dog")]
+            if not pool:
+                return {"ok": False, "error": "unknown"}
+            q = self.rng.choice(pool)
+        self.asking = True
+        self.voice._spawn(self._ask(identity, q, forced=True))
+        return {"ok": True, "name": ident.name, "question": ctx.actions.fill(q["text"], {"name": ident.name}, self.lang),
+                "present": track is not None}
+
+    async def _ask(self, identity: str, q: dict[str, Any], forced: bool = False) -> None:
+        """`forced`: asked from the web app, in any room, also to a character not in the house, and not only in
+        chatty mode."""
         v, ctx = self.voice, self.ctx
         todo: list[Intent] = []             # what to run once the house is free again
+        level = "normal" if forced else "chatty"
         try:
             async with v.busy:
                 self.task = asyncio.current_task()
                 try:
                     track = self._present().get(identity)
                     name = ctx.identities.name_of(identity)
-                    if track is None or not name or ctx.settings.get("voice.verbosity") != "chatty" \
-                            or not ctx.actions.speaks("chatty"):
+                    if not name or not ctx.actions.speaks(level) or not forced and (
+                            track is None or ctx.settings.get("voice.verbosity") != "chatty"):
                         return
-                    room = track.room
+                    room = track.room if track is not None else None
                     self.asked[identity] = time.monotonic()
                     self.last_asked = identity
                     self.last_question = time.monotonic()
@@ -710,7 +798,7 @@ class Chatter:
                         return
                     data = {"name": name, "room": room}
                     lang = self.lang
-                    await self._say(q["text"], data, level="chatty")
+                    await self._say(q["text"], data, level=level)
                     offer = offers.action_intent(q["action"], room) if q.get("action") else None
                     if offer is not None:
                         lines = {"yes": q["yes"], "no": q["no"], "none": NO_ANSWER, "unclear": UNCLEAR}
@@ -734,10 +822,10 @@ class Chatter:
                     # the outcome only: what the microphone heard is not kept
                     ctx.store.add_event("chatter", {"name": name, "question": q["id"], "room": room,
                                                     "outcome": outcome, "action": todo[-1].name if todo else None})
-                    if outcome == "none" and self.unanswered > 1:
+                    if outcome == "none" and self.unanswered > 1 and not forced:
                         reply = None      # once is enough
                     if reply:
-                        await self._say(reply, data, level="chatty")
+                        await self._say(reply, data, level=level)
                 finally:
                     self.task = None
             for intent in todo:

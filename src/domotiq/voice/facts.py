@@ -44,7 +44,7 @@ from .intents import normalize
 # apostrophes as spaces). For a question the first topic of this list that matches counts: "cosa mangia
 # la sera" is about food, not about the evening.
 TOPICS: list[tuple[str, str]] = [
-    ("food", r"\bmangi\w*|\bmange\w*|\bcib[oi]\b|\bpiatto\b|\bpranz\w*|\bcen[ae]\b|\bcenare\b|\bcolazion\w*|"
+    ("food", r"\bmangi\w*|\bgrigliat\w*|\bbarbecue\b|\bbbq\b|\bgrill\w*|\bmange\w*|\bcib[oi]\b|\bpiatto\b|\bpranz\w*|\bcen[ae]\b|\bcenare\b|\bcolazion\w*|"
              r"\bmerend\w*|\bcucinar\w*|\bcucinat\w*|\bcucino\b|\bcucini\b|\bricett\w*|\bgolos\w*|\bpizz\w*|"
              r"\bpasta\b|\bspaghett\w*|\blasagn\w*|\brisott\w*|\bgelat\w*|\bcroccantin\w*|\bcrocchett\w*|"
              r"\beat\w*|\bate\b|\bfoods?\b|\bdish\b|\bmeals?\b|\blunch\w*|\bdinners?\b|\bbreakfast\w*|\bcook\w*|"
@@ -55,7 +55,7 @@ TOPICS: list[tuple[str, str]] = [
                r"\brosa\b|\bbianc[oa]\b|\bazzurr[oa]\b|\bceleste\b|\bner[oa]\b|\bgrigi[oa]\b|\bmarrone\b|\bred\b|"
                r"\bgreen\b|\bblue\b|\byellow\b|\borange\b|\bpurple\b|\bviolet\b|\bpink\b|\bwhite\b|\bblack\b|"
                r"\bgr[ae]y\b|\bbrown\b"),
-    ("music", r"\bmusic\w*|\bcanzon\w*|\bcantant\w*|\bcant[ao]\b|\bcantare\b|\bascolt\w*|\bradio\b|\bconcert\w*|"
+    ("music", r"\bmusic\w*|\bball[aio]\w*|\bdanc\w*|\bcanzon\w*|\bcantant\w*|\bcant[ao]\b|\bcantare\b|\bascolt\w*|\bradio\b|\bconcert\w*|"
               r"\bband\b|\bsuon\w*|\bstrument\w*|\bpianoforte\b|\bchitarr\w*|\bviolin\w*|\bbatteria\b|\bjazz\b|"
               r"\brock\b|\bpop\b|\brap\b|\bopera\b|\bblues\b|\bsongs?\b|\bsing(s|ing|er|ers)?\b|\blisten\w*|"
               r"\binstruments?\b|\bguitar\w*|\bdrums?\b|\bpiano\b"),
@@ -215,6 +215,11 @@ ANSWER_FACTS: dict[str, dict[str, Any]] = {
                 "no": ("non ama molto questa casa", "is not too fond of this house")},
     "o-garden": {"topic": "home", "yes": ("adora il giardino", "loves the garden"),
                  "no": ("non ama molto il giardino", "is not too fond of the garden")},
+    # the answers the house acts on: a party for who loves dancing, the barbecue for who loves it
+    "a-dance": {"topic": "music", "yes": ("ama ballare", "loves dancing"),
+                "no": ("non ama ballare", "is not fond of dancing")},
+    "a-grill": {"topic": "food", "yes": ("adora le grigliate", "loves barbecues"),
+                "no": ("non ama le grigliate", "is not fond of barbecues")},
 }
 LANGS = ("it", "en")
 MAX_WORDS = {"k-dish": 6, "a-from": 5}       # a longer answer is more likely a sentence the house misheard
@@ -338,6 +343,22 @@ def answer_line(qid: str, outcome: str, text: str, lang: str) -> str | None:
     if outcome in ("yes", "no") and outcome in spec:
         return spec[outcome][k]
     return None
+
+
+def told(lines: Iterable[str], qid: str) -> Any:
+    """What the facts say as the answer to question `qid` ("yes", "no", an option, a colour), the latest line
+    winning; None if they say nothing about it."""
+    out = None
+    for line in lines:
+        got = read(line)
+        if got and got[0] == qid:
+            out = got[2] if got[2] is not None else got[3]
+    return out
+
+
+def favourite_colour(lines: Iterable[str]) -> str | None:
+    """The favourite colour told, as a colour of intents.COLORS ("red", "warm"...), or None."""
+    return told(lines, "a-colour")
 
 
 # ------------------------------------------------------------------ reading a line back

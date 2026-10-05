@@ -44,6 +44,10 @@ class Actions:
         self._grill_task: asyncio.Task | None = None
         self._party_task: asyncio.Task | None = None
         self._breath: asyncio.Task | None = None
+        # what the LEDs of the buttons show: steady while the house speaks, blinking while it listens
+        self._speaking = False
+        self._listening = False
+        self._waiting = False
 
     # ================================================================ helpers
     @property
@@ -232,12 +236,27 @@ class Actions:
         self.ctx.bus.publish("volume", volume=volume)
 
     async def update_leds(self, listening: bool = False, waiting: bool = False) -> None:
-        """All three on while the house listens; otherwise LED 1 intercom (blinks while waiting) and LED 2
-        language (on = English)."""
+        """All three blinking while the house listens; otherwise LED 1 intercom (blinks while waiting) and LED 2
+        language (on = English). While the house speaks they stay on, steady (see speaking)."""
+        self._listening, self._waiting = listening, waiting
         if listening:
             self._stop_breath()
-        on = 7 if listening else (4 if self.lang == "en" else 0)
-        blink = 2 if waiting else 0
+        await self._show_leds()
+
+    async def speaking(self, on: bool) -> None:
+        """The house speaks: the three LEDs of the buttons stay on, steady, until it has finished."""
+        self._speaking = on
+        if on:
+            self._stop_breath()
+        await self._show_leds()
+
+    async def _show_leds(self) -> None:
+        if self._speaking:
+            on, blink = 7, 0
+        elif self._listening:
+            on, blink = 7, 7
+        else:
+            on, blink = (4 if self.lang == "en" else 0), (2 if self._waiting else 0)
         if self.ctx.settings.get("buttons.reversed"):
             on = ((on & 1) << 2) | (on & 2) | ((on & 4) >> 2)
             blink = ((blink & 1) << 2) | (blink & 2) | ((blink & 4) >> 2)

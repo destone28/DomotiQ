@@ -77,7 +77,7 @@ class Registration:
     def start(self, name: str, *, origin: str = "web", photo: str | None = None,
               room: str | None = None, category: str | None = None,
               device: str | None = None, nickname: str | None = None,
-              track: str | None = None, auto: bool = False) -> Session:
+              track: str | None = None, auto: bool = False, force: bool = False) -> Session:
         name = clean_name(name)
         if not name:
             raise ValueError("empty name")
@@ -97,7 +97,8 @@ class Registration:
         s.auto = auto
         s.warnings = self._vocabulary_warnings(name)
         self.sessions[s.id] = s
-        if track and track in self._unknown():
+        # `force`: that very track, even if the house took it for somebody it was not sure of
+        if track and (track in self._unknown() or force and track in self.ctx.house.tracks):
             self._take(s, track)
         else:
             self._advance(s)
@@ -185,6 +186,56 @@ class Registration:
         self.ctx.bus.publish("registered", identity=ident.id, name=ident.name, category=category,
                              origin=s.origin, room=s.room)
         self.sessions.pop(sid, None)
+        return ident
+
+    def name_track(self, track_id: str, identity: str | None = None, name: str | None = None,
+                   category: str | None = None, nickname: str | None = None, device: str | None = None) -> Identity:
+        """Somebody says who this presence is, in the web app: one already known (`identity`: the name moves here
+        from wherever it was, since a name is never in two places, and this look is learned), or a new one (`name`
+        and `category`). Raises KeyError for a presence or a character that is not there, NameTaken for a new name
+        that already exists, ValueError for an empty one."""
+        ctx = self.ctx
+        track = ctx.house.tracks.get(track_id)
+        if track is None:
+            raise KeyError(track_id)
+        if identity:
+            ident = ctx.identities.get(identity)
+            if ident is None:
+                raise KeyError(identity)
+        else:
+            clean = clean_name(name or "")
+            if not clean:
+                raise ValueError("empty name")
+            existing = ctx.identities.by_name(clean)
+            if existing:
+                raise NameTaken(clean, existing)
+            category = category if category in CATEGORIES else (track.category if track.category in CATEGORIES
+                                                                 and track.category != "object" else PERSON)
+            sig = ctx.vision.signature(track_id) if not track.virtual else None
+            ident = ctx.identities.add(clean, category, color=sig[1] if sig else track.color,
+                                       signature=sig[0] if sig else None, device=device, nickname=nickname)
+            ctx.bus.publish("registered", identity=ident.id, name=ident.name, category=ident.category,
+                            origin="web", room=track.room)
+        if track.virtual:
+            for obj in ctx.sim.objects.values():
+                if obj.identity == ident.id and obj.id != track_id:
+                    obj.identity, obj.name = None, ""
+            obj = ctx.sim.objects.get(track_id)
+            if obj:
+                obj.identity, obj.category, obj.name = ident.id, ident.category, ident.name
+        else:
+            ctx.vision.assign(track_id, ident.id, explicit=True)
+        # the house shows it at once, without waiting for the next picture
+        for other in ctx.house.tracks.values():
+            if other is not track and other.identity == ident.id:
+                other.identity, other.uncertain = None, False
+        before = track.identity
+        track.identity, track.category, track.uncertain, track.candidates = ident.id, ident.category, False, []
+        for cid, c in list(ctx.house.confirmations.items()):
+            if c["context"].get("kind") == "who" and c["context"].get("track") == track_id:
+                ctx.house.withdraw(cid)
+        ctx.bus.publish("identity_changed", track=track_id, identity=ident.id, name=ident.name, before=before,
+                        room=track.room, category=ident.category)
         return ident
 
     def cancel(self, sid: str) -> None:

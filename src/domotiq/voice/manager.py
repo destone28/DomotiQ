@@ -36,10 +36,11 @@ from ..identities import NameTaken
 from ..model import CATEGORY_NAMES
 from ..scenes import scene_name
 from . import answers, facts, memory
-from .chatter import ECHO_S, NAME_CONFIDENCE, PROPOSALS, WELCOME, Chatter, yes_no_grammar, yes_or_no
+from .chatter import ECHO_S, NAME_CONFIDENCE, PROPOSALS, QUESTIONS, WELCOME, Chatter, yes_no_grammar, yes_or_no
 from .narrator import Narrator
 from .stories import StoryTeller
-from .intents import DENY, Intent, find_name, find_room, name_from_speech, normalize, parse, parse_time, said_options
+from .intents import (DENY, Intent, find_name, find_room, name_from_speech, normalize, parse, parse_time, said_options,
+                      spoken)
 from . import variants as V
 from .who import BOTH, OR, Dialogue
 from .llm import LanguageModel
@@ -58,6 +59,11 @@ ACTIONS = ("lights_on", "lights_off", "scene", "party", "grill", "grill_stop", "
 SURE = 0.9
 HOLD_MAX_S = 6.0      # the microphone waits at most this long for the house to finish speaking
 TAG_DELAY_S = 2.0     # the facts of a character are looked at this long after a change (several come together)
+ENTRANCE_S = 180.0    # after the intercom, the first figurine that comes in within this long is the one who rang
+# the word of activation (Settings -> Voice): in place of Talk
+WAKE_GAP_S = 1.2      # not listened for until this long after the house spoke: its own voice may say it
+WAKE_CONFIDENCE = 0.6 # heard less surely than this, it does not wake the house
+WAKE_MAX_S = 6.0      # one stretch of listening for it, then the next one
 
 FREQUENT = {
     "it": ["Chi è?", "Scusa, non ho capito. Chi sei?", "Vediamo...", "Non ho capito.", "Si balla!",
@@ -89,6 +95,9 @@ class Voice:
         self.busy = asyncio.Lock()
         self._talk_stop: asyncio.Event | None = None
         self._talk_task: asyncio.Task | None = None
+        self._wake_stop: asyncio.Event | None = None     # the microphone is open for the word of activation
+        self._wake_idle = asyncio.Event()                # ...and closed again
+        self._wake_idle.set()
         self.expect_entrance: dict[str, Any] | None = None   # a name waiting for the front door
         self.question: dict[str, Any] | None = None           # a confirmation asked aloud
         self._asking: asyncio.Task | None = None               # asking it and listening for the answer
@@ -140,6 +149,7 @@ class Voice:
     async def _background(self) -> None:
         # the language model gets its instructions ready meanwhile: they do not wait for the voice
         self._spawn(self._keep_model())
+        self._spawn(self._wake_loop())
         try:
             await self.speaker.warm(FREQUENT)
         except Exception:  # noqa: BLE001
@@ -198,10 +208,14 @@ class Voice:
             self.voice_end = time.monotonic()
 
     async def _play(self, samples) -> None:
-        if self.ctx.audio is not None and not (self.ctx.sim.enabled and self.ctx.sim.mute):
-            await self.ctx.audio.play_voice(samples)
-        else:
-            await asyncio.sleep(len(samples) / 22050)
+        await self.ctx.actions.speaking(True)              # the LEDs of the buttons stay on while it speaks
+        try:
+            if self.ctx.audio is not None and not (self.ctx.sim.enabled and self.ctx.sim.mute):
+                await self.ctx.audio.play_voice(samples)
+            else:
+                await asyncio.sleep(len(samples) / 22050)
+        finally:
+            await self.ctx.actions.speaking(False)
 
     async def say(self, text: str, level: str = "normal") -> None:
         await self.ctx.actions.say(text, level=level)
@@ -226,6 +240,7 @@ class Voice:
         self.opened_at = 0.0
         if not (self.listener and self.listener.ok):
             return "", 0.0, b""
+        await self._yield_mic()
         loop = asyncio.get_running_loop()
         lang = self.lang
         session = await loop.run_in_executor(self.pool, self.listener.session, lang, grammar)
@@ -288,6 +303,123 @@ class Voice:
             if i.alias_en:
                 out.append(i.alias_en)
         return out
+
+    # ================================================================ word of activation
+    def wake_phrase(self) -> str:
+        """The word of activation as the speech recognizer writes it ("Casa 2" is "casa due"); "" when it is off."""
+        s = self.ctx.settings
+        if not s.get("voice.wake_enabled", False):
+            return ""
+        return spoken(s.get("voice.wake_word", "") or "", self.lang)
+
+    def wake_check(self, word: str) -> dict[str, Any]:
+        """How the speech recognizer would hear this word of activation, and its words it does not know."""
+        phrase = spoken(word, self.lang)
+        unknown = [] if not (self.listener and self.listener.ok) else \
+            [w for w in phrase.split() if not self.listener.known(w, self.lang)]
+        return {"spoken": phrase, "unknown": unknown}
+
+    def _wake_free(self) -> bool:
+        """Nothing else needs the house or the microphone: the word of activation can be listened for."""
+        return (not self.busy.locked() and not self.in_flight and self.question is None and not self.chatter.asking
+                and (self._talk_task is None or self._talk_task.done())
+                and time.monotonic() - self.voice_end >= WAKE_GAP_S and self.ctx.actions.speaks("normal"))
+
+    async def _yield_mic(self) -> None:
+        """Somebody else needs the microphone: the listening for the word of activation gives it back."""
+        stop = self._wake_stop
+        if stop is None:
+            return
+        stop.set()
+        try:
+            await asyncio.wait_for(self._wake_idle.wait(), timeout=2.0)
+        except asyncio.TimeoutError:
+            pass
+
+    async def _wake_loop(self) -> None:
+        """With the word of activation on, the microphone listens for it whenever the house is free; the word does
+        what Talk does. The audio is never kept."""
+        while True:
+            await asyncio.sleep(0.3)
+            phrase = self.wake_phrase()
+            if not phrase or not (self.listener and self.listener.ok) or not self.mic.available \
+                    or not self._wake_free():
+                continue
+            try:
+                woke, rest = await self._wake_listen(phrase)
+            except Exception:  # noqa: BLE001
+                log.exception("listening for the word of activation failed")
+                await asyncio.sleep(5.0)
+                continue
+            if woke:
+                await self._woken(rest)
+
+    async def _wake_listen(self, phrase: str) -> tuple[bool, str]:
+        """One stretch of listening for the word: until a pause after speech, WAKE_MAX_S, or something else needing
+        the house. Whether the word was said, and what was said right after it ("Casa, che ore sono?")."""
+        loop = asyncio.get_running_loop()
+        lang = self.lang
+        session = await loop.run_in_executor(self.pool, self.listener.session, lang, [phrase])
+        stop = asyncio.Event()
+        state = {"speech": False, "quiet": 0.0}
+        kept = bytearray()
+        feeds: list[asyncio.Future] = []
+
+        def on_chunk(chunk: bytes) -> None:
+            if not self._wake_free():
+                stop.set()                              # Talk, a question, the house speaking: it comes first
+                return
+            kept.extend(chunk)
+            feeds.append(loop.run_in_executor(self.pool, session.feed, chunk))
+            if self.mic.last_level > 0.02:
+                state["speech"], state["quiet"] = True, 0.0
+            elif state["speech"]:
+                state["quiet"] += 0.1
+                if state["quiet"] >= 0.6:
+                    stop.set()
+        self._wake_stop = stop
+        self._wake_idle.clear()
+        try:
+            await self.mic.listen(stop, on_chunk, max_s=WAKE_MAX_S)
+        finally:
+            self._wake_stop = None
+            self._wake_idle.set()
+        if feeds:
+            await asyncio.gather(*feeds, return_exceptions=True)
+        text, conf = await loop.run_in_executor(self.pool, session.result)
+        if not state["speech"] or conf < WAKE_CONFIDENCE or f" {phrase} " not in f" {spoken(text, lang)} ":
+            return False, ""
+        free, _ = await self._recognize(bytes(kept), None)
+        words = spoken(free, lang).split()
+        n = len(phrase.split())
+        at = [i for i in range(len(words) - n + 1) if words[i:i + n] == phrase.split()]
+        return True, " ".join(words[at[-1] + n:]) if at else ""
+
+    async def _woken(self, rest: str) -> None:
+        """The word of activation was said: what Talk does. What came right after it is the request; otherwise the
+        house asks what is needed, and listens."""
+        log.info("word of activation")
+        if self.ctx.audio is not None:
+            self.ctx.audio.stop_voice()
+        await self.chatter.preempt()
+        await self.stories.preempt()
+        await self._preempt_asking()
+        if self.busy.locked():
+            return
+        async with self.busy:
+            try:
+                text = rest if len(rest.split()) >= 2 else ""
+                if not text:
+                    await self.reply("Dimmi, di cosa hai bisogno?", "Yes? What do you need?")
+                    text, _, audio = await self._listen(None, max_s=8.0, auto_end=True, hold=self.chatter._speaking,
+                                                        echo=ECHO_S)
+                    if not text:
+                        if audio and len(audio) > MIC_RATE:
+                            await self.say(answers.not_understood(self.lang))
+                        return
+                await self.handle(text)
+            finally:
+                await self.ctx.actions.thinking(False)
 
     # ================================================================ talk button
     async def talk_button(self, pressed: bool) -> None:
@@ -468,6 +600,8 @@ class Voice:
             await act.light(room, a.get("color", "warm"), "solid", int(a.get("brightness", 60)))
             if not a.get("quiet"):                    # quiet: the house has just said what it does
                 await self.reply("Fatto.", "Done.")
+        elif name == "lights_fav":
+            await self._favourite_light(a.get("name", ""), a.get("room"))
         elif name == "lights_off":
             await act.lights_off(a.get("room", "all"))
             if not a.get("quiet"):
@@ -560,6 +694,33 @@ class Voice:
             if ident is not None:
                 return ident if ident.facts else None
         return None
+
+    async def _favourite_light(self, name: str, room: str | None) -> None:
+        """"Accendi la luce preferita di Marco": the room said, or the one Marco is in, in the colour Marco told the
+        house. Not told yet: the house asks Marco now, if Marco is in the house."""
+        ctx = self.ctx
+        ident = ctx.identities.by_name(name)
+        if ident is None:
+            await self.reply(f"Non conosco nessuno che si chiama {name}.", f"I don't know anyone called {name}.")
+            return
+        colour = facts.favourite_colour(ident.facts)
+        here = ctx.house.where_is(ident.id)
+        where = room or (here.room if here is not None else None)
+        if colour is None:
+            if here is not None and ctx.layout.light_of_room(here.room) is not None:
+                await self.reply(f"Non lo so ancora: lo chiedo a {ident.name}.", f"I don't know yet: I'll ask {ident.name}.")
+                q = next(q for q in QUESTIONS if q["id"] == "a-colour")
+                self.chatter.asking = True
+                self._spawn(self.chatter._ask(ident.id, q, forced=True))      # its answer lights the room
+            else:
+                await self.reply(f"Non so ancora il colore preferito di {ident.name}: chiediglielo con Fai domande.",
+                                 f"I don't know {ident.name}'s favourite colour yet: ask with Ask questions.")
+            return
+        if where is None:
+            await self.reply(f"{ident.name} non è in casa: dimmi anche la stanza.",
+                             f"{ident.name} is not in the house: tell me the room too.")
+            return
+        await self.execute(Intent("lights_on", {"room": where, "color": colour, "brightness": 70}, 1.0, "rules"))
 
     async def _ask_fact(self, name: str, text: str, topic: str | None, asked: bool = False) -> None:
         """"Cosa mangia Rossellina?": what the house was told about it, else the life of the house, else that it
@@ -668,7 +829,8 @@ class Voice:
                         where = answers.room(ctx, inside.room, lang)
                         await self.reply(f"Ma {ident.name} è già {where}!", f"But {ident.name} is already {where}!")
                         return
-                    self.expect_entrance = {"identity": ident.id, "name": ident.name, "until": time.time() + 60}
+                    self.expect_entrance = {"identity": ident.id, "name": ident.name,
+                                            "until": time.time() + ENTRANCE_S}
                     await self.reply(f"Ciao {ident.name}, entra pure!", f"Hi {ident.name}, come on in!")
                 else:
                     await self._register_named(name, origin="intercom")
@@ -708,8 +870,8 @@ class Voice:
                              f"Someone is already called {name}: add a nickname from the web app.")
             return
         if origin == "intercom":
-            # whoever comes in through the front door in the next minute is the new one
-            self.expect_entrance = {"new": name, "until": time.time() + 60}
+            # whoever comes into the house in the next minutes is the new one
+            self.expect_entrance = {"new": name, "until": time.time() + ENTRANCE_S}
             await self.reply(f"Piacere, {name}! Entra dalla porta.", f"Nice to meet you, {name}! Come in through the door.")
             return
         try:
@@ -755,35 +917,44 @@ class Voice:
         self._maybe_assign(ev, "room_enter")
 
     def _maybe_assign(self, ev, kind: str) -> None:
+        """After the intercom, the first figurine that appears in the house (or on the driveway, on its way to the
+        door) is the one who rang: whatever the webcam took it for (a figurine is often an "object" for it), unless
+        the house recognized someone else for sure. A character already in the house before does not count."""
         exp = self.expect_entrance
         if not exp or time.time() > exp["until"]:
             self.expect_entrance = None
             return
-        if ev.get("room") not in ("living", "driveway") or ev.get("category") not in ("person", None):
-            return
-        if kind == "room_enter" and ev.get("other") not in ("driveway", None):
+        if kind == "track_appear":
+            exp.setdefault("came", set()).add(ev.get("track"))        # appeared after the bell rang
+        if ev.get("track") not in exp.get("came", ()) or ev.get("room") in (None, "garage", "outside"):
             return
         track = self.ctx.house.tracks.get(ev.get("track"))
-        if not track:
+        if track is None and kind == "track_appear":
+            # told while the house is still taking in the new tracks: looked at as soon as it has done
+            try:
+                asyncio.get_running_loop().call_soon(self._maybe_assign, ev, "appeared")
+            except RuntimeError:
+                pass
             return
+        if not track or track.carried or track.category == "car":
+            return
+        sure = track.identity and not track.uncertain
         if "new" in exp:
-            # a new character announced at the intercom: the first stranger through the door
-            if track.identity or ev.get("room") != "living":
-                return
+            if sure:
+                return            # somebody the house knows, not the new one
             self.expect_entrance = None
             try:
-                self.ctx.registration.start(exp["new"], origin="intercom", room="living", track=track.id, auto=True)
+                self.ctx.registration.start(exp["new"], origin="intercom", room=track.room, category="person",
+                                            track=track.id, auto=True, force=True)
             except (NameTaken, ValueError):
                 pass
             return
-        if track.identity and track.identity != exp["identity"] and not track.uncertain:
+        if sure and track.identity != exp["identity"]:
             seen = self.ctx.identities.name_of(track.identity)
             self._spawn(self.reply(f"Mmm, a me sembri {seen}, non {exp['name']}!",
                                    f"Hmm, you look like {seen} to me, not {exp['name']}!"))
             self.expect_entrance = None
             return
-        if ev.get("room") != "living":
-            return            # wait until it is through the door
         if track.virtual:
             obj = self.ctx.sim.objects.get(track.id)
             if obj:
@@ -939,6 +1110,7 @@ class Voice:
 
     # ================================================================ diagnostics
     async def mic_test(self) -> dict[str, Any]:
+        await self._yield_mic()
         stop = asyncio.Event()
         asyncio.get_running_loop().call_later(3.0, stop.set)
         audio = await self.mic.listen(stop, max_s=3.5)

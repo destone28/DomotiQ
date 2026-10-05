@@ -150,6 +150,18 @@ def test_a_denied_name_is_not_the_answer(ctx):
     asyncio.run(scenario())
 
 
+def test_a_question_the_house_settles_by_itself_is_withdrawn(ctx):
+    from domotiq.model import Track
+    viola, rosaria = ctx.identities.add("Viola", "person"), ctx.identities.add("Rosaria", "person")
+    options = [{"value": i.id, "label": {"it": i.name, "en": i.name}} for i in (viola, rosaria)]
+    cid = ctx.house.ask({"it": "In soggiorno c'è Viola o Rosaria?", "en": "Is it Viola or Rosaria?"}, options,
+                        {"kind": "who", "track": "t-1"})
+    ctx.house.update_tracks([Track("t-1", *LIVING, category="person", identity=viola.id, uncertain=True)])
+    assert cid in ctx.house.confirmations                     # still in doubt
+    ctx.house.update_tracks([Track("t-1", *LIVING, category="person", identity=rosaria.id)])
+    assert cid not in ctx.house.confirmations                 # Viola was recognized elsewhere: it is Rosaria
+
+
 def test_both_but_one_is_seen_somewhere_else(ctx):
     async def scenario():
         from domotiq.model import Track
@@ -319,7 +331,7 @@ def test_a_long_answer_is_understood_by_the_language_model(ctx):
 
 
 # ------------------------------------------------------------------ the buttons and the voice
-def test_the_buttons_light_up_while_listening_and_breathe_while_thinking(ctx, monkeypatch):
+def test_the_buttons_blink_while_listening_and_breathe_while_thinking(ctx, monkeypatch):
     from domotiq import activities
     monkeypatch.setattr(activities, "BREATH_STEP_S", 0.01)
     sent = []
@@ -331,7 +343,7 @@ def test_the_buttons_light_up_while_listening_and_breathe_while_thinking(ctx, mo
 
     async def scenario():
         await a.update_leds(listening=True)
-        assert sent[-1] == (7, 0)                           # all three while the house listens
+        assert sent[-1] == (7, 7)                           # all three blinking while the house listens
         await a.thinking(True)
         await asyncio.sleep(0.08)
         breath = [m for m, _ in sent[1:]]
