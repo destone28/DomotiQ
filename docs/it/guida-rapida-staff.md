@@ -55,7 +55,7 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 - **Diagnostica**: moduli, scansione I2C, **Prova audio**, **Prova microfono (3 s)**, registri.
 - **Impostazioni**: luminosità e durate, password del Wi-Fi, **Usa l'ora di questo telefono**, backup, cestino, riavvio dell'app, riavvio e spegnimento della scheda.
 - **Comandi → Fai dire alla casa**; **Comandi → Fai una domanda** (la casa chiede qualcosa a un personaggio e se lo segna); **Simulazione** accesa e spenta.
-- **Impostazioni → Voce → Attivazione con la parola chiave**: detta la parola (per esempio *Casa*), i LED lampeggiano subito e la casa ascolta come con Parla. Si può dire tutto di fila: "Casa, accendi la luce in cucina".
+- **Impostazioni → Voce → Attivazione con la parola chiave**: detta la parola (per esempio *Casa*), i LED lampeggiano subito e, se non continui, la casa risponde "Dimmi!" e ascolta come con Parla. Si può anche dire tutto di fila: "Casa, accendi la luce in cucina".
 - **Allarme**: riquadro in fondo alla pagina **Casa**, **Inserisci** / **Disinserisci**.
 
 Guida completa: `docs/it/` nel repository.

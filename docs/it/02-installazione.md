@@ -149,7 +149,7 @@ bash scripts/release.sh casa1 --install    # then run install.sh on the board (n
 
 `release.sh` copia la cartella di lavoro del PC in `~/domotiq` sulla scheda con `rsync` via SSH (usando l'alias `casa1` creato da `add-pc.sh`), poi riavvia `domotiq`. Lascia fuori quello che git ignora e quello che appartiene alla scheda: `.git`, `venv`, `piper-venv`, `models`, `var` e `llama.cpp`. Per questo la scheda non ha bisogno di git. La copia rispecchia il PC: un file di codice modificato solo sulla scheda viene sovrascritto o cancellato. Fa eccezione `models/voice-cache/`, le frasi fisse della voce preparate in anticipo: se c'è sul PC, viene copiata anche quella.
 
-**Le frasi della voce preparate in anticipo.** Le frasi fisse (235) si sintetizzano una volta con `scripts/voice_cache.py` e si danno a ogni casa, così la prima accensione non aspetta Piper:
+**Le frasi della voce preparate in anticipo.** Le frasi fisse (oggi 239) si sintetizzano una volta con `scripts/voice_cache.py` e si danno a ogni casa, così la prima accensione non aspetta Piper:
 
 ```bash
 venv/bin/python scripts/voice_cache.py                   # sulla scheda, con il suo Piper (circa 13 minuti)

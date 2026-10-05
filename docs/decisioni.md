@@ -429,3 +429,12 @@ Il dubbio "Honda Civic o Mister Blu?" veniva invece da due personaggi dello stes
 - "Ambrogio, dov'è l'Honda Civic?" riceveva "Mmm, di questo non mi hanno detto niente...". Nel registro il riconoscimento libero aveva trascritto "dovevo music"; il modello vocale italiano conosce sia "honda" sia "civic", quindi l'elenco dei nomi le può sentire.
 - Piper leggeva "Mmm" come "emme emme emme".
 
+### D-56 — Dopo la parola di attivazione la casa risponde subito (5/10)
+**Scelta:**
+- **Mezzo secondo per continuare.** Se dopo la parola, entro 0,45 secondi, non segue niente di forte almeno quanto il 40% della parola, la casa dice subito una frase brevissima già in memoria ("Dimmi!", "Sì, dimmi!", "Eccomi!") e ascolta.
+- **Niente attesa della conferma.** La conferma del riconoscimento libero non si aspetta più quando la parola è stata sentita con sicurezza (almeno 0,6).
+- **LED continui.** I LED lampeggiano dalla parola alla risposta senza spegnersi.
+- **Frase detta di seguito.** "Ambrogio, accendi la luce" detto di seguito resta una richiesta sola.
+
+**Perché:** richiesta di Emilio. Prima la casa aspettava 1,5 secondi di silenzio, poi il risultato del riconoscimento libero, poi diceva "Dimmi, di cosa hai bisogno?", che dura circa due secondi. Chi chiamava la casa non sapeva quando parlare e ripeteva la domanda. Il confronto con il volume della parola distingue la sua coda, che si spegne, dalla frase che comincia.
+

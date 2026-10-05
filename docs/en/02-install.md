@@ -149,7 +149,7 @@ bash scripts/release.sh casa1 --install    # then run install.sh on the board (n
 
 `release.sh` copies the working tree of the PC to `~/domotiq` on the board with `rsync` over SSH (the `casa1` alias from `add-pc.sh`), then restarts `domotiq`. It leaves out what git ignores and what belongs to the board: `.git`, `venv`, `piper-venv`, `models`, `var` and `llama.cpp`. The board does not need git for this. The copy mirrors the PC: a code file changed only on the board is overwritten or removed. The exception is `models/voice-cache/`, the fixed sentences of the voice prepared ahead of time: if the PC has it, it is copied too.
 
-**The sentences of the voice prepared ahead of time.** The fixed sentences (235) are synthesized once with `scripts/voice_cache.py` and given to every house, so the first start does not wait for Piper:
+**The sentences of the voice prepared ahead of time.** The fixed sentences (239 today) are synthesized once with `scripts/voice_cache.py` and given to every house, so the first start does not wait for Piper:
 
 ```bash
 venv/bin/python scripts/voice_cache.py                   # on the board, with its own Piper (about 13 minutes)

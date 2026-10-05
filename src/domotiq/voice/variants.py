@@ -176,6 +176,7 @@ KIND_ASK = [("Ah, {noun}! {ask}", "Oh, {noun}! {ask}"), ("Capito, {noun}. {ask}"
             ("Ah, allora {noun}! {ask}", "Oh, so {noun}! {ask}")]
 NONE_OF_ASK = [("Va bene. {ask}", "All right. {ask}"), ("D'accordo. {ask}", "OK. {ask}"), ("Allora: {ask}", "Then: {ask}")]
 THINKING = [("Fammi pensare...", "Let me think..."), ("Vediamo...", "Let me see..."), ("Un attimo...", "One moment...")]
+WAKE_PROMPT = [("Dimmi!", "Yes?"), ("Sì, dimmi!", "Yes, tell me!"), ("Eccomi!", "I'm here!")]   # said at once
 
 # ------------------------------------------------------------------ what happens in the house
 ARRIVE = [

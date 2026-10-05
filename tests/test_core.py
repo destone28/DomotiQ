@@ -471,5 +471,5 @@ def test_sentences_prepared_ahead_of_time_are_read_from_their_folder(tmp_path):
     vc = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(vc)
     said = vc.sentences()
-    assert ("it", "Chi è?") in said and ("en", "Who is it?") in said and ("it", "Dimmi, di cosa hai bisogno?") in said
+    assert ("it", "Chi è?") in said and ("en", "Who is it?") in said and ("it", "Dimmi!") in said
     assert not any("{" in t or "|" in t for _, t in said) and len(said) > 150

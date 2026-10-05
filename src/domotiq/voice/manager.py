@@ -77,8 +77,9 @@ WAKE_GAP_S = 1.2      # not listened for until this long after the house spoke: 
 WAKE_CONFIDENCE = 0.6 # heard alone and less surely than this, it does not wake the house
 WAKE_MAX_S = 60.0     # one opening of the microphone while listening for it, then the next one
 WAKE_PREROLL_S = 2.0  # the audio kept from before the word is caught: what is said right with it is not lost
-WAKE_TAIL_S = 0.3     # the end of the word itself, still being said when it is caught
-WAKE_REST_S = 1.5     # after the word, this long with nothing said: the house asks what is needed
+WAKE_TAIL_S = 0.1     # the end of the word itself, still being said when it is caught
+WAKE_ON = 0.4         # speech after the word: at least this share of how loud the word was (its fading end is less)
+WAKE_REST_S = 0.45    # after the word, this long with nothing said: the house answers at once ("Dimmi!")
 WAKE_END_S = 0.9      # a pause this long after what was said with the word: the request has ended
 WAKE_REQUEST_S = 10.0 # what is said with the word, at most
 
@@ -92,7 +93,7 @@ FREQUENT = {
 for _i, _lang in enumerate(("it", "en")):
     FREQUENT[_lang].append(WELCOME[_lang])
     FREQUENT[_lang] += V.fixed_lines(V.THINKING, V.GIVE_UP, V.LATER, V.NOTHING, V.WAITING, V.WHAT_IS_IT,
-                                     V.NAME_AGAIN, V.CAR_PARKED, V.WHICH_ONES)[_lang]
+                                     V.NAME_AGAIN, V.CAR_PARKED, V.WHICH_ONES, V.WAKE_PROMPT)[_lang]
 
 
 class Voice:
@@ -434,6 +435,8 @@ class Voice:
             chunks.put_nowait((chunk, self.mic.last_level))
 
         ring: deque[bytes] = deque(maxlen=round(WAKE_PREROLL_S * 10))      # chunks of 100 ms
+        levels: deque[float] = deque(maxlen=8)                              # how loud the last ones were
+        loud = 0.02
         held, free, sure, named = False, None, 0.0, None
         feeds: list[asyncio.Future] = []
         spot_feeds: list[asyncio.Future] = []
@@ -460,6 +463,7 @@ class Voice:
                     if not self._wake_free():
                         break                               # Talk, a question, the house speaking: it comes first
                     ring.append(chunk)
+                    levels.append(level)
                     heard = await loop.run_in_executor(self.pool, spot.feed_partial, chunk)
                     if f" {phrase} " not in f" {spoken(heard, lang)} ":
                         continue
@@ -467,6 +471,7 @@ class Voice:
                         break
                     await self.busy.acquire()
                     held = True
+                    loud = max(0.02, WAKE_ON * max(levels, default=0.0))       # speech after the word
                     # caught: the house shows at once that it listens, and nothing else starts talking
                     self.ctx.bus.publish("listening", on=True)
                     await self.ctx.actions.update_leds(listening=True)
@@ -482,7 +487,8 @@ class Voice:
                 if named is not None:
                     spot_feeds.append(loop.run_in_executor(self.pool_free, named.feed, chunk))
                 after += 0.1
-                if level > 0.02 and after > WAKE_TAIL_S:
+                # the request has started when something as loud as the word follows it; then any speech goes on
+                if level > (0.02 if speech else loud) and after > WAKE_TAIL_S:
                     speech, quiet = True, 0.0
                 else:
                     quiet += 0.1
@@ -500,6 +506,11 @@ class Voice:
             self._wake_idle.set()
         if not held:
             return False, ""
+        if not speech and sure >= WAKE_CONFIDENCE:
+            # the word alone, heard surely: the house answers at once, with no wait for the free recognizer (what
+            # it was given is left to finish on its own), and the LEDs go on blinking until it speaks
+            log.info("word of activation, alone")
+            return True, ""
         try:
             self.ctx.bus.publish("listening", on=False)
             await self.ctx.actions.update_leds()
@@ -548,7 +559,7 @@ class Voice:
             text = rest if len(words) >= 2 or (words and parse(rest, self._names()) is not None) else ""
             spotted = self._wake_spotted if text else None
             if not text:
-                await self.reply("Dimmi, di cosa hai bisogno?", "Yes? What do you need?")
+                await self.reply(*V.pick("wake", V.WAKE_PROMPT))   # short and ready in memory: said at once
                 text, _, audio = await self._listen(None, max_s=8.0, auto_end=True, hold=self.chatter._speaking,
                                                     echo=ECHO_S, names=True)
                 if not text:

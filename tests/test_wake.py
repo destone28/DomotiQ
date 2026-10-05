@@ -8,8 +8,12 @@ from __future__ import annotations
 import asyncio
 from types import SimpleNamespace
 
+from domotiq.voice import variants as V
 from domotiq.voice.intents import spoken
 from test_offers import KITCHEN, ctx, place, script  # noqa: F401 - the fixture
+
+
+PROMPTS = {it for it, _ in V.WAKE_PROMPT}
 
 
 def test_numbers_in_the_word_are_said_in_words():
@@ -56,7 +60,7 @@ def test_the_word_does_what_talk_does(ctx):
         assert handled == ["che ore sono"] and not ctx.said
         script(ctx, ["accendi la luce in cucina"])
         await v._woken("")                                     # "Casa": the house asks, then listens
-        assert ctx.said[-1] == "Dimmi, di cosa hai bisogno?" and handled[-1] == "accendi la luce in cucina"
+        assert ctx.said[-1] in PROMPTS and handled[-1] == "accendi la luce in cucina"
     asyncio.run(scenario())
 
 
@@ -153,12 +157,16 @@ def test_the_word_lights_the_leds_at_once_and_the_request_said_with_it_is_heard(
         # blinking as soon as the word is heard (the 4th chunk), long before the sentence ends
         blink = log.index(("leds", 7, 7))
         assert max(e[1] for e in log[:blink] if e[0] == "chunk") <= 5
-        # a pause after the word, and then the request: still heard
+        # a short pause after the word, and then the request: still heard
         log.clear()
-        v.mic = _Mic(_said("casa", pause=8, then=("che", "ore", "sono")), log)
+        v.mic = _Mic(_said("casa", pause=2, then=("che", "ore", "sono")), log)
         assert await v._wake_listen("casa") == (True, "che ore sono")
         v.busy.release()
         await ctx.actions.thinking(False)
+        # a longer one: the house does not keep you waiting, it answers ("Dimmi!") and listens
+        v.mic = _Mic(_said("casa", pause=8, then=("che", "ore", "sono")), log)
+        assert await v._wake_listen("casa") == (True, "")
+        v.busy.release()
         # the word alone: the house asks what is needed
         v.mic = _Mic(_said("casa", quiet=25), log)
         assert await v._wake_listen("casa") == (True, "")
@@ -184,7 +192,7 @@ def test_after_the_word_the_house_is_already_taken(ctx):
         assert handled == [("che ore sono", True)] and not v.busy.locked()
         script(ctx, ["spegni la luce"])
         await v._woken("ehm")                                  # a noise after the word: not a request
-        assert ctx.said[-1] == "Dimmi, di cosa hai bisogno?" and handled[-1] == ("spegni la luce", True)
+        assert ctx.said[-1] in PROMPTS and handled[-1] == ("spegni la luce", True)
     asyncio.run(scenario())
 
 
@@ -234,4 +242,30 @@ def test_a_name_the_free_recognition_gets_wrong_is_heard_by_the_list_of_names(ct
         assert text == "dovevo music"
         await v.handle(text, spotted=v._spotted_for(audio))
         assert ctx.said[-1] == "Honda Civic è in garage."
+    asyncio.run(scenario())
+
+
+def test_the_word_alone_is_answered_at_once(ctx):
+    """"Ambrogio" and nothing after it: the house answers half a second later, without waiting for the free
+    recognizer, and the LEDs never go off in between."""
+    async def scenario():
+        v = ctx.voice
+        log = []
+
+        async def leds(mask, blink=0):
+            log.append(("leds", mask, blink))
+        ctx.mcu.leds = leds
+
+        class Session(_Session):
+            def result(self):
+                if self.grammar is None:
+                    raise AssertionError("the free recognizer is not waited for")
+                return super().result()
+        v.listener = type("L", (_Listener,), {"session": lambda self, lang, grammar=None: Session(grammar)})()
+        v.mic = _Mic(_said("casa", quiet=30), log)
+        assert await v._wake_listen("casa") == (True, "")
+        chunks = [e[1] for e in log if e[0] == "chunk"]
+        assert max(chunks) <= 3 + 1 + 5 + 3                    # the word, then half a second (and a little lag)
+        assert ("leds", 0, 0) not in log                       # still blinking: the house answers next
+        v.busy.release()
     asyncio.run(scenario())
