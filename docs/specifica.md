@@ -321,6 +321,7 @@ Chiunque può rinominare o cancellare. Le cancellazioni vanno in un cestino per 
 ### 10.2 bis Priorità e calcolo (D-50, D-51, D-54)
 - Servizi: `domotiq` CPUWeight 200, `domotiq-tts` 150, `domotiq-llm` 50 (e nice 10); dentro `domotiq` la visione ha nice 5.
 - Riconoscimento vocale su due thread: alle domande della casa l'elenco chiuso e il parlato libero ricevono lo stesso audio insieme.
+- Modello sul processore (D-57): `scripts/llama/arm-nodot.patch` aggiunge a llama.cpp i prodotti scalari Q5_0, Q8_0, Q4_K e Q6_K per i core ARMv8.0 senza SDOT, due righe per due colonne anche con un numero dispari di parole; `domotiq-llm` parte con `-fa off`. Richieste della casa: mediana da 3,41 a 2,18 s. Dettagli e misure in `docs/accelerazione-modello.md`.
 - Scheda grafica (Adreno 702): Vulkan 1.0 con Turnip (llama.cpp ne chiede 1.2), OpenCL 3.0 con Rusticl (llama.cpp supporta solo Adreno con il driver Qualcomm e Intel). Misurata con un prodotto di matrici in OpenCL: circa 4,5 GFLOPS contro 8-10 di due core del processore con la casa accesa. Non usata.
 
 ### 10.3 Riconoscimento
@@ -568,7 +569,7 @@ Backup e ripristino: un file zip dalle impostazioni, con scelta di cosa copiare;
    - fa i controlli (utente, spazio, sistema) e installa i pacchetti di sistema;
    - crea l'ambiente Python con versioni fissate;
    - scarica i modelli con controllo SHA-256 (sono anche allegati alla release);
-   - compila llama.cpp;
+   - compila llama.cpp con `scripts/llama/arm-nodot.patch` (istruzioni per il Cortex-A53, `docs/accelerazione-modello.md`);
    - compila e carica il firmware;
    - `arduino-app-cli properties set default none`, così nessuna app App Lab sostituisce il firmware;
    - configura l'hotspot e genera la password del Wi-Fi;
@@ -636,6 +637,7 @@ firmware/domotiq_mcu/      sketch della MCU
 src/domotiq/               applicazione (web/ = webapp)
 data/                      house.json, frasi, regole e scenari di partenza
 scripts/                   install, release, add-pc, systemd, strumenti di prova
+scripts/llama/             patch di llama.cpp per il Cortex-A53 e strumenti per misurarla
 tests/                     test e sequenze ridotte
 hardware/stl/              gli STL della versione 8, numerati da 01 a 59 (84 file)
 docs/it/, docs/en/         guide
@@ -644,6 +646,7 @@ docs/specifica.md          questo documento
 docs/diario.md             diario di sviluppo
 docs/decisioni.md          decisioni tecniche
 docs/strumenti-e-licenze.md strumenti, librerie, modelli, versioni, licenze
+docs/accelerazione-modello.md le istruzioni del modello per il Cortex-A53, con le misure
 README.md, README.it.md    guida Project Hub (EN, IT)
 LICENSE                    MIT
 LICENSE-DOCS.md            CC-BY-4.0 per documentazione, STL, immagini

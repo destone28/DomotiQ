@@ -271,3 +271,13 @@ In ordine:
 - **Due thread per il riconoscimento vocale** (D-51), **visione a riposo** (D-52), **frasi fisse preparate sul PC** (D-53): 235 frasi in 50 secondi sul PC, copiate su casa1. Dopo il riavvio delle 17:00 le 74 frasi frequenti sono state lette dal disco in mezzo secondo.
 - **Scheda grafica** (D-54): il driver Vulkan arriva alla versione 1.0 (llama.cpp ne chiede 1.2) e il backend OpenCL di llama.cpp accetta solo i driver Qualcomm e Intel. Il prodotto di matrici scritto per la prova arriva a circa 4,5 GFLOPS; due core del processore ne fanno 8-10 con la casa accesa.
 - **"Dov'è l'Honda Civic?"** (D-55): il riconoscimento libero aveva sentito "dovevo music". Ora, sullo stesso audio, un riconoscimento che conosce solo i nomi registrati sente "honda civic", e la casa risponde dov'è l'auto. Tolti anche tutti i "Mmm", che la voce leggeva "emme emme emme".
+
+**Sera, seconda parte (5/10).**
+- **Parola di attivazione** (D-56): detta da sola, la casa risponde subito "Dimmi!" invece di aspettare un secondo e mezzo di silenzio e poi dire una frase lunga.
+- **Il modello più veloce sul processore** (D-57), descritto a parte in `docs/accelerazione-modello.md`. Il file "Q4_K_M" è in gran parte Q5_0. Per Q5_0, Q8_0, Q4_K e Q6_K sono state scritte istruzioni per il Cortex-A53, che non ha il prodotto scalare a 8 bit; ogni passo è stato verificato contro un riferimento in doppia precisione.
+  - Le moltiplicazioni di matrici sono fino a 2 volte più veloci; il modello intero legge 1,65 volte più in fretta (1,34 volte con il contesto delle istruzioni).
+  - Con le 1400 parole di contesto delle istruzioni, la flash attention era il freno più grande: spegnerla ha dato +35% in lettura.
+  - Insieme, le richieste vere della casa passano da 3,41 a 2,18 secondi di mediana.
+- Due prove intermedie sono state scartate dopo le misure:
+  - il quinto bit ricavato con operazioni vettoriali, più lento delle letture dalla tabella;
+  - il contesto a 32 bit, più lento di quello a 16.

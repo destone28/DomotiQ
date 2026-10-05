@@ -43,7 +43,7 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna qu
 |---|---|---|
 | Piper (`piper1-gpl`) 1.8.0 | GPL-3.0 | sintesi vocale; ambiente separato, server HTTP locale, non incluso nel codice |
 | Flask | BSD-3-Clause | serve al server HTTP di Piper (nel suo ambiente) |
-| llama.cpp (`llama-server`), commit 74a7c897 | MIT | modello linguistico; compilato sulla scheda |
+| llama.cpp (`llama-server`), commit 74a7c897 | MIT | modello linguistico; compilato sulla scheda con `scripts/llama/arm-nodot.patch` (MIT, istruzioni per il Cortex-A53, vedi `docs/accelerazione-modello.md`) |
 
 ## Modelli e voci
 | Modello | Licenza | Uso |

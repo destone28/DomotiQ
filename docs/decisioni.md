@@ -438,3 +438,25 @@ Il dubbio "Honda Civic o Mister Blu?" veniva invece da due personaggi dello stes
 
 **Perché:** richiesta di Emilio. Prima la casa aspettava 1,5 secondi di silenzio, poi il risultato del riconoscimento libero, poi diceva "Dimmi, di cosa hai bisogno?", che dura circa due secondi. Chi chiamava la casa non sapeva quando parlare e ripeteva la domanda. Il confronto con il volume della parola distingue la sua coda, che si spegne, dalla frase che comincia.
 
+### D-57 — Le istruzioni del modello scritte per il Cortex-A53; flash attention spenta (5/10)
+**Scelta:**
+- `scripts/llama/arm-nodot.patch` aggiunge a llama.cpp i prodotti scalari per i core ARMv8.0 con NEON e senza SDOT: Q5_0, Q8_0, Q4_K e Q6_K.
+  - Prodotti sommati a 16 bit e allargati una volta.
+  - Il quinto bit di Q5_0 caricato dalla tabella direttamente nei registri.
+  - Le scale dei formati K applicate alle somme parziali.
+  - Due righe per due colonne, anche con un numero dispari di parole.
+- `install.sh` applica la patch al commit provato e ricompila quando la patch cambia.
+- Il servizio `domotiq-llm` parte con `-fa off`. I file delle istruzioni salvate hanno un nome nuovo (`SLOTS_LAYOUT`), perché la memoria del contesto è disposta in un altro modo.
+- Su processori con SDOT, I8MM o SVE llama.cpp resta com'era.
+
+**Perché:** richiesta di Emilio, con miglioramenti da misurare. Misure su casa1 con la casa accesa (dettagli in `docs/accelerazione-modello.md`):
+- **Moltiplicazioni di matrici del modello:**
+  - da 1,07 a 1,40 volte con una parola;
+  - da 1,23 a 2,01 volte con 17 o 64 parole.
+  I risultati sono uguali entro gli arrotondamenti (verificati contro un riferimento in doppia precisione).
+- **Modello intero** (llama-bench, le due librerie alternate): lettura 1,65 volte più veloce senza contesto e 1,34 volte con 1400 parole di contesto, scrittura con il contesto 1,20 volte. La scrittura senza contesto dipende soprattutto dalla memoria: con la casa accesa la differenza resta nel rumore della misura.
+- **Richieste della casa con le frasi vere:** mediana da 3,41 a 2,18 secondi. Ogni parola letta passa da 223 a 146 ms, ogni parola scritta da 295 a 188 ms.
+- **Prima lettura delle quattro istruzioni:** da 730 a 546 secondi.
+
+La flash attention si è rivelata più lenta su questo processore quando il contesto è lungo, come le 1550 parole delle istruzioni dei comandi; il contesto a 32 bit è più lento ancora. Il modello è in gran parte Q5_0 e non Q4_K: la dimensione 896 non è multipla di 256.
+
