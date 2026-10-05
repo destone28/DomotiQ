@@ -17,6 +17,9 @@ Environment=DOMOTIQ_PORT=80
 ExecStart=/home/arduino/domotiq/venv/bin/python -m domotiq
 Restart=always
 RestartSec=2
+# under load the processor goes first to the house (voice and vision), then to the voice synthesis, to the
+# language model last (CPUWeight of domotiq-tts and domotiq-llm); inside, the vision gives way to the voice
+CPUWeight=200
 # the main loop says it is alive every 10 s: stuck for 2 minutes, it is restarted like after a crash
 WatchdogSec=120
 NotifyAccess=main

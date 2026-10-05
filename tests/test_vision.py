@@ -1093,6 +1093,21 @@ def test_after_the_house_could_not_look_a_name_follows_the_figurine(layout):
     assert [t.identity for t in tr.tracks.values()] == ["id-a"] and old.id not in tr.tracks
 
 
+def test_at_rest_a_picture_like_the_last_one_is_not_looked_at_again(engine, renderer):
+    red = Thing(300, 100, "#d03030")
+    ids = [t.id for t in bring(engine, renderer, [red])]          # the last hand around 4.5 s
+    looked, rested = engine.looked, engine.rested
+    tracks = run(engine, renderer, [([red], {})] * 400, t0=8.0)   # 40 s with nothing happening
+    assert [t.id for t in tracks] == ids
+    # 25 s after the last hand, one frame a second is looked at, the others are like it
+    assert engine.rested - rested >= 150 and 180 <= engine.looked - looked <= 240
+    assert engine.status()["rested"] > 0.2
+    looked = engine.looked
+    run(engine, renderer, [([red], {"hands": [Hand(300, 100)]})] * 3, t0=48.0)
+    assert engine.looked - looked == 3                             # a hand: every frame looked at again
+    assert engine.status()["hand"]
+
+
 def test_something_pointed_at_in_the_web_app_becomes_a_presence(engine, renderer):
     """A figurine that appeared with no hand joins the empty house (it may be a light): pointed at on the plan or
     in the picture, it shows again and is followed from then on, and the house does not ask who it is."""

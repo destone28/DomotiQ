@@ -28,6 +28,8 @@ from typing import Any
 from ..model import Identity, Track
 from .link import VisionLink
 
+VISION_NICE = 5     # the vision gives way to the voice of the same service: a frame later is fine, a word late is not
+
 log = logging.getLogger(__name__)
 
 TARGET_FPS = 10.0
@@ -35,9 +37,14 @@ TARGET_FPS = 10.0
 
 # ==================================================================== child
 def child_main(conn, cfg: dict[str, Any]) -> None:
+    import os
     import signal
     # the house stops this process itself; Ctrl+C in a terminal reaches the whole group
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+    try:
+        os.nice(VISION_NICE)
+    except OSError:
+        pass
     logging.basicConfig(level=cfg.get("log_level", logging.INFO),
                         format="%(levelname)s vision: %(message)s")
     import cv2  # noqa: F401  (imported here: the parent does not need it)

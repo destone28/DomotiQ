@@ -12,6 +12,8 @@ User=arduino
 Group=arduino
 WorkingDirectory=/home/arduino/domotiq
 ExecStart=/home/arduino/domotiq/piper-venv/bin/python -m piper.http_server --host 127.0.0.1 --port 5010 -m it_IT-serena-medium --data-dir /home/arduino/domotiq/models/piper
+# after the house, before the language model (see domotiq.service)
+CPUWeight=150
 Restart=always
 RestartSec=3
 NoNewPrivileges=yes

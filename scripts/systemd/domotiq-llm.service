@@ -15,6 +15,8 @@ Group=arduino
 WorkingDirectory=/home/arduino/domotiq
 ExecStart=/home/arduino/domotiq/llama.cpp/build/bin/llama-server -m /home/arduino/domotiq/models/llm/qwen2.5-0.5b-instruct-q4_k_m.gguf --host 127.0.0.1 --port 8081 -c 8192 -t 3 -np 4 --slot-save-path /var/lib/domotiq-llm
 Nice=10
+# last under load (see domotiq.service): it reads its instructions in the background
+CPUWeight=50
 StateDirectory=domotiq-llm
 Restart=always
 RestartSec=5

@@ -80,6 +80,12 @@ RETUNE_DARK, RETUNE_BRIGHT = 0.70, 1.43
 # "hands" seen without a break for this long are no hands: the walls, lit in another way than in the empty house.
 # They do not stop the webcam from being set again, and if the light is close enough they join the empty house
 HAND_STUCK_S = 30.0
+# the house at rest: a picture like the last one looked at, long after the last hand and with the light still, is not
+# looked at again (it costs some 180 ms on the board, the comparison a fraction of a millisecond); one a second always is
+REST_AFTER_S = 25.0
+REST_MAX_S = 1.0
+REST_SIZE = (80, 60)         # the small grey picture compared: each cell is 8 x 8 pixels of the analysed one
+REST_DIFF = 6                # grey levels a cell may change by and still be the same picture
 RETUNE_S = 5.0
 ADOPT_PX = 28            # pointing at something in the web app: the empty house comes back this far around
 RETUNE_EVERY_S = 60.0
@@ -131,6 +137,12 @@ class Engine:
         self._light_at: dict[str, float] = {}     # room -> when the house last changed its light
         self._animated: set[str] = set()           # rooms whose light is animated now
         self.paused = False                        # a party: what is seen is not looked at until it ends
+        self._thumb: np.ndarray | None = None      # the small grey picture of the last frame
+        self._rest_ref: np.ndarray | None = None   # ...and of the last frame looked at
+        self._rest_at = 0.0
+        self.rest_diff = 0.0                       # how much the pictures at rest differ (for the diagnostics)
+        self.rested = 0                            # frames not looked at because nothing had changed
+        self.looked = 0
         self._forget: list[tuple[float, float, float]] = []   # (x, y, until): somebody said nothing is there
         self._fg_since: np.ndarray | None = None   # per pixel: since when it differs from the empty house
         self._session_at = float("-inf")          # when the hands now at work came
@@ -282,6 +294,27 @@ class Engine:
             self.tracker.touch_all()
         self._scan_pending, self._scan_since = True, 0.0
         self._zone, self._ghost = None, None
+
+    def _resting(self, small: np.ndarray, now: float) -> bool:
+        """The house at rest and this picture like the last one looked at: no hand for REST_AFTER_S, no light of the
+        house changing or animated, nothing pending (a scan, a recording), and no cell of the small grey picture
+        changed by more than REST_DIFF. A hand changes it at once; at least one frame a second is looked at."""
+        thumb = cv2.resize(cv2.cvtColor(small, cv2.COLOR_BGR2GRAY), REST_SIZE, interpolation=cv2.INTER_AREA)
+        self._thumb = thumb.astype(np.int16)
+        ref = self._rest_ref
+        if ref is None or ref.shape != self._thumb.shape:
+            return False
+        diff = float(np.abs(self._thumb - ref).max())
+        self.rest_diff = 0.9 * self.rest_diff + 0.1 * diff
+        if self._record or self._scan_pending or now < self._scan_until or now < self._settle_until:
+            return False
+        if now - self._hand_at < REST_AFTER_S or now - self._rest_at >= REST_MAX_S or self._animated:
+            return False
+        if self._light_since or self._clipped_since or self._off_since or self._flooded_since:
+            return False
+        if any(now - t < LIGHT_GLOW_S for t in self._light_at.values()):
+            return False
+        return diff <= REST_DIFF
 
     def _plausible(self, o: Observation, now: float) -> bool:
         """Could this be something standing in the house (whatever put it there)?"""
@@ -543,6 +576,11 @@ class Engine:
             return []
         if self.paused:
             return self.tracks                # the party: the presences as they were, the picture for the live view
+        if self._resting(small, now):
+            self.rested += 1
+            return self.tracks                # nothing has changed since the last frame looked at
+        self.looked += 1
+        self._rest_ref, self._rest_at = self._thumb, now
         if self._scan_pending:
             # what is in sight is taken as it is only once the lights stand still: the microcontroller sends them
             # again at a start, and their glow is no character
@@ -898,6 +936,8 @@ class Engine:
             "gains": self.segmenter.gains if self.segmenter else {},
             "recording": bool(self._record),
             "paused": self.paused,
+            "rest_diff": round(self.rest_diff, 1),
+            "rested": round(self.rested / max(1, self.rested + self.looked), 2),
             "dataset": len(list(self.dataset_dir.glob("*.jpg"))),
         }
 
