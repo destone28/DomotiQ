@@ -971,3 +971,99 @@ def test_a_car_is_asked_about_out_of_the_garage_only_when_certain(layout):
     for k in range(15):
         tr2.update([_blob(540, 300, blue, area=9000.0)], now=200 + 0.2 * k, quiet_s=100)
     assert asked2 == ["garage"]
+
+
+def test_a_name_already_in_the_house_settles_the_doubt(layout):
+    """Rossellina is in the kitchen: the newcomer in the living room that looks like both her and Rosaria can only
+    be Rosaria, and the house does not ask."""
+    ross, rosa, both = _look(45, 50, 30), _look(45, 44, 36), _look(45, 47, 33)
+
+    def house():
+        tr = _tracker(layout, [Identity("id-ross", "Rossellina", signature=list(ross)),
+                               Identity("id-rosa", "Rosaria", signature=list(rosa))])
+        asked = []
+        tr.on_question = lambda t, cands: asked.append(sorted(cands))
+        return tr, asked
+    tr, asked = house()
+    for k in range(10):
+        tr.update([_blob(80, 100, ross)], now=100 + 0.1 * k, quiet_s=100)
+    kitchen = next(iter(tr.tracks.values()))
+    assert kitchen.identity == "id-ross" and not kitchen.uncertain
+    for k in range(20):
+        tr.update([_blob(80, 100, ross), _blob(300, 100, both)], now=101 + 0.1 * k, quiet_s=100)
+    living = next(t for t in tr.tracks.values() if t is not kitchen)
+    assert living.identity == "id-rosa" and not living.uncertain and asked == []
+    # with Rossellina not in the house the same doubt is a real one: the house asks
+    tr, asked = house()
+    for k in range(20):
+        tr.update([_blob(300, 100, both)], now=200 + 0.1 * k, quiet_s=100)
+    assert asked == [["id-rosa", "id-ross"]]
+    # ...and when Rossellina shows up in the kitchen meanwhile, the doubt settles by itself
+    for k in range(10):
+        tr.update([_blob(300, 100, both), _blob(80, 100, ross)], now=203 + 0.1 * k, quiet_s=100)
+    ids = sorted(t.identity for t in tr.tracks.values())
+    assert ids == ["id-rosa", "id-ross"] and not any(t.uncertain for t in tr.tracks.values())
+
+
+def test_the_car_is_never_a_guess_out_of_the_garage(layout):
+    car, blu, between = _look(40, 10, -40), _look(42, 8, -36), _look(41, 9, -38)
+
+    def house():
+        tr = _tracker(layout, [Identity("id-car", "Honda Civic", category="car", signature=list(car)),
+                               Identity("id-blu", "Mister Blu", signature=list(blu))])
+        asked = []
+        tr.on_question = lambda t, cands: asked.append((layout.locate(t.x, t.y), sorted(cands)))
+        return tr, asked
+    # blue, bigger than one figurine (two together, one lying down), in the bedroom: Mister Blu, never the car
+    tr, asked = house()
+    for k in range(20):
+        tr.update([_blob(527, 170, between, area=3000.0)], now=100 + 0.1 * k, quiet_s=100)
+    assert [t.identity for t in tr.tracks.values()] == ["id-blu"] and asked == []
+    # in the garage the same blob may be the car: the house asks
+    tr, asked = house()
+    for k in range(20):
+        tr.update([_blob(540, 300, between, area=3000.0)], now=200 + 0.1 * k, quiet_s=100)
+    assert asked == [("garage", ["id-blu", "id-car"])]
+
+
+def test_something_pointed_at_in_the_web_app_becomes_a_presence(engine, renderer):
+    """A figurine that appeared with no hand joins the empty house (it may be a light): pointed at on the plan or
+    in the picture, it shows again and is followed from then on, and the house does not ask who it is."""
+    run(engine, renderer, [([], {})] * 40)                          # the start: the house is empty
+    thing = Thing(300, 100, "#20a040")
+    asked = []
+    engine.on_question = lambda tr, cands: asked.append(tr.id)
+    tracks = run(engine, renderer, [([thing], {})] * 60, t0=4.0)  # appeared by itself: absorbed, nobody there
+    assert tracks == []
+    got = engine.adopt_at(x_mm=300, y_mm=100, now=10.0)
+    assert got["ok"] and not got["existing"]
+    tracks = run(engine, renderer, [([thing], {})] * 30, t0=10.1)
+    assert [t.id for t in tracks] == [got["track"]] and asked == []
+    assert abs(tracks[0].x - 300) < 15 and abs(tracks[0].y - 100) < 15
+    # pointed at again, in the picture: the same presence
+    u, v = (c / s for c, s in zip(engine.calib.image_of(np.array([[300.0, 100.0]]), 20.0)[0], ANALYSIS))
+    assert engine.adopt_at(u=u, v=v, now=13.5) == {"ok": True, "track": got["track"], "existing": True}
+    # nothing different there from the empty house: nothing to take
+    assert engine.adopt_at(x_mm=80, y_mm=300, now=14.0) == {"ok": False, "error": "nothing"}
+
+
+
+def test_hands_that_never_leave_are_the_light_of_the_hall(engine, renderer):
+    """The room light switched off (0.57 of the empty house on casa1): the walls, lit another way, are big blobs that
+    look like hands, and their edges flicker, so they never stand still. Hands that never leave do not stop the
+    webcam from being set again; with the light of the empty house they join it."""
+    run(engine, renderer, [([], {})] * 40)
+
+    def flickering(i):
+        return [Hand(300 + 6 * (i % 2), 150 + 4 * (i % 3))]
+    for i in range(200):                                     # 20 s: a real hand at work, maybe
+        engine.feed(renderer.render([], hands=flickering(i), brightness=0.6), 10 + i * 0.1)
+    assert engine.status()["hand"] and not engine.retune_wanted(30.0)
+    for i in range(200):                                     # 20 s more: no hand stays that long
+        engine.feed(renderer.render([], hands=flickering(i), brightness=0.6), 30 + i * 0.1)
+    assert engine.status()["brightness"] < 0.7 and engine.retune_wanted(50.0)
+    engine.light_retuned(50.0)
+    # the light of the empty house, and the same "hand": after a while it joins the empty house
+    for i in range(400):
+        tracks = engine.feed(renderer.render([], hands=flickering(i)), 60 + i * 0.1)
+    assert tracks == [] and engine.status()["absorbed"] >= 1 and not engine._stuck

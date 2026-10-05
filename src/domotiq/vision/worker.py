@@ -148,6 +148,7 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
         "reset": lambda p: (lock_file.unlink(missing_ok=True), camera.controls and camera.controls.automatic(),
                             setattr(engine, "light_ok", cfg.get("device") == "synthetic"), engine.reset())[3],
         "capture": lambda p: engine.capture(int(p.get("count", 1))),
+        "adopt": lambda p: engine.adopt_at(p.get("u"), p.get("v"), p.get("x"), p.get("y")),
         "record": lambda p: engine.start_recording(float(p.get("seconds", 60))),
         "export": lambda p: engine.export(),
         "clear_dataset": lambda p: engine.clear_dataset(),
@@ -172,15 +173,18 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                     engine.set_identities([Identity.from_dict(d) for d in msg[1]])
                 elif kind == "assign" and engine.tracker:
                     engine.tracker.assign(msg[1], msg[2])
+                    explicit = len(msg) > 3 and bool(msg[3])
                     # someone said who it is: its colours as seen now teach the house at once, and this look is
                     # one of its poses. Only if it looks like that character, though: an answer about the wrong
-                    # blob (a light, another figurine) must not change what the character looks like
+                    # blob (a light, another figurine) must not change what the character looks like. Chosen in the
+                    # web app on that very presence, a look is kept as a pose even if the light changed it a lot
                     vt = engine.tracker.track(msg[1]) if msg[2] else None
                     ident = engine.tracker.identities.get(msg[2] or "")
                     fits = ident is not None and vt is not None and (
                         not len(ident.signature) or engine.tracker.fits_pose(ident, vt.sig))
-                    if fits and vt.obs is not None and len(ident.signature):
-                        engine.tracker.add_pose(ident, vt.sig, vt.obs.area_mm2, vt.obs.elongation)
+                    if ident is not None and vt is not None and vt.obs is not None and len(ident.signature) and (
+                            fits or explicit):
+                        engine.tracker.add_pose(ident, vt.sig, vt.obs.area_mm2, vt.obs.elongation, taught=not fits)
                     sig = engine.track_signature(msg[1]) if fits else None
                     if sig:
                         conn.send(("taught", {msg[2]: sig[0]}, engine.learned_sizes(msg[2])))
@@ -432,8 +436,9 @@ class VisionProcess(VisionLink):
     def quality(self, track_id: str) -> list[dict[str, str]]:
         return self._call("query", "quality", track_id, 5.0) or []
 
-    def assign(self, track_id: str, identity: str | None) -> None:
-        self._send("assign", track_id, identity)
+    def assign(self, track_id: str, identity: str | None, explicit: bool = False) -> None:
+        """`explicit`: chosen in the web app on that very presence (its look is learned even if unusual)."""
+        self._send("assign", track_id, identity, explicit)
 
     def forget_identity(self, identity: str) -> None:
         self._send("forget", identity)

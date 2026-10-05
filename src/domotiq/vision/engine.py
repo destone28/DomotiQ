@@ -73,10 +73,15 @@ LYING_ELONGATION, VIVID_CHROMA, VIVID_DARKER = 6.5, 20.0, 15.0
 BEFORE_HAND_S = 0.5      # different from the empty house since before the hand came: it was already there
 HOLE_DIFF = 30.0         # as close as this to the empty house as it was saved (sum over the channels): a hole
 # The light of the hall: the webcam is set again on what it sees when the picture stays this much darker or
-# brighter than the empty house for RETUNE_S, with no hand and no light of the house just changed. The
-# empty house and the presences stay as they are: nothing moved, so nothing is born and nothing leaves.
-RETUNE_DARK, RETUNE_BRIGHT = 0.55, 1.8
+# brighter than the empty house as it was saved for RETUNE_S, with no hand and no light of the house just changed.
+# The empty house and the presences stay as they are: nothing moved, so nothing is born and nothing leaves.
+# Measured on casa1: the room light switched off gives 0.45-0.57; the scenes of the house (cinema, night) 0.95.
+RETUNE_DARK, RETUNE_BRIGHT = 0.70, 1.43
+# "hands" seen without a break for this long are no hands: the walls, lit in another way than in the empty house.
+# They do not stop the webcam from being set again, and if the light is close enough they join the empty house
+HAND_STUCK_S = 30.0
 RETUNE_S = 5.0
+ADOPT_PX = 28            # pointing at something in the web app: the empty house comes back this far around
 RETUNE_EVERY_S = 60.0
 NO_HAND_S = 1.0          # a difference that appeared this long after the last hand is light, never a presence
 COCO_CLASSES = ["person", "dog", "cat", "animal", "car", "object"]
@@ -113,6 +118,8 @@ class Engine:
         self.light_ok = True                       # the worker clears it while the webcam light is not set
         self.blur_private = True                   # the bathroom blurred in the images that leave the board
         self._hand_at = float("-inf")              # the last frame with a hand over the house
+        self._hands_since = 0.0                    # since when hands have been seen without a break
+        self._stuck = False                        # those "hands" have been there too long to be hands
         self._zone: np.ndarray | None = None       # where the hands have been since the last births
         self._scan_pending = True
         self._scan_until = 0.0
@@ -153,7 +160,7 @@ class Engine:
         """The picture has stayed much darker or brighter than the empty house, with no hand and no light of
         the house just changed: the webcam must be set again."""
         return (self.ready and self.light_ok and bool(self._off_since) and now - self._off_since >= RETUNE_S
-                and now - self._hand_at >= RETUNE_S and now - self._retuned_at >= RETUNE_EVERY_S
+                and (now - self._hand_at >= RETUNE_S or self._stuck) and now - self._retuned_at >= RETUNE_EVERY_S
                 and not self._animated and all(now - t >= LIGHT_GLOW_S for t in self._light_at.values()))
 
     def light_retuned(self, now: float) -> None:
@@ -162,6 +169,7 @@ class Engine:
         self.retunes += 1
         self._retuned_at = now
         self._off_since = self._clipped_since = 0.0
+        self._hands_since, self._stuck = 0.0, False
         self._settle_until = now + LIGHT_FREEZE_S
         if self.segmenter:
             self.segmenter.light_changed(self.segmenter.region_names, now, LIGHT_FREEZE_S)
@@ -195,6 +203,49 @@ class Engine:
             seg.absorb(small, where & (seg.mask > 0))
             self.absorbed += 1
         return keep
+
+    def adopt_at(self, u: float | None = None, v: float | None = None, x_mm: float | None = None,
+                 y_mm: float | None = None, now: float | None = None) -> dict[str, Any]:
+        """Somebody points at something the house does not follow (in the picture, `u` and `v` from 0 to 1, or on the
+        plan, in mm): around that point the empty house comes back as it was saved, so what had joined it there (a
+        figurine the house did not recognize) shows again, and what differs from it becomes a presence."""
+        now = time.time() if now is None else now
+        seg = self.segmenter
+        if not self.ready or self.frame is None or self.tracker is None or seg is None:
+            return {"ok": False, "error": "not_ready"}
+        if x_mm is not None and y_mm is not None:
+            px, py = (float(c) for c in self.calib.image_of(np.array([[float(x_mm), float(y_mm)]]), 20.0)[0])
+        elif u is not None and v is not None:
+            px, py = float(u) * ANALYSIS[0], float(v) * ANALYSIS[1]
+        else:
+            return {"ok": False, "error": "where"}
+
+        def under(o: Observation, margin: float) -> bool:
+            x, y, w, h = o.bbox
+            return x - margin <= px <= x + w + margin and y - margin <= py <= y + h + margin
+        for t in self.tracker.tracks.values():
+            if t.obs is not None and not t.carried and under(t.obs, 6):
+                return {"ok": True, "track": t.id, "existing": True}
+        if self._empty0 is not None:
+            region = np.zeros(seg.reference_bgr.shape[:2], np.uint8)
+            cv2.circle(region, (int(round(px)), int(round(py))), ADOPT_PX, 1, -1)
+            region = (region > 0) & (seg.mask > 0)
+            if region.any():
+                seg.reference_bgr[region] = self._empty0[region]
+                ys, xs = np.nonzero(region)
+                seg._reference_changed((int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1))
+        # where somebody said "nothing there" a while ago is not forgotten any more
+        cx, cy = (float(c) for c in self.calib.to_floor(np.array([[px, py]]))[0]) if x_mm is None else (x_mm, y_mm)
+        self._forget = [f for f in self._forget if np.hypot(f[0] - cx, f[1] - cy) >= FORGET_MM]
+        obs, _fg, _lab = seg.process(self.frame, now)
+        near = [o for o in obs if not o.hand and under(o, 12)]
+        if not near:
+            return {"ok": False, "error": "nothing"}
+        o = min(near, key=lambda o: float(np.hypot(o.center_px[0] - px, o.center_px[1] - py)))
+        t = self.tracker.adopt(o, now, pointed=True)
+        if t is None:
+            return {"ok": False, "error": "nothing"}
+        return {"ok": True, "track": t.id, "existing": False}
 
     def together(self, track_id: str, identities: list[str], now: float | None = None) -> None:
         """Somebody said that what the house sees there is these characters, touching: all of them are there."""
@@ -247,6 +298,28 @@ class Engine:
             return False
         chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
         return chroma_d >= BIRTH_CHROMA or light_d <= -BIRTH_DARKER or light_d >= BIRTH_LIGHTER
+
+    def _light_ratio(self, small: np.ndarray) -> float:
+        """How bright the picture is against the empty house as it was saved (the light the webcam was set for)."""
+        seg = self.segmenter
+        ref = self._empty0 if self._empty0 is not None else seg.reference_bgr
+        level = cv2.mean(small, mask=seg.mask)[:3]
+        ref_level = cv2.mean(ref, mask=seg.mask)[:3]
+        return (sum(level) + 3.0) / (sum(ref_level) + 3.0)
+
+    def _absorb_stuck(self, small: np.ndarray, hands: np.ndarray) -> None:
+        seg = self.segmenter
+        keep = np.zeros(hands.shape, bool)
+        for t in self.tracker.tracks.values() if self.tracker else ():
+            if t.obs is not None:
+                x, y, w, h = t.obs.bbox
+                keep[max(0, y - 8):y + h + 8, max(0, x - 8):x + w + 8] = True
+        where = hands & (seg.mask > 0) & ~keep
+        if where.any():
+            seg.absorb(small, where)
+            self.absorbed += 1
+        if self._hand_since is not None:
+            self._hand_since[:] = 0.0
 
     def _fill_hole(self, o: Observation) -> bool:
         """What is seen there is the empty house as it was saved: something that had joined the empty house (a
@@ -465,6 +538,14 @@ class Engine:
         self._still_hands(small, obs, now)
         hands = seg.hand_mask if seg.hand_mask is not None else np.zeros(fg.shape, bool)
         active = bool(hands.any())
+        self._hands_since = (self._hands_since or now) if active else 0.0
+        self._stuck = active and now - self._hands_since >= HAND_STUCK_S
+        if self._stuck and RETUNE_DARK <= self._light_ratio(small) <= RETUNE_BRIGHT:
+            # "hands" that never leave, in a light the webcam need not be set again for: the walls lit another way
+            # than in the empty house. They join it as they look now (what stands there is kept)
+            self._absorb_stuck(small, hands)
+            hands = seg.hand_mask = np.zeros(fg.shape, bool)
+            active, self._stuck, self._hands_since = False, False, 0.0
         if active:
             self._hand_at = now
             if self._zone is None:
@@ -494,15 +575,13 @@ class Engine:
         # most of the house different from the empty one for long: the camera was covered or knocked,
         # or the light changed beyond what the house can follow (a covered camera is just dark: the light
         # correction of the rooms ends at its limit)
-        level = cv2.mean(small, mask=seg.mask)[:3]
-        ref_level = cv2.mean(seg.reference_bgr, mask=seg.mask)[:3]
-        ratio = (sum(level) + 3.0) / (sum(ref_level) + 3.0)
+        ratio = self._light_ratio(small)
         if share > 0.35 or not 0.33 < ratio < 3.0:
             self._flooded_since = self._flooded_since or now
         else:
             self._flooded_since = 0.0
         self._ratio = ratio
-        if (ratio < RETUNE_DARK or ratio > RETUNE_BRIGHT or clipped) and not active:
+        if (ratio < RETUNE_DARK or ratio > RETUNE_BRIGHT or clipped) and (not active or self._stuck):
             self._off_since = self._off_since or now
         else:
             self._off_since = 0.0

@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
+from typing import Iterable
 
 import numpy as np
 
@@ -84,6 +85,8 @@ ELONG_WEIGHT = 0.04
 # registered, and more like it than like anybody else. A look learned on the wrong blob (the LEDs of a board, another
 # character standing close) would make the house see that character everywhere.
 POSE_MAX_SIG, POSE_MARGIN = 0.45, 0.05
+# a look somebody chose in the web app ("this is Rossellina"): learned even if the light changed it a lot
+POSE_TAUGHT_MAX = 0.6
 # Names move only with a hand: a character is never recognized this far from where it was last seen, unless a hand
 # has been over that place since (or carried it); and a named figurine keeps its name while no hand is around.
 PLACE_JUMP_MM = 50.0
@@ -242,21 +245,25 @@ class Tracker:
                 return float(self._unlike_all(sig, area, elong)[k])
         return self._unlike(sig, area, ident, elong)
 
-    def fits_pose(self, ident: Identity, sig: np.ndarray, limit: float = POSE_MAX_SIG) -> bool:
+    def fits_pose(self, ident: Identity, sig: np.ndarray, limit: float = POSE_MAX_SIG, margin: bool = True) -> bool:
         """Can this look be a pose of this character? Coloured like it as registered (within `limit`), more than like
-        anybody else."""
+        anybody else (`margin`; not for a look somebody chose in the web app)."""
         if len(ident.signature) != SIG_LEN or len(sig) != SIG_LEN:
             return False
         own = distance(sig, ident.signature)
         if own > limit:
             return False
-        return not any(o is not ident and len(o.signature) == SIG_LEN and distance(sig, o.signature) < own + POSE_MARGIN
-                       for o in self.identities.values())
+        return not margin or not any(o is not ident and len(o.signature) == SIG_LEN and
+                                     distance(sig, o.signature) < own + POSE_MARGIN for o in self.identities.values())
+
+    def fits_taught(self, ident: Identity, sig: np.ndarray) -> bool:
+        return self.fits_pose(ident, sig, POSE_TAUGHT_MAX, margin=False)
 
     def _forget_wrong_poses(self) -> None:
         """Poses learned on the wrong blob before this check existed are forgotten (and the house keeps the rest)."""
         for ident in self.identities.values():
-            kept = [p for p in ident.poses if p.get("sig") and self.fits_pose(ident, np.asarray(p["sig"], np.float32))]
+            kept = [p for p in ident.poses if p.get("sig") and (
+                self.fits_taught if p.get("taught") else self.fits_pose)(ident, np.asarray(p["sig"], np.float32))]
             if len(kept) != len(ident.poses):
                 ident.poses = kept
                 self.posed.add(ident.id)
@@ -285,6 +292,7 @@ class Tracker:
         self._drop_fragments()
         self._drop_lost(now, frozen, quiet_s)
         self._recognize(now)
+        self._settle_doubts(now)
         self._learn_poses(now)
         self._ask_unknown(now)
         out = []
@@ -515,12 +523,14 @@ class Tracker:
                 continue
             self.add_pose(ident, t.sig, o.area_mm2, o.elongation)
 
-    def add_pose(self, ident: Identity, sig: np.ndarray, area: float, elong: float) -> bool:
-        """One more look of this character, if it can be one (see fits_pose)."""
-        if not self.fits_pose(ident, np.asarray(sig, np.float32)):
+    def add_pose(self, ident: Identity, sig: np.ndarray, area: float, elong: float, taught: bool = False) -> bool:
+        """One more look of this character, if it can be one (see fits_pose; `taught`: chosen in the web app)."""
+        if not (self.fits_taught if taught else self.fits_pose)(ident, np.asarray(sig, np.float32)):
             return False
         pose = {"sig": [round(float(v), 5) for v in sig], "size": round(float(area), 1),
                 "elong": round(float(elong), 2)}
+        if taught:
+            pose["taught"] = True
         poses = list(ident.poses) + [pose]
         if len(poses) > MAX_POSES:
             # forget the pose most like another one: the variety is what helps
@@ -551,7 +561,8 @@ class Tracker:
     def _remember(self, hands: list[Observation], now: float) -> None:
         """Keep the history of where each character was; a hand over a place may have taken what stood there."""
         for t in self.tracks.values():
-            if t.identity and t.obs is not None and not t.carried:
+            if t.identity and t.obs is not None and not t.carried and not t.uncertain:
+                # (a name the house is in doubt about says nothing about where that character is)
                 self.places[t.identity] = (t.x, t.y, now)
                 self._touched.discard(t.identity)
         if not hands:
@@ -712,10 +723,52 @@ class Tracker:
                         if me and len(o.signature) and distance(me.signature, o.signature) < ID_ACCEPT]
         self._ask(t, now)
 
+    def _possible(self, t: VTrack, ids: Iterable[str], now: float) -> list[str]:
+        """The names this track can have. A name is never in two places: not one already recognized somewhere else
+        in the house (unless a hand has been over its place since), not one last seen far from here with no hand
+        there since; and the car only in the garage, or when the house is certain of it."""
+        held = {u.identity for u in self.tracks.values()
+                if u is not t and u.identity and not u.uncertain and not u.carried
+                and (u.obs is not None or u.identity not in self._touched)}
+        car_ok = self.layout.locate(t.x, t.y) == "garage" or (
+            t.obs is not None and t.obs.area_mm2 > FIGURINE_MAX_MM2 and not self._car_out_of_place(t, now))
+        out = []
+        for i in ids:
+            ident = self.identities.get(i)
+            if ident is None or i in held or (i != t.identity and self._elsewhere(i, t)):
+                continue
+            if ident.category == CAR and not car_ok:
+                continue
+            out.append(i)
+        return out
+
+    def _settle(self, t: VTrack, now: float) -> bool:
+        """Of the names it was in doubt between, only one can still be this track: the house takes it without
+        asking (Rossellina is in the kitchen, so the newcomer in the living room is Rosaria). False if the doubt
+        stays."""
+        left = self._possible(t, t.candidates, now)
+        if len(left) > 1:
+            t.candidates = left
+            return False
+        if left:
+            ident = self.identities[left[0]]
+            t.identity, t.category = ident.id, ident.category
+            t.confidence = max(t.confidence, 0.5)
+        t.uncertain, t.candidates = False, []
+        return True
+
+    def _settle_doubts(self, now: float) -> None:
+        for t in self.tracks.values():
+            if t.uncertain and t.candidates:
+                self._settle(t, now)
+
     def _ask(self, t: VTrack, now: float) -> None:
-        if self.on_question and now - t.asked > 30 and t.candidates and not self._car_out_of_place(t, now):
-            t.asked = now
-            self.on_question(t, list(t.candidates))
+        if not self.on_question or now - t.asked <= 30 or not t.candidates or self._car_out_of_place(t, now):
+            return
+        if self._settle(t, now):
+            return                        # only one of them can be here: nothing to ask
+        t.asked = now
+        self.on_question(t, list(t.candidates))
 
     def _car_out_of_place(self, t: VTrack, now: float) -> bool:
         """A car (or something car-sized) out of the garage that the house is not certain of: no question."""
@@ -813,8 +866,16 @@ class Tracker:
             d = cost[i, j] if j is not None else 1.0
             if d >= 1e6:
                 j, d = None, 1.0
+            # names that cannot be this one (recognized elsewhere, last seen elsewhere, the car out of the garage)
+            # do not count, not even to make a doubt
+            ok = set(self._possible(t, (c.id for c in cands), now))
+            if j is not None and cands[j].id not in ok:
+                given = {best_of[i2] for i2 in best_of if i2 != i and cost[i2, best_of[i2]] < ID_ACCEPT_LOOSE}
+                rest = [k for k in range(len(cands)) if cands[k].id in ok and cost[i, k] < 1e6 and k not in given]
+                j = min(rest, key=lambda k: raw[i, k]) if rest else None
+                d = raw[i, j] if j is not None else 1.0
             # twins are told by how much it looks like each of them, whoever holds the name
-            others = sorted(raw[i, k] for k in range(len(cands)) if k != j) if j is not None else []
+            others = sorted(raw[i, k] for k in range(len(cands)) if k != j and cands[k].id in ok) if j is not None else []
             margin = (others[0] - d) if others else 1.0
             loose = d >= ID_ACCEPT
             fits = j is not None and d < ID_ACCEPT_LOOSE and not (loose and margin < ID_MARGIN_LOOSE)
@@ -831,7 +892,7 @@ class Tracker:
                 continue
             t.misses = 0
             ident = cands[j]
-            close = [cands[k].id for k in np.argsort(raw[i]) if raw[i, k] < ID_ACCEPT]
+            close = [cands[k].id for k in np.argsort(raw[i]) if raw[i, k] < ID_ACCEPT and cands[k].id in ok]
             conf = max(0.0, min(1.0, (ID_ACCEPT - d) / ID_ACCEPT * 0.6 + min(margin, 0.3) / 0.3 * 0.4))
             t.votes[ident.id] = t.votes.get(ident.id, 0) + 1
             for k in list(t.votes):
@@ -854,15 +915,23 @@ class Tracker:
             if not ambiguous:
                 t.uncertain, t.candidates = False, []
 
-    def adopt(self, o: Observation, now: float) -> None:
-        """A new track for something that stands out and stays, though no hand was seen putting it down."""
-        if self.suppressed(*self._position(o, o.category_guess), now):
-            return
-        t = VTrack(new_id("t"), *self._position(o, o.category_guess), o, o.sig, o.category_guess,
-                   last_seen=now, since=now, born=self.frame)
+    def adopt(self, o: Observation, now: float, pointed: bool = False) -> VTrack | None:
+        """A new track for something that stands out and stays, though no hand was seen putting it down. `pointed`:
+        somebody pointed at it in the web app: it is there at once, wherever it is, and the house does not ask who it
+        is (that somebody is telling it)."""
+        x, y = self._position(o, o.category_guess)
+        if pointed:
+            self._suppressed = [s for s in self._suppressed if np.hypot(s[0] - x, s[1] - y) > SUPPRESS_MM]
+        elif self.suppressed(x, y, now):
+            return None
+        t = VTrack(new_id("t"), x, y, o, o.sig, o.category_guess, last_seen=now, since=now, born=self.frame)
         self.tracks[t.id] = t
         self._apply(t, o, now)
         o.extra["track"] = t.id
+        if pointed:
+            t.hits, t.shown, t.asked_new = max(t.hits, NEW_HITS), True, now
+            t.presence = 1.0
+        return t
 
     def _ask_unknown(self, now: float) -> None:
         """In sight for a while and recognized as nobody: ask who it is. The registered characters that are

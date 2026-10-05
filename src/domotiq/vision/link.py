@@ -32,7 +32,7 @@ class VisionLink:
     def signature(self, track_id: str) -> tuple[list[float], str] | None:
         return None
 
-    def assign(self, track_id: str, identity: str | None) -> None:
+    def assign(self, track_id: str, identity: str | None, explicit: bool = False) -> None:
         pass
 
     def forget_identity(self, identity: str) -> None:
