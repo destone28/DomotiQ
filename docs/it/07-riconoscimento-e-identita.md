@@ -71,7 +71,7 @@ Chiunque può registrare personaggi, animali, auto e oggetti, in tre modi.
 ### Con il citofono
 
 1. Un visitatore preme **Citofono** sul totem. Suona un campanello e la casa chiede "Chi è?" / "Who is it?".
-2. **Un nome registrato**: "Ciao Marco, entra pure!". La prima statuina che compare dopo il campanello, nei 3 minuti successivi, sul vialetto o in una stanza della casa (non in garage), riceve quel nome, qualunque cosa la webcam l'abbia presa (una statuina sembra spesso un oggetto o un animale) e senza che la casa chieda chi è. Se il nome appartiene a qualcuno che è già dentro, la casa lo dice ("Ma Marco è già in cucina!"). Se la webcam riconosce chiaramente nella statuina che entra qualcun altro, la casa lo dice ("Mmm, a me sembri Sofia, non Marco!") e mantiene l'identità che vede.
+2. **Un nome registrato**: "Ciao Marco, entra pure!". La prima statuina che compare dopo il campanello, nei 3 minuti successivi, sul vialetto o in una stanza della casa (non in garage), riceve quel nome, qualunque cosa la webcam l'abbia presa (una statuina sembra spesso un oggetto o un animale) e senza che la casa chieda chi è. Se il nome appartiene a qualcuno che è già dentro, la casa lo dice ("Ma Marco è già in cucina!"). Se la webcam riconosce chiaramente nella statuina che entra qualcun altro, la casa lo dice ("Ma a me sembri Sofia, non Marco!") e mantiene l'identità che vede.
 3. **Un nome nuovo**: "Ho capito Marco, giusto?" Dopo un *sì*: "Piacere, Marco! Entra dalla porta." La prima statuina che compare dopo il campanello, nei 3 minuti successivi, sul vialetto o in una stanza della casa, diventa Marco, una persona, con i colori che la casa vede, senza altri passaggi e senza domande; anche se la casa le aveva dato un nome di cui non era sicura. Una statuina che la casa riconosce con certezza come qualcun altro non conta, e nemmeno una che era già in casa prima del campanello.
 4. **Un nome non capito**: un secondo tentativo ("Scusa, non ho capito. Chi sei?"), poi "Non ti conosco, ma entra pure: sei un ospite."
 
@@ -139,7 +139,7 @@ Quando è sicura che c'è qualcosa che non riconosce, la casa lo chiede subito, 
 | un comando o una domanda ("che ore sono?") | risponde, poi chiede di nuovo il nome |
 | una battuta o altro | chiede di nuovo il nome; la seconda volta lascia stare |
 
-Le risposte brevi e comuni le capiscono delle regole, all'istante. Le altre frasi le classifica il modello linguistico locale (capitolo 8). Sulla scheda servono da 3 a 6 secondi, e intanto la casa dice "Mmm..." e i tasti respirano.
+Le risposte brevi e comuni le capiscono delle regole, all'istante. Le altre frasi le classifica il modello linguistico locale (capitolo 8). Sulla scheda servono da 3 a 6 secondi, e intanto la casa dice "Fammi pensare..." e i tasti respirano.
 
 - **Dal telefono** si tocca un nome sulla domanda, **Tutti e due** quando i nomi proposti sono più di uno, oppure si sceglie **Uno già noto…** fra tutti i personaggi e gli oggetti che la casa conosce e si tocca **Questo** (il nome si sposta lì da dov'era), oppure si scrive un nome nuovo, si sceglie il tipo e si tocca **Aggiungi**. **Non c'è niente** fa dimenticare alla casa quello che aveva visto.
 - Vale la prima risposta, da uno dei due canali; quando arriva, la casa smette di ascoltare.

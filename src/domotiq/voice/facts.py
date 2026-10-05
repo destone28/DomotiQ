@@ -538,7 +538,7 @@ KNOWN = [("So che {name} {fact}.", "I know that {name} {fact}."),
          ("Ecco cosa so: {name} {fact}.", "Here's what I know: {name} {fact}.")]
 UNKNOWN = [("Non lo so: {name} non me l'ha ancora detto.", "I don't know: {name} hasn't told me yet."),
            ("Di {name} questo non lo so ancora.", "I don't know that about {name} yet."),
-           ("Mmm, {name} non me l'ha mai detto.", "Hmm, {name} has never told me.")]
+           ("Ah, {name} non me l'ha mai detto.", "Oh, {name} has never told me.")]
 NOTED = ("Me lo segno: {name} {fact}.", "I'll remember that: {name} {fact}.")
 
 

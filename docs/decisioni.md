@@ -419,3 +419,13 @@ Il dubbio "Honda Civic o Mister Blu?" veniva invece da due personaggi dello stes
 
 **Perché:** intervento 6. Usarla vorrebbe dire scrivere a mano i calcoli del modello per la scheda grafica, e renderebbero quanto un core del processore. La possibilità di far lavorare insieme processore e scheda grafica resta da valutare con Emilio, dopo l'eventuale accelerazione del modello sul processore.
 
+### D-55 — I nomi sentiti da un riconoscimento che conosce solo loro; niente "Mmm" (5/10)
+**Scelta:**
+- **Un secondo riconoscimento.** Con Parla e con la parola di attivazione, sul secondo thread un riconoscimento ristretto ai nomi registrati (più "[unk]") ascolta lo stesso audio mentre il riconoscimento libero trascrive.
+- **Quando si usa.** Solo se la frase libera non contiene nomi e le regole non la capiscono. Con "dove" o "cerca" diventa "dov'è" quel nome; altrimenti il nome si aggiunge alla frase e la frase si capisce di nuovo.
+- **Niente "Mmm" né "Hmm".** Nessuna frase della casa li contiene più; un'interiezione fatta solo di m e h viene tolta prima della sintesi.
+
+**Perché:** segnalazioni di Emilio:
+- "Ambrogio, dov'è l'Honda Civic?" riceveva "Mmm, di questo non mi hanno detto niente...". Nel registro il riconoscimento libero aveva trascritto "dovevo music"; il modello vocale italiano conosce sia "honda" sia "civic", quindi l'elenco dei nomi le può sentire.
+- Piper leggeva "Mmm" come "emme emme emme".
+

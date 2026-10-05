@@ -112,6 +112,10 @@ class Voice:
         # the free recognition of what is said to a list of words, on another core at the same time
         self.pool_free = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stt-free")
         self._free_heard: tuple[bytes, asyncio.Future] | None = None
+        # the names of the characters heard in the same audio by a recognizer that knows only them: the free one
+        # may miss a name that is no word of the language ("Honda Civic" heard as "dovevo music")
+        self._spotted: tuple[bytes, asyncio.Future] | None = None
+        self._wake_spotted: asyncio.Future | None = None
         self.busy = asyncio.Lock()
         self._talk_stop: asyncio.Event | None = None
         self._talk_task: asyncio.Task | None = None
@@ -253,7 +257,7 @@ class Voice:
     # ================================================================ listening
     async def _listen(self, grammar: list[str] | None, *, stop: asyncio.Event | None = None,
                       max_s: float = 5.0, auto_end: bool = True, hold: Callable[[], bool] | None = None,
-                      echo: float = 0.0) -> tuple[str, float, bytes]:
+                      echo: float = 0.0, names: bool = False) -> tuple[str, float, bytes]:
         """Record and recognize. With `auto_end`, stop after a pause following speech.
 
         With `hold` (the house is still speaking) the microphone is already open while the house ends its
@@ -270,6 +274,10 @@ class Voice:
         # with a list of words the same audio is also recognized freely, at the same time on another core: the
         # answer that is not one of the words ("direi di sì") is ready as soon as it has been said
         free = await loop.run_in_executor(self.pool_free, self.listener.session, lang, None) if grammar else None
+        # with free speech (`names`), the names of the characters are listened for at the same time on that core
+        spot = None
+        if grammar is None and names and self._names():
+            spot = await loop.run_in_executor(self.pool_free, self.listener.session, lang, self._names_grammar())
         stop = stop or asyncio.Event()
         started = loop.time()
         state = {"speech": False, "quiet": 0.0, "opened": None, "held": started}
@@ -291,6 +299,8 @@ class Voice:
             feeds.append(loop.run_in_executor(self.pool, session.feed, chunk))
             if free is not None:
                 free_feeds.append(loop.run_in_executor(self.pool_free, free.feed, chunk))
+            if spot is not None:
+                free_feeds.append(loop.run_in_executor(self.pool_free, spot.feed, chunk))
             if self.mic.last_level > 0.02:
                 state["speech"], state["quiet"] = True, 0.0
             elif state["speech"]:
@@ -313,6 +323,11 @@ class Voice:
                 await asyncio.gather(*free_feeds, return_exceptions=True)
                 return await loop.run_in_executor(self.pool_free, free.result)
             self._free_heard = (audio, asyncio.ensure_future(free_result()))
+        if spot is not None:
+            async def spot_result() -> tuple[str, float]:
+                await asyncio.gather(*free_feeds, return_exceptions=True)
+                return await loop.run_in_executor(self.pool_free, spot.result)
+            self._spotted = (audio, asyncio.ensure_future(spot_result()))
         if state["speech"]:
             await self.ctx.actions.thinking(True)          # something was said: the house works on it
         if feeds:
@@ -332,6 +347,13 @@ class Voice:
         session = await loop.run_in_executor(self.pool, self.listener.session, self.lang, grammar)
         await loop.run_in_executor(self.pool, session.feed, audio)
         return await loop.run_in_executor(self.pool, session.result)
+
+    def _names_grammar(self) -> list[str]:
+        return [n.lower() for n in self._names()]
+
+    def _spotted_for(self, audio: bytes) -> asyncio.Future | None:
+        s = self._spotted
+        return s[1] if s is not None and s[0] is audio else None
 
     def _names(self) -> list[str]:
         out = []
@@ -412,8 +434,10 @@ class Voice:
             chunks.put_nowait((chunk, self.mic.last_level))
 
         ring: deque[bytes] = deque(maxlen=round(WAKE_PREROLL_S * 10))      # chunks of 100 ms
-        held, free, sure = False, None, 0.0
+        held, free, sure, named = False, None, 0.0, None
         feeds: list[asyncio.Future] = []
+        spot_feeds: list[asyncio.Future] = []
+        self._wake_spotted = None
         after = quiet = 0.0
         speech = False
         self._wake_stop = stop
@@ -449,8 +473,14 @@ class Voice:
                     sure = await loop.run_in_executor(self.pool, spot.sureness, phrase)
                     free = await loop.run_in_executor(self.pool, self.listener.session, lang, None)
                     feeds.append(loop.run_in_executor(self.pool, free.feed, b"".join(ring)))
+                    if self._names():
+                        named = await loop.run_in_executor(self.pool_free, self.listener.session, lang,
+                                                           self._names_grammar())
+                        spot_feeds.append(loop.run_in_executor(self.pool_free, named.feed, b"".join(ring)))
                     continue
                 feeds.append(loop.run_in_executor(self.pool, free.feed, chunk))
+                if named is not None:
+                    spot_feeds.append(loop.run_in_executor(self.pool_free, named.feed, chunk))
                 after += 0.1
                 if level > 0.02 and after > WAKE_TAIL_S:
                     speech, quiet = True, 0.0
@@ -475,6 +505,11 @@ class Voice:
             await self.ctx.actions.update_leds()
             await asyncio.gather(*feeds, return_exceptions=True)
             text, _ = await loop.run_in_executor(self.pool, free.result)
+            if named is not None:
+                async def named_result() -> tuple[str, float]:
+                    await asyncio.gather(*spot_feeds, return_exceptions=True)
+                    return await loop.run_in_executor(self.pool_free, named.result)
+                self._wake_spotted = asyncio.ensure_future(named_result())
         except BaseException:
             self.busy.release()
             raise
@@ -511,15 +546,17 @@ class Voice:
             words = rest.split()
             # one word alone after it is a request only if it means something ("Casa, aiuto!"), not a noise
             text = rest if len(words) >= 2 or (words and parse(rest, self._names()) is not None) else ""
+            spotted = self._wake_spotted if text else None
             if not text:
                 await self.reply("Dimmi, di cosa hai bisogno?", "Yes? What do you need?")
                 text, _, audio = await self._listen(None, max_s=8.0, auto_end=True, hold=self.chatter._speaking,
-                                                    echo=ECHO_S)
+                                                    echo=ECHO_S, names=True)
                 if not text:
                     if audio and len(audio) > MIC_RATE:
                         await self.say(answers.not_understood(self.lang))
                     return
-            await self.handle(text)
+                spotted = self._spotted_for(audio)
+            await self.handle(text, spotted=spotted)
         finally:
             if held:
                 self.busy.release()
@@ -552,7 +589,8 @@ class Voice:
                 grammar = None
                 if self.question:
                     grammar = self._question_grammar()
-                text, conf, audio = await self._listen(grammar, stop=stop, max_s=120, auto_end=False)
+                text, conf, audio = await self._listen(grammar, stop=stop, max_s=120, auto_end=False,
+                                                       names=grammar is None)
                 await self._beep("beep_end")
                 if self.question and not text and audio:
                     text, conf = await self._recognize(audio, None)
@@ -560,12 +598,14 @@ class Voice:
                     if audio and len(audio) > MIC_RATE:      # spoke for more than half a second
                         await self.say(answers.not_understood(self.lang))
                     return
-                await self.handle(text)
+                await self.handle(text, spotted=self._spotted_for(audio))
             finally:
                 await self.ctx.actions.thinking(False)
 
     # ================================================================ understanding
-    async def handle(self, text: str) -> None:
+    async def handle(self, text: str, spotted: asyncio.Future | None = None) -> None:
+        """Understand and do what was said. `spotted`: the names of the characters heard in the same audio by a
+        recognizer that knows only them, used when the sentence asks about somebody and names nobody."""
         lang = self.lang
         names = self._names()
         if self.question and await self._answer_question(text):
@@ -576,6 +616,15 @@ class Voice:
         intent = self._in_context(text, intent, names)
         if intent is None:
             intent = self._room_follow_up(text, names)  # "chi c'è in cucina?" ... "e in bagno?"
+        if intent is None and spotted is not None and not find_names(normalize(text), names):
+            who = await self._spotted_names(spotted, names)
+            if who:
+                log.info("name heard by the list of names in %r: %s", text, who[0])
+                if re.search(r"\b(dov\w*|dove|where|cerca|trova|find)\b", normalize(text)):
+                    intent = Intent("where_is", {"name": who[0]}, 0.7, "rules")   # "dovevo music": the car
+                else:
+                    text = f"{text} {who[0]}"
+                    intent = self._in_context(text, parse(text, names), names)
         if intent is None and await self._whose(text, names):
             return                                    # "che lavoro fa?" with nobody named: "Di chi?"
         if intent is None and self.stories.knows(text):
@@ -811,6 +860,14 @@ class Voice:
         """The rules took a short sentence with a name for "where is" ("Marco è medico?"), not "dov'è Marco"."""
         return (intent.name == "where_is" and intent.source == "rules" and intent.confidence < 0.8
                 and len(normalize(text).split()) > len(normalize(intent.args.get("name", "")).split()))
+
+    @staticmethod
+    async def _spotted_names(spotted: asyncio.Future, names: list[str]) -> list[str]:
+        try:
+            heard, _ = await spotted
+        except Exception:  # noqa: BLE001 - no names heard, as if the list had not been listened to
+            return []
+        return find_names(normalize(heard), names) if heard else []
 
     def _room_follow_up(self, text: str, names: list[str]) -> Intent | None:
         """"E in bagno?" a moment after "chi c'è in cucina?": the same question about another room."""
@@ -1185,8 +1242,8 @@ class Voice:
             return
         if sure and track.identity != exp["identity"]:
             seen = self.ctx.identities.name_of(track.identity)
-            self._spawn(self.reply(f"Mmm, a me sembri {seen}, non {exp['name']}!",
-                                   f"Hmm, you look like {seen} to me, not {exp['name']}!"))
+            self._spawn(self.reply(f"Ma a me sembri {seen}, non {exp['name']}!",
+                                   f"But you look like {seen} to me, not {exp['name']}!"))
             self.expect_entrance = None
             return
         if track.virtual:

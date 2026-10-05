@@ -49,7 +49,7 @@ def test_the_word_does_what_talk_does(ctx):
         place(ctx, "Marco", KITCHEN)
         handled = []
 
-        async def handle(text):
+        async def handle(text, **kw):
             handled.append(text)
         v.handle = handle
         await v._woken("che ore sono")                         # "Casa, che ore sono?": all at once
@@ -176,7 +176,7 @@ def test_after_the_word_the_house_is_already_taken(ctx):
         v = ctx.voice
         handled = []
 
-        async def handle(text):
+        async def handle(text, **kw):
             handled.append((text, v.busy.locked()))
         v.handle = handle
         await v.busy.acquire()                                 # taken when the word was heard
@@ -208,4 +208,30 @@ def test_a_list_of_words_and_the_free_recognition_at_the_same_time(ctx):
         v.mic = _Mic(_said("si", quiet=10), [])
         await v._listen(None, max_s=5.0)
         assert len(made) == 3                                               # free speech: one recognizer
+    asyncio.run(scenario())
+
+
+def test_a_name_the_free_recognition_gets_wrong_is_heard_by_the_list_of_names(ctx):
+    """"Dov'è l'Honda Civic?" heard as "dovevo music": the recognizer that knows only the names hears the car."""
+    import time
+
+    async def scenario():
+        v = ctx.voice
+        car = ctx.identities.add("Honda Civic", "car")
+        ctx.sim.add(540, 300, "car", car.id, "#c02020", "Honda Civic")
+        ctx.house.update_tracks(ctx.sim.tracks(), time.time())
+
+        class Session(_Session):
+            def result(self):
+                return ("dovevo music", 0.8) if self.grammar is None else ("honda civic", 0.9)
+
+        class Listener(_Listener):
+            def session(self, lang, grammar=None):
+                return Session(grammar)
+        v.listener = Listener()
+        v.mic = _Mic(_said("dov", "e", "honda", "civic"), [])
+        text, conf, audio = await v._listen(None, max_s=5.0, names=True)
+        assert text == "dovevo music"
+        await v.handle(text, spotted=v._spotted_for(audio))
+        assert ctx.said[-1] == "Honda Civic è in garage."
     asyncio.run(scenario())

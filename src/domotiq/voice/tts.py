@@ -43,12 +43,15 @@ log = logging.getLogger(__name__)
 VOICES = {"it": "it_IT-serena-medium", "en": "en_US-ljspeech-medium"}
 URL = "http://127.0.0.1:5010/synthesize"
 
+# an interjection made of m and h only ("Mmm...", "Hmm,"): the voices spell it out letter by letter
+HUM = (r"(?i)\b(h?m{2,}|hm+)\b[.,!?…]*\s*", "")
+
 UNITS = {
-    "it": [(r"(\d+)[.,](\d)\s*°\s*C?", r"\1 virgola \2 gradi"), (r"(\d+)\s*°\s*C?", r"\1 gradi"),
+    "it": [HUM, (r"(\d+)[.,](\d)\s*°\s*C?", r"\1 virgola \2 gradi"), (r"(\d+)\s*°\s*C?", r"\1 gradi"),
            (r"(\d+)\s*%", r"\1 per cento"), (r"\bWC\b", "vi ci"), (r"\bDomotiQ\b", "Dòmotik"),
            (r"\bUNO Q\b", "uno kiu"), (r"\bOK\b", "okèi"),
            (r"\b[Cc]ome si chiama\?", "[[ kˈome si kjˈaːma? ]]"), (r"\b[Cc]ome si chiama\b", "[[ kˈome si kjˈaːma ]]")],
-    "en": [(r"(\d+)[.,](\d)\s*°\s*C?", r"\1 point \2 degrees"), (r"(\d+)\s*°\s*C?", r"\1 degrees"),
+    "en": [HUM, (r"(\d+)[.,](\d)\s*°\s*C?", r"\1 point \2 degrees"), (r"(\d+)\s*°\s*C?", r"\1 degrees"),
            (r"(\d+)\s*%", r"\1 percent"), (r"\bDomotiQ\b", "Domotic"), (r"\bUNO Q\b", "Uno Q")],
 }
 

@@ -164,7 +164,7 @@ WHAT_IS_IT = [
 ]
 NOT_A_NAME = [
     ("Scusa, mi serve il nome. {ask}", "Sorry, I need the name. {ask}"),
-    ("Mmm, non era un nome. {ask}", "Hmm, that wasn't a name. {ask}"),
+    ("Scusa, non era un nome. {ask}", "Sorry, that wasn't a name. {ask}"),
     ("Non ho capito il nome. {ask}", "I didn't catch the name. {ask}"),
 ]
 AFTER_COMMAND = [
@@ -175,7 +175,7 @@ YES_ASK = [("Bene! {ask}", "Good! {ask}"), ("Perfetto! {ask}", "Great! {ask}"), 
 KIND_ASK = [("Ah, {noun}! {ask}", "Oh, {noun}! {ask}"), ("Capito, {noun}. {ask}", "I see, {noun}. {ask}"),
             ("Ah, allora {noun}! {ask}", "Oh, so {noun}! {ask}")]
 NONE_OF_ASK = [("Va bene. {ask}", "All right. {ask}"), ("D'accordo. {ask}", "OK. {ask}"), ("Allora: {ask}", "Then: {ask}")]
-THINKING = [("Mmm...", "Hmm..."), ("Vediamo...", "Let me see..."), ("Un attimo...", "One moment...")]
+THINKING = [("Fammi pensare...", "Let me think..."), ("Vediamo...", "Let me see..."), ("Un attimo...", "One moment...")]
 
 # ------------------------------------------------------------------ what happens in the house
 ARRIVE = [

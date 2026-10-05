@@ -71,7 +71,7 @@ Anyone can register characters, pets, cars and objects, in three ways.
 ### With the intercom
 
 1. A visitor presses **Intercom** on the totem. A doorbell rings and the house asks "Chi è?" / "Who is it?".
-2. **A registered name**: "Hi Marco, come on in!". The first figurine that appears after the bell, in the next 3 minutes, on the driveway or in a room of the house (not the garage), gets that name, whatever the camera took it for (a figurine often looks like an object or an animal to it), and the house does not ask who it is. If the name belongs to someone already inside, the house says so ("But Marco is already in the kitchen!"). If the camera clearly recognizes the figurine that comes in as somebody else, the house says it ("Hmm, you look like Sofia to me, not Marco!") and keeps the identity it sees.
+2. **A registered name**: "Hi Marco, come on in!". The first figurine that appears after the bell, in the next 3 minutes, on the driveway or in a room of the house (not the garage), gets that name, whatever the camera took it for (a figurine often looks like an object or an animal to it), and the house does not ask who it is. If the name belongs to someone already inside, the house says so ("But Marco is already in the kitchen!"). If the camera clearly recognizes the figurine that comes in as somebody else, the house says it ("But you look like Sofia to me, not Marco!") and keeps the identity it sees.
 3. **A new name**: "I heard Marco, right?" After a *yes*: "Nice to meet you, Marco! Come in through the door." The first figurine that appears after the bell, in the next 3 minutes, on the driveway or in a room of the house, becomes Marco, a person, with the colours the house sees, with no further step and no question; even if the house had given it a name it was not sure of. A figurine the house recognizes for sure as somebody else does not count, and neither does one that was in the house before the bell.
 4. **A name not understood**: a second try ("Sorry, I didn't catch that. Who are you?"), then "I don't know you, but come in: you're a guest."
 
@@ -139,7 +139,7 @@ When it is sure there is something it does not recognize, the house asks at once
 | a command or a question ("what time is it?") | answers it, then asks the name again |
 | a joke or anything else | asks the name again; the second time it lets it go |
 
-Short, common answers are understood by rules, at once. Any other sentence is classified by the local language model (chapter 8). On the board that takes 3 to 6 seconds, and meanwhile the house says "Hmm..." and the buttons breathe.
+Short, common answers are understood by rules, at once. Any other sentence is classified by the local language model (chapter 8). On the board that takes 3 to 6 seconds, and meanwhile the house says "Let me think..." and the buttons breathe.
 
 - **From a phone**, tap a name on the question, **Both** when more than one name is proposed, or pick **Someone already known…** among all the characters and objects the house knows and tap **This one** (the name moves there from wherever it was), or type a new name, choose the kind and tap **Add**. **Nothing there** makes the house forget what it saw.
 - The first answer wins, from either; when it arrives, the house stops listening.

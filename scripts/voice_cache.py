@@ -94,6 +94,7 @@ def main() -> int:
     ap.add_argument("--url", default=URL, help="the Piper HTTP server (default %(default)s)")
     ap.add_argument("--out", default=str(ROOT / "models" / "voice-cache"), help="the folder to fill")
     ap.add_argument("--list", action="store_true", help="only print the sentences")
+    ap.add_argument("--prune", action="store_true", help="also remove the files of sentences no longer said")
     args = ap.parse_args()
     todo = sentences()
     if args.list:
@@ -120,7 +121,15 @@ def main() -> int:
             print(f"failed: {lang} {text!r}: {e}", file=sys.stderr)
         if k % 25 == 0:
             print(f"{k}/{len(todo)}", file=sys.stderr)
-    print(f"{made} synthesized, {kept} already there, {failed} failed, in {time.monotonic() - start:.0f} s: {out}")
+    removed = 0
+    if args.prune:
+        want = {speaker._name(lang, normalize(text, lang)) for lang, text in todo}
+        for f in out.glob("*.wav"):
+            if f.name not in want:
+                f.unlink()
+                removed += 1
+    print(f"{made} synthesized, {kept} already there, {failed} failed, {removed} removed, "
+          f"in {time.monotonic() - start:.0f} s: {out}")
     return 1 if failed else 0
 
 
