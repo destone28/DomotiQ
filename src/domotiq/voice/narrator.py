@@ -15,6 +15,10 @@ with the character), and each is said in one of several ways (variants.py).
 On the bed or the sofa the house says so ("Ecco Viola sul letto della
 camera!"); on a table, a bench, the fridge and the other furniture it tells
 the character to get down at once.
+
+What it has said about a character it does not say again while that
+character stays where it was (a figurine seen again after a shadow, its
+name found again, the edge of the bed): only a real move is news.
 """
 
 from __future__ import annotations
@@ -32,6 +36,7 @@ if TYPE_CHECKING:
 SETTLE_S = 1.2           # a move is told once the character has stayed this long in its new room
 STALE_S = 12.0           # a line that could not be said for this long is dropped
 MAX_LINES = 3            # said together at most
+REPEAT_S = 600.0         # a character still where the house last said it is is not told again for this long
 OUTSIDE = ("outside", "driveway", None)
 
 
@@ -42,6 +47,7 @@ class Narrator:
         self._moves: dict[str, dict[str, Any]] = {}      # track -> the move waiting to settle
         self._lines: list[tuple[float, str, dict[str, str]]] = []   # (when, track, line)
         self._hushed: set[str] = set()     # newcomers just named aloud: the dialogue already said it
+        self._told: dict[str, tuple[tuple, float]] = {}    # name -> ((room, furniture) last said, when)
         bus = self.ctx.bus
         bus.subscribe("room_enter", self._on_enter)
         bus.subscribe("room_exit", self._on_exit)
@@ -142,6 +148,17 @@ class Narrator:
         it, en = V.said_each(f"narrator.{key}", table, {"name": name, **it_values}, {"name": name, **en_values})
         return {"it": it, "en": en}
 
+    def _again(self, name: str | None, where: tuple, now: float) -> bool:
+        """Already said, a moment ago: this character, in this room and on this furniture. Otherwise it is news, and
+        remembered as the last thing said about that character."""
+        if not name:
+            return False
+        last = self._told.get(name)
+        if last is not None and last[0] == where and now - last[1] < REPEAT_S:
+            return True
+        self._told[name] = (where, now)
+        return False
+
     def _add(self, key: str, line: dict[str, str], now: float | None = None) -> None:
         """Queue a line; a newer line about the same character replaces the one not said yet."""
         now = time.monotonic() if now is None else now
@@ -162,8 +179,9 @@ class Narrator:
                         self.ctx.house.where_is(move["identity"]) is not None:
                     continue                           # still in the house (put down elsewhere): no goodbye
                 t = self.ctx.house.tracks.get(track)
-                line = self.line(move, t.on if t is not None and move.get("to") is not None else None)
-                if line:
+                on = t.on if t is not None and move.get("to") is not None else None
+                line = self.line(move, on)
+                if line and not self._again(move.get("name"), (move.get("to"), on), now):
                     self._add(track, line, now)
         self._lines = [x for x in self._lines if now - x[0] < STALE_S]
         if not self._lines or not self._quiet():

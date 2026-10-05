@@ -8,7 +8,10 @@ sends it text over HTTP on the loopback interface and gets WAV audio back.
 Nothing of Piper is imported here.
 
 Sentences that the house says often are synthesized once and kept in memory,
-so "Who is it?" plays at once even while the processor is busy.
+so "Who is it?" plays at once even while the processor is busy. Every
+sentence synthesized is also kept on disk (as Piper sent it, a WAV file named
+after the voice and the text): after a restart it is read back in a moment
+instead of being synthesized again, and the oldest go when there are too many.
 
 A few phrases are given to Piper as phonemes, where the Italian voice would
 swallow a vowel: "Come si chiama?" came out as "Cme s chiama?", because
@@ -18,13 +21,16 @@ the phonemizer reads "si" as a reduced vowel.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import io
 import json
 import logging
+import os
 import re
 import urllib.request
 import wave
 from collections import OrderedDict
+from pathlib import Path
 
 import numpy as np
 
@@ -59,18 +65,71 @@ def _resample(x: np.ndarray, src: int, dst: int) -> np.ndarray:
 
 
 class Speaker:
-    def __init__(self, url: str = URL, cache_size: int = 300) -> None:
+    def __init__(self, url: str = URL, cache_size: int = 300, cache_dir: Path | str | None = None,
+                 disk_max: int = 3000) -> None:
         self.url = url
         self.cache: OrderedDict[tuple[str, str], np.ndarray] = OrderedDict()
         self.cache_size = cache_size
+        self.dir = Path(cache_dir) if cache_dir else None
+        self.disk_max = disk_max
+        self._written = 0
         self.ok = False
         self.errors = 0
+
+    def _file(self, lang: str, text: str) -> Path | None:
+        if self.dir is None:
+            return None
+        key = f"{VOICES.get(lang, VOICES['it'])}\n{text}".encode()
+        return self.dir / f"{hashlib.sha1(key).hexdigest()[:24]}.wav"
+
+    def _from_disk(self, lang: str, text: str) -> np.ndarray | None:
+        f = self._file(lang, text)
+        if f is None:
+            return None
+        try:
+            data = f.read_bytes()
+            samples = self._decode(data)
+            os.utime(f)                         # used: among the last to go
+            return samples
+        except (OSError, ValueError, EOFError, wave.Error):
+            return None
+
+    def _to_disk(self, lang: str, text: str, data: bytes) -> None:
+        f = self._file(lang, text)
+        if f is None:
+            return
+        try:
+            f.parent.mkdir(parents=True, exist_ok=True)
+            tmp = f.with_suffix(".part")
+            tmp.write_bytes(data)
+            os.replace(tmp, f)
+        except OSError as e:
+            log.warning("a sentence could not be kept on disk: %s", e)
+            return
+        self._written += 1
+        if self._written % 50 == 1:
+            self._prune()
+
+    def _prune(self) -> None:
+        """Too many sentences on disk: the ones not said for the longest time go."""
+        try:
+            files = sorted(self.dir.glob("*.wav"), key=lambda p: p.stat().st_mtime)
+            for p in files[:max(0, len(files) - self.disk_max)]:
+                p.unlink(missing_ok=True)
+        except OSError:
+            pass
 
     def _synth(self, text: str, lang: str) -> np.ndarray:
         body = json.dumps({"text": text, "voice": VOICES.get(lang, VOICES["it"])}).encode()
         req = urllib.request.Request(self.url, data=body, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=20) as res:
             data = res.read()
+        samples = self._decode(data)
+        self._to_disk(lang, text, data)
+        return samples
+
+    @staticmethod
+    def _decode(data: bytes) -> np.ndarray:
         with wave.open(io.BytesIO(data)) as w:
             rate = w.getframerate()
             frames = w.readframes(w.getnframes())
@@ -81,16 +140,29 @@ class Speaker:
         # a short pause after each sentence sounds more natural
         return np.concatenate([_resample(x, rate, RATE), np.zeros(int(RATE * 0.12), np.float32)])
 
-    async def synth(self, text: str, lang: str) -> np.ndarray | None:
+    def _keep(self, key: tuple[str, str], samples: np.ndarray) -> None:
+        self.cache[key] = samples
+        while len(self.cache) > self.cache_size:
+            self.cache.popitem(last=False)
+
+    async def synth(self, text: str, lang: str, fresh: bool = False) -> np.ndarray | None:
+        """The audio of a sentence: from memory, from the disk, or from Piper (`fresh`: from Piper, to know that it
+        answers)."""
         text = normalize(text, lang)
         if not text:
             return None
         key = (lang, text)
-        if key in self.cache:
-            self.cache.move_to_end(key)
-            return self.cache[key]
+        loop = asyncio.get_running_loop()
+        if not fresh:
+            if key in self.cache:
+                self.cache.move_to_end(key)
+                return self.cache[key]
+            samples = await loop.run_in_executor(None, self._from_disk, lang, text)
+            if samples is not None:
+                self._keep(key, samples)
+                return samples
         try:
-            samples = await asyncio.get_running_loop().run_in_executor(None, self._synth, text, lang)
+            samples = await loop.run_in_executor(None, self._synth, text, lang)
             self.ok = True
         except (OSError, ValueError, wave.Error) as e:
             if self.ok or self.errors == 0:
@@ -98,26 +170,36 @@ class Speaker:
             self.ok = False
             self.errors += 1
             return None
-        self.cache[key] = samples
-        while len(self.cache) > self.cache_size:
-            self.cache.popitem(last=False)
+        self._keep(key, samples)
         return samples
 
     async def warm(self, sentences: dict[str, list[str]], wait_s: float = 120.0) -> None:
-        """Synthesize the frequent sentences ahead of time, once the Piper service answers.
+        """The frequent sentences ready ahead of time: read back from the disk, and the ones never said yet
+        synthesized once the Piper service answers.
 
         At boot the two services start together and Piper needs a few seconds
-        to load its voice: the first sentence is retried until it works.
+        to load its voice: one short sentence is synthesized, and retried,
+        until it works (so the status tells whether Piper answers).
         """
-        first_lang = next(iter(sentences), "it")
-        first = (sentences.get(first_lang) or ["Ciao"])[0]
         loop = asyncio.get_running_loop()
+        missing = []
+        for lang, lines in sentences.items():
+            for line in lines:
+                text = normalize(line, lang)
+                samples = await loop.run_in_executor(None, self._from_disk, lang, text) if text else None
+                if samples is not None:
+                    self._keep((lang, text), samples)
+                elif text:
+                    missing.append((lang, line))
+        total = sum(len(v) for v in sentences.values())
+        log.info("speech: %d frequent sentences read from the disk, %d to synthesize", total - len(missing),
+                 len(missing))
+        first_lang, first = missing[0] if missing else (next(iter(sentences), "it"), "Ok.")
         end = loop.time() + wait_s
-        while await self.synth(first, first_lang) is None:
+        while await self.synth(first, first_lang, fresh=True) is None:
             if loop.time() > end:
                 return
             await asyncio.sleep(3.0)
         log.info("speech synthesis ready")
-        for lang, lines in sentences.items():
-            for line in lines:
-                await self.synth(line, lang)
+        for lang, line in missing[1:]:
+            await self.synth(line, lang)

@@ -566,3 +566,12 @@ def test_a_quick_answer_is_heard_while_the_house_ends_its_question(ctx):
     assert text == "sì"
     # the house (chunks 0-4) and its echo (0.3 s after) are not in what is recognized; the answer is
     assert fed and fed[0][0] == 7 and audio[0] == 7 and 9 in audio
+
+
+def test_a_word_of_the_list_counts_when_the_free_recognition_gets_it_wrong():
+    from domotiq.voice.chatter import _trusted
+    assert _trusted("gialla", 0.91, "già la")                  # nearly alike, or the list quite sure
+    assert _trusted("sì", 0.84, "si sia")
+    assert not _trusted("sì", 0.84, "")                         # nothing said: maybe a noise
+    assert not _trusted("sì", 0.95, "che bella casa che avete")  # a whole sentence: something else
+    assert not _trusted("mai", 0.5, "ciao")

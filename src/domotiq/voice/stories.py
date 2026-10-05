@@ -131,14 +131,38 @@ def fact_lang(fact: str) -> str | None:
     return "it" if it > en else "en" if en > it else None
 
 
-def as_clause(fact: str) -> str:
-    """A fact that can follow the name: "a doctor" becomes "is a doctor", "un medico" "è un medico"."""
-    fact = fact.strip()
+# a fact typed as a sentence of its own ("Il suo colore preferito è il rosso", "Her best friend is Viola"): it does
+# not follow the name, it is said as it is
+SENTENCE = re.compile(r"^(il suo|la sua|i suoi|le sue|suo|sua|suoi|sue|his|her|their|its)\b", re.I)
+
+
+def as_clause(fact: str, name: str = "") -> str:
+    """A fact that can follow the name: "a doctor" becomes "is a doctor", "un medico" "è un medico"; the name or a
+    pronoun at its start goes ("Lei ama il jazz", "Marco ama il jazz" after "Marco")."""
+    fact = fact.strip().rstrip(".")
+    if name and fact.lower().startswith(name.lower() + " "):
+        fact = fact[len(name):].strip()
+    fact = re.sub(r"^(lui|lei|egli|ella|he|she)\s+", "", fact, flags=re.I)
+    if SENTENCE.match(fact):
+        return fact
     if re.match(r"(a|an|the)\s", fact, re.I):
         return "is " + fact
     if re.match(r"(un|una|il|la|lo)\s|un'|l'", fact, re.I):
         return "è " + fact
     return fact
+
+
+def split_facts(lines: list[str], name: str) -> tuple[list[str], list[str]]:
+    """The facts that follow the name ("ama il jazz"), and those that are sentences of their own ("Il suo colore
+    preferito è il rosso"), each ready to be said."""
+    clauses, sentences = [], []
+    for f in lines:
+        c = as_clause(f, name)
+        if SENTENCE.match(c):
+            sentences.append(c[:1].lower() + c[1:])
+        else:
+            clauses.append(c)
+    return clauses, sentences
 
 
 # words with the ending of a job that are not one ("fa il tifo per la Juve", "è un amante della musica",
@@ -169,6 +193,14 @@ def _cap(text: str) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     text = re.sub(r"\s+([,.;:!?])", r"\1", text)
     return text[:1].upper() + text[1:] if text else text
+
+
+def _about_sentence(name: str, sentence: str, lang: str, how: str) -> str:
+    """A fact typed as a whole sentence ("il suo piatto preferito è la carbonara"), said as it is, in its language:
+    `how` "told" (what somebody told the house) or "know" (what the house knows)."""
+    if lang == "it":
+        return f"Di {name} {'mi hai detto' if how == 'told' else 'so'} che {sentence}."
+    return f"About {name}, {'you told me' if how == 'told' else 'I know'} that {sentence}."
 
 
 def _key(piece: dict[str, Any]) -> str:
@@ -517,22 +549,33 @@ class StoryTeller:
                      else f"I don't know any character called {name}.", lang)]
         p = self.persona(ident)
         out: list[tuple[str, str]] = []
-        told = [as_clause(facts.translated(f, lang) or f) for f in ident.facts]
+        here = self.ctx.house.where_is(ident.id)
+        if here is not None and here.room:
+            where = answers.room(self.ctx, here.room, lang)
+            out.append((_cap(f"{ident.name} è {where}.") if lang == "it" else _cap(f"{ident.name} is {where}."), lang))
+        told, sentences = split_facts([facts.translated(f, lang) or f for f in ident.facts], ident.name)
         mine = [f for f in told if fact_lang(f) in (lang, None)]
         other = [f for f in told if f not in mine]
+        said_mine = [s for s in sentences if fact_lang(s) in (lang, None)]
+        said_other = [s for s in sentences if s not in said_mine]
         if mine:
             out.append((f"Mi hai detto che {ident.name} {answers.join(mine, lang)}." if lang == "it"
                         else f"You told me that {ident.name} {answers.join(mine, lang)}.", lang))
-        if other:
+        for s in said_mine:
+            out.append((_about_sentence(ident.name, s, lang, "told"), lang))
+        if other or said_other:
             other_lang = "en" if lang == "it" else "it"
-            also = {"it": " anche", "en": " also"}[lang] if mine else ""
+            also = {"it": " anche", "en": " also"}[lang] if mine or said_mine else ""
             out.append((f"Me l'hai detto{also} in inglese:" if lang == "it" else f"You{also} told me in Italian:", lang))
-            out.append((_cap(f"{ident.name} {answers.join(other, other_lang)}."), other_lang))
+            if other:
+                out.append((_cap(f"{ident.name} {answers.join(other, other_lang)}."), other_lang))
+            for s in said_other:
+                out.append((_about_sentence(ident.name, s, other_lang, "told"), other_lang))
         items = []
         if ident.category == PERSON and not any(is_job(f) for f in ident.facts):
             items.append(p["job"][lang])
         items += [p["trait"][lang], p["passion"][lang], p["quirk"][lang]]
-        lead = ("E poi so che " if lang == "it" else "And I also know that ") if told else ""
+        lead = ("E poi so che " if lang == "it" else "And I also know that ") if ident.facts else ""
         out.append((_cap(f"{lead}{ident.name} {answers.join(items, lang)}."), lang))
         return out
 
@@ -545,18 +588,25 @@ class StoryTeller:
         lang = lang or self.lang
         other_lang = "en" if lang == "it" else "it"
         mine, other = [], []
-        for i in indices:
-            f = ident.facts[i]
-            line = as_clause(facts.translated(f, lang) or f)
+        clauses, sentences = split_facts([facts.translated(ident.facts[i], lang) or ident.facts[i] for i in indices],
+                                         ident.name)
+        for line in clauses:
             (mine if fact_lang(line) in (lang, None) else other).append(line)
+        said_mine = [s for s in sentences if fact_lang(s) in (lang, None)]
+        said_other = [s for s in sentences if s not in said_mine]
         out: list[tuple[str, str]] = []
         if mine:
             pair = V.said("facts-known", facts.KNOWN, name=ident.name, fact=answers.join(mine, lang))
             out.append((pair[0] if lang == "it" else pair[1], lang))
-        if other:
-            also = {"it": " anche", "en": " also"}[lang] if mine else ""
+        for s in said_mine:
+            out.append((_about_sentence(ident.name, s, lang, "know"), lang))
+        if other or said_other:
+            also = {"it": " anche", "en": " also"}[lang] if mine or said_mine else ""
             out.append((f"Me l'hai detto{also} in inglese:" if lang == "it" else f"You{also} told me in Italian:", lang))
-            out.append((_cap(f"{ident.name} {answers.join(other, other_lang)}."), other_lang))
+            if other:
+                out.append((_cap(f"{ident.name} {answers.join(other, other_lang)}."), other_lang))
+            for s in said_other:
+                out.append((_about_sentence(ident.name, s, other_lang, "know"), other_lang))
         return out
 
     async def tell_facts(self, ident, indices: list[int]) -> None:

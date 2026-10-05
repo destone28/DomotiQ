@@ -369,46 +369,43 @@ def test_questions_are_answered_from_the_facts(ctx):
     asyncio.run(scenario())
 
 
-def test_without_the_model_a_question_with_no_keyword_goes_on_as_before(ctx):
+def test_without_the_model_a_question_about_a_character_is_answered_from_its_facts(ctx):
     async def scenario():
         place(ctx, "Marco", KITCHEN, ["fa il medico"])
         await ctx.voice.handle("Marco è medico?")
-        assert ctx.said[-1] == "Marco è in cucina."                 # "a name alone is where is", as before
+        assert ctx.said[-1] == "So che Marco fa il medico."         # the word they share
     asyncio.run(scenario())
 
 
-def test_the_model_tells_the_topic_the_keywords_miss(ctx):
+def test_questions_about_a_character_are_answered_at_once_without_the_model(ctx):
+    """Keywords, the words a question shares with a fact, or "non lo so": never a few seconds of the model."""
     async def scenario():
         place(ctx, "Marco", KITCHEN, ["fa il medico", "ama il jazz"])
-        model = with_model(ctx, Model({"Marco cura i malati?": "job", "A Marco piacciono i Beatles?": "music"},
-                                      command=Intent("where_is", {"name": "Marco"}, 0.9, "llm")))
+        model = with_model(ctx, Model({"Marco cura i malati?": "job"}, command=Intent("where_is", {"name": "Marco"}, 0.9, "llm")))
         await ctx.voice.handle("Marco cura i malati?")
-        assert ctx.said[-1] == "So che Marco fa il medico." and model.understood == []
-        await ctx.voice.handle("A Marco piacciono i Beatles?")      # only a word of liking: the model tells more
+        assert ctx.said[-1] == "So che Marco fa il medico."
+        await ctx.voice.handle("A Marco piacciono i Beatles?")      # only a word of liking: what Marco likes
         assert ctx.said[-1] == "So che Marco ama il jazz."
-        await ctx.voice.handle("Marco gioca con Fido?")             # nothing about it: the commands decide
-        assert model.understood == ["Marco gioca con Fido?"] and ctx.said[-1] == "Marco è in cucina."
-        await ctx.voice.handle("dove Marco")                         # where somebody is: no need to ask the model
-        assert "dove Marco" not in model.asked and ctx.said[-1] == "Marco è in cucina."
-        assert ctx.said.count("Vediamo...") == 3                    # one word while the model thinks, not two
-        ctx.voice.llm_ready = False                                 # still reading its instructions after a start
-        await ctx.voice.handle("Marco cura i malati?")
-        assert model.asked.count("Marco cura i malati?") == 1 and ctx.said[-1] == "Marco è in cucina."
+        await ctx.voice.handle("Marco va matto per qualcosa?")
+        assert ctx.said[-1] == "So che Marco ama il jazz."
+        await ctx.voice.handle("Marco gioca con Fido?")             # nothing about it: honest, and at once
+        assert ctx.said[-1] in {it.replace("{name}", "Marco") for it, _ in F.UNKNOWN}
+        await ctx.voice.handle("Marco è sul divano?")               # where Marco is now
+        assert ctx.said[-1] == "Marco è in cucina."
+        await ctx.voice.handle("dove Marco")
+        assert ctx.said[-1] == "Marco è in cucina."
+        assert model.asked == [] and model.understood == [] and "Vediamo..." not in ctx.said
     asyncio.run(scenario())
 
 
-def test_a_topic_with_no_fact_about_it_is_not_known(ctx):
+def test_a_question_with_no_name_right_after_one_about_a_character(ctx):
     async def scenario():
-        place(ctx, "Marco", KITCHEN, ["ama il jazz"])
-        model = with_model(ctx, Model({"Marco cura i malati?": "job", "Marco va matto per qualcosa?": "likes",
-                                       "Marco è sul divano?": "seat"},
-                                      command=Intent("where_is", {"name": "Marco"}, 0.9, "llm")))
-        await ctx.voice.handle("Marco cura i malati?")              # no job told: not the answer to another question
-        assert ctx.said[-1] in {it.replace("{name}", "Marco") for it, _ in F.UNKNOWN} and model.understood == []
-        await ctx.voice.handle("Marco va matto per qualcosa?")      # the model said "likes": not asked twice
-        assert ctx.said[-1] == "So che Marco ama il jazz." and model.asked.count("Marco va matto per qualcosa?") == 1
-        await ctx.voice.handle("Marco è sul divano?")               # maybe where it is now: the commands decide
-        assert model.understood == ["Marco è sul divano?"] and ctx.said[-1] == "Marco è in cucina."
+        place(ctx, "Rossellina", KITCHEN, ["fa la maestra", "ama il jazz"])
+        await ctx.voice.handle("raccontami qualcosa di Rossellina")
+        await ctx.voice.handle("che lavoro fa?")                    # still Rossellina
+        assert ctx.said[-1] == "So che Rossellina fa la maestra."
+        await ctx.voice.handle("cosa le piace?")
+        assert ctx.said[-1] == "So che Rossellina ama il jazz."
     asyncio.run(scenario())
 
 
@@ -458,5 +455,53 @@ def test_the_stories_use_an_answer_in_both_languages(ctx):
     assert st.facts_in(ros, "en") == ["loves eating pizza"]
     assert st.facts_in(ros, "it") == ["adora mangiare la pizza", "ama il jazz"]
     en = st.about("Rossellina", "en")
-    assert en[0] == ("You told me that Rossellina loves eating pizza.", "en")
-    assert en[1] == ("You also told me in Italian:", "en") and en[2] == ("Rossellina ama il jazz.", "it")
+    assert en[0] == ("Rossellina is in the kitchen.", "en")           # where it is now, first
+    assert en[1] == ("You told me that Rossellina loves eating pizza.", "en")
+    assert en[2] == ("You also told me in Italian:", "en") and en[3] == ("Rossellina ama il jazz.", "it")
+
+
+def test_the_names_weigh_more_than_the_other_words():
+    from domotiq.voice.intents import find_names, normalize
+    assert parse("Raccontami cosa piace a Rossellina", NAMES) == Intent("ask_fact", {"name": "Rossellina",
+                                                                                    "topic": F.LIKES}, 0.9)
+    assert parse("Raccontami qualcosa di Marco", NAMES).name == "about"
+    # a name the recognizer mangled: close enough, or a word of its own that no other name has
+    assert find_names(normalize("raccontami di rossellino"), NAMES) == ["Rossellina"]
+    assert find_names(normalize("vista brown e rossellina stanno insieme"), NAMES) == ["Mister Brown", "Rossellina"]
+    assert find_names(normalize("mister rossi"), NAMES) == []                  # a word many names have is not enough
+
+
+def test_two_characters_together(ctx):
+    async def scenario():
+        place(ctx, "Mister Brown", LIVING)
+        place(ctx, "Rossellina", KITCHEN)
+        assert parse("Rossellina e Marco sono insieme in cucina", NAMES) == Intent(
+            "together", {"names": ["Rossellina", "Marco"], "room": "kitchen"}, 0.9)
+        await ctx.voice.handle("Mister Brown e Rossellina stanno insieme")
+        assert "Mister Brown" in ctx.said[-1] and "Rossellina" in ctx.said[-1]
+        await ctx.voice.handle("Rossellina e il signor Verdi stanno insieme")  # only one of them known
+        assert ctx.said[-1] == "Ho capito solo Rossellina: dimmi di nuovo chi c'è insieme."
+    asyncio.run(scenario())
+
+
+def test_facts_typed_in_the_web_app_as_they_come():
+    from domotiq.voice.stories import as_clause, split_facts
+    assert as_clause("Rossellina fa la maestra", "Rossellina") == "fa la maestra"
+    assert as_clause("lei ama il jazz") == "ama il jazz"
+    assert as_clause("una maestra") == "è una maestra" and as_clause("a teacher") == "is a teacher"
+    assert split_facts(["fa la maestra", "Il suo piatto preferito è la carbonara"], "Rossellina") == (
+        ["fa la maestra"], ["il suo piatto preferito è la carbonara"])
+    assert F.favourite_colour(["il suo colore preferito è il verde"]) == "green"
+    assert F.favourite_colour(["adora il blu"]) == "blue" and F.favourite_colour(["ama il jazz"]) is None
+    assert F.overlap("Marco suona la chitarra?", ["ama il jazz", "suona la chitarra in una band"], ["Marco"]) == [1]
+
+
+def test_a_sentence_typed_in_the_other_language_is_said_in_its_own(ctx):
+    ros = place(ctx, "Rossellina", KITCHEN, ["il suo piatto preferito è la carbonara", "loves jazz"])
+    en = ctx.voice.stories.about("Rossellina", "en")
+    assert ("You told me that Rossellina loves jazz.", "en") in en
+    assert en[en.index(("You also told me in Italian:", "en")) + 1] == (
+        "Di Rossellina mi hai detto che il suo piatto preferito è la carbonara.", "it")
+    assert not any("carbonara" in text and lang == "en" for text, lang in en)
+    told = ctx.voice.stories.told(ros, [0], "it")
+    assert told == [("Di Rossellina so che il suo piatto preferito è la carbonara.", "it")]

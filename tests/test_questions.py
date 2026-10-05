@@ -423,3 +423,32 @@ def test_on_the_bed_it_is_said_and_off_the_table_it_is_asked(ctx, monkeypatch):
     assert lines[-1]["it"] == "Viola, scendi subito dal tavolo!"
     from domotiq.voice import answers
     assert answers.where_is(ctx, "Viola", "it") == "Viola è sul tavolo della cucina."
+
+
+def test_the_house_does_not_say_again_where_a_character_still_is(ctx, monkeypatch):
+    from domotiq.model import Track
+    n = ctx.voice.narrator
+    monkeypatch.setattr(n, "_quiet", lambda: True)
+    ctx.voice._spawn = lambda coro: (coro.close(), None)[1]
+    ross = ctx.identities.add("Rossana", "person")
+    on_bed = Track("t-r", 527, 170, "person", ross.id, "bedroom", on="bed")
+    ctx.house.tracks["t-r"] = on_bed
+    t0 = time.monotonic()
+    n._on_enter(ev("room_enter", track="t-r", name="Rossana", category="person", room="bedroom", other="living"))
+    assert "letto" in n.tick(t0 + 5)[-1]["it"]
+    # the edge of the bed, a shadow, the name found again: still there, nothing new to say
+    for k in range(3):
+        n._on_furniture(ev("furniture", track="t-r", name="Rossana", category="person", room="bedroom", on=None,
+                           before="bed"))
+        n._on_furniture(ev("furniture", track="t-r", name="Rossana", category="person", room="bedroom", on="bed",
+                           before=None))
+        assert n.tick(t0 + 10 + 5 * k) == []
+    n._on_identity(ev("identity_changed", track="t-r", name="Rossana", identity=ross.id, before=None))
+    assert n.tick(t0 + 30) == []
+    # a real move is news, and so is coming back to the bed afterwards
+    ctx.house.tracks["t-r"] = Track("t-r", 80, 100, "person", ross.id, "kitchen")
+    n._on_enter(ev("room_enter", track="t-r", name="Rossana", category="person", room="kitchen", other="bedroom"))
+    assert "cucina" in n.tick(t0 + 40)[-1]["it"]
+    ctx.house.tracks["t-r"] = on_bed
+    n._on_enter(ev("room_enter", track="t-r", name="Rossana", category="person", room="bedroom", other="kitchen"))
+    assert "letto" in n.tick(t0 + 50)[-1]["it"]

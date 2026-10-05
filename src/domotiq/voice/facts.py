@@ -64,7 +64,9 @@ TOPICS: list[tuple[str, str]] = [
               r"\bjuventus\b|\binter\b|\bmilan\b|\bfootball\b|\bsoccer\b|\bteams?\b|\bsupports?\b|\bmatch(es)?\b|"
               r"\bgym\b|\bswim\w*|\bcycl\w*|\bski(s|ing)?\b|\bvolleyball\b|\bbasketball\b|\bgolf\b|\brugby\b"),
     ("job", r"\blavor\w*|\bmestier\w*|\bprofession\w*|\bimpieg\w*|\binsegn\w*|\bjobs?\b|\bwork(s|ing)?\b|"
-            r"\bcareer\b|\bfor a living\b|\boccupation\b|\bteach\w*"),
+            r"\bcareer\b|\bfor a living\b|\boccupation\b|\bteach\w*|\bufficio\b|\bospedal\w*|\bmalati\b|"
+            r"\bpazienti\b|\bclienti\b|\bcolleghi\b|\bnegozio\b|\bfabbrica\b|\bazienda\b|\bstipendio\b|"
+            r"\bin pensione\b|\boffice\b|\bhospital\b|\bpatients\b|\bcustomers\b|\bcolleagues\b|\bretired\b"),
     ("fear", r"\bpaur\w*|\bspavent\w*|\bterror\w*|\btem[ei]\b|\bfobi\w*|\bafraid\b|\bscared?\b|\bfears?\b|"
              r"\bfrighten\w*|\bphobi\w*"),
     ("hobby", r"\bhobb\w*|\btempo libero\b|\bpassion\w*|\bcollezion\w*|\bpassatemp\w*|\bfree time\b|"
@@ -114,6 +116,8 @@ TOPIC_IDS = [t for t, _ in TOPICS]
 _TOPIC_RE = [(t, re.compile(p)) for t, p in TOPICS]
 # words of liking: "cosa piace a Giulia?" is about the character even without a topic
 LIKING = re.compile(r"\bpiac\w*|\bama\b|\bamano\b|\badora\w*|\bodi[ao]\b|\bpreferit\w*|\bpreferisc\w*|"
+                    r"\b(va|vanno) (matt|pazz)\w* per\b|\bimpazzisc\w* per\b|\b(ha|hanno) un debole per\b|"
+                    r"\b(is|are) (crazy|mad) about\b|\b(has|have) a soft spot for\b|"
                     r"\bpreferenz\w*|\bgust[oi]\b|\bsi trova bene\b|\bfavou?rites?\b|\bprefers?\b|\blikes?\b|"
                     r"\bloves?\b|\bhates?\b|\benjoys?\b|\bfond\b|\bkeen\b")
 # a sentence that starts like a command is not a question about somebody ("metti la musica preferita di Anna")
@@ -357,8 +361,43 @@ def told(lines: Iterable[str], qid: str) -> Any:
 
 
 def favourite_colour(lines: Iterable[str]) -> str | None:
-    """The favourite colour told, as a colour of intents.COLORS ("red", "warm"...), or None."""
-    return told(lines, "a-colour")
+    """The favourite colour told, as a colour of intents.COLORS ("red", "warm"...), or None: from an answer to "qual è
+    il tuo colore preferito?", or from a line typed in the web app that talks of a favourite colour ("Il suo colore
+    preferito è il rosso", "loves the colour blue") or loves one ("ama il verde")."""
+    from .intents import find_color
+    lines = list(lines)
+    said = told(lines, "a-colour")
+    if said:
+        return said
+    for line in reversed(lines):
+        t = normalize(line)
+        if re.search(r"\bcolor\w*|\bcolour\w*", t) or re.match(r"^(ama|adora|loves|likes) (il |l |the )?\w+$", t):
+            colour = find_color(t)
+            if colour:
+                return colour
+    return None
+
+
+# what a question about a character asks, beyond its keywords: the words it shares with a fact ("Marco legge i
+# fumetti?" and "ha un debole per i fumetti"), compared by their first five letters; these words say nothing
+_PLAIN = set("""cosa come dove quando quale quali chi perche quanto quanti quanta quante che non piu molto poco anche
+ancora sempre mai gia sono sei siamo siete essere stato stata hanno avere fare fatto fanno dice dire detto sapere sai
+sa piace piacciono piaceva ama amano adora preferisce vuole vorrebbe puoi posso dimmi raccontami parlami qualcosa
+tutto tutti quello questa questo quella della delle dello degli nella nelle sulla sulle alla alle allo agli dalla
+dalle con per tra fra suo sua suoi sue mio mia tuo tua loro what which does doing about would could should have
+with from that this they them their there where when your like likes love loves tell know something""".split())
+
+
+def overlap(text: str, lines: list[str], names: Iterable[str] = (), most: int = 2) -> list[int]:
+    """The facts (indices, latest first) that share a word with the question: what keywords do not tell, found at
+    once without the language model."""
+    def stems(t: str) -> set[str]:
+        return {w[:5] for w in _without(t, names).split() if len(w) >= 4 and w not in _PLAIN}
+    asked = stems(text)
+    if not asked:
+        return []
+    hits = [i for i, f in enumerate(lines) if asked & stems(f)]
+    return list(reversed(hits))[:most]
 
 
 # ------------------------------------------------------------------ reading a line back

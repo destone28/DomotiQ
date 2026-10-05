@@ -130,6 +130,25 @@ class Session:
         if self.rec.AcceptWaveform(pcm):
             self.parts.append(json.loads(self.rec.Result()))
 
+    def feed_partial(self, pcm: bytes) -> str:
+        """Feed, and tell what has been heard so far: the words of an utterance just ended, or the partial result of
+        the one going on (it comes at once, while the word is still being said, without the confidence)."""
+        if self.rec.AcceptWaveform(pcm):
+            part = json.loads(self.rec.Result())
+            self.parts.append(part)
+            return part.get("text", "")
+        return json.loads(self.rec.PartialResult()).get("partial", "")
+
+    def sureness(self, phrase: str) -> float:
+        """How sure the recognizer is of these words, the last time it heard them (this ends the utterance)."""
+        self.parts.append(json.loads(self.rec.FinalResult()))
+        want = phrase.split()
+        for part in reversed(self.parts):
+            got = {w.get("word"): w.get("conf", 0.0) for w in part.get("result", [])}
+            if want and all(w in got for w in want):
+                return min(got[w] for w in want)
+        return 0.0
+
     def result(self) -> tuple[str, float]:
         self.parts.append(json.loads(self.rec.FinalResult()))
         words = [w for p in self.parts for w in p.get("result", [])]

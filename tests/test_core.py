@@ -398,3 +398,50 @@ def test_with_no_sound_card_the_sentences_still_end():
         asyncio.run(say())
     finally:
         audio.stop()
+
+
+def test_sentences_are_kept_on_disk_and_read_back_after_a_restart(tmp_path, monkeypatch):
+    import io
+    import os
+    import wave
+    from domotiq.voice import tts
+    calls = []
+
+    class Answer(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def urlopen(req, timeout=20):
+        import json as _json
+        calls.append(_json.loads(req.data)["text"])
+        out = io.BytesIO()
+        with wave.open(out, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(22050)
+            w.writeframes(b"\x10\x00" * 2205)
+        return Answer(out.getvalue())
+    monkeypatch.setattr(tts.urllib.request, "urlopen", urlopen)
+
+    async def scenario():
+        first = tts.Speaker(cache_dir=tmp_path / "voice")
+        a = await first.synth("Chi è?", "it")
+        assert calls == ["Chi è?"] and len(list((tmp_path / "voice").glob("*.wav"))) == 1
+        again = tts.Speaker(cache_dir=tmp_path / "voice")           # the house started again
+        b = await again.synth("Chi è?", "it")
+        assert calls == ["Chi è?"] and b is not None and len(a) == len(b)
+        # the frequent sentences: the ones on disk are read back, only the new one goes to Piper
+        calls.clear()
+        third = tts.Speaker(cache_dir=tmp_path / "voice")
+        await third.warm({"it": ["Chi è?", "Vediamo..."]})
+        assert calls == ["Vediamo..."] and third.ok and len(third.cache) == 2
+        # too many on disk: the ones not said for the longest time go
+        files = sorted((tmp_path / "voice").glob("*.wav"))
+        os.utime(files[0], (1, 1))
+        third.disk_max = 1
+        third._prune()
+        assert sorted((tmp_path / "voice").glob("*.wav")) == files[1:]
+    asyncio.run(scenario())

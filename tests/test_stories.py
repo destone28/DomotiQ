@@ -177,6 +177,7 @@ def test_facts_by_voice_and_what_the_house_knows(ctx):
         ctx.identities.add_fact(marco.id, "loves jazz")
         await ctx.voice.execute(Intent("about", {"name": "Marco"}))
         p = ctx.voice.stories.persona(ctx.identities.get(marco.id))
+        assert ctx.said[-5] == "Marco è in cucina."                       # where Marco is now, first
         assert ctx.said[-4] == "Mi hai detto che Marco fa il medico."
         assert ctx.said[-2] == "Marco loves jazz."
         assert ctx.said[-1].startswith("E poi so che Marco " + p["trait"]["it"])
@@ -184,7 +185,8 @@ def test_facts_by_voice_and_what_the_house_knows(ctx):
         assert ("Marco loves jazz.", "en") in ctx.voices                   # read by the English voice
         assert ctx.said[-3] == "Me l'hai detto anche in inglese:"
         en = ctx.voice.stories.about("Marco", "en")
-        assert en[0] == ("You told me that Marco loves jazz.", "en") and en[1] == ("You also told me in Italian:", "en")
+        assert en[0] == ("Marco is in the kitchen.", "en")
+        assert en[1] == ("You told me that Marco loves jazz.", "en") and en[2] == ("You also told me in Italian:", "en")
     asyncio.run(scenario())
 
 

@@ -77,3 +77,112 @@ def test_the_leds_steady_while_speaking_blinking_while_listening(ctx):
         await act.update_leds()
         assert sent[-1] == (0, 0)
     asyncio.run(scenario())
+
+
+class _Mic:
+    """Chunks of 100 ms, each with the words said in it (<casa>) and its level."""
+    available = True
+
+    def __init__(self, chunks, log):
+        self.chunks, self.log, self.last_level = chunks, log, 0.0
+
+    async def listen(self, stop, on_chunk=None, max_s=60.0, min_s=0.0):
+        for i, (chunk, level) in enumerate(self.chunks):
+            if stop.is_set():
+                break
+            self.last_level = level
+            self.log.append(("chunk", i))
+            on_chunk(chunk)
+            await asyncio.sleep(0.005)
+        return b""
+
+
+class _Session:
+    def __init__(self, grammar):
+        self.grammar, self.heard = grammar, []
+
+    def _words(self, pcm):
+        import re
+        return [w.decode() for w in re.findall(rb"<(\w*)>", pcm) if w]
+
+    def feed(self, pcm):
+        self.heard += self._words(pcm)
+
+    def feed_partial(self, pcm):
+        self.heard += self._words(pcm)
+        # held to the word, the recognizer takes anything like it for the word
+        return " ".join("casa" if w in ("casa", "cosa") else "[unk]" for w in self.heard)
+
+    def sureness(self, phrase):
+        return 0.9
+
+    def result(self):
+        return " ".join(self.heard), 0.9
+
+
+class _Listener:
+    ok = True
+
+    def session(self, lang, grammar=None):
+        return _Session(grammar)
+
+    def known(self, word, lang):
+        return True
+
+
+def _said(*words, pause=0, then=(), quiet=20):
+    out = [(b"<>", 0.0)] * 3 + [(f"<{w}>".encode(), 0.1) for w in words]
+    out += [(b"<>", 0.0)] * pause + [(f"<{w}>".encode(), 0.1) for w in then]
+    return out + [(b"<>", 0.0)] * quiet
+
+
+def test_the_word_lights_the_leds_at_once_and_the_request_said_with_it_is_heard(ctx):
+    async def scenario():
+        v = ctx.voice
+        log = []
+
+        async def leds(mask, blink=0):
+            log.append(("leds", mask, blink))
+        ctx.mcu.leds = leds
+        v.listener = _Listener()
+        v.mic = _Mic(_said("casa", "accendi", "la", "luce", "in", "cucina"), log)
+        woke, rest = await v._wake_listen("casa")
+        assert woke and rest == "accendi la luce in cucina" and v.busy.locked()
+        v.busy.release()
+        await ctx.actions.thinking(False)
+        # blinking as soon as the word is heard (the 4th chunk), long before the sentence ends
+        blink = log.index(("leds", 7, 7))
+        assert max(e[1] for e in log[:blink] if e[0] == "chunk") <= 5
+        # a pause after the word, and then the request: still heard
+        log.clear()
+        v.mic = _Mic(_said("casa", pause=8, then=("che", "ore", "sono")), log)
+        assert await v._wake_listen("casa") == (True, "che ore sono")
+        v.busy.release()
+        await ctx.actions.thinking(False)
+        # the word alone: the house asks what is needed
+        v.mic = _Mic(_said("casa", quiet=25), log)
+        assert await v._wake_listen("casa") == (True, "")
+        v.busy.release()
+        # talk near the house: held to the word the recognizer took "cosa" for it, the free one did not
+        log.clear()
+        v.mic = _Mic(_said("cosa", "facciamo", "stasera"), log)
+        assert await v._wake_listen("casa") == (False, "")
+        assert not v.busy.locked() and log[-1] == ("leds", 0, 0)
+    asyncio.run(scenario())
+
+
+def test_after_the_word_the_house_is_already_taken(ctx):
+    async def scenario():
+        v = ctx.voice
+        handled = []
+
+        async def handle(text):
+            handled.append((text, v.busy.locked()))
+        v.handle = handle
+        await v.busy.acquire()                                 # taken when the word was heard
+        await v._woken("che ore sono", held=True)
+        assert handled == [("che ore sono", True)] and not v.busy.locked()
+        script(ctx, ["spegni la luce"])
+        await v._woken("ehm")                                  # a noise after the word: not a request
+        assert ctx.said[-1] == "Dimmi, di cosa hai bisogno?" and handled[-1] == ("spegni la luce", True)
+    asyncio.run(scenario())

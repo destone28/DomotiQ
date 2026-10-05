@@ -330,6 +330,19 @@ def _confirmed(listed: str, free: str) -> bool:
     return bool(a) and set(a) <= set(b)
 
 
+LISTED_SURE = 0.8        # a word of the list heard this surely, while somebody said a few words, is the answer
+
+def _trusted(listed: str, listed_conf: float, free: str) -> bool:
+    """The answer heard through the list of words counts: the free recognition of the same audio has it too, or
+    heard something nearly alike, or the list was quite sure while somebody did speak (the free recognition often
+    gets a word alone wrong: "gialla" heard "già la"). With nothing heard freely it may come out of a noise, and a
+    whole sentence heard freely is something else ("che bella casa" is no "sì")."""
+    if not listed or not normalize(free):
+        return False
+    return _confirmed(listed, free) or _near(listed, free) or (
+        listed_conf >= LISTED_SURE and len(normalize(free).split()) <= 3)
+
+
 def _near(listed: str, free: str) -> bool:
     """A short answer the two recognitions heard nearly alike ("evviva" and "è viva", "certo" and "certa")."""
     a, b = normalize(listed), normalize(free)
@@ -435,8 +448,7 @@ class Chatter:
         h = await self._hear(grammar_words, stop, max_s)
         if not grammar_words:
             return h.free, h.free_conf, h.audio, h.spoke
-        if h.audio and not h.spoke and not (h.listed and set(normalize(h.listed).split()) <=
-                                            set(normalize(h.free).split())):
+        if h.audio and not h.spoke and not _trusted(h.listed, h.listed_conf, h.free):
             return h.free, h.free_conf, h.audio, h.spoke
         return h.listed, h.listed_conf, h.audio, h.spoke
 
@@ -975,7 +987,7 @@ class Chatter:
         noise: it is no answer."""
         lang, names = self.lang, self.voice._names()
         texts = [heard.free] if heard.free else []
-        if heard.listed and _confirmed(heard.listed, heard.free):
+        if _trusted(heard.listed, heard.listed_conf, heard.free):
             texts.append(heard.listed)
         found = [a for a in (offers.by_rules(t, lang, offer, names) for t in texts) if a is not None]
         decided = ("yes", "no", "command")

@@ -26,6 +26,7 @@ import logging
 import random
 import re
 import time
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -60,10 +61,21 @@ SURE = 0.9
 HOLD_MAX_S = 6.0      # the microphone waits at most this long for the house to finish speaking
 TAG_DELAY_S = 2.0     # the facts of a character are looked at this long after a change (several come together)
 ENTRANCE_S = 180.0    # after the intercom, the first figurine that comes in within this long is the one who rang
+CONTEXT_S = 90.0      # a question with no name, this soon after one about a character, is about that character
+# the furniture a character may stand on: "Marco è sul divano?" asks where Marco is
+PLACE_WORDS = re.compile(r"\b(letto|divano|poltrona|tavolo|tavolino|bancone|frigo\w*|panca|panchina|albero|credenza|"
+                         r"comodino|doccia|bed|sofa|couch|armchair|table|counter|fridge|bench|tree|sideboard|shower)\b")
+ABOUT_CUE = re.compile(r"\b(cosa fa|che fa|che lavoro|di dove|dove vive|dove abita|quanti anni|come sta|chi e|"
+                       r"cosa (gli|le) piace|what does (he|she) do|where is (he|she) from|how old)\b")
 # the word of activation (Settings -> Voice): in place of Talk
 WAKE_GAP_S = 1.2      # not listened for until this long after the house spoke: its own voice may say it
-WAKE_CONFIDENCE = 0.6 # heard less surely than this, it does not wake the house
-WAKE_MAX_S = 6.0      # one stretch of listening for it, then the next one
+WAKE_CONFIDENCE = 0.6 # heard alone and less surely than this, it does not wake the house
+WAKE_MAX_S = 60.0     # one opening of the microphone while listening for it, then the next one
+WAKE_PREROLL_S = 2.0  # the audio kept from before the word is caught: what is said right with it is not lost
+WAKE_TAIL_S = 0.3     # the end of the word itself, still being said when it is caught
+WAKE_REST_S = 1.5     # after the word, this long with nothing said: the house asks what is needed
+WAKE_END_S = 0.9      # a pause this long after what was said with the word: the request has ended
+WAKE_REQUEST_S = 10.0 # what is said with the word, at most
 
 FREQUENT = {
     "it": ["Chi è?", "Scusa, non ho capito. Chi sei?", "Vediamo...", "Non ho capito.", "Si balla!",
@@ -81,7 +93,7 @@ for _i, _lang in enumerate(("it", "en")):
 class Voice:
     def __init__(self, ctx: "Context") -> None:
         self.ctx = ctx
-        self.speaker = Speaker()
+        self.speaker = Speaker(cache_dir=ctx.paths.var / "voice")
         self.listener = None if ctx.args.no_voice else Listener(ctx.paths.models)
         audio = ctx.audio
         device = audio.device if audio is not None and not audio.dry else None
@@ -95,6 +107,7 @@ class Voice:
         self.busy = asyncio.Lock()
         self._talk_stop: asyncio.Event | None = None
         self._talk_task: asyncio.Task | None = None
+        self._context: tuple[str, float] | None = None   # the last character talked about, and when
         self._wake_stop: asyncio.Event | None = None     # the microphone is open for the word of activation
         self._wake_idle = asyncio.Event()                # ...and closed again
         self._wake_idle.set()
@@ -340,10 +353,10 @@ class Voice:
         """With the word of activation on, the microphone listens for it whenever the house is free; the word does
         what Talk does. The audio is never kept."""
         while True:
-            await asyncio.sleep(0.3)
             phrase = self.wake_phrase()
             if not phrase or not (self.listener and self.listener.ok) or not self.mic.available \
                     or not self._wake_free():
+                await asyncio.sleep(0.3)
                 continue
             try:
                 woke, rest = await self._wake_listen(phrase)
@@ -352,74 +365,141 @@ class Voice:
                 await asyncio.sleep(5.0)
                 continue
             if woke:
-                await self._woken(rest)
+                await self._woken(rest, held=True)
+            else:
+                await asyncio.sleep(0.05)
 
     async def _wake_listen(self, phrase: str) -> tuple[bool, str]:
-        """One stretch of listening for the word: until a pause after speech, WAKE_MAX_S, or something else needing
-        the house. Whether the word was said, and what was said right after it ("Casa, che ore sono?")."""
+        """The microphone open for a long stretch, the speech recognizer held to the word: its partial result tells
+        the word while it is still being said, and at that moment the house takes the turn and the LEDs blink. The
+        free recognizer starts on the last seconds of audio and goes on with what follows, until a pause: what was
+        said right with the word ("Casa, accendi la luce in cucina") is the request, ready when it ends.
+
+        Returns whether the word was said (then the house is held: `busy`, for `_woken`) and the request. Ends with
+        nothing when something else needs the house or the microphone, and when the free recognizer did not hear
+        the word in what was said (talk near the house)."""
         loop = asyncio.get_running_loop()
         lang = self.lang
-        session = await loop.run_in_executor(self.pool, self.listener.session, lang, [phrase])
+        spot = await loop.run_in_executor(self.pool, self.listener.session, lang, [phrase])
         stop = asyncio.Event()
-        state = {"speech": False, "quiet": 0.0}
-        kept = bytearray()
-        feeds: list[asyncio.Future] = []
+        chunks: asyncio.Queue = asyncio.Queue()
 
         def on_chunk(chunk: bytes) -> None:
-            if not self._wake_free():
-                stop.set()                              # Talk, a question, the house speaking: it comes first
-                return
-            kept.extend(chunk)
-            feeds.append(loop.run_in_executor(self.pool, session.feed, chunk))
-            if self.mic.last_level > 0.02:
-                state["speech"], state["quiet"] = True, 0.0
-            elif state["speech"]:
-                state["quiet"] += 0.1
-                if state["quiet"] >= 0.6:
-                    stop.set()
+            chunks.put_nowait((chunk, self.mic.last_level))
+
+        ring: deque[bytes] = deque(maxlen=round(WAKE_PREROLL_S * 10))      # chunks of 100 ms
+        held, free, sure = False, None, 0.0
+        feeds: list[asyncio.Future] = []
+        after = quiet = 0.0
+        speech = False
         self._wake_stop = stop
         self._wake_idle.clear()
+        mic = asyncio.ensure_future(self.mic.listen(stop, on_chunk, max_s=WAKE_MAX_S))
         try:
-            await self.mic.listen(stop, on_chunk, max_s=WAKE_MAX_S)
+            while True:
+                try:
+                    chunk, level = chunks.get_nowait()
+                except asyncio.QueueEmpty:
+                    if mic.done():
+                        break                               # the microphone closed
+                    getter = asyncio.ensure_future(chunks.get())
+                    await asyncio.wait({getter, mic}, return_when=asyncio.FIRST_COMPLETED)
+                    if not getter.done():
+                        getter.cancel()
+                        continue
+                    chunk, level = getter.result()
+                if not held:
+                    if not self._wake_free():
+                        break                               # Talk, a question, the house speaking: it comes first
+                    ring.append(chunk)
+                    heard = await loop.run_in_executor(self.pool, spot.feed_partial, chunk)
+                    if f" {phrase} " not in f" {spoken(heard, lang)} ":
+                        continue
+                    if self.busy.locked():
+                        break
+                    await self.busy.acquire()
+                    held = True
+                    # caught: the house shows at once that it listens, and nothing else starts talking
+                    self.ctx.bus.publish("listening", on=True)
+                    await self.ctx.actions.update_leds(listening=True)
+                    sure = await loop.run_in_executor(self.pool, spot.sureness, phrase)
+                    free = await loop.run_in_executor(self.pool, self.listener.session, lang, None)
+                    feeds.append(loop.run_in_executor(self.pool, free.feed, b"".join(ring)))
+                    continue
+                feeds.append(loop.run_in_executor(self.pool, free.feed, chunk))
+                after += 0.1
+                if level > 0.02 and after > WAKE_TAIL_S:
+                    speech, quiet = True, 0.0
+                else:
+                    quiet += 0.1
+                if (speech and quiet >= WAKE_END_S) or (not speech and after >= WAKE_REST_S) \
+                        or after >= WAKE_REQUEST_S:
+                    break
+        except BaseException:
+            if held:
+                self.busy.release()
+            raise
         finally:
+            stop.set()
+            await asyncio.gather(mic, return_exceptions=True)
             self._wake_stop = None
             self._wake_idle.set()
-        if feeds:
-            await asyncio.gather(*feeds, return_exceptions=True)
-        text, conf = await loop.run_in_executor(self.pool, session.result)
-        if not state["speech"] or conf < WAKE_CONFIDENCE or f" {phrase} " not in f" {spoken(text, lang)} ":
+        if not held:
             return False, ""
-        free, _ = await self._recognize(bytes(kept), None)
-        words = spoken(free, lang).split()
-        n = len(phrase.split())
-        at = [i for i in range(len(words) - n + 1) if words[i:i + n] == phrase.split()]
-        return True, " ".join(words[at[-1] + n:]) if at else ""
+        try:
+            self.ctx.bus.publish("listening", on=False)
+            await self.ctx.actions.update_leds()
+            await asyncio.gather(*feeds, return_exceptions=True)
+            text, _ = await loop.run_in_executor(self.pool, free.result)
+        except BaseException:
+            self.busy.release()
+            raise
+        words, want = spoken(text, lang).split(), phrase.split()
+        at = [i for i in range(len(words) - len(want) + 1) if words[i:i + len(want)] == want]
+        if at:
+            rest = words[at[-1] + len(want):]
+        elif len(words) <= 1 and sure >= WAKE_CONFIDENCE:
+            rest = []                                       # the word alone, heard a little differently
+        else:
+            self.busy.release()                             # not the word: talk near the house
+            log.info("not the word of activation: %r", text)
+            return False, ""
+        log.info("word of activation, then %r", " ".join(rest))
+        if rest:
+            await self.ctx.actions.thinking(True)
+        return True, " ".join(rest)
 
-    async def _woken(self, rest: str) -> None:
+    async def _woken(self, rest: str, held: bool = False) -> None:
         """The word of activation was said: what Talk does. What came right after it is the request; otherwise the
-        house asks what is needed, and listens."""
+        house asks what is needed, and listens. `held`: the house is already taken (`busy`) for this."""
         log.info("word of activation")
-        if self.ctx.audio is not None:
-            self.ctx.audio.stop_voice()
-        await self.chatter.preempt()
-        await self.stories.preempt()
-        await self._preempt_asking()
-        if self.busy.locked():
-            return
-        async with self.busy:
-            try:
-                text = rest if len(rest.split()) >= 2 else ""
+        try:
+            if self.ctx.audio is not None:
+                self.ctx.audio.stop_voice()
+            await self.chatter.preempt()
+            await self.stories.preempt()
+            await self._preempt_asking()
+            if not held:
+                if self.busy.locked():
+                    return
+                await self.busy.acquire()
+                held = True
+            words = rest.split()
+            # one word alone after it is a request only if it means something ("Casa, aiuto!"), not a noise
+            text = rest if len(words) >= 2 or (words and parse(rest, self._names()) is not None) else ""
+            if not text:
+                await self.reply("Dimmi, di cosa hai bisogno?", "Yes? What do you need?")
+                text, _, audio = await self._listen(None, max_s=8.0, auto_end=True, hold=self.chatter._speaking,
+                                                    echo=ECHO_S)
                 if not text:
-                    await self.reply("Dimmi, di cosa hai bisogno?", "Yes? What do you need?")
-                    text, _, audio = await self._listen(None, max_s=8.0, auto_end=True, hold=self.chatter._speaking,
-                                                        echo=ECHO_S)
-                    if not text:
-                        if audio and len(audio) > MIC_RATE:
-                            await self.say(answers.not_understood(self.lang))
-                        return
-                await self.handle(text)
-            finally:
-                await self.ctx.actions.thinking(False)
+                    if audio and len(audio) > MIC_RATE:
+                        await self.say(answers.not_understood(self.lang))
+                    return
+            await self.handle(text)
+        finally:
+            if held:
+                self.busy.release()
+            await self.ctx.actions.thinking(False)
 
     # ================================================================ talk button
     async def talk_button(self, pressed: bool) -> None:
@@ -469,21 +549,23 @@ class Voice:
         if await self.chatter.answer_by_talk(text):
             return                                    # "sì" to the offer the house has just made
         intent = parse(text, names)
+        intent = self._in_context(text, intent, names)
         if intent is None and self.stories.knows(text):
             intent = Intent("other", {}, 0.8, "rules")      # bills, insurance, chores...: the life of the house
         filler = None
-        if self.llm is not None and self.llm_ready and (intent is None or self._name_alone(intent, text)) \
-                and not self._about_a_place(text) and not facts.is_request(text, names):
-            # "Marco cura i malati?": maybe about a character, with no keyword; the model tells the topic
+        if (intent is None or self._name_alone(intent, text)) and not self._about_a_place(text) \
+                and not facts.is_request(text, names):
+            # "Marco cura i malati?": about a character the house was told something of, with no keyword: the
+            # answer comes at once from what it was told (or "non lo so"), never from the slow language model
             ident = self._told_about(text, names)
             if ident is not None:
-                filler = asyncio.create_task(self._filler("Vediamo..." if lang == "it" else "Let me see..."))
-                topic = await self.llm.topic(text)
-                # a topic with no fact about it: "non lo so", not the answer to another question; except where
-                # somebody sits, which may be a question about where it is now ("Marco è sul divano?")
-                if topic and topic != "other" and (topic != "seat" or facts.select(
-                        topic, ident.facts, self.fact_topics, names=names)):
-                    intent = Intent("ask_fact", {"name": ident.name, "topic": topic}, 0.7, "llm")
+                intent = Intent("ask_fact", {"name": ident.name, "topic": facts.question_topic(text, names)}, 0.6,
+                                "rules")
+        if intent is None and self._about_a_place(text):
+            from .intents import find_names
+            named = find_names(normalize(text), names)
+            if named:
+                intent = Intent("where_is", {"name": named[0]}, 0.7, "rules")   # "Marco è sul divano?"
         if intent is None and self.llm is not None:
             filler = filler or asyncio.create_task(self._filler("Vediamo..." if lang == "it" else "Let me see..."))
             intent = await self.llm.understand(text, names)
@@ -503,6 +585,8 @@ class Voice:
             return
         log.info("intent %s %s (%s)", intent.name, intent.args, intent.source)
         intent.args.setdefault("text", text)
+        if intent.args.get("name") or intent.args.get("names"):
+            self._context = (intent.args.get("name") or intent.args["names"][0], time.monotonic())
         await self.execute(intent)
 
     async def ask_time(self) -> None:
@@ -602,6 +686,8 @@ class Voice:
                 await self.reply("Fatto.", "Done.")
         elif name == "lights_fav":
             await self._favourite_light(a.get("name", ""), a.get("room"))
+        elif name == "together":
+            await self._together(a.get("names") or [], a.get("room"))
         elif name == "lights_off":
             await act.lights_off(a.get("room", "all"))
             if not a.get("quiet"):
@@ -675,6 +761,19 @@ class Voice:
         from .intents import find_names
         return find_names(normalize(text), self._names())
 
+    def _in_context(self, text: str, intent: Intent | None, names: list[str]) -> Intent | None:
+        """"Che lavoro fa?" right after a question about Rossellina is about Rossellina: a question about a character
+        with no name in it goes to the last character talked about, for CONTEXT_S."""
+        if self._context is None or time.monotonic() - self._context[1] > CONTEXT_S:
+            return intent
+        if intent is not None and intent.name not in ("other", "house_summary", "help", "who_are_you"):
+            return intent
+        from .intents import find_names
+        t = normalize(text)
+        if find_names(t, names) or not (facts.question_topic(text, names) or ABOUT_CUE.search(t)):
+            return intent
+        return parse(f"{text} {self._context[0]}", names) or intent
+
     def _name_alone(self, intent: Intent, text: str) -> bool:
         """The rules took a short sentence with a name for "where is" ("Marco è medico?"), not "dov'è Marco"."""
         return (intent.name == "where_is" and intent.source == "rules" and intent.confidence < 0.8
@@ -682,9 +781,10 @@ class Voice:
 
     @staticmethod
     def _about_a_place(text: str) -> bool:
-        """"Dove Marco?", "Marco è in cucina?": where somebody is, which the commands answer without delay."""
+        """"Dove Marco?", "Marco è in cucina?", "Marco è sul divano?": where somebody is, which the commands answer
+        without delay."""
         t = normalize(text)
-        return bool(find_room(t) or re.search(r"\b(dove|dov|where|stanza|room)\b", t))
+        return bool(find_room(t) or re.search(r"\b(dove|dov|where|stanza|room)\b", t) or PLACE_WORDS.search(t))
 
     def _told_about(self, text: str, names: list[str]):
         """The first character named in the sentence, if the house was told something about it."""
@@ -694,6 +794,41 @@ class Voice:
             if ident is not None:
                 return ident if ident.facts else None
         return None
+
+    async def _together(self, names: list[str], room: str | None) -> None:
+        """"Mister Brown e Rossellina stanno insieme": two figurines touching are one blob. The presence of one of them
+        (in the room said, if any) is both, the other hidden behind it until a hand parts them; with neither seen,
+        the one presence the house does not know yet."""
+        ctx = self.ctx
+        idents = [i for i in (ctx.identities.by_name(n) for n in names) if i is not None]
+        if len(idents) == 1:
+            await self.reply(f"Ho capito solo {idents[0].name}: dimmi di nuovo chi c'è insieme.",
+                             f"I only caught {idents[0].name}: tell me again who is with them.")
+            return
+        if len(idents) < 2:
+            await self.reply("Non conosco tutti e due.", "I don't know both of them.")
+            return
+        ids = {i.id for i in idents}
+        seen = [t for t in ctx.house.tracks.values() if not t.carried and (room is None or t.room == room)]
+        target = next((t for t in seen if t.identity in ids), None)
+        if target is None:
+            loose = [t for t in seen if not t.identity or t.uncertain]
+            target = loose[0] if len(loose) == 1 else None
+        if target is None:
+            await self.reply("Non li vedo: mettili dove la webcam li vede, oppure dimmi in che stanza sono.",
+                             "I can't see them: put them where the camera sees them, or tell me the room.")
+            return
+        if target.virtual:
+            obj = ctx.sim.objects.get(target.id)
+            if obj is not None and obj.identity not in ids:
+                obj.identity, obj.name = idents[0].id, idents[0].name
+        else:
+            ctx.vision.together(target.id, [i.id for i in idents])
+        where = target.room
+        await self.reply(*V.said_each(
+            "who.together", V.TOGETHER,
+            {"names": answers.join([i.name for i in idents], "it"), "where": answers.room(ctx, where, "it") if where else "lì"},
+            {"names": answers.join([i.name for i in idents], "en"), "where": answers.room(ctx, where, "en") if where else "there"}))
 
     async def _favourite_light(self, name: str, room: str | None) -> None:
         """"Accendi la luce preferita di Marco": the room said, or the one Marco is in, in the colour Marco told the
@@ -729,13 +864,13 @@ class Voice:
         if ident is None:
             await self.reply(f"Non conosco nessuno che si chiama {name}.", f"I don't know anyone called {name}.")
             return
-        if topic in (None, facts.LIKES) and not asked and ident.facts and self.llm is not None and self.llm_ready:
-            # only a word of liking ("a Marco piacciono i Beatles?"): the model may tell what it is about
-            filler = asyncio.create_task(self._filler("Vediamo..." if self.lang == "it" else "Let me see..."))
-            told = await self.llm.topic(text)
-            await filler
-            topic = told if told and told != "other" else topic
-        chosen = facts.select(topic, ident.facts, self.fact_topics, names=self._names())
+        names = self._names()
+        # by its keywords, then by the words it shares with a fact: at once, never waiting for the language model
+        chosen = facts.select(topic, ident.facts, self.fact_topics, names=names) if topic else []
+        if not chosen:
+            chosen = facts.overlap(text, ident.facts, names)
+        if not chosen and topic == facts.LIKES:
+            chosen = facts.select(facts.LIKES, ident.facts, self.fact_topics, names=names)
         if chosen:
             await self.stories.tell_facts(ident, chosen)
         elif self.stories.knows(text):
@@ -961,7 +1096,7 @@ class Voice:
                 obj.identity, obj.name = exp["identity"], exp["name"]
         else:
             self.ctx.vision.assign(track.id, exp["identity"])
-        track.identity, track.uncertain = exp["identity"], False
+        self.ctx.house.name(track, exp["identity"])
         self.expect_entrance = None
         self.ctx.bus.publish("identity_changed", track=track.id, identity=exp["identity"], name=exp["name"])
 

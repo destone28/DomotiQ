@@ -125,7 +125,16 @@ PATTERNS: list[tuple[str, list[str]]] = [
     ("recall", [r"\bti ricordi\b", r"\bvi ricordate\b", r"\bte lo ricordi\b", r"\bdo you remember\b",
                 r"\bremember when\b", r"\bdo you recall\b"]),
     ("about", [r"\bcosa sai (di|su|del|della)\b", r"\bche sai (di|su)\b", r"\bparlami (di|del|della)\b",
-               r"\bchi e\b", r"\bwhat do you know about\b", r"\btell me about\b", r"\bwho is\b"]),
+               r"\bchi e\b", r"\bwhat do you know about\b", r"\btell me (something )?about\b", r"\bwho is\b",
+               # with a name, these are about the character, never about the whole house
+               r"\braccont\w* (anche |pure )?(qualcosa |tutto |quello che sai |cosa sai )?(di|su|del|della|dello|sul|sulla)\b",
+               r"\bdimmi (qualcosa|tutto|quello che sai|cosa sai) (di|su|del|della|sul|sulla)\b",
+               r"\bcosa (mi )?(sai|dici|racconti) (di|su|del|della|sul|sulla)\b", r"\bdescriv\w*\b", r"\bcosa fa\b",
+               r"\bwhat about\b", r"\bwhat does \w+( \w+)? do\b"]),
+    # "Mister Brown e Rossellina stanno insieme": two characters touching, one blob for both (two names needed)
+    ("together", [r"\b(stanno|sono|state|stiamo|siamo) (tutti e due |tutte e due |entrambi |entrambe )?insieme\b",
+                  r"\b(stanno|sono) (vicini|vicine|attaccati|attaccate|abbracciati|abbracciate)\b",
+                  r"\b(are|stand|stay|sit) (both )?together\b", r"\bare (next to|close to) each other\b"]),
     # "accendi la luce preferita di Marco": the light in the colour a character told the house (a name is needed)
     ("lights_fav", [r"\b(luce|luci|colore|colori) preferit\w*\b", r"\bfavou?rite (light|lights|colou?r)\b"]),
     # "cosa mangia Marco?", "che musica piace a Giulia?": what the house was told about a character, by the
@@ -198,16 +207,65 @@ def name_from_speech(text: str) -> str:
     return " ".join(words[:2]).title()
 
 
+NAME_ALIKE = 0.82        # a name heard a little wrong ("rossellino" for Rossellina) is still that name
+# words that are part of many names, or ordinary words: a name of two words is not recognized by one of these alone
+NAME_COMMON = {"mister", "signor", "signora", "signorina", "nonno", "nonna", "zio", "zia", "papa", "mamma", "babbo",
+               "natale", "dottor", "dottore", "doctor", "miss", "lady", "king", "queen", "regina", "principe",
+               "principessa", "capitan", "capitano", "super", "baby", "little", "piccolo", "piccola", "grande", "bello",
+               "bella", "casa", "house"}
+
+
 def find_names(text: str, names: Iterable[str]) -> list[str]:
-    """Every known name in the sentence, in the order they are said ("Marco e Giulia")."""
-    t = f" {text} "
-    found = []
-    for n in sorted(set(names), key=len, reverse=True):
-        key = normalize(n)
-        pos = t.find(f" {key} ")
-        if key and pos >= 0 and n not in found:
-            found.append((pos, n))
-            t = t.replace(f" {key} ", " " + "#" * len(key) + " ")
+    """Every known name in the sentence, in the order they are said ("Marco e Giulia"), also heard a little wrong
+    ("rossellino" for Rossellina), and a name of two words also by the word only it has ("james brown" for Mister
+    Brown; not a colour or an ordinary word: "verde" is no Mister Green)."""
+    names = [n for n in dict.fromkeys(names) if n and normalize(n)]
+    words = text.split()
+    used = [False] * len(words)
+    found: list[tuple[int, str]] = []
+
+    def take(i: int, k: int, n: str) -> None:
+        found.append((i, n))
+        for j in range(i, i + k):
+            used[j] = True
+    for n in sorted(names, key=lambda n: -len(normalize(n))):          # as they are written, longest first
+        key = normalize(n).split()
+        k = len(key)
+        for i in range(len(words) - k + 1):
+            if not any(used[i:i + k]) and words[i:i + k] == key:
+                take(i, k, n)
+                break
+    taken = {n for _, n in found}
+    for n in names:                                                     # heard a little wrong
+        if n in taken:
+            continue
+        key = " ".join(normalize(n).split())
+        k = len(key.split())
+        best, where = 0.0, None
+        for i in range(len(words) - k + 1):
+            if any(used[i:i + k]) or len(" ".join(words[i:i + k])) < 4:
+                continue
+            r = difflib.SequenceMatcher(None, " ".join(words[i:i + k]), key).ratio()
+            if r > best:
+                best, where = r, i
+        if where is not None and best >= NAME_ALIKE:
+            take(where, k, n)
+            taken.add(n)
+    colours = {w for ws in COLORS.values() for w in ws}
+    owners: dict[str, list[str]] = {}
+    for n in names:
+        for w in set(normalize(n).split()):
+            owners.setdefault(w, []).append(n)
+    for n in names:                                                     # by the word only it has
+        if n in taken or len(normalize(n).split()) < 2:
+            continue
+        own = [w for w in normalize(n).split() if len(owners[w]) == 1 and len(w) >= 4 and w not in NAME_COMMON
+               and w not in colours and not find_room(w)]
+        for i, w in enumerate(words):
+            if not used[i] and w in own:
+                take(i, 1, n)
+                taken.add(n)
+                break
     return [n for _, n in sorted(found)]
 
 
@@ -437,6 +495,15 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
             if re.search(r"\bchi e (in|nel|nella|dentro)\b|\bwho is in\b", t):
                 continue
             args["name"] = found_names[0]
+        elif intent == "together":
+            if not found_names:
+                continue                      # one name only: the house asks who the other one is
+            args["names"] = found_names[:3]
+            room = find_room(t)
+            if room:
+                args["room"] = room
+        elif intent in ("house_summary", "help", "who_are_you") and found_names:
+            continue                # with a name, the question is about that character
         elif intent == "lights_fav":
             # a request ("accendi", "metti", "turn on"...), not a question ("qual è il colore preferito di Marco?")
             if not found_names or not re.search(r"\b(accend\w*|mett\w*|fai|turn|switch|put|light up|show|make)\b", t):
