@@ -445,3 +445,31 @@ def test_sentences_are_kept_on_disk_and_read_back_after_a_restart(tmp_path, monk
         third._prune()
         assert sorted((tmp_path / "voice").glob("*.wav")) == files[1:]
     asyncio.run(scenario())
+
+
+def test_sentences_prepared_ahead_of_time_are_read_from_their_folder(tmp_path):
+    import io
+    import wave
+    from domotiq.voice import tts
+    out = io.BytesIO()
+    with wave.open(out, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(22050)
+        w.writeframes(b"\x10\x00" * 2205)
+    seed = tmp_path / "voice-cache"
+    seed.mkdir()
+    (seed / tts.Speaker._name("it", "Chi è?")).write_bytes(out.getvalue())
+    sp = tts.Speaker(url="http://127.0.0.1:9/none", cache_dir=tmp_path / "voice", seed_dir=seed)
+
+    async def scenario():
+        assert await sp.synth("Chi è?", "it") is not None          # from the folder prepared ahead of time
+        assert await sp.synth("Vediamo...", "it") is None         # not there, and no Piper to ask
+    asyncio.run(scenario())
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("voice_cache", "scripts/voice_cache.py")
+    vc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(vc)
+    said = vc.sentences()
+    assert ("it", "Chi è?") in said and ("en", "Who is it?") in said and ("it", "Dimmi, di cosa hai bisogno?") in said
+    assert not any("{" in t or "|" in t for _, t in said) and len(said) > 150

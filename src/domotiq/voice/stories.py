@@ -49,7 +49,7 @@ from ..layout import DATA_DIR
 from ..model import ANIMALS, CATEGORY_NAMES, PERSON
 from . import answers, facts
 from . import variants as V
-from .intents import find_names, find_room, normalize
+from .intents import find_names, find_room, normalize, parse
 
 if TYPE_CHECKING:
     from .manager import Voice
@@ -100,7 +100,8 @@ TOPICS = [
     ("chore", r"\bspazzatura\b|\bimmondizia\b|\brifiuti\b|\bpiatti\b|\bbucato\b|\baspirapolvere\b|\bannaff\w*|"
               r"\brubbish\b|\btrash\b|\bbins?\b|\bdishes\b|\blaundry\b|\bwashing\b|\bhoover\w*|\bvacuum\w*|\bplants\b"),
     ("car", r"\btagliando\b|\bbenzina\b|\bgomme\b|\bpetrol\b|\btyres?\b|\btires?\b|\bservice\b"),
-    ("holiday", r"\bvacanz\w*|\bferie\b|\bholidays?\b|\bvacation\b"),
+    ("holiday", r"\bvacanz\w*|\bferie\b|\bholidays?\b|\bvacation\b|\b(vuole|vorrebbe|vogliono|vorrebbero) andare\b|"
+                r"\b(wants|would like) to go\b"),
 ]
 BILLS = {"electricity": r"\bluce\b|\belectric\w*", "gas": r"\bgas\b", "water": r"\bacqua\b|\bwater\b",
          "internet": r"\binternet\b|\bwi ?fi\b"}
@@ -218,6 +219,11 @@ def date_text(lang: str, day: int, month: int) -> str:
         return f"{article}{'primo' if day == 1 else day} {MONTHS['it'][month]}"
     suffix = "th" if 11 <= day <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
     return f"{MONTHS['en'][month]} {day}{suffix}"
+
+
+# a question that goes on from what the house just said ("Quando?" after "manca poco al tuo compleanno")
+FOLLOW_UP = re.compile(r"^(e |ma |allora |and |but |so )?(quando|quanto|quanti|quante|quale|quali|dove|chi|che|cosa|come|"
+                       r"perche|when|where|who|what|which|how|why|whose)\b")
 
 
 def life_topic(question: str) -> str | None:
@@ -921,16 +927,21 @@ class StoryTeller:
         slots: dict[str, str] = {"a": name}
         state: tuple | None = None
         topic = q["topic"]
+        # what the question is about, to understand a question that goes on from it ("Quando?")
+        about = {"birthday": ("compleanno", "birthday"), "holiday": ("vacanza", "holiday"),
+                 "shopping": ("spesa", "shopping")}.get(topic)
         if topic == "bill":
             bill = self.rng.choice(life["bills"])
             slots["kind"] = bill[lang]
             slots["due"] = date_text(lang, *self._bill(bill["id"], ident)["due"])
             state = ("bill", bill["id"])
+            about = (f"bolletta {bill['it']}", f"{bill['en']} bill")
         elif topic == "insurance":
             ins = self.rng.choice(life["insurances"])
             slots["kind"] = ins[lang]
             d = self._keep(("insurance", ins["id"]), lambda: {"due": self._soon(20, 330), "owner": ident.id})
             slots["due"] = date_text(lang, *d["due"])
+            about = (f"assicurazione {ins['it']}", f"{ins['en']} insurance")
         elif topic == "shopping":
             d = self._keep(("shopping",), lambda: {"who": ident.id, "done": False, "when": 0,
                                                    "items": self.rng.randrange(len(life["groceries"]))})
@@ -940,6 +951,7 @@ class StoryTeller:
             chore = self.rng.choice(life["chores"])
             slots["chore"] = chore[lang]
             state = ("chore", chore["id"])
+            about = (chore["it"], chore["en"])
         elif topic == "holiday":
             idx = self._keep(("holiday", ident.id), lambda: self.rng.randrange(len(life["holidays"])))
             slots["place"] = life["holidays"][idx][lang]
@@ -948,7 +960,8 @@ class StoryTeller:
 
         def fill(text: str) -> str:
             return _cap(re.sub(r"\{(\w+)\}", lambda m: slots.get(m.group(1), m.group(0)), text))
-        return [fill(q[lang])], {"yes": fill(q["yes"][lang]), "no": fill(q["no"][lang]), "state": state}
+        return [fill(q[lang])], {"yes": fill(q["yes"][lang]), "no": fill(q["no"][lang]), "state": state,
+                                 "about": about}
 
     async def chat(self, ident: Any, room: str | None, kind: str) -> list[str]:
         """A line of small talk about a character in the house (chatty mode); returns what was said."""
@@ -975,11 +988,31 @@ class StoryTeller:
             d = self._keep(state, lambda: {"items": self.rng.randrange(len(life["groceries"]))})
             d.update(who=ident.id, done=verdict, when=len(WHEN["it"]) - 1)
 
+    async def _follow_up(self, ident: Any, reply: dict[str, Any], answer: str) -> list[str] | None:
+        """Not a yes or a no. A question about the life of the house is answered ("Chi ha pagato il gas?"); a request
+        or a question for the house is done ("che ore sono?"); a question that goes on from what the house said
+        ("Quando?" after the birthday, "Dove?" after the holidays) is answered about that. None for anything else."""
+        t = normalize(answer)
+        if life_topic(t) is not None:
+            return await self._speak(self.life_answer(t, [ident.name]))
+        if parse(answer, self.voice._names()) is not None:
+            await self.voice.handle(answer)
+            return [answer]
+        about = reply.get("about")
+        if about and FOLLOW_UP.match(t):
+            return await self._speak(self.life_answer(f"{t} {normalize(about[0 if self.lang == 'it' else 1])}",
+                                                      [ident.name]))
+        return None
+
     async def chat_reply(self, ident: Any, question: str, answer: str) -> list[str]:
         """After a visitor answered for a character: the reply for a yes or a no, and the house remembers it."""
         from .chatter import yes_or_no            # here: chatter imports this module
         reply = self._pending_reply.pop(ident.id, None) or {}
         verdict = yes_or_no(answer, self.lang, strict=True) if answer else None
+        if verdict is None and answer:
+            said = await self._follow_up(ident, reply, answer)
+            if said is not None:
+                return said
         if verdict is None:
             text = ({"it": "Ah, interessante!", "en": "Oh, interesting!"} if answer
                     else {"it": f"Va bene {ident.name}, me lo dirai un'altra volta.",

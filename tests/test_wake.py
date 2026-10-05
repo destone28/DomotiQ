@@ -186,3 +186,26 @@ def test_after_the_word_the_house_is_already_taken(ctx):
         await v._woken("ehm")                                  # a noise after the word: not a request
         assert ctx.said[-1] == "Dimmi, di cosa hai bisogno?" and handled[-1] == ("spegni la luce", True)
     asyncio.run(scenario())
+
+
+def test_a_list_of_words_and_the_free_recognition_at_the_same_time(ctx):
+    async def scenario():
+        v = ctx.voice
+        made = []
+
+        class Listener(_Listener):
+            def session(self, lang, grammar=None):
+                s = _Session(grammar)
+                made.append(s)
+                return s
+        v.listener = Listener()
+        v.mic = _Mic(_said("direi", "di", "si", quiet=10), [])
+        text, conf, audio = await v._listen(["si", "no"], max_s=5.0)
+        assert len(made) == 2 and made[1].grammar is None                   # the free one, fed at the same time
+        assert made[0].heard == made[1].heard == ["direi", "di", "si"]
+        free, _ = await v._recognize(audio, None)                           # ready: nothing recognized again
+        assert free == "direi di si" and len(made) == 2
+        v.mic = _Mic(_said("si", quiet=10), [])
+        await v._listen(None, max_s=5.0)
+        assert len(made) == 3                                               # free speech: one recognizer
+    asyncio.run(scenario())

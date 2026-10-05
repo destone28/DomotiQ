@@ -12,6 +12,8 @@ so "Who is it?" plays at once even while the processor is busy. Every
 sentence synthesized is also kept on disk (as Piper sent it, a WAV file named
 after the voice and the text): after a restart it is read back in a moment
 instead of being synthesized again, and the oldest go when there are too many.
+The fixed sentences can be prepared ahead of time in another folder that is
+only read (models/voice-cache, see scripts/voice_cache.py).
 
 A few phrases are given to Piper as phonemes, where the Italian voice would
 swallow a vowel: "Come si chiama?" came out as "Cme s chiama?", because
@@ -66,33 +68,38 @@ def _resample(x: np.ndarray, src: int, dst: int) -> np.ndarray:
 
 class Speaker:
     def __init__(self, url: str = URL, cache_size: int = 300, cache_dir: Path | str | None = None,
-                 disk_max: int = 3000) -> None:
+                 disk_max: int = 3000, seed_dir: Path | str | None = None) -> None:
         self.url = url
         self.cache: OrderedDict[tuple[str, str], np.ndarray] = OrderedDict()
         self.cache_size = cache_size
         self.dir = Path(cache_dir) if cache_dir else None
+        self.seed = Path(seed_dir) if seed_dir else None      # sentences prepared ahead of time, only read
         self.disk_max = disk_max
         self._written = 0
         self.ok = False
         self.errors = 0
 
-    def _file(self, lang: str, text: str) -> Path | None:
-        if self.dir is None:
-            return None
+    @staticmethod
+    def _name(lang: str, text: str) -> str:
         key = f"{VOICES.get(lang, VOICES['it'])}\n{text}".encode()
-        return self.dir / f"{hashlib.sha1(key).hexdigest()[:24]}.wav"
+        return f"{hashlib.sha1(key).hexdigest()[:24]}.wav"
+
+    def _file(self, lang: str, text: str) -> Path | None:
+        return self.dir / self._name(lang, text) if self.dir is not None else None
 
     def _from_disk(self, lang: str, text: str) -> np.ndarray | None:
-        f = self._file(lang, text)
-        if f is None:
-            return None
-        try:
-            data = f.read_bytes()
-            samples = self._decode(data)
-            os.utime(f)                         # used: among the last to go
-            return samples
-        except (OSError, ValueError, EOFError, wave.Error):
-            return None
+        for folder, own in ((self.dir, True), (self.seed, False)):
+            if folder is None:
+                continue
+            f = folder / self._name(lang, text)
+            try:
+                samples = self._decode(f.read_bytes())
+                if own:
+                    os.utime(f)                 # used: among the last to go
+                return samples
+            except (OSError, ValueError, EOFError, wave.Error):
+                continue
+        return None
 
     def _to_disk(self, lang: str, text: str, data: bytes) -> None:
         f = self._file(lang, text)

@@ -185,6 +185,34 @@ def summary(ctx: "Context", lang: str) -> str:
     return " ".join(parts)
 
 
+def characters(ctx: "Context", lang: str) -> str:
+    """The characters the house knows (persons and pets; then the car and the objects), and who is in now."""
+    known = list(ctx.identities.all())
+    if not known:
+        return ("Non conosco ancora nessun personaggio: aggiungine uno dalla webapp o con Parla."
+                if lang == "it" else "I don't know any character yet: add one from the web app or with Talk.")
+    alive = sorted(i.name for i in known if i.category == PERSON or i.category in ANIMALS)
+    things = sorted(i.name for i in known if i.name not in alive)
+    here = sorted({i.name for i in known if ctx.house.where_is(i.id) is not None and i.name in alive})
+    if lang == "it":
+        out = (f"Conosco {len(alive)} personaggi: {join(alive, lang)}." if len(alive) > 1
+               else f"Conosco un personaggio: {alive[0]}." if alive else "")
+        if things:
+            out += f" {'E poi' if alive else 'Conosco'} {join(things, lang)}."
+        if alive:
+            out += (f" In casa adesso ci sono {join(here, lang)}." if len(here) > 1
+                    else f" In casa adesso c'è {here[0]}." if here else " In casa adesso non vedo nessuno di loro.")
+        return out.strip()
+    out = (f"I know {len(alive)} characters: {join(alive, lang)}." if len(alive) > 1
+           else f"I know one character: {alive[0]}." if alive else "")
+    if things:
+        out += f" {'And then' if alive else 'I know'} {join(things, lang)}."
+    if alive:
+        out += (f" In the house now there are {join(here, lang)}." if len(here) > 1
+                else f" In the house now there's {here[0]}." if here else " I can't see any of them in the house now.")
+    return out.strip()
+
+
 def help_text(lang: str) -> str:
     if lang == "it":
         return ("Puoi chiedermi dov'è qualcuno, chi c'è in una stanza, che temperatura fa, e che ore sono. "

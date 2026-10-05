@@ -111,6 +111,10 @@ PATTERNS: list[tuple[str, list[str]]] = [
     ("time_now", [r"\bche or[ae]\b", r"\bche ora e\b", r"\bwhat time\b", r"\bwhat s the time\b"]),
     # "ricorda che Marco fa il medico": something to use in the stories (before everything that has a name)
     ("fact", [r"^(ricorda|ricordati|ricordate|memorizza|segnati) che\b", r"^(remember|note|keep in mind) that\b"]),
+    # "l'ospite in soggiorno è Rosaria", "quello in cucina si chiama Marco": who a presence is, said aloud
+    ("name_presence", [r"\b(l ospite|ospite|il personaggio|personaggio|la statuina|statuina|quello|quella|quel|"
+                       r"la persona|il nuovo|la nuova|the guest|the figurine|the character|the one|the person|"
+                       r"the new one)\b.*\b(si chiama|e|is called|is named|s name is|is)\s+\w+"]),
     # what the house really saw today (before where_is: "dov'è stato Marco" is not "dov'è Marco")
     ("remember", [r"\bcosa ha fatto\b", r"\bche (cosa )?ha fatto\b", r"\bdove e (stato|stata|andato|andata)\b",
                   r"\bdov e (stato|stata|andato|andata)\b", r"\bwhat (did|has) \w+( \w+)? (do|done|been doing)\b",
@@ -136,6 +140,11 @@ PATTERNS: list[tuple[str, list[str]]] = [
                   r"\b(stanno|sono) (vicini|vicine|attaccati|attaccate|abbracciati|abbracciate)\b",
                   r"\b(are|stand|stay|sit) (both )?together\b", r"\bare (next to|close to) each other\b"]),
     # "accendi la luce preferita di Marco": the light in the colour a character told the house (a name is needed)
+    # "chi sono i personaggi che conosci?": the characters the house knows, and who is in now
+    ("characters", [r"\bchi (sono|son) (i|le|tutti i|tutte le) (personaggi|persone|statuine|ospiti)\b",
+                    r"\b(quali|che) (personaggi|statuine|persone) (conosci|ci sono|hai)\b", r"\bchi conosci\b",
+                    r"\b(personaggi|statuine) (che )?conosci\b", r"\bwho do you know\b",
+                    r"\b(which|what) (characters|figurines|people) do you know\b", r"\bcharacters you know\b"]),
     ("lights_fav", [r"\b(luce|luci|colore|colori) preferit\w*\b", r"\bfavou?rite (light|lights|colou?r)\b"]),
     # "cosa mangia Marco?", "che musica piace a Giulia?": what the house was told about a character, by the
     # keywords of facts.py (before the commands: "musica" would start a party, a name alone is "where is")
@@ -148,7 +157,9 @@ PATTERNS: list[tuple[str, list[str]]] = [
                    r"\b(parla di piu|chiacchierona|talk more|chatty)\b", r"\b(parla normale|normal mode)\b"]),
     ("volume", [r"\bnon ti sento\b", r"\bi can t hear you\b", r"\b(alza|abbassa) (il |la )?(volume|musica)\b", r"\bvolume (su|giu|up|down)\b", r"\bpiu (forte|piano)\b",
                 r"\b(louder|quieter|softer)\b", r"\b(turn|volume) (it )?(up|down)\b"]),
-    ("party", [r"\b(festa|party|balliamo|ballare|musica|let s dance|dance)\b", r"\b(festeggia|celebr)\w*\b"]),
+    # "fai presto", "let's body": "fai festa" and "let's party" as the recognizer heard them at the bench
+    ("party", [r"\b(festa|party|balliamo|ballare|musica|let s dance|dance)\b", r"\b(festeggia|celebr)\w*\b",
+               r"\b(fai|facciamo|famo) presto\b", r"\blet s (body|bodies|potty)\b"]),
     ("grill", [r"\b(barbecue|grigliata|griglia|grill|bbq|grigliare|salsicce|braciole|sausages)\b"]),
     ("scene", [r"\bscenari[oa]\b", r"\bmodalita\b", r"\bscene\b", r"\bmode\b", r"\bcinema\b", r"\brelax\b",
                r"\bbuonanotte\b", r"\bgood night\b", r"\bbuongiorno\b", r"\bgood morning\b",
@@ -186,6 +197,8 @@ PATTERNS: list[tuple[str, list[str]]] = [
     ("who_are_you", [r"\bchi sei\b", r"\bcome ti chiami\b", r"\bwho are you\b", r"\bwhat s your name\b",
                      r"\bwhat is your name\b"]),
     ("help", [r"\bcosa sai fare\b", r"\baiuto\b", r"\bche cosa puoi\b", r"\bwhat can you do\b", r"\bhelp\b",
+              r"\bcosa (ti )?(posso|possiamo|potrei) (chiederti|chiedere|dirti|dire|fare)\b",
+              r"\bcosa ti (posso|si puo) (chiedere|dire)\b", r"\bwhat can (i|we) (ask|say|tell)\b",
               r"\bcome funzioni\b", r"\bhow do you work\b", r"\bwhat do you know how to do\b", r"\bcosa puoi fare\b",
               r"\bwhat are you able to do\b", r"\bcosa sei capace\b"]),
     ("yes", [r"^(si|sì|certo|esatto|giusto|ok|okay|va bene|yes|yeah|yep|right|correct|sure)( .*)?$"]),
@@ -450,6 +463,42 @@ def _about_character(text: str, names: list[str]) -> bool:
     return life_topic(text) in (None, "holiday") or facts.liking(text, names)
 
 
+# words that are not the name of somebody after "dov'è" or "si chiama"
+NOT_A_NAME = {"il", "lo", "la", "l", "i", "gli", "le", "un", "una", "uno", "the", "a", "an", "mio", "mia", "tuo", "tua",
+              "nostro", "nostra", "my", "your", "our", "lui", "lei", "loro", "him", "her", "them", "it", "esso", "questo",
+              "questa", "quello", "quella", "this", "that", "nessuno", "nobody", "vuoto", "vuota", "empty", "qui", "qua",
+              "li", "la", "here", "there", "andato", "andata", "finito", "finita", "gone", "ora", "adesso", "now",
+              "sempre", "always", "anche", "too", "also", "uguale", "same", "lo stesso", "nuovo", "nuova", "new"}
+
+
+def _unknown_name(t: str) -> str | None:
+    """"dov'è emilio": the name after "dov'è" when it is no character of the house (a name, not a thing: no article)."""
+    m = re.search(r"\b(?:dov e|dove e|dove si trova|dove sta|where is|where s)\s+(\w+(?: \w+)?)\s*$", t)
+    if not m:
+        return None
+    words = m.group(1).split()
+    if words[0] in NOT_A_NAME or any(w in NOT_A_NAME for w in words) or find_room(m.group(1)) or find_color(m.group(1)):
+        return None
+    return " ".join(w.capitalize() for w in words)
+
+
+def _named_as(t: str, names: list[str]) -> str | None:
+    """The name said for a presence ("...si chiama Rosaria", "...è Marco"): a registered one if it sounds like it,
+    otherwise the words as said (a new character)."""
+    m = re.search(r"\b(?:si chiama|e|is called|is named|s name is|is)\s+(\w+(?: \w+)?)\s*$", t)
+    if not m:
+        return None
+    said = m.group(1)
+    known = find_names(said, names)
+    if known:
+        return known[0]
+    words = said.split()
+    if words[0] in NOT_A_NAME or any(w in NOT_A_NAME for w in words) or find_room(said) or find_color(said) \
+            or len(said) < 3:
+        return None
+    return " ".join(w.capitalize() for w in words)
+
+
 def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
     t = normalize(text)
     if not t:
@@ -523,8 +572,17 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
             if not name:
                 if find_room(t) and re.search(r"\b(chi|who)\b", t):
                     return Intent("who_in", {"room": find_room(t)}, 0.8)
+                unknown = _unknown_name(t)
+                if unknown:
+                    return Intent("where_is", {"name": unknown}, 0.6)   # "dov'è Emilio?": not one it knows
                 continue
             args["name"] = name
+        elif intent == "name_presence":
+            room = find_room(t)
+            said = _named_as(t, names)
+            if not room or not said:
+                continue
+            args["room"], args["name"] = room, said
         elif intent == "empty_room":
             room = find_room(t)
             if not room and not re.search(r"\b(casa|house)\b", t):

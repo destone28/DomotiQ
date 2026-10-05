@@ -36,9 +36,11 @@ import json
 import logging
 import math
 import re
+import threading
 import time
 import urllib.request
-from typing import Iterable
+from collections import OrderedDict
+from typing import Callable, Iterable
 
 from . import facts, offers, who
 from .intents import Intent, find_name, find_room
@@ -177,10 +179,15 @@ def parse_command(text: str, names: list[str]) -> Intent | None:
     return Intent(intent, args, 0.7, "llm")
 
 
+MEMO_SIZE = 256         # requests whose answer is kept: the same sentence again is answered at once
+
+
 class LanguageModel:
     def __init__(self, url: str = URL, timeout: float = 20.0) -> None:
         self.url = url
         self.timeout = timeout
+        self._answers: OrderedDict[tuple, tuple[str, float]] = OrderedDict()
+        self._answers_lock = threading.Lock()
         self.ok = False
         self.slots = 0          # slots of llama-server: the answers to offers need the third one
         self.model = ""         # the model file of llama-server: the saved slots are of that model only
@@ -220,6 +227,26 @@ class LanguageModel:
     def facts_slot(self) -> int:
         """The topics have a slot of their own with four; with fewer they share the one of "who is it?"."""
         return FACTS_SLOT if self.slots > FACTS_SLOT else ANSWERS_SLOT
+
+    def _memo(self, key: tuple, call: Callable[[], tuple[str, float]]) -> tuple[str, float]:
+        """What the model answered to this very request: with temperature 0 it would answer the same, after seconds
+        on the board. Otherwise it is asked, and the answer kept (the last MEMO_SIZE)."""
+        with self._answers_lock:
+            hit = self._answers.get(key)
+            if hit is not None:
+                self._answers.move_to_end(key)
+                return hit
+        out = call()
+        with self._answers_lock:
+            self._answers[key] = out
+            while len(self._answers) > MEMO_SIZE:
+                self._answers.popitem(last=False)
+        return out
+
+    def remembers(self, sentence: str, names: Iterable[str]) -> bool:
+        """This command was asked already: its answer comes at once (no "Let me see...")."""
+        with self._answers_lock:
+            return _command_key(sentence, list(names)) in self._answers
 
     def _ask(self, sentence: str, names: list[str], timeout: float | None = None) -> tuple[str, float]:
         """The command, and how sure the model was of its first word (0..1)."""
@@ -305,7 +332,8 @@ class LanguageModel:
         names = list(names)
         sentence = re.sub(r"\s+", " ", sentence).strip()
         try:
-            text, confidence = await asyncio.get_running_loop().run_in_executor(None, self._ask, sentence, names)
+            text, confidence = await asyncio.get_running_loop().run_in_executor(
+                None, self._memo, _command_key(sentence, names), lambda: self._ask(sentence, names))
             self.ok = True
         except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
             log.info("language model not available: %s", e)
@@ -334,7 +362,7 @@ class LanguageModel:
         sentence = re.sub(r"\s+", " ", sentence).strip()
         try:
             text, confidence = await asyncio.get_running_loop().run_in_executor(
-                None, self._classify, sentence, ANSWER_TIMEOUT_S)
+                None, self._memo, ("who", sentence.lower()), lambda: self._classify(sentence, ANSWER_TIMEOUT_S))
             self.ok = True
         except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
             log.info("language model not available: %s", e)
@@ -350,7 +378,7 @@ class LanguageModel:
         sentence = re.sub(r"\s+", " ", sentence).strip()
         try:
             text, confidence = await asyncio.get_running_loop().run_in_executor(
-                None, self._topic, sentence, ANSWER_TIMEOUT_S)
+                None, self._memo, ("topic", sentence.lower()), lambda: self._topic(sentence, ANSWER_TIMEOUT_S))
             self.ok = True
         except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
             log.info("language model not available: %s", e)
@@ -367,7 +395,8 @@ class LanguageModel:
         sentence = re.sub(r"\s+", " ", sentence).strip()
         try:
             text, confidence = await asyncio.get_running_loop().run_in_executor(
-                None, self._offer, question, sentence, ANSWER_TIMEOUT_S)
+                None, self._memo, ("offer", question, sentence.lower()),
+                lambda: self._offer(question, sentence, ANSWER_TIMEOUT_S))
             self.ok = True
         except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
             log.info("language model not available: %s", e)
@@ -375,6 +404,10 @@ class LanguageModel:
         answer = offers.from_model(text, confidence)
         log.info("language model, offer: %r (%.2f) -> %s", text, confidence, answer)
         return answer
+
+
+def _command_key(sentence: str, names: list[str]) -> tuple:
+    return ("command", re.sub(r"\s+", " ", sentence).strip().lower(), tuple(names))
 
 
 def _plain(text: str) -> str:

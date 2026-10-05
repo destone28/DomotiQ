@@ -17,6 +17,10 @@ EXTRA=()
 rsync -a --delete --exclude .git --filter=':- .gitignore' "${EXTRA[@]}" \
     --exclude venv --exclude piper-venv --exclude models --exclude var --exclude llama.cpp \
     ./ "$HOST:domotiq/"
+# the fixed sentences of the voice prepared on the PC (scripts/voice_cache.py), if there are any
+if [ -d models/voice-cache ]; then
+    rsync -a models/voice-cache/ "$HOST:domotiq/models/voice-cache/"
+fi
 if [ "${2:-}" = "--install" ]; then
     ssh -t "$HOST" "cd ~/domotiq && bash scripts/install.sh"
 else

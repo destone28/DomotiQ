@@ -383,3 +383,31 @@ def test_what_a_character_did_today(ctx):
     assert "Marco" in memory.room_day(ctx, "kitchen", "it", now=t0 + 1000)
     assert "una festa" in memory.parties_today(ctx, "it", now=t0 + 1000)
     assert memory.day_of(ctx, "Nessuno", "it").startswith("Non conosco")
+
+
+def test_a_question_that_goes_on_from_the_house_question(ctx, monkeypatch):
+    """"Viola, lo sai che manca poco al tuo compleanno?" - "Quando?": the birthday, not "interesting"."""
+    async def scenario():
+        viola = place(ctx, "Viola", KITCHEN)
+        st = ctx.voice.stories
+        replies = {}
+        for topic, answer, expected in (("birthday", "Quando?", "Il compleanno di Viola è "),
+                                        ("holiday", "e dove?", "Viola "),
+                                        ("birthday", "che ore sono", None),
+                                        ("birthday", "boh, vedremo", "Ah, interessante!")):
+            q = next(q for q in st.db["chat_questions"] if q["topic"] == topic)
+            monkeypatch.setattr(st, "_choose", lambda pool, used=None, q=q, **kw: q)
+            lines, reply = st.chat_lines(viola, "question")
+            replies[topic] = reply
+            st._pending_reply[viola.id] = reply
+            before = len(ctx.said)
+            await st.chat_reply(viola, lines[0], answer)
+            said = ctx.said[before:]
+            if expected is None:                                   # a question for the house: answered as such
+                assert said and "compleanno" not in said[-1] and not said[-1].startswith("Ah, interessante")
+            else:
+                assert said[-1].startswith(expected), (answer, said)
+            if answer == "Quando?":
+                date = said[-1][len(expected):-1]
+        assert replies["birthday"]["no"].startswith(f"È {date}:")      # the same date the house keeps
+    asyncio.run(scenario())

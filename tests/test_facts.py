@@ -505,3 +505,70 @@ def test_a_sentence_typed_in_the_other_language_is_said_in_its_own(ctx):
     assert not any("carbonara" in text and lang == "en" for text, lang in en)
     told = ctx.voice.stories.told(ros, [0], "it")
     assert told == [("Di Rossellina so che il suo piatto preferito è la carbonara.", "it")]
+
+
+def test_rules_from_the_sentences_heard_at_the_bench():
+    """Sentences casa1 sent to the language model: now the rules understand them at once."""
+    assert parse("fai presto", NAMES).name == "party" and parse("facciamo presto", NAMES).name == "party"
+    assert parse("let's body", NAMES).name == "party"
+    assert parse("cosa posso chiederti", NAMES).name == "help"
+    assert parse("chi sono i personaggi che conosci", NAMES).name == "characters"
+    assert parse("dov'è emilio", NAMES) == Intent("where_is", {"name": "Emilio"}, 0.6)
+    assert parse("dov'è il cane", NAMES) is None or parse("dov'è il cane", NAMES).args.get("name") != "Il Cane"
+    assert parse("l'ospite che in soggiorno si chiama rosaria", NAMES + ["Rosaria"]) == Intent(
+        "name_presence", {"room": "living", "name": "Rosaria"}, 0.9)
+    assert parse("quello in cucina è giacomo", NAMES) == Intent("name_presence", {"room": "kitchen", "name": "Giacomo"}, 0.9)
+    assert parse("quello in cucina è rosso", NAMES) is None or parse("quello in cucina è rosso", NAMES).name != "name_presence"
+    from domotiq.voice.stories import life_topic
+    assert life_topic("dove vuole andare rossellina") == "holiday"
+
+
+def test_a_presence_named_aloud_and_the_characters_the_house_knows(ctx):
+    async def scenario():
+        place(ctx, "Rosaria", KITCHEN)
+        ctx.sim.add(*LIVING, "person", None, "#20a0e0", "")                 # somebody the house does not know
+        ctx.house.update_tracks(ctx.sim.tracks(), time.time())
+        await ctx.voice.handle("l'ospite che in soggiorno si chiama Giacomo")
+        assert ctx.said[-1] == "Piacere, Giacomo!"
+        giacomo = ctx.identities.by_name("Giacomo")
+        assert giacomo is not None and ctx.house.where_is(giacomo.id).room == "living"
+        await ctx.voice.handle("chi sono i personaggi che conosci")
+        assert ctx.said[-1] == "Conosco 2 personaggi: Giacomo e Rosaria. In casa adesso ci sono Giacomo e Rosaria."
+        await ctx.voice.handle("dov'è Emilio")
+        assert ctx.said[-1] == "Non conosco nessuno che si chiama Emilio."
+    asyncio.run(scenario())
+
+
+def test_a_question_about_another_room_and_a_question_with_nobody_named(ctx):
+    async def scenario():
+        place(ctx, "Marco", KITCHEN, ["fa il medico"])
+        await ctx.voice.handle("chi c'è in cucina?")
+        await ctx.voice.handle("e in bagno?")                              # the same question, another room
+        assert ctx.said[-1] == "In bagno non c'è nessuno."
+        ctx.voice._context = None
+        heard = ["di Marco"]
+
+        async def listen(grammar, **kw):
+            return (heard.pop(0) if heard else ""), 1.0, b"x"
+        ctx.voice._listen = listen
+        await ctx.voice.handle("che lavoro fa?")                           # nobody named, nobody talked about
+        assert ctx.said[-2] == "Di chi?" and ctx.said[-1] == "So che Marco fa il medico."
+    asyncio.run(scenario())
+
+
+def test_the_same_request_to_the_model_is_answered_from_memory(monkeypatch):
+    from domotiq.voice.llm import LanguageModel
+    model = LanguageModel()
+    calls = []
+
+    def ask(sentence, names, timeout=None):
+        calls.append(sentence)
+        return "where_is Marco", 0.9
+    monkeypatch.setattr(model, "_ask", ask)
+
+    async def scenario():
+        first = await model.understand("cerca un po' Marco", ["Marco"])
+        assert not model.remembers("cerca un po' Marco", ["Giulia"])        # other names: another request
+        again = await model.understand("Cerca un po'  Marco", ["Marco"])
+        assert first == again and calls == ["cerca un po' Marco"] and model.remembers("cerca un po' marco", ["Marco"])
+    asyncio.run(scenario())

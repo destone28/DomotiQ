@@ -40,8 +40,8 @@ from . import answers, facts, memory
 from .chatter import ECHO_S, NAME_CONFIDENCE, PROPOSALS, QUESTIONS, WELCOME, Chatter, yes_no_grammar, yes_or_no
 from .narrator import Narrator
 from .stories import StoryTeller
-from .intents import (DENY, Intent, find_name, find_room, name_from_speech, normalize, parse, parse_time, said_options,
-                      spoken)
+from .intents import (DENY, Intent, find_name, find_names, find_room, name_from_speech, normalize, parse, parse_time,
+                      said_options, spoken)
 from . import variants as V
 from .who import BOTH, OR, Dialogue
 from .llm import LanguageModel
@@ -62,6 +62,11 @@ HOLD_MAX_S = 6.0      # the microphone waits at most this long for the house to 
 TAG_DELAY_S = 2.0     # the facts of a character are looked at this long after a change (several come together)
 ENTRANCE_S = 180.0    # after the intercom, the first figurine that comes in within this long is the one who rang
 CONTEXT_S = 90.0      # a question with no name, this soon after one about a character, is about that character
+ROOM_INTENTS = ("who_in", "count", "temperature", "humidity", "lights_on", "lights_off")
+# what is left of "e in bagno?", "and what about the kitchen?" once the room is taken away
+FOLLOW_WORDS = {"e", "ed", "ma", "invece", "allora", "in", "nel", "nella", "nello", "nell", "al", "alla", "sul", "sulla",
+                "di", "del", "della", "la", "il", "l", "lo", "and", "but", "what", "how", "about", "in", "the", "then",
+                "instead", "so", "there", "li", "qui"}
 # the furniture a character may stand on: "Marco è sul divano?" asks where Marco is
 PLACE_WORDS = re.compile(r"\b(letto|divano|poltrona|tavolo|tavolino|bancone|frigo\w*|panca|panchina|albero|credenza|"
                          r"comodino|doccia|bed|sofa|couch|armchair|table|counter|fridge|bench|tree|sideboard|shower)\b")
@@ -93,7 +98,7 @@ for _i, _lang in enumerate(("it", "en")):
 class Voice:
     def __init__(self, ctx: "Context") -> None:
         self.ctx = ctx
-        self.speaker = Speaker(cache_dir=ctx.paths.var / "voice")
+        self.speaker = Speaker(cache_dir=ctx.paths.var / "voice", seed_dir=ctx.paths.models / "voice-cache")
         self.listener = None if ctx.args.no_voice else Listener(ctx.paths.models)
         audio = ctx.audio
         device = audio.device if audio is not None and not audio.dry else None
@@ -104,10 +109,14 @@ class Voice:
         self.llm_ready = False                 # its instructions are in the cache: a question costs a few seconds
         self._jokes = random.randrange(100)
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stt")
+        # the free recognition of what is said to a list of words, on another core at the same time
+        self.pool_free = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stt-free")
+        self._free_heard: tuple[bytes, asyncio.Future] | None = None
         self.busy = asyncio.Lock()
         self._talk_stop: asyncio.Event | None = None
         self._talk_task: asyncio.Task | None = None
         self._context: tuple[str, float] | None = None   # the last character talked about, and when
+        self._room_context: tuple[str, dict, float] | None = None   # the last question about a room, and when
         self._wake_stop: asyncio.Event | None = None     # the microphone is open for the word of activation
         self._wake_idle = asyncio.Event()                # ...and closed again
         self._wake_idle.set()
@@ -152,6 +161,7 @@ class Voice:
         for t in list(self._tasks):
             t.cancel()
         self.pool.shutdown(wait=False, cancel_futures=True)
+        self.pool_free.shutdown(wait=False, cancel_futures=True)
 
     def _spawn(self, coro) -> asyncio.Task:
         task = asyncio.create_task(coro)
@@ -257,11 +267,15 @@ class Voice:
         loop = asyncio.get_running_loop()
         lang = self.lang
         session = await loop.run_in_executor(self.pool, self.listener.session, lang, grammar)
+        # with a list of words the same audio is also recognized freely, at the same time on another core: the
+        # answer that is not one of the words ("direi di sì") is ready as soon as it has been said
+        free = await loop.run_in_executor(self.pool_free, self.listener.session, lang, None) if grammar else None
         stop = stop or asyncio.Event()
         started = loop.time()
         state = {"speech": False, "quiet": 0.0, "opened": None, "held": started}
         kept = bytearray()
         feeds: list[asyncio.Future] = []
+        free_feeds: list[asyncio.Future] = []
 
         def on_chunk(chunk: bytes) -> None:
             now = loop.time()
@@ -275,6 +289,8 @@ class Voice:
                 self.opened_at = time.monotonic()
             kept.extend(chunk)
             feeds.append(loop.run_in_executor(self.pool, session.feed, chunk))
+            if free is not None:
+                free_feeds.append(loop.run_in_executor(self.pool_free, free.feed, chunk))
             if self.mic.last_level > 0.02:
                 state["speech"], state["quiet"] = True, 0.0
             elif state["speech"]:
@@ -292,6 +308,11 @@ class Voice:
             self.ctx.bus.publish("listening", on=False)
             await self.ctx.actions.update_leds()
         audio = bytes(kept)
+        if free is not None:
+            async def free_result() -> tuple[str, float]:
+                await asyncio.gather(*free_feeds, return_exceptions=True)
+                return await loop.run_in_executor(self.pool_free, free.result)
+            self._free_heard = (audio, asyncio.ensure_future(free_result()))
         if state["speech"]:
             await self.ctx.actions.thinking(True)          # something was said: the house works on it
         if feeds:
@@ -304,6 +325,9 @@ class Voice:
     async def _recognize(self, audio: bytes, grammar: list[str] | None) -> tuple[str, float]:
         if not audio or not (self.listener and self.listener.ok):
             return "", 0.0
+        heard = self._free_heard
+        if grammar is None and heard is not None and heard[0] is audio:
+            return await heard[1]                       # recognized while it was being said
         loop = asyncio.get_running_loop()
         session = await loop.run_in_executor(self.pool, self.listener.session, self.lang, grammar)
         await loop.run_in_executor(self.pool, session.feed, audio)
@@ -550,6 +574,10 @@ class Voice:
             return                                    # "sì" to the offer the house has just made
         intent = parse(text, names)
         intent = self._in_context(text, intent, names)
+        if intent is None:
+            intent = self._room_follow_up(text, names)  # "chi c'è in cucina?" ... "e in bagno?"
+        if intent is None and await self._whose(text, names):
+            return                                    # "che lavoro fa?" with nobody named: "Di chi?"
         if intent is None and self.stories.knows(text):
             intent = Intent("other", {}, 0.8, "rules")      # bills, insurance, chores...: the life of the house
         filler = None
@@ -562,12 +590,13 @@ class Voice:
                 intent = Intent("ask_fact", {"name": ident.name, "topic": facts.question_topic(text, names)}, 0.6,
                                 "rules")
         if intent is None and self._about_a_place(text):
-            from .intents import find_names
             named = find_names(normalize(text), names)
             if named:
                 intent = Intent("where_is", {"name": named[0]}, 0.7, "rules")   # "Marco è sul divano?"
         if intent is None and self.llm is not None:
-            filler = filler or asyncio.create_task(self._filler("Vediamo..." if lang == "it" else "Let me see..."))
+            remembers = getattr(self.llm, "remembers", None)
+            if not (remembers and remembers(text, names)):   # asked already: the answer comes at once
+                filler = filler or asyncio.create_task(self._filler("Vediamo..." if lang == "it" else "Let me see..."))
             intent = await self.llm.understand(text, names)
         if filler is not None:
             await filler
@@ -587,6 +616,8 @@ class Voice:
         intent.args.setdefault("text", text)
         if intent.args.get("name") or intent.args.get("names"):
             self._context = (intent.args.get("name") or intent.args["names"][0], time.monotonic())
+        if intent.name in ROOM_INTENTS and intent.args.get("room"):
+            self._room_context = (intent.name, dict(intent.args), time.monotonic())
         await self.execute(intent)
 
     async def ask_time(self) -> None:
@@ -688,6 +719,10 @@ class Voice:
             await self._favourite_light(a.get("name", ""), a.get("room"))
         elif name == "together":
             await self._together(a.get("names") or [], a.get("room"))
+        elif name == "characters":
+            await self.say(answers.characters(ctx, lang))
+        elif name == "name_presence":
+            await self._name_presence(a.get("room"), a.get("name", ""))
         elif name == "lights_off":
             await act.lights_off(a.get("room", "all"))
             if not a.get("quiet"):
@@ -758,7 +793,6 @@ class Voice:
             await self.say(answers.off_topic(lang))
 
     def _mentioned(self, text: str) -> list[str]:
-        from .intents import find_names
         return find_names(normalize(text), self._names())
 
     def _in_context(self, text: str, intent: Intent | None, names: list[str]) -> Intent | None:
@@ -768,7 +802,6 @@ class Voice:
             return intent
         if intent is not None and intent.name not in ("other", "house_summary", "help", "who_are_you"):
             return intent
-        from .intents import find_names
         t = normalize(text)
         if find_names(t, names) or not (facts.question_topic(text, names) or ABOUT_CUE.search(t)):
             return intent
@@ -779,6 +812,45 @@ class Voice:
         return (intent.name == "where_is" and intent.source == "rules" and intent.confidence < 0.8
                 and len(normalize(text).split()) > len(normalize(intent.args.get("name", "")).split()))
 
+    def _room_follow_up(self, text: str, names: list[str]) -> Intent | None:
+        """"E in bagno?" a moment after "chi c'è in cucina?": the same question about another room."""
+        ctx = self._room_context
+        if ctx is None or time.monotonic() - ctx[2] > CONTEXT_S:
+            return None
+        t = normalize(text)
+        room = find_room(t)
+        if not room or len(t.split()) > 6 or find_names(t, names):
+            return None
+        rest = [w for w in t.split() if w not in FOLLOW_WORDS]       # what is left must be the room itself
+        if len(rest) > 3 or find_room(" ".join(rest)) != room:
+            return None
+        args = {k: v for k, v in ctx[1].items() if k not in ("text", "quiet")}
+        args["room"] = room
+        return Intent(ctx[0], args, 0.7, "rules")
+
+    async def _whose(self, text: str, names: list[str]) -> bool:
+        """A question about a character with nobody named and nobody talked about just before ("che lavoro
+        fa?"): the house asks whose, listens, and answers about that one. False when it is no such question."""
+        t = normalize(text)
+        if find_names(t, names) or facts.is_request(text, names) or self.stories.knows(text):
+            return False
+        if facts.question_topic(text, names) is None and not ABOUT_CUE.search(t):
+            return False
+        if not re.search(r"\b(fa|fanno|piace|piacciono|ama|lavora|vive|abita|viene|mangia|beve|anni|"
+                         r"does|do|likes?|loves?|works?|lives?|comes?|eats?|drinks?|old)\b", t):
+            return False
+        await self.reply("Di chi?", "Who do you mean?")
+        if not (self.listener and self.listener.ok and self.mic.available):
+            return True
+        heard, _, _ = await self._listen(None, max_s=5.0, auto_end=True, hold=self.chatter._speaking, echo=ECHO_S)
+        who = find_names(normalize(heard), names) if heard else []
+        if not who:
+            if heard:
+                await self.say(answers.not_understood(self.lang))
+            return True
+        await self.handle(f"{text} {who[0]}")
+        return True
+
     @staticmethod
     def _about_a_place(text: str) -> bool:
         """"Dove Marco?", "Marco è in cucina?", "Marco è sul divano?": where somebody is, which the commands answer
@@ -788,7 +860,6 @@ class Voice:
 
     def _told_about(self, text: str, names: list[str]):
         """The first character named in the sentence, if the house was told something about it."""
-        from .intents import find_names
         for n in find_names(normalize(text), names):
             ident = self.ctx.identities.by_name(n)
             if ident is not None:
@@ -829,6 +900,34 @@ class Voice:
             "who.together", V.TOGETHER,
             {"names": answers.join([i.name for i in idents], "it"), "where": answers.room(ctx, where, "it") if where else "lì"},
             {"names": answers.join([i.name for i in idents], "en"), "where": answers.room(ctx, where, "en") if where else "there"}))
+
+    async def _name_presence(self, room: str | None, name: str) -> None:
+        """"L'ospite in soggiorno è Rosaria": the presence in that room the house does not know (or the only one
+        there) takes the name, a registered one or a new character, as from the web app."""
+        ctx = self.ctx
+        here = [t for t in ctx.house.tracks.values() if not t.carried and t.room == room]
+        loose = [t for t in here if not t.identity or t.uncertain]
+        target = loose[0] if len(loose) == 1 else here[0] if len(here) == 1 else None
+        where_it, where_en = answers.room(ctx, room, "it"), answers.room(ctx, room, "en")
+        if target is None:
+            if not here:
+                await self.reply(f"{where_it[:1].upper()}{where_it[1:]} non vedo nessuno.", f"I can't see anybody {where_en}.")
+            else:
+                await self.reply(f"{where_it[:1].upper()}{where_it[1:]} vedo più di una presenza: indicamela dalla webapp.",
+                                 f"I can see more than one presence {where_en}: point it out in the web app.")
+            return
+        known = ctx.identities.by_name(name)
+        try:
+            ident = ctx.registration.name_track(target.id, identity=known.id if known else None,
+                                                name=None if known else name, nickname="voce")
+        except (KeyError, ValueError, NameTaken):
+            await self.reply("Non ci sono riuscita: prova dalla webapp.", "I couldn't do it: try from the web app.")
+            return
+        self.narrator.hush(target.id)
+        if known:
+            await self.reply(f"D'accordo: {where_it} c'è {ident.name}.", f"All right: {ident.name} is {where_en}.")
+        else:
+            await self.reply(f"Piacere, {ident.name}!", f"Nice to meet you, {ident.name}!")
 
     async def _favourite_light(self, name: str, room: str | None) -> None:
         """"Accendi la luce preferita di Marco": the room said, or the one Marco is in, in the colour Marco told the
