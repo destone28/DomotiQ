@@ -83,7 +83,7 @@ Tutto sta dentro `/home/arduino/domotiq`:
 |---|---|
 | `domotiq` | L'applicazione (`python -m domotiq`): webapp sulla porta 80, regole, voce, audio, collegamento con il microcontrollore, con la visione come processo figlio. Si riavvia da solo. Può occupare la porta 80 e impostare l'orologio, nient'altro. |
 | `domotiq-tts` | Il server HTTP di Piper su `127.0.0.1:5010`, con le voci in `models/piper`. |
-| `domotiq-llm` | `llama-server` con Qwen2.5-0.5B-Instruct su `127.0.0.1:8081`, sempre caricato perché le domande libere ricevano una risposta rapida, con una priorità di CPU più bassa di visione e voce. Con `--no-llm` non viene attivato. |
+| `domotiq-llm` | `llama-server` con Qwen2.5-0.5B-Instruct su `127.0.0.1:8081`, sempre caricato perché le domande libere ricevano una risposta rapida, con una priorità di CPU più bassa di visione e voce. Le istruzioni lette si salvano in `/var/lib/domotiq-llm` e agli avvii successivi tornano in pochi secondi invece di circa 10 minuti ([capitolo 8](08-voce.md)). Con `--no-llm` non viene attivato. |
 
 `domotiq` parte dopo `arduino-router` (il servizio di sistema che collega Linux e il microcontrollore) e dopo `domotiq-tts`. Tutti e tre si riavviano automaticamente se si fermano, e tutti e tre partono all'avvio: dopo un riavvio la casa riparte da sola.
 
@@ -149,7 +149,12 @@ bash scripts/release.sh casa1 --install    # then run install.sh on the board (n
 
 `release.sh` copia la cartella di lavoro del PC in `~/domotiq` sulla scheda con `rsync` via SSH (usando l'alias `casa1` creato da `add-pc.sh`), poi riavvia `domotiq`. Lascia fuori quello che git ignora e quello che appartiene alla scheda: `.git`, `venv`, `piper-venv`, `models`, `var` e `llama.cpp`. Per questo la scheda non ha bisogno di git. La copia rispecchia il PC: un file di codice modificato solo sulla scheda viene sovrascritto o cancellato.
 
-Senza `--install`, una modifica al firmware viene copiata ma non caricata sul microcontrollore, e i nuovi pacchetti Python o modelli non vengono installati: quando cambiano queste cose, usa `--install` (oppure `install.sh` sulla scheda).
+Senza `--install`, una modifica al firmware viene copiata ma non caricata sul microcontrollore, e i nuovi pacchetti Python, i modelli e i servizi di `scripts/systemd` (per esempio `domotiq-llm.service`, che ora tiene quattro slot, `-np 4`, e li salva in `/var/lib/domotiq-llm`) non vengono installati: quando cambiano queste cose, usa `--install` (oppure `install.sh` sulla scheda). Per un servizio soltanto, anche senza internet, basta questo sulla scheda (chiede la password di `arduino`):
+
+```bash
+cd ~/domotiq && sudo install -m644 scripts/systemd/domotiq-llm.service /etc/systemd/system/ \
+  && sudo systemctl daemon-reload && sudo systemctl restart domotiq-llm
+```
 
 ## Installare la seconda casa
 

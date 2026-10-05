@@ -11,7 +11,7 @@ This guide covers the whole project, from a factory-new board to a house running
 3. [Print and assemble](03-print-and-assemble.md): the numbered STL files and how the parts go together.
 4. [Wiring](04-wiring.md): the Qwiic chain through the Modulino Hub, power, relay and fan, audio, webcam.
 5. [Testing and commissioning](05-testing.md): checking every part, camera calibration, first figurine, voice, phones.
-6. [The web app](06-web-app.md): every screen, roles, the sign, notifications and questions.
+6. [The web app](06-web-app.md): every screen, who can do what, the sign, notifications and questions.
 7. [Recognition and identities](07-recognition-and-identities.md): how the house sees, registering characters, privacy, datasets.
 8. [Voice](08-voice.md): the buttons, languages, talkativeness, example phrases, the language model.
 9. [Rules](09-rules.md): When / If / Then, every trigger, condition and action, the default rules, light layers.

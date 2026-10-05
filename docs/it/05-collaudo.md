@@ -49,7 +49,7 @@ In **Comandi → Luci** scegli una stanza, un colore e **Accendi**; ripeti per t
 
 ## 6. Termostato e bagno
 
-Nella schermata **Casa** le schede mostrano temperatura e umidità del termostato e umidità del bagno.
+Nella schermata **Casa** le schede del termostato e del bagno mostrano la temperatura in °C e, sotto, l'umidità.
 
 - Appoggia un dito sul Thermo della credenza: la temperatura sale lentamente, perché la scheda del sensore ha una sua inerzia termica. Soffiarci sopra è più rapido: l'umidità fa un balzo, il termostato passa a **caldo**, la casa dice "Fa caldo! Accendo il climatizzatore." e un'onda azzurra (effetto *Aria fresca*) scorre in tutte le stanze per un massimo di due minuti, o finché la lettura non torna normale.
 - Soffia sul Thermo del bagno: quando l'umidità sale di 8 punti sopra la sua media recente parte la regola della doccia ("Accendo l'aspiratore del bagno.", luce fresca in bagno, notifica *Doccia in corso*).

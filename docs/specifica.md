@@ -238,7 +238,7 @@ Lo stesso file serve alla piantina della webapp, alla visione (stanze, zone escl
 - **I nomi si muovono solo con le mani (D-25)**: senza una mano recente un personaggio con un nome lo tiene finché gli somiglia, e un nome non va mai a una macchia lontana dall'ultimo posto del personaggio se nessuna mano è passata di lì.
 - **Tutti e due (D-25)**: due statuine a contatto sono una sola macchia; alla risposta "tutti e due" (o con due nomi) la casa le segna presenti entrambe, una nascosta dietro l'altra.
 - **Riconoscimento largo**: un personaggio sdraiato o sopra un arredo è riconosciuto anche a distanza di colore fino a 0,45 se il secondo candidato è più lontano di almeno 0,15, dopo 4 immagini concordi. Una statuina su cui la mano è solo passata ritrova la sua traccia; una posata contro un'altra resta nascosta dietro di lei.
-- **Nuovo arrivato (D-20, D-21)**: per ogni cosa che la casa è sicura di non riconoscere, la domanda parte subito, a voce e sui telefoni, con quello che le sembra ("vedo una persona nuova, giusto?"). A una persona si chiede il nome; per animali, auto e oggetti si propongono i registrati dello stesso tipo. Ogni risposta libera viene capita (nome, tipo, sì/no, "non c'è nessuno", non lo so, comandi); un nome già presente e visibile in casa vuol dire che il nuovo arrivato non c'era. Vale la prima risposta.
+- **Nuovo arrivato (D-20, D-21)**: per ogni cosa che la casa è sicura di non riconoscere, la domanda parte subito, a voce e sui telefoni (tranne per qualcosa grande come un'auto fuori dal garage, chiesto solo se fermo e ben visibile da 10 s; D-31), con quello che le sembra ("vedo una persona nuova, giusto?"). A una persona si chiede il nome; per animali, auto e oggetti si propongono i registrati dello stesso tipo. Ogni risposta libera viene capita (nome, tipo, sì/no, "non c'è nessuno", non lo so, comandi); un nome già presente e visibile in casa vuol dire che il nuovo arrivato non c'era. Vale la prima risposta.
 - Stanza del punto d'appoggio con isteresi di 15 mm sulle porte, così chi sta sulla soglia non "salta" fra due stanze.
 
 ### 8.5 Categoria degli sconosciuti
@@ -320,12 +320,12 @@ La registrazione di un nome controlla che Vosk lo conosca in entrambe le lingue;
 
 ### 10.4 Capire la frase
 1. **Percorso rapido**: parole chiave e confronto tollerante agli errori (nomi, stanze, colori, verbi). Se la frase corrisponde con sicurezza a un comando, si esegue subito.
-2. **Percorso libero**: Qwen2.5-0.5B su llama-server riceve la frase e una descrizione breve della casa (stanze, nomi, comandi possibili) e deve rispondere con un JSON vincolato: `{"intent": ..., "args": {...}}`. Mentre ragiona la casa dice "Vediamo…". Le risposte a "chi è?" che le regole non capiscono passano allo stesso modello, con istruzioni proprie in un secondo slot di llama-server (D-21).
+2. **Percorso libero**: Qwen2.5-0.5B su llama-server riceve la frase e una descrizione breve della casa (stanze, nomi, comandi possibili) e deve rispondere con un JSON vincolato: `{"intent": ..., "args": {...}}`. Mentre ragiona la casa dice "Vediamo…". Le risposte a "chi è?" che le regole non capiscono passano allo stesso modello, con istruzioni proprie in un secondo slot di llama-server (D-21); quelle alle proposte della modalità chiacchierona in un terzo, che dice solo se la risposta accetta, rifiuta o nessuna delle due; l'argomento delle domande sui personaggi in un quarto. Gli slot letti si salvano su disco e tornano in pochi secondi a ogni avvio (D-33).
 3. **La risposta la compone sempre il codice** dai dati veri della casa, con frasi preparate in IT ed EN: il modello sceglie cosa fare, non inventa cosa dire.
 4. Se l'intento è incerto: "Intendi accendere la luce in cucina?".
 5. Se la domanda non riguarda la casa: "Sono la casa: posso dirti chi c'è, dove, che temperatura fa, e posso accendere luci, fare festa o grigliare."
 
-Intenti: dov'è X, chi c'è in una stanza, quante persone, dov'è l'auto, temperatura, umidità, che ore sono, imposta l'ora, luce accesa/spenta/colore per stanza o tutte, scenario, party, grigliata, riassunto della casa, cosa sai fare, lingua, loquacità, volume, aggiungi personaggio, sì/no/annulla, una storia, cosa ha fatto X oggi, ricorda che X…, cosa sai di X, ricordi e domande libere sulla vita di casa.
+Intenti: dov'è X, chi c'è in una stanza, quante persone, dov'è l'auto, temperatura, umidità, che ore sono, imposta l'ora, luce accesa/spenta/colore per stanza o tutte, scenario, party, grigliata, riassunto della casa, cosa sai fare, lingua, loquacità, volume, aggiungi personaggio, sì/no/annulla, una storia, cosa ha fatto X oggi, ricorda che X…, cosa sai di X, domande su un personaggio ("cosa mangia X?", "di dove è X?") con le sue informazioni, che comprendono le risposte date alle domande della modalità chiacchierona, ricordi e domande libere sulla vita di casa.
 
 **Storie e vita della casa (D-19).** Storie, ricordi e risposte sulla vita di casa (bollette, assicurazioni, compleanni, feste passate, spesa, faccende, animali, auto, vacanze) si generano combinando i pezzi di `data/stories.json`, scritti a mano in italiano e in inglese e compatibili con qualunque nome. Ogni personaggio riceve dal database lavoro, carattere, passione e mania, che restano fino al riavvio; le informazioni date alla casa (webapp o "ricorda che…") vengono prima. Le storie su uno stesso personaggio non si ripetono finché ci sono pezzi nuovi; una risposta inventata resta la stessa, nelle due lingue, fino al riavvio. Qui la casa inventa di proposito: il punto 3 vale per i comandi e per le domande sullo stato reale della casa.
 
@@ -337,7 +337,7 @@ Piper (`piper1-gpl`, GPL-3.0) **come programma separato**: un processo per lingu
 |---|---|
 | Silenziosa | non parla mai; restano campanello e suoni brevi; risposte solo sulla webapp |
 | Normale | eventi importanti, allarmi e avvisi, citofono, risposte |
-| Chiacchierona | commenta spostamenti, temperatura e umidità, propone di fare festa, grigliare o controllare l'auto; ogni due minuti circa fa una domanda a un personaggio con un nome, adatta alla stanza, e ascolta la risposta senza il tasto Parla (D-18); due volte su cinque al suo posto un aneddoto, un ricordo o una domanda sulla vita di casa, generati dal database delle storie (D-19) |
+| Chiacchierona | commenta spostamenti, temperatura e umidità, propone di fare festa o di accendere il barbecue e ascolta la risposta senza il tasto Parla (D-28); ogni due minuti circa fa una domanda a un personaggio con un nome, adatta alla stanza, e ascolta la risposta senza il tasto Parla (D-18); due volte su cinque al suo posto un aneddoto, un ricordo o una domanda sulla vita di casa, generati dal database delle storie (D-19) |
 
 Ogni frase detta compare anche come testo nella webapp.
 
@@ -464,11 +464,11 @@ Se dopo 2 minuti dall'avvio l'ora è ancora sconosciuta, la casa lo chiede una v
 - **Chiunque** può fare tutto (D-26): casa virtuale, diretta, comandi, eventi, regole, identità, simulazione, allarme, calibrazione, dataset, diagnostica, impostazioni (ora compresa), ripristino dal cestino. Le azioni che non si annullano chiedono conferma; ogni modifica va nel registro.
 
 ### 15.3 Schermate
-Barra in basso: **Casa**, **Diretta**, **Comandi**, **Personaggi**, **Altro**. Ogni pagina comincia con titolo, una riga che dice a cosa serve e l'azione principale a destra del titolo. **Altro** è diviso in tre gruppi: *La casa* (Eventi, Regole, Simulazione), *Messa a punto* (Calibrazione, Diagnostica, Impostazioni), *Per lo stand* (Cartello, Tabellone, Informazioni), più il soprannome.
+Barra in basso: **Casa**, **Diretta**, **Comandi**, **Personaggi**, **Altro**. Ogni pagina comincia con titolo, una riga che dice a cosa serve e l'azione principale a destra del titolo. **Altro** è diviso in tre gruppi: *La casa* (Eventi, Regole, Simulazione), *Messa a punto* (Calibrazione, Diagnostica, Impostazioni), *Per lo stand* (Cartello, Informazioni), più il soprannome. Il Tabellone non è nel menu: si apre scrivendo `/board`.
 
 Notifiche in cima, un colore per tipo: rosso un allarme (con **Disinserisci**), ambra un avviso, grigio la connessione persa, scheda bianca con bordo verde acqua una domanda della casa (con **Tutti e due** quando i nomi proposti sono più di uno).
 
-1. **Casa**: riquadro dell'allarme (inserito, disinserito, in corso; D-27), piantina 2D fedele al CAD, stato della casa, chi c'è. La piantina mostra:
+1. **Casa**: piantina 2D fedele al CAD, stato della casa, chi c'è e, in fondo, il riquadro dell'allarme (inserito, disinserito, in corso; D-27). La piantina mostra:
    - stanze, pareti, porte, arredi;
    - luci col loro colore, temperature e umidità, conteggi per stanza;
    - personaggi con sagoma della categoria nel loro colore e nome, e con il segno "incerto" quando serve;

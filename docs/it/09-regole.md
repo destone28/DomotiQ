@@ -61,7 +61,7 @@ Molti eventi e condizioni hanno un campo **Chi** con due scelte: il tipo (*chiun
 | **il barbecue** | Stato: inizia, pronto | la ventola parte, oppure la grigliata è pronta (la ventola ha finito). |
 | **la festa** | Stato: inizia, finita | una festa comincia o finisce. |
 
-**Il clima virtuale.** Il Thermo nella credenza è un termostato che si scalda con un dito. Il suo riferimento è la media degli ultimi 5 minuti. Passa a **caldo** quando la temperatura sale di 1 °C sopra il riferimento, o sale più in fretta di 0,1 °C al secondo, o quando l'umidità fa un balzo di 10 punti (qualcuno ci soffia sopra, il che è più rapido di un dito); a **freddo** quando scende di 1 °C sotto il riferimento; di nuovo a **normale** quando torna entro 0,5 °C. Le soglie sono impostazioni dello staff.
+**Il clima virtuale.** Il Thermo nella credenza è un termostato che si scalda con un dito. Il suo riferimento è la media degli ultimi 5 minuti. Passa a **caldo** quando la temperatura sale di 1 °C sopra il riferimento, o sale più in fretta di 0,1 °C al secondo, o quando l'umidità fa un balzo di 10 punti (qualcuno ci soffia sopra, il che è più rapido di un dito); a **freddo** quando scende di 1 °C sotto il riferimento; di nuovo a **normale** quando torna entro 0,5 °C. Le soglie sono in **Altro → Impostazioni**, nel riquadro **Luci · Festa · Barbecue · Clima**.
 
 ## Se: le condizioni
 

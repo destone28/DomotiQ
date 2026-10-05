@@ -36,7 +36,7 @@ Scan QR 1 on the sign (Wi-Fi), then QR 2 (the house). If the phone asks: *Stay c
 | Ghost objects, or figurines not seen, after the hall light changed | Usually the webcam sets itself again within a few seconds. If not: empty the house, **Calibration → Set the light and save the empty house**. |
 | A **?** on a character, or *The house asks* | Answer aloud right after the question, with no Talk, with any sentence: a name, "no, it's a dog", "there's nobody", "both of them". Or tap the name on the question, or **Both**; for a newcomer you can type a new name, choose its kind and tap **Add**, or tap **Nothing there**. |
 | The house does not notice the characters, and *Diagnostics* always shows a hand | Something big lies on the edge of the base (a module, a cable): remove it or fix it down. After 8 seconds still, the house stops taking it for a hand anyway. |
-| The house asks about somebody who is not there | Answer "there's nobody" or tap **Nothing there**: the house forgets it. If it keeps coming back in the same spot, look for a module, an LED or a cable to fix down, then **Save the empty house only** with the house empty. |
+| The house asks about somebody who is not there | Answer "there's nobody" or tap **Nothing there**: the house forgets it. If it is already on the plan, tap it and choose **Not really there: remove**. If it keeps coming back in the same spot, look for a module, an LED or a cable to fix down, then **Save the empty house only** with the house empty. |
 | A red alarm notice | **Switch off** turns the alarm off like a burglar alarm (switch it on again from the **House** page); the **✕** closes it on every phone and it comes back only if the alarm happens again. An amber notice is a warning. |
 | The house is silent | **Controls**: Talkativeness *Normal*, Volume up. Speaker knob at maximum. |
 | "I don't know the time: what time is it now?" | Answer aloud, with no Talk: "It's half past three". Or open the web app on a phone. |
@@ -52,6 +52,6 @@ Scan QR 1 on the sign (Wi-Fi), then QR 2 (the house). If the phone asks: *Stay c
 - **Diagnostics**: modules, I2C scan, **Audio test**, **Microphone test (3 s)**, logs.
 - **Settings**: brightness and durations, Wi-Fi password, **Use this phone's time**, backup, bin, restart, reboot, power off.
 - **Controls → Make the house say**; **Simulation** on and off.
-- **Alarm**: box at the top of the **House** page, **Switch on** / **Switch off**.
+- **Alarm**: box at the bottom of the **House** page, **Switch on** / **Switch off**.
 
 Full guide: `docs/en/` in the repository.

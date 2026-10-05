@@ -36,7 +36,7 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 | Oggetti fantasma, o statuine non viste, dopo che la luce del padiglione è cambiata | Di solito la webcam si riregola da sola in pochi secondi. Se no: svuota la casa, **Calibrazione → Regola la luce e salva la casa vuota**. |
 | Un **?** su un personaggio, oppure *La casa chiede* | Rispondi a voce subito dopo la domanda, senza Parla, con una frase qualsiasi: un nome, "no, è un cane", "non c'è nessuno", "tutti e due". Oppure tocca il nome sulla domanda o **Tutti e due**; per un nuovo arrivato puoi scrivere un nome nuovo, sceglierne il tipo e toccare **Aggiungi**, oppure toccare **Non c'è niente**. |
 | La casa non nota i personaggi, e in *Diagnostica* risulta sempre una mano | Qualcosa di grande è appoggiato sul bordo della base (un modulo, un cavo): toglilo o fissalo. Dopo 8 secondi fermo la casa smette comunque di prenderlo per una mano. |
-| La casa chiede di qualcuno che non c'è | Rispondi "non c'è nessuno" o tocca **Non c'è niente**: la casa lo dimentica. Se torna nello stesso punto, cerca un modulo, un LED o un cavo da fissare, poi **Salva solo la casa vuota** a casa vuota. |
+| La casa chiede di qualcuno che non c'è | Rispondi "non c'è nessuno" o tocca **Non c'è niente**: la casa lo dimentica. Se è già sulla piantina, toccalo e scegli **Non c'è davvero: togli**. Se torna nello stesso punto, cerca un modulo, un LED o un cavo da fissare, poi **Salva solo la casa vuota** a casa vuota. |
 | Una notifica rossa di allarme | **Disinserisci** spegne l'allarme come un antifurto (si reinserisce dalla pagina **Casa**); la **✕** la chiude su tutti i telefoni e torna solo se l'allarme si ripresenta. Una notifica ambra è un avviso. |
 | La casa è muta | **Comandi**: Loquacità *Normale*, alza il Volume. Manopola delle casse al massimo. |
 | "Non so che ore sono: che ore sono adesso?" | Rispondi a voce, senza Parla: "Sono le quindici e trenta". Oppure apri la webapp su un telefono. |
@@ -52,6 +52,6 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 - **Diagnostica**: moduli, scansione I2C, **Prova audio**, **Prova microfono (3 s)**, registri.
 - **Impostazioni**: luminosità e durate, password del Wi-Fi, **Usa l'ora di questo telefono**, backup, cestino, riavvio dell'app, riavvio e spegnimento della scheda.
 - **Comandi → Fai dire alla casa**; **Simulazione** accesa e spenta.
-- **Allarme**: riquadro in cima alla pagina **Casa**, **Inserisci** / **Disinserisci**.
+- **Allarme**: riquadro in fondo alla pagina **Casa**, **Inserisci** / **Disinserisci**.
 
 Guida completa: `docs/it/` nel repository.

@@ -27,7 +27,7 @@ Chiunque sia collegato al Wi-Fi della casa può fare tutto, senza PIN né access
   - **grigio**: la connessione con la casa persa (*Connessione con la casa persa: riprovo…*); la webapp si ricollega da sola;
   - **scheda bianca con il bordo verde acqua**: una domanda della casa (*La casa chiede*).
 
-  La **✕** chiude la notifica su tutti i telefoni: un allarme o un avviso torna solo se finisce e si ripresenta; una domanda chiusa sparisce ovunque e la casa smette di ascoltare. I file della webapp si caricano sotto una versione che cambia a ogni aggiornamento: dopo un aggiornamento basta ricaricare la pagina.
+  La **✕** chiude la notifica su tutti i telefoni: un allarme o un avviso torna solo se finisce e si ripresenta; una domanda chiusa sparisce ovunque e la casa smette di ascoltare. I file della webapp si caricano sotto una versione che cambia a ogni aggiornamento: dopo un aggiornamento della casa ogni telefono si ricarica da solo e prende la versione nuova.
 - **Domande della casa**: quando la casa non è sicura chiede, per esempio "In soggiorno c'è Viola o Rosaria?", con un pulsante per ogni risposta e, quando i nomi proposti sono più di uno, **Tutti e due** (o **Tutti**): due statuine a contatto sono una sola macchia per la webcam. Può rispondere qualsiasi telefono; vale la prima risposta e la domanda sparisce ovunque. La casa fa la domanda anche ad alta voce e ascolta la risposta da sola, senza il tasto Parla. Quando chiede chi è un nuovo arrivato ci sono anche **Non c'è niente**, un campo per scrivere un nome nuovo, il tipo e il pulsante **Aggiungi** (vedi il [capitolo 7](07-riconoscimento-e-identita.md#un-nuovo-arrivato)).
 - **Sottotitoli**: tutto quello che la casa dice compare come sottotitolo in fondo a ogni telefono, anche quando la casa è impostata su *Silenziosa*.
 - **Messaggi brevi**: compaiono in basso, con lo stesso colore delle notifiche (un personaggio registrato, la grigliata pronta, la notifica di una regola, l'allarme inserito o disinserito) e si chiudono con un tocco. Quelli di allarme fanno anche vibrare il telefono, dove il browser lo permette.
@@ -40,23 +40,23 @@ Chiunque sia collegato al Wi-Fi della casa può fare tutto, senza PIN né access
 
 *La casa: chi c'è e cosa succede, in tempo reale.*
 
-**Allarme.** In cima, il riquadro dell'allarme, che si inserisce e si disinserisce come un antifurto:
+**Piantina.** La casa virtuale, ricavata dal modello CAD, con in basso il vialetto, dove stanno i visitatori.
+
+- Stanze, pareti, porte e arredi; ogni luce di stanza brilla con il suo colore e il suo effetto del momento.
+- I due termometri, il termostato sulla credenza e quello del bagno, ognuno con la temperatura in gradi Celsius e, sotto, l'umidità (*umidità 45%*); un contatore per ogni stanza in cui c'è qualcuno.
+- Ogni personaggio con la sagoma del suo tipo (persona, cane, gatto, animale, auto, oggetto), nel suo colore e con il suo nome; un **?** segna un personaggio su cui la casa non è sicura.
+- L'auto, le fiamme sul barbecue quando è acceso, le stanze in allarme in rosso e quelle con un avviso in ambra.
+
+**Com'è la casa.** Schede con le persone presenti, **Termostato** (temperatura in °C, *Umidità* in percentuale, *Climatizzatore acceso* o *Riscaldamento acceso*), **Bagno** (temperatura in °C, *Umidità*, *Doccia in corso*), **Auto** (*appena arrivata*, *parcheggiata*, *appena uscita*, *non c'è*), **Scenario**, e **Festa** e **Barbecue** quando sono in corso.
+
+**Chi c'è.** L'elenco di tutto ciò che la casa vede, con nome (oppure *Ospite* per una persona sconosciuta, *Sconosciuto* per qualsiasi altra cosa), tipo e stanza. Tocca un personaggio, sulla piantina o nell'elenco, per aprire la sua scheda: foto o sagoma, tipo, stanza e, quando c'è un dubbio, *Non sono sicura di chi sia*. Un personaggio sconosciuto ha un pulsante **Registra** che avvia la registrazione con quella statuina già scelta. Se la casa vede qualcosa che non c'è (un riflesso, una luce, un modulo appoggiato), **Non c'è davvero: togli**, dopo una conferma, lo toglie subito dalla casa: la casa lo tratta come un errore della webcam, dimentica quel punto e lì per un po' non fa nascere niente.
+
+**Allarme.** In fondo alla pagina, il riquadro dell'allarme, che si inserisce e si disinserisce come un antifurto:
 - **Inserito** (scudo verde): le regole d'allarme (locale tecnico vietato, bagno per uno e quelle che crei tu con *Avviso*) funzionano;
 - **Disinserito** (scudo grigio): quelle regole stanno zitte, niente sirena né avvisi; tutto il resto (luci, voce, altre regole) va avanti come sempre;
 - **Allarme in corso** (bordo rosso): una regola d'allarme sta suonando.
 
 Il pulsante **Disinserisci** / **Inserisci** cambia lo stato per tutta la casa, con un bip e un messaggio su ogni telefono (*Allarme disinserito da Marco*). Disinserendo, gli allarmi in corso si spengono subito con le loro luci; reinserendo, chi è già in un posto sorvegliato viene notato di nuovo, come se fosse appena entrato. Lo stato resta anche dopo un riavvio.
-
-**Piantina.** La casa virtuale, ricavata dal modello CAD, con in basso il vialetto, dove stanno i visitatori.
-
-- Stanze, pareti, porte e arredi; ogni luce di stanza brilla con il suo colore e il suo effetto del momento.
-- La temperatura del termostato (sulla credenza) e l'umidità del bagno; un contatore per ogni stanza in cui c'è qualcuno.
-- Ogni personaggio con la sagoma del suo tipo (persona, cane, gatto, animale, auto, oggetto), nel suo colore e con il suo nome; un **?** segna un personaggio su cui la casa non è sicura.
-- L'auto, le fiamme sul barbecue quando è acceso, le stanze in allarme in rosso e quelle con un avviso in ambra.
-
-**Com'è la casa.** Schede con le persone presenti, **Termostato** (temperatura, umidità, *Climatizzatore acceso* o *Riscaldamento acceso*), **Bagno** (umidità, *Doccia in corso*), **Auto** (*appena arrivata*, *parcheggiata*, *appena uscita*, *non c'è*), **Scenario**, e **Festa** e **Barbecue** quando sono in corso.
-
-**Chi c'è.** L'elenco di tutto ciò che la casa vede, con nome (oppure *Ospite* per una persona sconosciuta, *Sconosciuto* per qualsiasi altra cosa), tipo e stanza. Tocca un personaggio, sulla piantina o nell'elenco, per aprire la sua scheda: foto o sagoma, tipo, stanza e, quando c'è un dubbio, *Non sono sicura di chi sia*. Un personaggio sconosciuto ha un pulsante **Registra** che avvia la registrazione con quella statuina già scelta.
 
 ## Diretta
 
@@ -98,7 +98,7 @@ Tutte le altre pagine, in tre gruppi, più il tuo soprannome:
 
 - **La casa**: **Eventi**, **Regole**, **Simulazione**;
 - **Messa a punto**: **Calibrazione**, **Diagnostica**, **Impostazioni**;
-- **Per lo stand**: **Cartello da stampare**, **Tabellone per lo stand**, **Informazioni**;
+- **Per lo stand**: **Cartello da stampare**, **Informazioni**;
 - **Tu**: **Il tuo soprannome**, che compare nel registro delle modifiche.
 
 ### Regole
@@ -154,7 +154,7 @@ Una pagina A4 verticale, pronta da stampare, con il nome della casa e due QR: **
 
 ### Tabellone per lo stand
 
-`/board`: la piantina, la diretta, l'ultima frase detta e gli ultimi eventi, per un monitor o un tablet allo stand. Non ha comandi.
+Non è nel menu: si apre scrivendo `/board` dopo l'indirizzo della casa. Mostra la piantina, la diretta, l'ultima frase detta e gli ultimi eventi, per un monitor o un tablet allo stand, e non ha comandi.
 
 ### Informazioni
 

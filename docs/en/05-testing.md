@@ -49,7 +49,7 @@ In **Controls → Lights**, choose a room, a colour and **On**; repeat for all s
 
 ## 6. Thermostat and bathroom
 
-On the **House** screen the cards show the thermostat temperature and humidity and the bathroom humidity.
+On the **House** screen the thermostat and bathroom cards show the temperature in °C and, below, the humidity.
 
 - Put a finger on the Thermo of the sideboard: the temperature rises slowly, because the sensor board has thermal inertia. Breathing on it is faster: humidity jumps, the thermostat goes to **hot**, the house says "It's hot! Turning on the air conditioning." and a cool blue wave runs in every room for up to two minutes, or until the reading settles back.
 - Breathe on the bathroom Thermo: when humidity rises 8 points above its recent average the shower rule starts ("Turning on the bathroom fan.", cool light in the bathroom, notification *Shower running*).

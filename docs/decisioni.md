@@ -153,3 +153,74 @@ Nella registrazione delle 15:31, poi, due tracce si scambiavano di posto senza n
 - **Webapp.** Ogni pagina comincia con titolo, una riga e l'azione principale; il menu Altro ha tre gruppi (la casa, messa a punto, stand). Le notifiche hanno un colore per tipo: rosso allarme, ambra avviso, grigio connessione, scheda bianca per le domande. Sulla piantina la stanza è rossa per un allarme e ambra per un avviso.
 
 **Perché:** richieste di Emilio, per poter spegnere l'allarme come si fa con un antifurto e per una webapp più pulita, in cui allarmi, avvisi e domande si distinguono a colpo d'occhio.
+
+### D-28 — Le proposte della casa diventano comandi (4/10)
+**Scelta:** le proposte della modalità chiacchierona ("Ti va un po' di musica?", "Accendo il barbecue?") e quelle per chi è in tanti ("Siete in tanti in soggiorno: facciamo festa?") si ascoltano senza tasto e si capiscono in `voice/offers.py`.
+- Regole veloci riconoscono sì, no, non so, oppure un altro comando della casa detto nella risposta.
+- Solo quando le regole non decidono, il modello linguistico dice sì, no o altro, con una grammatica che non gli permette altro. Le sue istruzioni stanno in un terzo slot di `llama-server` (`-np 3`, contesto 6144).
+- Un sì esegue la proposta; un altro comando esegue quello. Se la risposta non è chiara la casa richiede una volta, e per 30 secondi la proposta si può accettare anche con Parla.
+- Corretto anche il controllo del vocabolario del riconoscimento vocale: le parole con l'accento ("sì", "perché", "macché") venivano tolte da tutte le grammatiche, comprese quelle del citofono e di "chi è?".
+
+**Perché:** lo ha chiesto Emilio, e le proposte di fatto non partivano. Le cause erano tre:
+- "sì" non arrivava mai alla grammatica e veniva capito solo a metà;
+- le risposte naturali venivano ridotte alle parole della grammatica, o scartate perché più lunghe di cinque parole;
+- le proposte per chi è in tanti non si ascoltavano affatto.
+
+Su risposte sintetizzate con tre voci per lingua, l'interpretazione passa dal 56 all'88% in italiano e dal 58 al 92% in inglese, senza azioni sbagliate. Le frasi dette vicino alla casa che non sono risposte fanno partire qualcosa come prima: 2 su 495, le stesse.
+
+### D-29 — Le risposte sui personaggi diventano informazioni (4/10)
+**Scelta:** una risposta della modalità chiacchierona che dice qualcosa di duraturo su un personaggio diventa una sua informazione (`voice/facts.py`). È scritta come si direbbe dopo il nome, nella lingua della conversazione, e si legge anche nell'altra; la webapp la mostra in *Chi è*. Ogni domanda tiene una riga sola, che una risposta nuova sostituisce.
+
+Alle domande su quello che sa ("Cosa mangia Rossellina?", "Cosa posso cucinare a Rossellina?", "What does Rossellina like to eat?"):
+- le parole chiave delle due lingue dicono l'argomento della domanda e di ogni informazione;
+- quando non bastano, il modello linguistico sceglie l'argomento tra quelli possibili, con una grammatica;
+- la risposta è l'informazione stessa dopo il nome; se di quell'argomento non sa niente, la casa lo dice.
+
+**Perché:** richiesta di Emilio, che voleva il modello linguistico per rispondere al meglio. Su 164 domande di prova (6 personaggi, in italiano e in inglese, 34 senza risposta salvata) questo metodo ne sbaglia una sola, e le altre mancate sono un onesto "non lo so". Usato in altri modi, il modello andava molto peggio:
+- scegliere l'informazione per numero: dal 18 al 48% di risposte giuste;
+- scrivere la risposta: dal 43 al 62%, con informazioni inventate e aggettivi accordati al personaggio ("è golosa").
+
+Le risposte salvate restano sul disco della scheda (`identities.json`) e chiunque può correggerle o cancellarle nella webapp. Le risposte sulla vita di casa (bollette, spesa, faccende) restano solo in memoria fino al riavvio, come prima.
+
+### D-30 — Tolleranza per pixel; la firma a piena risoluzione provata e lasciata (4/10)
+**Scelta:**
+- **Tolleranza per pixel.** Il tremolio di ogni pixel si impara con la casa vuota, si salva in `noise.npy` e si aggiorna piano. Una macchia trovata con le soglie fisse conta solo se da qualche parte supera di 5 volte il tremolio dei suoi pixel (almeno un blocco di 3×3), e allora conta intera.
+- **Colori più veloci.** L'istogramma dei colori di una macchia si conta in un modo sei volte più veloce, con gli stessi risultati.
+- **Firma a piena risoluzione non adottata.** È stata costruita e misurata, poi lasciata da parte.
+
+**Perché:** scelte di Emilio tra le proposte, ma la firma a piena risoluzione non serve:
+- la C270 registra il colore già a circa 640×480 (filtro dei colori del sensore e compressione MJPEG), quindi l'immagine piena non aggiunge colore;
+- sulle prove sintetiche la distanza tra colori simili non è migliorata e il riconoscimento è rimasto uguale;
+- sulla scheda costava 35 ms in più per immagine con 10 statuine, contro i 5 previsti.
+
+Viola e Mister Blu si confondono perché i loro colori medi distano 5,6 punti, mezza casella dell'istogramma: è una questione di caselle, non di pixel. La tolleranza per pixel non cambia niente con la luce del laboratorio, dove il tremolio sta sotto le soglie fisse. Con un'immagine due o tre volte più rumorosa toglie dal 60 al 95% delle macchie di tremolio, senza perdere statuine e senza domande in più, per circa 2,5 ms per immagine. Il conteggio più veloce fa risparmiare da 7 a 9 ms per immagine con 10 statuine.
+
+### D-31 — Presenze da togliere, auto solo in garage, contatori in tempo reale (4/10)
+**Scelta:**
+- **Togliere una presenza.** Dalla sua scheda, **Non c'è davvero: togli** la toglie dalla casa e la visione la dimentica: anche il posto del suo nome, così il personaggio vero non resta legato a quel punto. La stanza diventa più severa per due minuti.
+- **L'auto sta in garage.** Fuori dal garage la casa chiede di un'auto, o di qualcosa grande come un'auto, solo se ne è certa: ferma e ben visibile da 10 secondi.
+- **Stanza più severa.** La stanza in cui si è detto "non c'è nessuno", o dove si è scartato un riflesso, ora diventa davvero più severa: due funzioni con lo stesso nome lo impedivano dall'inizio.
+- **Contatori.** La casa aggiorna i conteggi prima di avvisare i telefoni, e la pagina della casa ridisegna una parte solo quando cambia. I numeri della piantina contano le persone, come la scheda.
+- **Ricarica automatica.** Dopo un aggiornamento della casa i telefoni si ricaricano da soli.
+- **Ritocchi chiesti da Emilio:** l'allarme in fondo alla pagina della casa, temperature in °C e umidità scritta per esteso, il tabellone fuori dal menu, niente scala nelle Informazioni, niente riga sul bagno nella diretta.
+
+**Perché:** richieste di Emilio. I contatori erano sempre indietro di un cambio, fin dalla prima versione: i telefoni ricevevano i conteggi di prima. Con la pagina ridisegnata cinque volte al secondo, 13 tocchi su 20 andavano persi. Il telefono di Emilio mostrava ancora il menu vecchio perché non si era ricaricato dopo l'aggiornamento.
+
+### D-32 — Revisione: rifiuti, frasi su chi risponde, richieste con un nome (5/10)
+**Scelta:** il lavoro del 4/10 è stato rivisto con frasi e situazioni vere, e ogni problema trovato è stato riprodotto prima di correggerlo:
+- **Proposte.** Un sì non vale più se la proposta stessa è rifiutata ("sì, ma niente musica", "dai, non accendere il barbecue", "please don't light the barbecue"). "Not a good idea", "don't do it", "let's go home" sono no; "odio la musica" e "spegni la tv" (al film) anche. Una frase che nomina la proposta senza chiederla ("ieri abbiamo fatto festa", "la musica è troppo alta") non la esegue più: la valuta il modello. Un complimento con una parola di assenso ("you're great") non è un sì. "Spegni tutte le luci" spegne tutta la casa, non solo la stanza della proposta. Con **Parla**, nei 30 secondi dopo una proposta, una domanda ("c'è qualcuno in cucina?") non viene più presa per la risposta. Prima che il modello sia pronto non gli si chiede niente.
+- **Informazioni sui personaggi.** Niente informazioni da frasi su chi risponde: "sono italiana" diventava "viene da Italiana", "sono vegetariano" "adora mangiare vegetariano". Una scelta o un colore negati non si salvano al contrario ("non la pizza, la pasta" è la pasta; "non mi piace il rosso" non è un colore). I nomi dei personaggi (Bianca, Viola, Celeste) non fanno di un'informazione una risposta sui colori; "fa il tifo per la Juve" e "è un amante della musica" non sono lavori; "viene spesso a trovarci" e "la cucina italiana" non dicono da dove viene; "grande" non è famiglia. Una richiesta che nomina un personaggio resta una richiesta ("Marco vuole sentire la musica", "musica per Marco"), e "Marco è sul divano?" chiede dov'è adesso. Quando il modello trova l'argomento ma non c'è un'informazione, la casa dice che non lo sa invece di rispondere a un'altra domanda, e non chiede al modello due volte la stessa cosa. Il modello etichetta un'informazione scritta solo se è sicuro almeno al 90%. Una riga scritta nella webapp come "viene da una famiglia di musicisti" resta com'è e non viene tradotta.
+- **Tutti e due.** "Non è Viola, è Rosaria" è Rosaria; "né Viola né Rosaria" e "non sono tutti e due" non danno nessun nome.
+- **Visione.** Un file del rumore vuoto (corrente staccata mentre si salvava) non blocca più la visione, e il file si scrive a parte e poi si rinomina. Dopo una nuova regolazione della webcam il rumore si reimpara anche dopo un riavvio. Il controllo dei salti dell'auto guarda davvero gli ultimi 10 secondi: ne vedeva solo 1,5.
+- **Webapp.** Lasciando la Diretta la sua immagine si chiude davvero: prima restava aperta, nascosta, a 5 immagini al secondo, una in più a ogni visita. I tocchi su **Personaggi** non si perdono più. Se la presenza da togliere è già sparita compare "Non c'è più". **Impostazioni** non scorre più di lato a 320 px.
+- **Documenti** allineati: guide rapide, installazione, specifica, collaudo, regole, README.
+
+**Perché:** due problemi erano gravi: con una parola di assenso nella frase la casa accendeva il barbecue anche a chi diceva di non farlo. Ogni correzione ha un test.
+
+### D-33 — Il modello pronto in pochi secondi (5/10)
+**Scelta:**
+- `llama-server` passa a quattro slot (`-np 4`, contesto 8192): anche le domande sui personaggi hanno uno slot loro.
+- Dopo la prima lettura ogni slot si salva in `/var/lib/domotiq-llm` (`--slot-save-path`), e agli avvii successivi torna in cache da lì. Si rilegge solo se cambiano le istruzioni o il modello.
+- La lettura parte insieme alla preparazione delle frasi della voce, non dopo; e se `llama-server` riparte, la casa rimette le istruzioni da sola.
+
+**Perché:** domanda di Emilio sull'attesa di 10 minuti. Misurato sulla scheda all'accensione del 4/10: 11 s per caricare il modello, poi quasi 4 minuti di attesa mentre la voce preparava le sue frasi, poi 174 s per le istruzioni dei comandi (1.525 token) e 110 s per quelle di "chi è?" (1.073 token), a circa 9 token al secondo. Con le quattro istruzioni (5.458 token) sarebbero stati circa 14 minuti. Anche dopo un semplice riavvio dell'app il modello risultava pronto solo dopo la voce, 2-4 minuti più tardi, pur avendo già tutto in cache. Sul PC il ripristino dei quattro slot richiede circa 10 ms l'uno e le risposte sono identiche a quelle della prima lettura; i file occupano 67 MB. Su casa1 la prima lettura ha richiesto 730 s (324 s per i comandi, letti mentre la voce preparava le frasi); dopo un riavvio di `llama-server` le quattro istruzioni sono tornate in 3,2 s, e una domanda costa come prima circa 3 s.

@@ -27,7 +27,7 @@ That is on purpose: this is a house for playing. Every change is recorded with t
   - **grey**: the connection with the house lost (*Lost the connection with the house: retrying…*); the web app reconnects by itself;
   - **white card with a teal edge**: a question of the house (*The house asks*).
 
-  The **✕** closes the notice on every phone: an alarm or a warning comes back only if it ends and happens again; a closed question disappears everywhere and the house stops listening. The files of the web app load under a version that changes with every update: after an update, reloading the page is enough.
+  The **✕** closes the notice on every phone: an alarm or a warning comes back only if it ends and happens again; a closed question disappears everywhere and the house stops listening. The files of the web app load under a version that changes with every update: after an update of the house every phone reloads by itself and gets the new version.
 - **Questions of the house**: when the house is unsure it asks, for example "Is it Viola or Rosaria in the living room?", with one button per answer and, when more than one name is proposed, **Both** (or **All of them**): two figurines touching are a single blob for the camera. Any phone can answer; the first answer wins and the question disappears everywhere. The house also asks aloud and listens for the answer by itself, with no Talk button. When it asks who a newcomer is there are also **Nothing there**, a field to type a new name, its kind and the **Add** button (see [chapter 7](07-recognition-and-identities.md#a-newcomer)).
 - **Subtitles**: everything the house says appears as a subtitle at the bottom of every phone, even when the house is set to *Silent*.
 - **Short messages**: they pop up at the bottom, in the same colours as the notices (a character registered, the barbecue is ready, a rule's notification, the alarm switched on or off), and close with a tap. Alarm ones also vibrate the phone, where the browser allows it.
@@ -40,23 +40,23 @@ That is on purpose: this is a house for playing. Every change is recorded with t
 
 *The house: who is in and what is going on, live.*
 
-**Alarm.** At the top, the alarm box, switched on and off like a burglar alarm:
+**Plan.** The virtual house, drawn from the CAD model, with the driveway, where visitors stand, at the bottom.
+
+- Rooms, walls, doors and furniture; each room light glows in its current colour and effect.
+- The two thermometers, the thermostat on the sideboard and the bathroom one, each with the temperature in degrees Celsius and, below, the humidity (*humidity 45%*); a counter for each room with somebody in it.
+- Every character with the silhouette of its kind (person, dog, cat, animal, car, object) in its colour and with its name; a **?** marks a character the house is not sure about.
+- The car, flames on the barbecue while it is on, rooms with an alarm in red and with a warning in amber.
+
+**How the house is.** Cards with the people inside, **Thermostat** (temperature in °C, *Humidity* in per cent, *Air conditioning on* or *Heating on*), **Bathroom** (temperature in °C, *Humidity*, *Shower running*), **Car** (*just arrived*, *parked*, *just left*, *not here*), **Scene**, and **Party** and **Barbecue** while they are on.
+
+**Who is in.** The list of everything the house sees, with name (or *Guest* for an unknown person, *Unknown* for anything else), kind and room. Tap a character, on the plan or in the list, to open its card: photo or silhouette, kind, room, and *I'm not sure who this is* when in doubt. An unknown one has a **Register** button that starts the registration with that figurine already chosen. If the house sees something that is not there (a reflection, a light, a module lying around), **Not really there: remove**, after a confirmation, takes it out of the house at once: the house treats it as a mistake of the camera, forgets that spot and lets nothing be born there for a while.
+
+**Alarm.** At the bottom of the page, the alarm box, switched on and off like a burglar alarm:
 - **On** (green shield): the alarm rules (utility room off limits, bathroom for one and the ones you make with *Alert*) work;
 - **Off** (grey shield): those rules stay quiet, no siren and no warnings; everything else (lights, voice, other rules) goes on as usual;
 - **Alarm going off** (red edge): an alarm rule is sounding.
 
 The **Switch off** / **Switch on** button changes it for the whole house, with a beep and a message on every phone (*Alarm off by Marco*). Switching off stops the alarms going off at once, with their lights; switching on again notices whoever is already in a watched place, as if they had just come in. The state survives a restart.
-
-**Plan.** The virtual house, drawn from the CAD model, with the driveway, where visitors stand, at the bottom.
-
-- Rooms, walls, doors and furniture; each room light glows in its current colour and effect.
-- The thermostat temperature (on the sideboard) and the bathroom humidity; a counter for each room with somebody in it.
-- Every character with the silhouette of its kind (person, dog, cat, animal, car, object) in its colour and with its name; a **?** marks a character the house is not sure about.
-- The car, flames on the barbecue while it is on, rooms with an alarm in red and with a warning in amber.
-
-**How the house is.** Cards with the people inside, **Thermostat** (temperature, humidity, *Air conditioning on* or *Heating on*), **Bathroom** (humidity, *Shower running*), **Car** (*just arrived*, *parked*, *just left*, *not here*), **Scene**, and **Party** and **Barbecue** while they are on.
-
-**Who is in.** The list of everything the house sees, with name (or *Guest* for an unknown person, *Unknown* for anything else), kind and room. Tap a character, on the plan or in the list, to open its card: photo or silhouette, kind, room, and *I'm not sure who this is* when in doubt. An unknown one has a **Register** button that starts the registration with that figurine already chosen.
 
 ## Live
 
@@ -98,7 +98,7 @@ Every other page, in three groups, plus your nickname:
 
 - **The house**: **Events**, **Rules**, **Simulation**;
 - **Setting up**: **Calibration**, **Diagnostics**, **Settings**;
-- **For the stand**: **Printable sign**, **Booth display**, **About**;
+- **For the stand**: **Printable sign**, **About**;
 - **You**: **Your nickname**, shown in the change log.
 
 ### Rules
@@ -154,7 +154,7 @@ An A4 portrait page, ready to print, with the name of the house and two QR codes
 
 ### Booth display
 
-`/board`: the plan, the live view, the last sentence said and the latest events, for a monitor or a tablet at the stand. It has no controls.
+It is not in the menu: open it by typing `/board` after the address of the house. It shows the plan, the live view, the last sentence said and the latest events, for a monitor or a tablet at the stand, and has no controls.
 
 ### About
 

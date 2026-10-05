@@ -61,7 +61,7 @@ Many events and conditions have a **Who** field with two choices: the kind (*any
 | **the barbecue** | State: starts, ready | the fan starts, or the barbecue is ready (the fan has finished). |
 | **the party** | State: starts, over | a party starts or ends. |
 
-**The virtual climate.** The Thermo in the sideboard is a thermostat you warm with a finger. Its reference is the average of the last 5 minutes. It goes **hot** when the temperature rises 1 °C above the reference, or rises faster than 0.1 °C per second, or when the humidity jumps 10 points (someone breathes on it, which is quicker than a finger); **cold** when it falls 1 °C below the reference; **normal** again when it is back within 0.5 °C. The thresholds are staff settings.
+**The virtual climate.** The Thermo in the sideboard is a thermostat you warm with a finger. Its reference is the average of the last 5 minutes. It goes **hot** when the temperature rises 1 °C above the reference, or rises faster than 0.1 °C per second, or when the humidity jumps 10 points (someone breathes on it, which is quicker than a finger); **cold** when it falls 1 °C below the reference; **normal** again when it is back within 0.5 °C. The thresholds are in **More → Settings**, under **Lights · Party · Barbecue · Climate**.
 
 ## If: the conditions
 

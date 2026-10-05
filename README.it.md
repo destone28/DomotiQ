@@ -22,7 +22,7 @@ English version: [README.md](https://github.com/destone28/DomotiQ/blob/main/READ
 - Storie, ricordi e risposte sulla vita di casa (bollette, compleanni, feste passate), generati sulla scheda da un database locale di pezzi in italiano e in inglese, con personaggi che mantengono la loro personalità fino al riavvio.
 - Una festa con musica elettronica generata dal codice e giochi di luce, e un barbecue con una ventola vera.
 - Un garage che vede arrivare e parcheggiare l'auto.
-- Una webapp completa servita dalla scheda sul suo hotspot, con il bagno sempre sfocato nella diretta.
+- Una webapp completa servita dalla scheda sul suo hotspot, con il bagno sfocato nella diretta (di serie).
 
 # Come funziona
 

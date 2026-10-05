@@ -83,7 +83,7 @@ Everything is inside `/home/arduino/domotiq`:
 |---|---|
 | `domotiq` | The application (`python -m domotiq`): web app on port 80, rules, voice, audio, the link to the microcontroller, with the vision as a child process. Restarts by itself. It may bind port 80 and set the clock, nothing else. |
 | `domotiq-tts` | Piper's HTTP server on `127.0.0.1:5010`, with the voices in `models/piper`. |
-| `domotiq-llm` | `llama-server` with Qwen2.5-0.5B-Instruct on `127.0.0.1:8081`, always loaded so free questions get a fast answer, at a lower CPU priority than vision and voice. Not enabled with `--no-llm`. |
+| `domotiq-llm` | `llama-server` with Qwen2.5-0.5B-Instruct on `127.0.0.1:8081`, always loaded so free questions get a fast answer, at a lower CPU priority than vision and voice. The instructions it has read are saved in `/var/lib/domotiq-llm` and come back in a few seconds at the next starts instead of about 10 minutes ([chapter 8](08-voice.md)). Not enabled with `--no-llm`. |
 
 `domotiq` starts after `arduino-router` (the system service that links Linux and the microcontroller) and after `domotiq-tts`. All three restart automatically if they stop, and all three start at boot: after a reboot the house comes up by itself.
 
@@ -149,7 +149,12 @@ bash scripts/release.sh casa1 --install    # then run install.sh on the board (n
 
 `release.sh` copies the working tree of the PC to `~/domotiq` on the board with `rsync` over SSH (the `casa1` alias from `add-pc.sh`), then restarts `domotiq`. It leaves out what git ignores and what belongs to the board: `.git`, `venv`, `piper-venv`, `models`, `var` and `llama.cpp`. The board does not need git for this. The copy mirrors the PC: a code file changed only on the board is overwritten or removed.
 
-Without `--install`, a change to the firmware is copied but not loaded on the microcontroller, and new Python packages or models are not installed: use `--install` (or `install.sh` on the board) when those change.
+Without `--install`, a change to the firmware is copied but not loaded on the microcontroller, and new Python packages, models and services in `scripts/systemd` (such as `domotiq-llm.service`, which now keeps four slots, `-np 4`, and saves them in `/var/lib/domotiq-llm`) are not installed: use `--install` (or `install.sh` on the board) when those change. For one service alone, even with no internet, this on the board is enough (it asks for the password of `arduino`):
+
+```bash
+cd ~/domotiq && sudo install -m644 scripts/systemd/domotiq-llm.service /etc/systemd/system/ \
+  && sudo systemctl daemon-reload && sudo systemctl restart domotiq-llm
+```
 
 ## Installing the second house
 
