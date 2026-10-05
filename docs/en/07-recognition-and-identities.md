@@ -24,6 +24,10 @@ The vision runs in a separate process, so a slow frame or a camera problem never
 
 The result is a list of tracks, each with a position in millimetres, a room, a kind and, when known, an identity. The rest of the house (lights, rules, voice, web app) works on this list.
 
+**At rest.** Analysing a frame takes about 180 ms on the board. When the house is still (no hand for 25 seconds, no light of the house changing or animated, nothing pending) the house first compares each frame, shrunk to 80 × 60 in grey, with the last one analysed: if no point changed by more than 6 grey levels, the frame is the same and is not analysed again. The comparison takes a fraction of a millisecond, a hand changes it at once, and at least one frame a second is analysed in full anyway. This leaves the processor free for the voice. In **Diagnostics**, on the webcam line, *at rest 60% of the frames* tells how many frames the house left alone (during a party it shows *paused for the party*).
+
+**Priorities.** The vision is the continuous work of the board: when the processor is not enough for everything, it gives way to the voice, which runs in the same service (its process has a lower priority). Among the services the house comes first, then the voice synthesis, the language model last.
+
 ### Nothing moves by itself
 
 In a diorama every change is made by a hand: a figurine comes in, goes out or moves only if somebody picks it up. The house uses this rule not to see presences that are not there.

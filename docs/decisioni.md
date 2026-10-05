@@ -346,3 +346,76 @@ Il dubbio "Honda Civic o Mister Blu?" veniva invece da due personaggi dello stes
 **Scelta:** i 14 render di `render_v8.py` sono in `docs/images/render/`, senza i metadati delle immagini; i render della versione precedente sono tolti. Il capitolo 3 li usa nei passaggi del montaggio, con la pianta dall'alto, le pareti, le sezioni del totem, della fioriera e del palo e le viste dall'altezza di un adulto e di un bambino. La nota sulle immagini vecchie (D-40) non c'è più.
 
 **Perché:** il render della versione 8 è pronto.
+
+### D-48 — Le risposte alle domande sulla vita di casa (5/10)
+**Scelta:**
+- A una domanda della modalità chiacchierona sulla vita di casa (compleanno, bollette, assicurazioni, spesa, faccende, vacanze), una risposta che non è sì o no viene capita:
+  - una domanda che nomina un argomento della vita di casa ("Chi ha pagato il gas?") ha la sua risposta;
+  - un comando o una domanda per la casa ("che ore sono?") viene eseguito;
+  - una domanda che continua il discorso ("Quando?", "Dove?", "Chi?") riguarda l'argomento appena detto ("Quando?" dopo il compleanno dà la data, la stessa che la casa dice dopo un no).
+- Il resto riceve "Ah, interessante!" come prima.
+
+**Perché:** segnalazione di Emilio: a "Viola, lo sai che manca poco al tuo compleanno?" la risposta "Quando?" riceveva "Ah, interessante!". Prima si capivano solo sì e no.
+
+### D-49 — Regole dalle frasi sentite al banco; memoria delle risposte del modello (5/10)
+**Scelta:**
+- Dal registro di casa1 (dal 29/9: 128 frasi capite, 32 dal modello) le frasi finite al modello sono diventate regole, ciascuna con un test:
+  - le parole della festa sentite male ("fai presto", "facciamo presto", "let's body");
+  - "cosa posso chiederti" (aiuto);
+  - l'elenco dei personaggi ("chi sono i personaggi che conosci");
+  - "dov'è X" con un nome sconosciuto ("Non conosco nessuno che si chiama Emilio");
+  - il nome detto a voce per una presenza ("l'ospite che in soggiorno si chiama Rosaria");
+  - "e in bagno?" dopo una domanda su una stanza;
+  - "Di chi?" a una domanda su un personaggio senza nome e senza un personaggio nominato poco prima;
+  - "dove vuole andare X" come domanda sulle vacanze.
+- Il modello non riceve due volte la stessa richiesta: le ultime 256 risposte restano in memoria (con temperatura 0 risponderebbe lo stesso), e a una frase già chiesta non si dice "Vediamo…".
+
+**Perché:** intervento 1 della lista proposta a Emilio. Le frasi vere mostrano che il modello riceveva soprattutto frasi storpiate dal riconoscimento e domande che le regole non conoscevano; ognuna costava da 3 a 10 secondi.
+
+### D-50 — Priorità tra i servizi (5/10)
+**Scelta:**
+- `domotiq` CPUWeight 200, `domotiq-tts` 150, `domotiq-llm` 50 (con il nice 10 che aveva già).
+- Dentro `domotiq` il processo della visione si dà nice 5: cede il passo al riconoscimento vocale e alla parola di attivazione, che girano nel processo principale.
+- Le unità vanno reinstallate sulla scheda.
+
+**Perché:** intervento 2. Misurato su casa1 prima del cambio: mentre la casa sintetizzava e diceva una frase nuova, la visione scendeva da 10 a circa 3 immagini al secondo e il tempo per immagine passava da 220 a circa 450 ms. La voce deve rispondere subito; un'immagine in ritardo conta meno.
+
+### D-51 — Due thread per il riconoscimento vocale (5/10)
+**Scelta:** alle domande della casa l'audio va insieme al riconoscimento a elenco e a quello libero, su due thread. Il risultato libero è pronto alla fine della frase, invece di ripartire da capo dopo.
+
+**Perché:** intervento 3. Prima il riconoscimento libero dello stesso audio partiva solo dopo quello a elenco, e la risposta non prevista ("direi di sì") aspettava il doppio.
+
+### D-52 — La visione a riposo (5/10)
+**Scelta:**
+- Dopo 25 secondi senza mani, con le luci della casa ferme e niente in sospeso, un fotogramma uguale all'ultimo analizzato non viene analizzato di nuovo.
+- Uguale vuol dire: nella miniatura 80 × 60 in grigi, nessun punto cambiato di più di 6 livelli.
+- Almeno un fotogramma al secondo viene analizzato comunque.
+- In Diagnostica si vede la quota dei fotogrammi lasciati stare.
+
+**Perché:** intervento 4. Un fotogramma costa circa 180 ms sulla scheda (122 di segmentazione), il confronto una frazione di millisecondo. Una mano cambia la miniatura subito, e le nascite dopo una mano avvengono entro 20 secondi, quindi i 25 secondi non le toccano.
+
+### D-53 — Le frasi fisse della voce preparate in anticipo (5/10)
+**Scelta:**
+- `scripts/voice_cache.py` prende dal codice le frasi fisse:
+  - le frequenti;
+  - le varianti senza spazi da riempire;
+  - le risposte scritte nelle due lingue.
+  In tutto sono 235. Le sintetizza nella stessa forma della cache della voce, in `models/voice-cache/`.
+- La casa legge anche quella cartella; `release.sh` la copia dal PC alla scheda.
+- La cartella è preparata sul PC con Piper 1.8.0 e le stesse voci verificate con `scripts/models.sha256`.
+
+**Perché:** intervento 5. Sul PC le 235 frasi richiedono 50 secondi, sulla scheda circa 13 minuti di processore. Una casa nuova le dice subito dalla prima accensione.
+
+### D-54 — La scheda grafica, provata (5/10)
+**Scelta:** nessun uso della scheda grafica per ora.
+
+**Misure su casa1 (Adreno 702, Mesa 26.1.6):**
+- **Vulkan:** il driver Turnip offre Vulkan 1.0, mentre llama.cpp chiede 1.2 e rifiuta il dispositivo.
+- **OpenCL:** Rusticl offre OpenCL 3.0 (1 unità di calcolo a 844 MHz, fp16). Il backend OpenCL di llama.cpp però supporta solo Adreno con il driver Qualcomm e Intel.
+- **Prodotto di matrici in OpenCL scritto per la prova:**
+  - circa 2,3 GFLOPS nella versione semplice;
+  - 4,2-4,6 GFLOPS calcolando 16 risultati per thread (gruppi di lavoro al massimo di 16 elementi per i registri).
+- **Processore, con la casa accesa:** 4,4-5,6 GFLOPS con un core e 8-10 con due (OpenBLAS); con quattro scende a 3,5-4,2, perché i core servono anche alla casa.
+
+**Perché:** intervento 6. Usarla vorrebbe dire scrivere a mano i calcoli del modello per la scheda grafica, e renderebbero quanto un core del processore. La possibilità di far lavorare insieme processore e scheda grafica resta da valutare con Emilio, dopo l'eventuale accelerazione del modello sul processore.
+

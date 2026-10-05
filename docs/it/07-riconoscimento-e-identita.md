@@ -24,6 +24,10 @@ La visione gira in un processo separato, così un fotogramma lento o un problema
 
 Il risultato è un elenco di tracce, ognuna con una posizione in millimetri, una stanza, un tipo e, quando è nota, un'identità. Il resto della casa (luci, regole, voce, webapp) lavora su questo elenco.
 
+**A riposo.** Analizzare un fotogramma costa circa 180 ms sulla scheda. Quando la casa è ferma (nessuna mano da 25 secondi, nessuna luce della casa che cambia o è animata, niente in sospeso) la casa confronta prima ogni fotogramma, rimpicciolito a 80 × 60 e in grigi, con l'ultimo analizzato: se nessun punto è cambiato di più di 6 livelli di grigio, il fotogramma è uguale e non viene analizzato di nuovo. Il confronto costa una frazione di millisecondo, una mano lo cambia subito, e comunque almeno un fotogramma al secondo viene analizzato per intero. Così il processore resta libero per la voce. In **Diagnostica**, sulla riga della webcam, *a riposo 60% dei fotogrammi* dice quanti fotogrammi la casa ha lasciato stare (durante la festa compare *in pausa per la festa*).
+
+**Priorità.** La visione è il lavoro continuo della scheda: quando il processore non basta per tutti, cede il passo alla voce, che gira nello stesso servizio (il suo processo ha priorità più bassa). Tra i servizi vengono prima la casa, poi la sintesi vocale, per ultimo il modello linguistico.
+
 ### Niente si muove da solo
 
 In un plastico ogni cambiamento lo fa una mano: una statuina entra, esce o si sposta solo se qualcuno la prende. La casa usa questa regola per non vedere presenze che non ci sono.

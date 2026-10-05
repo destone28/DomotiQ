@@ -147,9 +147,18 @@ bash scripts/release.sh casa1              # copy code, web app and data, restar
 bash scripts/release.sh casa1 --install    # then run install.sh on the board (needs internet on the board)
 ```
 
-`release.sh` copies the working tree of the PC to `~/domotiq` on the board with `rsync` over SSH (the `casa1` alias from `add-pc.sh`), then restarts `domotiq`. It leaves out what git ignores and what belongs to the board: `.git`, `venv`, `piper-venv`, `models`, `var` and `llama.cpp`. The board does not need git for this. The copy mirrors the PC: a code file changed only on the board is overwritten or removed.
+`release.sh` copies the working tree of the PC to `~/domotiq` on the board with `rsync` over SSH (the `casa1` alias from `add-pc.sh`), then restarts `domotiq`. It leaves out what git ignores and what belongs to the board: `.git`, `venv`, `piper-venv`, `models`, `var` and `llama.cpp`. The board does not need git for this. The copy mirrors the PC: a code file changed only on the board is overwritten or removed. The exception is `models/voice-cache/`, the fixed sentences of the voice prepared ahead of time: if the PC has it, it is copied too.
 
-Without `--install`, a change to the firmware is copied but not loaded on the microcontroller, and new Python packages, models and services in `scripts/systemd` (such as `domotiq-llm.service`, which now keeps four slots, `-np 4`, and saves them in `/var/lib/domotiq-llm`) are not installed: use `--install` (or `install.sh` on the board) when those change. For one service alone, even with no internet, this on the board is enough (it asks for the password of `arduino`):
+**The sentences of the voice prepared ahead of time.** The fixed sentences (235) are synthesized once with `scripts/voice_cache.py` and given to every house, so the first start does not wait for Piper:
+
+```bash
+venv/bin/python scripts/voice_cache.py                   # on the board, with its own Piper (about 13 minutes)
+python scripts/voice_cache.py --url http://127.0.0.1:5010/synthesize   # on a PC (the Python environment of the repository)
+```
+
+The script writes to `models/voice-cache/` only the sentences that are missing, and with `--list` it only lists them. On a PC, start the Piper server as the `domotiq-tts` service does (the same version and voices as `install.sh`).
+
+Without `--install`, a change to the firmware is copied but not loaded on the microcontroller, and new Python packages, models and services in `scripts/systemd` (such as `domotiq-llm.service`, which now keeps four slots, `-np 4`, and saves them in `/var/lib/domotiq-llm`, or the `CPUWeight` priorities of the three services) are not installed: use `--install` (or `install.sh` on the board) when those change. For one service alone, even with no internet, this on the board is enough (it asks for the password of `arduino`):
 
 ```bash
 cd ~/domotiq && sudo install -m644 scripts/systemd/domotiq-llm.service /etc/systemd/system/ \

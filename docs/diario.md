@@ -263,3 +263,10 @@ In ordine:
 - **Festa** (D-46): durante lo spettacolo di luci il riconoscimento è sospeso; riparte alla fine.
 - **Immagini v8** (D-47): i render della versione 8 sono nel capitolo 3.
 - Durante la verifica della guida è emerso un difetto, ora corretto: con la casa in inglese, un'informazione scritta in italiano come frase intera finiva dentro una frase inglese.
+
+**Sera (5/10).** Un difetto e i sei interventi per la velocità, chiesti da Emilio:
+- **"Quando?" dopo il compleanno** (D-48): a "Viola, lo sai che manca poco al tuo compleanno?" la risposta "Quando?" riceveva "Ah, interessante!". Ora una domanda detta come risposta continua il discorso e riceve la data.
+- **Regole dalle frasi vere** (D-49): dal registro di casa1, 32 frasi su 128 erano finite al modello. Quasi tutte erano storpiate dal riconoscimento ("fai presto" per "fai festa") o domande che le regole non conoscevano. Ora sono regole, e la stessa richiesta non va mai due volte al modello.
+- **Priorità** (D-50): misurato prima, mentre la casa diceva una frase nuova la visione scendeva da 10 a circa 3 immagini al secondo. Ora la casa viene prima della sintesi vocale e il modello per ultimo; dentro la casa la visione cede il passo alla voce.
+- **Due thread per il riconoscimento vocale** (D-51), **visione a riposo** (D-52), **frasi fisse preparate sul PC** (D-53): 235 frasi in 50 secondi sul PC, copiate su casa1. Dopo il riavvio delle 17:00 le 74 frasi frequenti sono state lette dal disco in mezzo secondo.
+- **Scheda grafica** (D-54): il driver Vulkan arriva alla versione 1.0 (llama.cpp ne chiede 1.2) e il backend OpenCL di llama.cpp accetta solo i driver Qualcomm e Intel. Il prodotto di matrici scritto per la prova arriva a circa 4,5 GFLOPS; due core del processore ne fanno 8-10 con la casa accesa.
