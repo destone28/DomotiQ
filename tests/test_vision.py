@@ -3,6 +3,7 @@
 """Vision on synthetic frames: geometry, segmentation, tracking, identities, privacy."""
 
 import itertools
+import json
 
 import numpy as np
 import pytest
@@ -1409,3 +1410,19 @@ def test_an_empty_house_saved_in_the_dark_does_not_stop_the_house(engine, render
     st = engine.status()
     assert st["empty_dark"] and not st["adapting"] and not st["flooded"] and not st["dark"]
     assert _same(tracks, before)
+
+
+def test_a_recording_tells_the_blob_of_every_figurine(engine, renderer):
+    """The crops that teach the figurines need the blob of each one, not its place on the map."""
+    red = Thing(300, 100, "#d03030")
+    _named(engine, renderer, [red])
+    engine.start_recording(5.0)
+    run(engine, renderer, [([red], {})] * 3, t0=20.0)
+    rec = engine._record["dir"]
+    engine._record["log"].flush()
+    frames = [json.loads(line) for line in open(rec / "detections.jsonl")]
+    boxes = [t.get("bbox") for f in frames for t in f["tracks"]]
+    assert boxes and all(b and len(b) == 4 for b in boxes)
+    x, y, w, h = boxes[-1]
+    px = engine.calib.image_of(np.array([[300.0, 100.0]]), 40.0)[0]
+    assert x - 10 <= px[0] <= x + w + 10 and y - 10 <= px[1] <= y + h + 10

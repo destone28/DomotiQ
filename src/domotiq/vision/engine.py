@@ -1370,5 +1370,13 @@ class Engine:
             "observations": [{"centroid": [round(v, 1) for v in o.centroid_mm], "bbox": list(o.bbox),
                               "area": round(o.area_mm2), "hand": o.hand, "guess": o.category_guess}
                              for o in self.observations],
-            "tracks": [t.to_dict() for t in self.tracks],
+            "tracks": [dict(t.to_dict(), **self._recorded_blob(t.id)) for t in self.tracks],
         }) + "\n")
+
+    def _recorded_blob(self, track_id: str) -> dict[str, Any]:
+        """The blob a track was matched to in this frame, for the recordings: the crops that teach the figurines
+        come from it (the place on the map is fixed and seen from above, the blob is where the figurine is now)."""
+        vt = self.tracker.tracks.get(track_id) if self.tracker else None
+        if vt is None or vt.obs is None or vt.carried or vt.frame != self.tracker.frame:
+            return {}
+        return {"bbox": [int(v) for v in vt.obs.bbox]}
