@@ -195,6 +195,19 @@ TEACH_FACT = [("Grazie! Me lo segno: {name} {fact}.", "Thanks! I'll remember: {n
 TEACH_MISHEARD = [("Scusa, non ho capito bene: me lo dirai un'altra volta.",
                    "Sorry, I didn't quite get it: you'll tell me another time.")]
 
+# a question about the world: think about it (the free answers model, some seconds) or be told (llm.ChatModel)
+THINK_OFFER = [("Ci devo pensare un attimo. Preferisci aspettare qualche secondo, o me lo dici tu?",
+                "I need to think about it. Would you rather wait a few seconds, or tell me yourself?"),
+               ("Bella domanda, devo pensarci! Aspetti qualche secondo, o me lo dici tu?",
+                "Good question, I need to think! Will you wait a few seconds, or tell me?")]
+THINK_WAIT = [("Va bene, ci penso. Un attimo...", "All right, let me think. One moment..."),
+              ("D'accordo, aspetta che ci penso...", "OK, wait while I think...")]
+THINK_TELL = [("Dimmi pure!", "Go ahead!"), ("Ti ascolto!", "I'm listening!")]
+THINK_SAID = [("Ecco cosa ne penso:", "Here's what I think:"), ("Ci ho pensato:", "I thought about it:")]
+THINK_NOTHING = [("Scusa, non mi viene in mente niente. Se lo sai, la prossima volta dimmelo tu.",
+                  "Sorry, nothing comes to mind. If you know, tell me next time.")]
+THINK_DROP = [("D'accordo, lasciamo stare.", "All right, let's leave it."), ("Va bene, nessun problema.", "OK, no problem.")]
+
 # ------------------------------------------------------------------ what happens in the house
 ARRIVE = [
     ("Ecco {name} {where}!", "Here's {name} {where}!"),

@@ -122,12 +122,14 @@ class Knowledge:
         return best
 
     def learn(self, question: str, answer: str, who: str | None = None, names: Iterable[str] = (),
-              invented: bool = False, now: float | None = None) -> dict[str, Any]:
+              invented: bool = False, now: float | None = None, generated: bool = False) -> dict[str, Any]:
         now = time.time() if now is None else now
         item = {"q": question.strip(), "a": answer.strip(), "k": sorted(_stems(question, names)),
                 "topic": subject(question), "who": who, "at": round(now)}
         if invented:
             item["invented"] = True
+        if generated:
+            item["generated"] = True                       # written by the free answers model
         if TIMELY.search(normalize(question)) or TIMELY.search(normalize(answer)):
             item["until"] = round(now + DAY_S)             # "domani piove": true for a day
         with self._lock:
@@ -148,8 +150,8 @@ class Knowledge:
 def told(item: dict[str, Any], lang: str, name: str | None = None) -> str:
     """How the house says what it was told (or what it imagined, as it is)."""
     a = item["a"].strip().rstrip(".!")
-    if item.get("invented"):
-        return a + "."
+    if item.get("invented") or item.get("generated"):
+        return a + "."                                     # what the house imagined or thought: as it is
     it = lang == "it"
     if YES_NO.match(normalize(a)):
         yes = not normalize(a).startswith(("no", "of course not", "certo che no"))
@@ -221,3 +223,28 @@ def invent(question: str, lang: str, names: list[str], rooms: list[tuple[str, st
 def asked_about(question: str, names: Iterable[str]) -> list[str]:
     """The characters a question names."""
     return find_names(normalize(question), list(names))
+
+
+WAIT = re.compile(r"\b(aspett\w*|attend\w*|pensaci|ci pensi|pensa\w*|rispondi tu|dimmelo tu|dimmi tu|volentieri|"
+                  r"tranquill\w*|wait|think|go ahead|you tell me)\b|"
+                  r"^(s[iì]|ok|okay|va bene|certo|dai|yes|sure|ok dimmi|dimmi)( dai| pure| certo| va bene| ok)?$")
+TELL = re.compile(r"\b(te lo dico io|lo dico io|dico io|te lo dico|ti dico io|lo so io|so io|glielo dico|"
+                  r"i ll tell you|i will tell you|i know it|let me tell you)\b|^lo so\b|^i know\b")
+DROP = re.compile(r"^(no|niente|nulla)$|\b(lascia stare|lascia perdere|non importa|non fa niente|no grazie|"
+                  r"forget it|never mind|no thanks|doesn t matter)\b")
+
+
+def think_choice(heard: str) -> str:
+    """What the visitor chose after "aspetti qualche secondo, o me lo dici tu?": "wait" (also silence), "tell" (they
+    will say it), "drop" (nobody knows, never mind) or "answer" (they said the answer itself)."""
+    from .facts import nothing_told
+    t = normalize(heard)
+    if not t:
+        return "wait"
+    if DROP.search(t) or nothing_told(heard):
+        return "drop"
+    if TELL.search(t):
+        return "tell"
+    if WAIT.search(t) and len(t.split()) <= 5:
+        return "wait"
+    return "answer"

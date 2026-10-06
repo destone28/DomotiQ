@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
+# SPDX-License-Identifier: MIT
+# The free answers: a second llama-server with Qwen3.5-0.8B, which writes Italian better than the model of the
+# commands. Loopback only, one slot, lower priority than vision and voice. Used only when a visitor asks something
+# that is not about the house, its characters or what it does, and chooses to wait for the answer
+# (docs/decisioni.md D-63). --reasoning-budget 0: it answers at once, without thinking aloud first.
+[Unit]
+Description=DomotiQ free answers model (llama.cpp)
+After=network.target domotiq-llm.service
+
+[Service]
+Type=simple
+User=arduino
+Group=arduino
+WorkingDirectory=/home/arduino/domotiq
+ExecStart=/home/arduino/domotiq/llama.cpp/build/bin/llama-server -m /home/arduino/domotiq/models/llm/Qwen_Qwen3.5-0.8B-Q4_0.gguf --host 127.0.0.1 --port 8082 -c 1024 -t 3 -np 1 -fa off --reasoning-budget 0
+Nice=10
+CPUWeight=50
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

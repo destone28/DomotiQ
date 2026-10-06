@@ -177,6 +177,13 @@ When the house cannot answer, it does not just say "I don't know".
 - **About the world** ("what's the weather tomorrow?") it asks the same way, and to the next question that is the same or alike it answers "I was told that it rains tomorrow.". What is about today or tomorrow holds for a day.
 - **About itself** (its rooms, its furniture, "who built you?", "why is the kitchen yellow?") it imagines a plausible explanation and says it is what it thinks: "I think it's because whoever built me wanted it that way.". The same question always gets the same answer.
 
+**Questions about the world.** A question that is not about the house, its characters or what the house can do ("How do you make pizza?", "Why is the sky blue?") has a way of its own. The house says at once that it has to think and asks: "I need to think about it. Would you rather wait a few seconds, or tell me yourself?".
+- **"I'll wait"** (also "yes", "you think", or silence): "All right, let me think. One moment..." and the buttons breathe. A second language model, Qwen3.5-0.8B (service `domotiq-chat`), writes the answer from scratch in 20-50 seconds, and the house says it ("Here's what I think: ..."). It is a small model: its language is sensible, but it can get facts wrong.
+- **"I'll tell you"**: "Go ahead!", and the house keeps the answer. The answer said at once, with no "I'll tell you", counts too.
+- **"Never mind"** or "I don't know": "All right, let's leave it.". A command instead of the choice is carried out.
+
+What the house thought or was told stays in `var/config/knowledge.json`: to the same question, or one alike, it answers at once.
+
 "I don't know", "dunno", silence or a command instead of an answer ("turn on the light") teach nothing: the house answers "All right, I'll ask somebody else." or does what was asked. An answer heard badly is not kept. What the house learns about the world and itself is in `var/config/knowledge.json` (the last 300 things); about the characters, among their facts, which the web app shows and anyone can correct.
 
 ## Speech recognition

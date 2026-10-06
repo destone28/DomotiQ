@@ -44,7 +44,7 @@ from .intents import (DENY, Intent, find_name, find_names, find_room, name_from_
                       said_options, spoken, whole_names)
 from . import variants as V
 from .who import BOTH, OR, Dialogue
-from .llm import LanguageModel
+from .llm import ChatModel, LanguageModel
 from .stt import Listener
 from .tts import Speaker
 
@@ -113,6 +113,8 @@ class Voice:
         self.llm = None if ctx.args.no_llm else LanguageModel()
         # what the house was told when it did not know, and what it imagined about itself (knowledge.py)
         self.knowledge = knowledge.Knowledge(ctx.paths.config / "knowledge.json")
+        # the free answers to questions about the world, written by a second model when the visitor waits for them
+        self.chat = None if ctx.args.no_llm else ChatModel()
         self._imagine = random.Random()
         self.llm_ok = False
         self.llm_ready = False                 # its instructions are in the cache: a question costs a few seconds
@@ -221,6 +223,9 @@ class Voice:
             return
         loop = asyncio.get_running_loop()
         while True:
+            chat = self.chat
+            if chat is not None and await loop.run_in_executor(None, chat.health) and not chat.ready:
+                await loop.run_in_executor(None, chat.warm, self.lang)
             self.llm_ok = await loop.run_in_executor(None, self.llm.health)
             if not self.llm_ok or getattr(self.llm, "cold", False):
                 self.llm_ready = False            # stopped or started again: its cache is empty
@@ -991,6 +996,8 @@ class Voice:
         t = normalize(text)
         if find_names(t, names) or facts.is_request(text, names) or self.stories.knows(text):
             return False
+        if re.search(r"\b(come si|si fa|si fanno|si cucina|si prepara|si dice|how do you|how to|how is|how are)\b", t):
+            return False                              # "come si fa la pizza?": how it is done, not who does it
         if facts.question_topic(text, names) is None and not ABOUT_CUE.search(t):
             return False
         if not re.search(r"\b(fa|fanno|piace|piacciono|ama|lavora|vive|abita|viene|mangia|beve|anni|"
@@ -1157,7 +1164,61 @@ class Voice:
             self.knowledge.learn(text, line, None, names, invented=True)
             await self.say(line)
             return
+        if self.chat is not None and self.chat.ready:
+            await self._think_or_be_told(text)
+            return
         await self._teach_me(text, V.pick("teach.unknown", V.TEACH_UNKNOWN))
+
+    async def _think_or_be_told(self, text: str) -> None:
+        """A question about the world (not about the house, its characters or what it does): the house says it has
+        to think and asks whether to wait for its answer (written by the free answers model, some seconds) or to be
+        told it. Waiting, or silence: it thinks. "Te lo dico io": it listens. The answer itself: kept. "Lascia
+        stare", "non lo so": nothing. A command instead: done. What it thought or was told is kept for the next
+        question alike."""
+        lang = self.lang
+        names = self._names()
+        await self.reply(*V.pick("think.offer", V.THINK_OFFER))
+        heard, conf = "", 0.0
+        if self.listener and self.listener.ok and self.mic.available:
+            heard, conf, _ = await self._listen(None, max_s=6.0, auto_end=True, hold=self.chatter._speaking,
+                                                echo=ECHO_S)
+        other = parse(heard, names) if heard else None
+        if other is not None and other.name in ACTIONS + ("cancel",):
+            if other.name == "cancel":
+                await self.reply(*V.pick("think.drop", V.THINK_DROP))
+            else:
+                await self.execute(other)             # not a choice: "accendi la luce"
+            return
+        choice = knowledge.think_choice(heard)
+        if choice == "drop":
+            await self.reply(*V.pick("think.drop", V.THINK_DROP))
+            return
+        if choice == "tell":
+            await self.reply(*V.pick("think.tell", V.THINK_TELL))
+            heard, conf, _ = await self._listen(None, max_s=8.0, auto_end=True, hold=self.chatter._speaking,
+                                                echo=ECHO_S)
+            choice = "answer" if heard and not facts.nothing_told(heard) else "drop"
+            if choice == "drop":
+                await self.reply(*V.pick("think.drop", V.THINK_DROP))
+                return
+        if choice == "answer":
+            if conf < TEACH_CONFIDENCE:
+                await self.reply(*V.pick("teach.misheard", V.TEACH_MISHEARD))
+                return
+            self.knowledge.learn(text, heard, None, names)
+            log.info("learned for %r: %r", text, heard)
+            await self.reply(*V.pick("teach.thanks", V.TEACH_THANKS))
+            return
+        await self.reply(*V.pick("think.wait", V.THINK_WAIT))
+        await self.ctx.actions.thinking(True)          # the buttons breathe while it thinks
+        answer = await self.chat.answer(text, lang)
+        await self.ctx.actions.thinking(False)
+        if not answer:
+            await self.reply(*V.pick("think.nothing", V.THINK_NOTHING))
+            return
+        self.knowledge.learn(text, answer, None, names, generated=True)
+        lead = V.pick("think.said", V.THINK_SAID)
+        await self.say(f"{lead[0 if lang == 'it' else 1]} {answer}")
 
     async def _teach_me(self, text: str, unknown: tuple[str, str], ident=None, topic: str | None = None) -> None:
         """The house does not know: it says so, asks whoever asked, listens with no need to press Talk and keeps the

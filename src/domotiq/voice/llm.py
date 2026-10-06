@@ -409,6 +409,101 @@ class LanguageModel:
         return answer
 
 
+# ------------------------------------------------------------------ the free answers
+CHAT_URL = "http://127.0.0.1:8082"
+CHAT_TIMEOUT_S = 120.0
+CHAT_SYSTEM = ("You are DomotiQ, a talking model house at a fair. Answer the visitor in {lang}, in two or three short, "
+               "simple and correct sentences, like a friendly teacher talking to a child. You have no internet: for "
+               "the weather, the news or what happens today, say that you cannot know. If you are not sure, say so "
+               "briefly. No lists, no emoji.")
+CHAT_SHOTS = {
+    "it": [("Come si fa il tè?", "Si scalda l'acqua e ci si lascia la bustina per tre minuti. Poi si toglie la bustina "
+                                 "e, se piace, si aggiunge un po' di zucchero."),
+           ("Qual è il pianeta più grande?", "Il pianeta più grande del sistema solare è Giove. È così grande che "
+                                             "dentro ci starebbero più di mille Terre.")],
+    "en": [("How do you make tea?", "You heat the water and leave the tea bag in it for three minutes. Then you take "
+                                    "the bag out and, if you like, add a little sugar."),
+           ("Which is the biggest planet?", "The biggest planet of the solar system is Jupiter. It is so big that more "
+                                            "than a thousand Earths would fit inside it.")],
+}
+MAX_SENTENCES = 3
+MAX_CHARS = 330
+
+
+def tidy(text: str) -> str | None:
+    """A free answer as it can be said aloud: no thinking, no markup, no emoji, at most MAX_SENTENCES whole sentences
+    (the last one cut by the length limit is left out). None when nothing is left."""
+    text = re.sub(r"(?s)<think>.*?(</think>|$)", " ", text or "")
+    text = re.sub(r"[*#`_>|]+", " ", text)
+    text = "".join(c for c in text if ord(c) < 0x2600 or 0x2C00 <= ord(c) < 0xFE00)
+    text = re.sub(r"\s+", " ", text).strip()
+    sentences = re.findall(r"[^.!?]+[.!?]+", text)
+    if not sentences:
+        return text[:MAX_CHARS].strip() or None if len(text.split()) >= 4 else None
+    out = ""
+    for sentence in sentences[:MAX_SENTENCES]:
+        if out and len(out) + len(sentence) > MAX_CHARS:
+            break
+        out += sentence
+    return out.strip() or None
+
+
+class ChatModel:
+    """The free answers (domotiq-chat, Qwen3.5-0.8B): a question that is not about the house, answered from scratch
+    when the visitor chooses to wait for it (docs/decisioni.md D-63)."""
+
+    def __init__(self, url: str = CHAT_URL) -> None:
+        self.url = url
+        self.ok = False
+        self.ready = False
+
+    def health(self) -> bool:
+        try:
+            with urllib.request.urlopen(self.url + "/health", timeout=2) as r:
+                self.ok = r.status == 200
+        except OSError:
+            self.ok = False
+        if not self.ok:
+            self.ready = False
+        return self.ok
+
+    def _messages(self, question: str, lang: str) -> list[dict[str, str]]:
+        msgs = [{"role": "system", "content": CHAT_SYSTEM.replace("{lang}", "Italian" if lang == "it" else "English")}]
+        for q, a in CHAT_SHOTS.get(lang, CHAT_SHOTS["it"]):
+            msgs += [{"role": "user", "content": q}, {"role": "assistant", "content": a}]
+        return msgs + [{"role": "user", "content": question}]
+
+    def _answer(self, question: str, lang: str, timeout: float = CHAT_TIMEOUT_S, max_tokens: int = 90) -> str:
+        body = {"messages": self._messages(question, lang), "temperature": 0.3, "top_k": 20, "top_p": 0.85,
+                "repeat_penalty": 1.15, "max_tokens": max_tokens, "cache_prompt": True, "id_slot": 0,
+                "chat_template_kwargs": {"enable_thinking": False}}
+        req = urllib.request.Request(self.url + "/v1/chat/completions", data=json.dumps(body).encode(),
+                                     headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            out = json.loads(r.read())
+        return out["choices"][0]["message"]["content"]
+
+    def warm(self, lang: str = "it") -> bool:
+        """The instructions and the examples in the cache before the first question (a few seconds)."""
+        try:
+            self._answer("Ciao!" if lang == "it" else "Hello!", lang, timeout=300, max_tokens=4)
+        except (OSError, ValueError, KeyError):
+            return False
+        self.ready = True
+        return True
+
+    async def answer(self, question: str, lang: str) -> str | None:
+        question = re.sub(r"\s+", " ", question).strip()
+        try:
+            text = await asyncio.get_running_loop().run_in_executor(None, self._answer, question, lang)
+        except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
+            log.info("free answers model not available: %s", e)
+            return None
+        answer = tidy(text)
+        log.info("free answer to %r: %r", question, answer)
+        return answer
+
+
 def _command_key(sentence: str, names: list[str]) -> tuple:
     return ("command", re.sub(r"\s+", " ", sentence).strip().lower(), tuple(names))
 

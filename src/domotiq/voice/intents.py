@@ -212,7 +212,7 @@ PATTERNS: list[tuple[str, list[str]]] = [
                        r"\bhow is the house\b", r"\bwhat s happening\b", r"\bwhat is happening\b", r"\bstatus\b",
                        r"\braccont\w*\b", r"\bdescri\w*\b", r"\btell me about\b", r"^come (e )?(a|da|la) casa$"]),
     ("who_are_you", [r"\bchi sei\b", r"\bcome ti chiami\b", r"\bwho are you\b", r"\bwhat s your name\b",
-                     r"\bwhat is your name\b"]),
+                     r"\bwhat is your name\b", r"^(ma )?(chi|ci) se(i)?( tu)?$", r"^(tu )?ci sei$"]),
     ("help", [r"\bcosa sai fare\b", r"\baiuto\b", r"\bche cosa puoi\b", r"\bwhat can you do\b", r"\bhelp\b",
               r"\bcosa (ti )?(posso|possiamo|potrei) (chiederti|chiedere|dirti|dire|fare)\b",
               r"\bcosa ti (posso|si puo) (chiedere|dire)\b", r"\bwhat can (i|we) (ask|say|tell)\b",

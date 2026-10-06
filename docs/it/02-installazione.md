@@ -6,7 +6,7 @@ DomotiQ gira sulla UNO Q come servizi systemd nativi, non come app di App Lab: s
 
 - La scheda è preparata come nel [capitolo 1](01-preparare-uno-q.md): password, nome, Wi-Fi con internet, SSH, aggiornamento del sistema.
 - La scheda ha internet. Serve una volta sola, per pacchetti e modelli; gli aggiornamenti successivi si possono copiare da un PC senza internet (vedi [Aggiornamenti](#aggiornamenti)).
-- In `/home/arduino` ci sono circa 2,3 GB liberi (modelli circa 800 MB, ambienti Python circa 500 MB, compilatori e llama.cpp circa 600 MB, più un margine).
+- In `/home/arduino` ci sono circa 2,9 GB liberi (modelli circa 1,4 GB, ambienti Python circa 500 MB, compilatori e llama.cpp circa 600 MB, più un margine).
 - Hai tempo: la sola compilazione di `llama-server` richiede una ventina di minuti.
 
 ## Scaricare il codice e lanciare l'installer
@@ -39,7 +39,7 @@ Lo script stampa dei passi numerati. Quando un'opzione fa saltare un passo, i nu
 2. **Pacchetti di sistema.** Installa la libreria ALSA da `trixie-backports` (la correzione descritta nel [capitolo 1](01-preparare-uno-q.md#se-laggiornamento-si-ferma-su-una-dipendenza-alsa)), poi `python3-venv`, `python3-dev`, `build-essential`, `cmake`, `git`, `curl`, `rsync`, `unzip`, `alsa-utils`, `v4l-utils`, `iw`, `sqlite3`, `avahi-daemon`, `dnsmasq-base` e `libgomp1`, e attiva `avahi-daemon`. L'immagine di fabbrica non ha né un compilatore né cmake, che servono a llama.cpp.
 3. **Ambiente Python dell'applicazione.** `venv/` con le versioni esatte elencate in `requirements.txt`. Un ambiente rotto o copiato da un'altra parte viene rifatto.
 4. **Sintesi vocale.** Un ambiente separato, `piper-venv/`, con `piper-tts` 1.8.0 e Flask. Piper è GPL-3.0 e gira come programma a sé: l'applicazione gli parla via HTTP sull'interfaccia di loopback e non lo importa mai.
-5. **Modelli.** Vengono scaricati in `models/` e verificati con le somme SHA-256 di `scripts/models.sha256`: le voci Piper `it_IT-serena-medium` (a una revisione fissa) e `en_US-ljspeech-medium`, i modelli Vosk `vosk-model-small-it-0.22` e `vosk-model-small-en-us-0.15`, YOLOX-Nano (`yolox_nano.onnx`) e, se non c'è `--no-llm`, `qwen2.5-0.5b-instruct-q4_k_m.gguf`. Un file già presente con il checksum giusto non viene riscaricato.
+5. **Modelli.** Vengono scaricati in `models/` e verificati con le somme SHA-256 di `scripts/models.sha256`: le voci Piper `it_IT-serena-medium` (a una revisione fissa) e `en_US-ljspeech-medium`, i modelli Vosk `vosk-model-small-it-0.22` e `vosk-model-small-en-us-0.15`, YOLOX-Nano (`yolox_nano.onnx`) e, se non c'è `--no-llm`, `qwen2.5-0.5b-instruct-q4_k_m.gguf` (i comandi) e `Qwen_Qwen3.5-0.8B-Q4_0.gguf` (le risposte libere alle domande sul mondo, servizio `domotiq-chat`). Un file già presente con il checksum giusto non viene riscaricato.
 6. **llama.cpp.** Scarica llama.cpp al commit provato sulla UNO Q (`74a7c897`), applica le istruzioni scritte per il suo processore (`scripts/llama/arm-nodot.patch`, vedi [Accelerare il modello](../accelerazione-modello.md)) e compila `llama-server` (una ventina di minuti). Il passo viene saltato quando lo stesso commit è già compilato con la stessa patch, o con `--no-llm`.
 7. **Firmware del microcontrollore.** Installa il core `arduino:zephyr` 1.0.0 e la libreria `Arduino_RouterBridge` 0.4.3, compila `firmware/domotiq_mcu` con la modalità di avvio "Immediate" (`wait_linux_boot=no`) e lo carica con il `remoteocd` locale, che non chiede password. Viene ricaricato solo quando cambiano lo sketch, il core, la libreria o le opzioni della scheda. Alla fine `arduino-app-cli properties set default none` fa sì che nessuna app di App Lab sostituisca il firmware all'avvio. Per fare lo stesso a mano, vedi `firmware/domotiq_mcu/README.md`.
 8. **Impostazioni della casa.** Imposta il nome host `casaN` e il fuso orario Europe/Rome; crea la password del Wi-Fi (se non esiste ancora); scrive numero della casa, nomi e rete in `var/config/settings.json`.
@@ -66,7 +66,7 @@ Tutto sta dentro `/home/arduino/domotiq`:
 |---|---|
 | `venv/` | ambiente Python dell'applicazione |
 | `piper-venv/` | ambiente separato di Piper |
-| `models/` | voci Piper, modelli Vosk, YOLOX-Nano, Qwen2.5-0.5B |
+| `models/` | voci Piper, modelli Vosk, YOLOX-Nano, Qwen2.5-0.5B, Qwen3.5-0.8B |
 | `llama.cpp/` | sorgenti di llama.cpp e il `llama-server` compilato |
 | `var/config/` | `settings.json`, `rules.json`, `identities.json` |
 | `var/calibration/` | calibrazione della webcam, riferimento della casa vuota, impostazioni della webcam bloccate |

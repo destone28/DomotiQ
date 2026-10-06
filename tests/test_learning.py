@@ -92,3 +92,84 @@ def test_knowledge_matches_alike_questions_and_forgets_tomorrow(tmp_path):
     assert k.find("chi ha dipinto la cucina?", now=1001.0)["a"] == "Viola"
     assert k.find("chi ha costruito il garage", now=1001.0) is None
     assert knowledge.Knowledge(tmp_path / "k.json").find("chi ha dipinto la cucina", now=1001.0)["a"] == "Viola"
+
+
+# ------------------------------------------------------------------ a question about the world: think, or be told
+PIZZA = "Si impasta farina, acqua e lievito. Poi si stende e si cuoce in forno."
+
+
+class _Chat:
+    """The free answers model, with its answer already written."""
+    ready = True
+
+    def __init__(self, text=PIZZA):
+        self.text, self.asked = text, []
+
+    async def answer(self, question, lang):
+        self.asked.append(question)
+        return self.text
+
+
+def test_waiting_for_the_free_answer_and_asked_again(ctx):
+    """"Come si fa la pizza?" got "Di chi?", and then "Non ho capito"."""
+    async def scenario():
+        chat = ctx.voice.chat = _Chat()
+        hear(ctx, ["aspetto"])
+        await ctx.voice.handle("come si fa la pizza")
+        assert any(offer in " ".join(ctx.said) for offer, _ in V.THINK_OFFER)
+        assert "Di chi?" not in ctx.said
+        assert any(wait in ctx.said for wait, _ in V.THINK_WAIT)
+        assert ctx.said[-1].endswith(PIZZA) and chat.asked == ["come si fa la pizza"]
+        await ctx.voice.handle("come si fa la pizza")          # again: at once, from what it thought
+        assert ctx.said[-1] == PIZZA and chat.asked == ["come si fa la pizza"]
+    asyncio.run(scenario())
+
+
+def test_silence_is_waiting(ctx):
+    async def scenario():
+        chat = ctx.voice.chat = _Chat()
+        hear(ctx, [""])
+        await ctx.voice.handle("perché il cielo è azzurro di giorno")
+        assert ctx.said[-1].endswith(PIZZA) and chat.asked
+    asyncio.run(scenario())
+
+
+def test_told_by_the_visitor_instead(ctx):
+    async def scenario():
+        chat = ctx.voice.chat = _Chat()
+        hear(ctx, ["te lo dico io", "si impasta e si cuoce nel forno a legna"])
+        await ctx.voice.handle("come si fa la pizza")
+        assert any(t in ctx.said for t, _ in V.THINK_TELL) and any(t in ctx.said[-1] for t, _ in V.TEACH_THANKS)
+        assert chat.asked == []
+        await ctx.voice.handle("come si fa la pizza")
+        assert ctx.said[-1] == "Mi hanno detto che si impasta e si cuoce nel forno a legna."
+        hear(ctx, ["con farina acqua e lievito poi nel forno"])     # the answer at once, no "te lo dico io"
+        await ctx.voice.handle("come si fa il pane")
+        assert any(t in ctx.said[-1] for t, _ in V.TEACH_THANKS) and chat.asked == []
+    asyncio.run(scenario())
+
+
+def test_never_mind_and_a_command_instead(ctx):
+    async def scenario():
+        chat = ctx.voice.chat = _Chat()
+        hear(ctx, ["lascia stare"])
+        await ctx.voice.handle("come si fa la pizza")
+        assert ctx.said[-1] in [t for t, _ in V.THINK_DROP] and chat.asked == []
+        hear(ctx, ["accendi la luce in cucina"])
+        await ctx.voice.handle("come si fa la pizza")
+        assert ctx.said[-1] == "Fatto." and chat.asked == []
+    asyncio.run(scenario())
+
+
+def test_who_are_you_also_as_heard_otherwise():
+    from domotiq.voice.intents import parse
+    for heard in ("chi sei", "ci sei", "chi se", "ci sei tu"):
+        assert parse(heard, []).name == "who_are_you", heard
+
+
+def test_a_free_answer_is_tidied_before_it_is_said():
+    from domotiq.voice.llm import tidy
+    cut = tidy("La pizza si fa con farina e acqua. Poi si cuoce. Dopo aver messo la base aggiungi gli ingredienti prima di")
+    assert cut == "La pizza si fa con farina e acqua. Poi si cuoce."            # no sentence cut in the middle
+    assert tidy("**Ecco** una curiosità 😊 sugli elefanti: sono grandi.") == "Ecco una curiosità sugli elefanti: sono grandi."
+    assert tidy("<think>hmm</think>Parigi.") == "Parigi." and tidy("ciao") is None

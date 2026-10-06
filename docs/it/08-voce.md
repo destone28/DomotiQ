@@ -177,6 +177,13 @@ Quando la casa non sa rispondere, non si limita a dire "non lo so".
 - **Sul mondo** ("che tempo farà domani?") chiede allo stesso modo, e alla prossima domanda uguale o simile risponde "Mi hanno detto che domani piove.". "Che tempo fa domani?" e "domani piove?" sono la stessa domanda. Quello che riguarda oggi o domani vale per un giorno.
 - **Su sé stessa** (le stanze, i mobili, "chi ti ha costruita?", "perché la cucina è gialla?") inventa una spiegazione plausibile e dice che è quello che pensa: "Penso che sia perché chi mi ha costruita voleva così.". Alla stessa domanda dà sempre la stessa risposta.
 
+**Le domande sul mondo.** Una domanda che non riguarda la casa, i suoi personaggi o quello che la casa sa fare ("Come si fa la pizza?", "Perché il cielo è blu?") ha una strada sua. La casa dice subito che deve pensarci e chiede: "Ci devo pensare un attimo. Preferisci aspettare qualche secondo, o me lo dici tu?".
+- **"Aspetto"** (anche "sì", "pensaci tu", o il silenzio): "Va bene, ci penso. Un attimo..." e i tasti respirano. Un secondo modello linguistico, Qwen3.5-0.8B (servizio `domotiq-chat`), scrive la risposta da zero in 20-50 secondi, e la casa la dice ("Ecco cosa ne penso: ..."). È un modello piccolo: scrive un italiano sensato, ma sui fatti può sbagliare.
+- **"Te lo dico io"**: "Dimmi pure!", e la casa tiene la risposta. Anche la risposta detta subito, senza "te lo dico io", vale.
+- **"Lascia stare"** o "non lo so": "D'accordo, lasciamo stare.". Un comando al posto della scelta viene eseguito.
+
+Quello che la casa ha pensato o si è sentita dire resta in `var/config/knowledge.json`: alla stessa domanda, o a una simile, risponde subito.
+
 "Non lo so", "boh", il silenzio o un comando al posto della risposta ("accendi la luce") non insegnano niente: la casa risponde "Va bene, lo chiederò a qualcun altro." o esegue il comando. Una risposta sentita male (riconoscimento poco sicuro) non viene tenuta. Quello che la casa impara sul mondo e su sé stessa sta in `var/config/knowledge.json` (le ultime 300 cose); quello sui personaggi tra le loro informazioni, che la webapp mostra e chiunque può correggere.
 
 ## Riconoscimento vocale

@@ -343,6 +343,8 @@ Riconoscimento delle richieste (D-58): per una richiesta libera Vosk tiene le 5 
 4. Se l'intento è incerto: "Intendi accendere la luce in cucina?".
 5. Se la domanda non riguarda la casa: "Sono la casa: posso dirti chi c'è, dove, che temperatura fa, e posso accendere luci, fare festa o grigliare."
 
+Domande sul mondo (D-63): la casa dice che deve pensarci e chiede se aspettare (risposta scritta da Qwen3.5-0.8B nel servizio `domotiq-chat`, 20-50 s) o sentirla dal visitatore; la risposta resta per le domande simili.
+
 Quando non sa (D-62): su un personaggio o sul mondo chiede "Tu lo sai?" e tiene la risposta (informazione del personaggio per argomento, o `var/config/knowledge.json`) per le domande uguali o simili; su sé stessa inventa una spiegazione plausibile detta come "Penso che…".
 
 Dalle prove al banco (D-59): "accendi il condizionatore/il riscaldamento" fa l'onda di luce del termostato; "il colore preferito di X è Y" è un'informazione su X, non una domanda; il narratore non ripete la stessa frase sullo stesso personaggio per dieci minuti se non cambia stanza; il microfono scarta la voce della casa; dopo due nuovi arrivati senza risposta la casa li chiede per tre minuti solo sui telefoni.

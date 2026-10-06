@@ -572,3 +572,19 @@ Le prime immagini dopo la mano possono essere molto storte (l'ombra del braccio,
 - **Una frase sentita male recupera l'argomento.** "Cosa ama Rossellina" era stato sentito "cosa ma rossellino": le regole lo avevano preso per "dov'è Rossellina", poi per una domanda su Rossellina senza argomento. Ora, quando la lettura della frase migliore è così debole, la casa prova le altre frasi probabili e prende quella che dice di più sullo stesso personaggio.
 
 **Perché:** richiesta di Emilio. "Ambrogio, cosa ama Rossellina?" aveva avuto come risposta "Di Rossellina questo non lo so ancora", mentre la casa sapeva che ama i cartoni animati della Disney e ballare: la parola "ama" era stata sentita "ma". In più, per tutto quello che non sapeva, la casa non imparava niente.
+
+### D-63 — Le domande sul mondo: la casa chiede se aspettare la sua risposta o sentirla dal visitatore (6/10)
+**Scelta:**
+- **La domanda.** Per una domanda che non riguarda la casa, i suoi personaggi o le sue funzioni, la casa dice subito che deve pensarci e chiede: "Preferisci aspettare qualche secondo, o me lo dici tu?".
+- **Aspettare.** "Aspetto", "sì", "pensaci tu" o il silenzio fanno scrivere la risposta da zero a Qwen3.5-0.8B (Apache-2.0). Gira in un secondo llama-server (`domotiq-chat`, porta 8082, un posto, 3 thread, priorità bassa) con istruzioni in inglese e due esempi in italiano. Campionamento: temperatura 0,3, top-k 20, top-p 0,85, penalità di ripetizione 1,15, al massimo 90 token. Il testo viene pulito: niente pensieri, simboli o emoji, al massimo tre frasi intere.
+- **La risposta dell'utente.** "Te lo dico io", oppure la risposta stessa, la fanno tenere.
+- **Il resto.** "Lascia stare" o "non lo so" lasciano perdere; un comando viene eseguito.
+- **Le volte successive.** La risposta, pensata o detta, va in `knowledge.json` e alla domanda uguale o simile arriva subito.
+- **Due errori di ascolto corretti.** "Come si fa la pizza?" non fa più chiedere "Di chi?": "come si" e "si fa" chiedono come si fa una cosa, non chi la fa. "Ci sei?" e "chi se" valgono come "chi sei?".
+
+**Perché:** richiesta di Emilio, che ha scelto di unire le due strade, aspettare il modello o insegnare. Le prove sulla scheda, a casa accesa, alle stesse domande:
+- **Qwen2.5-0.5B (il modello dei comandi):** 7-25 s, ma frasi senza senso anche con istruzioni ed esempi ("Si toglie le tazze d'acqua e ci si lascia un po' di zucchero per farla salata").
+- **Qwen3.5-0.8B:** 20-50 s, italiano sensato ma fatti spesso sbagliati (Leonardo "del XIII secolo").
+- **Qwen3.5-2B:** non ci sta in memoria insieme al resto.
+
+Un quinto posto nel server dei comandi avrebbe invalidato i quattro salvati: llama.cpp rifiuta lo stato salvato con un altro numero di posti (*n_stream mismatch*). Il modello da 0,8B occupa circa 700 MB in più.
