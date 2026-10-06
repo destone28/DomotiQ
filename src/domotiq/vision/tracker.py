@@ -78,6 +78,13 @@ KEEP_MISSES = 8             # a track keeps its name until it fails to look like
 CAR_MIN_MM2, FIGURINE_MAX_MM2 = 2500.0, 6000.0
 SIZE_FREE, SIZE_WEIGHT = 2.5, 0.2
 SIZE_ODD = 4.0              # a blob more than this many times bigger or smaller than every look of a character is not it
+# The second opinion of the network that knows the figurines of this house (figures.py), when it is on: a character
+# that no longer looks like itself in colour (another light) keeps its name while the network, at least FIGURE_KEEP_P
+# sure, still sees it; a newcomer takes the name of a character nobody else holds when the network is FIGURE_NAME_P
+# sure of it twice in a row, instead of being asked about. What the network said counts for FIGURE_FRESH_S. On a
+# block of the recording of 7 October left out of the training, 972 figurines were named at 0.95 or more, none wrongly
+# (Mister Blu and Viola, alike in colour, were mixed up only below that), and 97% were at least 0.8 their own name
+FIGURE_KEEP_P, FIGURE_NAME_P, FIGURE_FRESH_S = 0.8, 0.95, 3.0
 # The looks of each character, learned on the board: besides its registered colours, up to MAX_POSES poses (lying
 # down, on the bed, under another light), each with its colours, size and shape. A pose is added when a character
 # the house follows with confidence (or that somebody has just named) looks unlike all the poses it knows.
@@ -163,6 +170,7 @@ class VTrack:
     settle: list[tuple[float, float, str | None]] = field(default_factory=list)   # places (and furniture) seen
                                                                                    # since the hand left it
     settled: bool = False                  # its place is fixed until a hand comes close again
+    figure: tuple[str, float, float, int] | None = None   # what the network saw: (class, probability, when, in a row)
 
     def to_track(self, layout, previous_room: str | None) -> Track:
         room = layout.locate(self.x, self.y, previous_room)
@@ -186,6 +194,9 @@ class Tracker:
         self._suppressed: list[tuple[float, float, float]] = []  # (x, y, until): no births there
         self._doubted: dict[str, float] = {}  # room -> until when something new there must be surer
         self.jittery = 0                 # false presences found by their jumps (for the diagnostics)
+        self.figure_kept = 0             # frames a name was kept because the network still saw that character
+        self.figure_named = 0            # newcomers named by the network instead of being asked about
+        self._by_name: dict[str, str] = {}
         self.frame = 0
         self._quiet_s = float("inf")
         # the history: where each character was last seen, and whether a hand has been over that place since
@@ -199,6 +210,7 @@ class Tracker:
 
     def set_identities(self, identities: list[Identity]) -> None:
         self.identities = {i.id: i for i in identities}
+        self._by_name = {i.name.strip().lower(): i.id for i in identities}
         self._looks_changed()
         self._forget_wrong_poses()
         for t in self.tracks.values():
@@ -964,6 +976,10 @@ class Tracker:
             if fits and t.identity != cands[j].id and loose and now - t.since > LOOSE_WINDOW_S:
                 fits = False                  # too late for a loose name: only a close match now
             if not fits:
+                if t.identity and self._figure_is(t, t.identity, now, FIGURE_KEEP_P):
+                    t.misses = 0
+                    self.figure_kept += 1
+                    continue                  # another light, the same character: the network still sees it
                 if t.identity:
                     t.misses += 1
                     if t.misses < KEEP_MISSES:
@@ -1016,6 +1032,19 @@ class Tracker:
             t.presence = 1.0
         return t
 
+    def _figure_is(self, t: VTrack, identity: str, now: float, at_least: float) -> bool:
+        """The network saw this character in the track a moment ago, at least this sure."""
+        f = t.figure
+        return f is not None and now - f[2] <= FIGURE_FRESH_S and f[1] >= at_least \
+            and self._by_name.get(f[0].strip().lower()) == identity
+
+    def _figure_name(self, t: VTrack, now: float) -> str | None:
+        """The character the network is sure the track is, twice in a row; None otherwise."""
+        f = t.figure
+        if f is None or now - f[2] > FIGURE_FRESH_S or f[1] < FIGURE_NAME_P or f[3] < 2:
+            return None
+        return self._by_name.get(f[0].strip().lower())
+
     def _ask_unknown(self, now: float) -> None:
         """In sight for a while and recognized as nobody: ask who it is. The registered characters that are
         not in the house are proposed, closest colours first, then those whose colours the house has not
@@ -1035,6 +1064,13 @@ class Tracker:
                 # no hand has been here since that character stood here: it is that one, nothing to ask
                 self.assign(t.id, before)
                 t.locked = False
+                continue
+            seen = self._figure_name(t, now)
+            if seen is not None and seen in {i.id for i in free} and seen in set(self._possible(t, [seen], now)):
+                # the network that knows the figurines of this house is sure, twice: nothing to ask
+                self.assign(t.id, seen)
+                t.locked = False
+                self.figure_named += 1
                 continue
             # proposed by kind: cars for a car, animals for an animal, objects for an object; a new person is
             # asked the name (a registered name said aloud or typed is recognized anyway)

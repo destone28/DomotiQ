@@ -64,6 +64,12 @@ class VisionLink:
     def set_privacy(self, blur_private: bool) -> None:
         """Whether the bathroom is blurred in the images that leave the board."""
 
+    def set_figures(self, on: bool) -> None:
+        """Whether the network that knows the figurines gives its second opinion."""
+
+    def set_registering(self, on: bool) -> None:
+        """A new character is being registered: its figurine is born whatever the network says."""
+
     def command(self, name: str, **params: Any) -> dict[str, Any]:
         """Calibration, capture and the other operations of the calibration page."""
         return {"ok": False, "error": "no camera"}

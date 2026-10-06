@@ -662,3 +662,31 @@ Sulla casa sintetica, con la luce della sala che cala in modo disuguale (più bu
 - **Una casa vuota già salvata al buio.** La casa si adatta lo stesso, non regola la webcam su di essa e avvisa: "La casa vuota è stata salvata al buio: togli le statuine e, con la luce accesa, rifai Calibrazione → Regola la luce e salva la casa vuota".
 
 **Perché:** alle 21:00 del 6/10 la casa vuota è stata salvata con la stanza al buio (grigio medio 13). Quando la luce è tornata, l'immagine era 3,5 volte più chiara di quella casa vuota e l'adattamento di D-66 l'ha presa per una webcam abbagliata. Dalle 23:13 la casa ha aspettato senza imparare niente, con i personaggi fermi. Dalle 20:01 si erano accumulati 30 adattamenti e 16 regolazioni della webcam.
+
+### D-68 — Una rete che conosce le statuine della casa dà un secondo parere (7/10)
+**Scelta:**
+- **La rete.** Una piccola rete convoluzionale, pesi nostri addestrati da zero sul PC con PyTorch: quattro blocchi, circa 200 mila pesi, ritagli di 48 × 48 pixel. Classi: gli 8 personaggi di casa1 più "niente". È esportata in ONNX e la usa l'onnxruntime già sulla scheda (`vision/figures.py`), circa 10 ms a ritaglio con un thread.
+- **I dati.**
+  - **La registrazione.** 10 minuti registrati sulla scheda il 7/10 alle 00:00. Prima con la luce della sala, poi con poca luce e una lampada laterale, poi con gli scenari della casa, poi con le ombre di chi sta vicino e con mani e cavi senza statuine. Le statuine sono state spostate in stanze e posizioni diverse, anche sdraiate e sui mobili.
+  - **Il riquadro della macchia.** Ogni registrazione ora salva, per ogni personaggio, il riquadro della macchia a cui la casa l'ha abbinato. Le registrazioni vecchie davano solo il posto sulla piantina, che è fisso e visto dall'alto. Abbinandolo alla macchia più vicina, le etichette venivano sbagliate: un mobile preso per Mister Brown, Viola presa per "niente".
+  - **"niente".** Sono le macchie di nessun personaggio, in fotogrammi in cui tutti i personaggi hanno il loro riquadro e senza un personaggio nello stesso punto entro 10 secondi: pareti con il riflesso delle luci della casa, moduli, bordi, prato.
+  - **I numeri.** 7.635 ritagli; il bagno, sfocato nelle registrazioni, è escluso.
+- **L'addestramento.**
+  - Luce, contrasto, gamma, bilanciamento del bianco, ombre a gradiente, luci colorate, rotazione, sfocatura, rumore e compressione JPEG vengono variati.
+  - Un primo modello ha trovato 29 etichette di cui era sicurissimo del contrario. Guardate una per una, aveva ragione lui (Giallo Galli sdraiato sul letto preso per "niente", Mister Blu preso per Viola): sono state tolte e il modello è stato addestrato di nuovo.
+- **Nella casa, solo quando serve e disattivabile** (Impostazioni → Statuine riconosciute anche dalla rete):
+  - **Macchie nuove.** Una macchia nuova che la rete vede come "niente" almeno al 90% non nasce. Non vale mentre si registra un personaggio nuovo, che la rete non conosce.
+  - **Tenere il nome.** Un personaggio che non somiglia più ai suoi colori tiene il nome finché la rete lo vede almeno all'80%.
+  - **Dare il nome.** Un nuovo arrivato prende il nome di un personaggio libero, invece della domanda "chi è?", quando la rete ne è sicura al 95% due volte di fila.
+  - **Diagnostica.** Conta i tre casi.
+- **I programmi.** Quelli per rifare tutto stanno in `scripts/figures/` (ritagli, anteprima, addestramento). La rete è un file per casa in `models/vision/`, non nel repository.
+
+**Perché:** richiesta di Emilio, che ha scelto l'addestramento sul PC in locale e il collegamento già stanotte se i numeri fossero stati buoni. Gli esempi di visione di App Lab e i loro modelli pronti, misurati sulla scheda, non vedono le statuine dall'alto. YOLOX-Nano non trova niente sull'immagine intera, in 270-350 ms; MobileNetV2 chiama "lavastoviglie" un personaggio. Un modello piccolo come quello delle persone di App Lab (18 ms) dimostrava invece che una rete leggera è sostenibile.
+
+I numeri sono misurati su un blocco di tempo della registrazione lasciato fuori dall'addestramento: 1.521 ritagli che la rete non ha mai visto.
+- **Accuratezza:** 97,4%. Giallo Galli, Honda Civic, Mister Brown, Mister Green, Rossana e Rossellina al 100%, Viola all'88%, Mister Blu al 70% (si confondono tra loro, blu e viola), "niente" al 98%.
+- **Quando è sicura:** almeno al 90% lo è sull'88% dei ritagli, e lì ha avuto ragione 1.338 volte su 1.338.
+- **Le soglie:**
+  - nessuna delle 1.313 statuine vere supera 0,84 di "niente", mentre l'80% dei "niente" veri supera 0,9;
+  - a 0,95 i nomi dati sarebbero stati 972, nessuno sbagliato;
+  - il 97% delle statuine vede il proprio nome almeno a 0,8.

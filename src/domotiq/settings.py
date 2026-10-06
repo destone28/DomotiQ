@@ -63,7 +63,8 @@ DEFAULTS: dict[str, Any] = {
     "buttons": {"reversed": False},
     "network": {"ssid": "", "password": "", "channel": 1, "address": "", "hostname": ""},
     "camera": {"device": None,            # a /dev/v4l/by-id path, if the webcam is not found by itself
-               "blur_bathroom": True},    # the bathroom blurred in the live view and the images that leave
+               "blur_bathroom": True,     # the bathroom blurred in the live view and the images that leave
+               "figures": True},          # the network that knows the figurines gives its second opinion
     "clock": {"timezone": "Europe/Rome"},
 }
 

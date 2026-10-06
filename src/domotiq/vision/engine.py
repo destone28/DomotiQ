@@ -43,6 +43,7 @@ from .pipeline import Observation, Segmenter
 from .privacy import Privacy
 from .scene import StaticScene
 from .signature import SIG_LEN, distance, signature, to_hex
+from .figures import NOTHING
 from .tracker import ID_ACCEPT, Tracker
 
 log = logging.getLogger(__name__)
@@ -129,6 +130,16 @@ ADAPT_MARGIN_PX = 12     # around every presence the empty house stays as it was
 # empty house was saved in the dark (13): compared with it the lit room looked 3.5 times brighter, "dazzled", and the
 # house waited for hours without learning anything
 DARK_LEVEL, DAZZLED_LEVEL = 25.0, 235.0
+# The network that knows the figurines of this house (figures.py), when it is there and on: a new blob it is
+# FIGURE_NOT_P sure is "niente" (a light, a shadow, a module) is not born. Measured on a block of the recording of
+# 7 October left out of the training: no real figurine of 1313 was more than 0.84 "niente" (a dark blue one in low
+# light came closest), while 80% of the real "niente" were at least 0.9; the network is never much more than 0.95
+# sure (it is trained not to be). Tracks with no name, or whose colours no longer match their name, are shown
+# to it at most every FIGURE_EVERY_S, FIGURE_MAX at a time (some 10 ms each on the board, one thread); the tracker weighs what
+# it says (tracker.FIGURE_*)
+FIGURE_NOT_P = 0.9
+FIGURE_EVERY_S = 0.5
+FIGURE_MAX = 4
 COCO_CLASSES = ["person", "dog", "cat", "animal", "car", "object"]
 
 
@@ -205,6 +216,12 @@ class Engine:
         self._light_level = 1.0                    # the brightness the empty house was last learned in
         self._drift_since = 0.0
         self.adaptations = 0
+        self.figures = None                        # the network that knows the figurines (set by the worker)
+        self.figures_on = True
+        self.registering = False                   # a new character is being registered: no birth is refused
+        self.figure_blocked = 0                    # new blobs not born because the network saw "niente"
+        self._figure_ms = 0.0
+        self._figure_failed = False
         self._hand_since: np.ndarray | None = None # since when each pixel has been part of a hand (0: not)
         # before the calibration the house does not know where the bathroom is: it assumes the
         # camera is mounted as in the model, with a wide margin
@@ -347,6 +364,36 @@ class Engine:
             else:
                 self._learn_light(now)
         return self.tracks
+
+    # ------------------------------------------------------------ the network that knows the figurines
+    def _figures_ready(self) -> bool:
+        return self.figures is not None and self.figures_on and not self._figure_failed
+
+    def _figures(self, small: np.ndarray, bboxes: list) -> list[tuple[str, float]]:
+        t0 = time.perf_counter()
+        try:
+            out = self.figures.classify(small, bboxes)
+        except Exception:  # noqa: BLE001
+            log.exception("the figure classifier failed: the house goes on without it")
+            self._figure_failed = True
+            return [("", 0.0)] * len(bboxes)
+        self._figure_ms = 0.8 * self._figure_ms + 0.2 * (time.perf_counter() - t0) * 1000.0 / max(len(bboxes), 1)
+        return out
+
+    def _figure_tracks(self, small: np.ndarray, now: float) -> None:
+        """The tracks with no name, or whose colours no longer match their name, seen in this frame: shown to the
+        network, at most every FIGURE_EVERY_S each, FIGURE_MAX at a time. What it says waits in the track."""
+        tr = self.tracker
+        want = [vt for vt in tr.tracks.values()
+                if vt.obs is not None and not vt.carried and vt.frame == tr.frame and (not vt.identity or vt.misses)
+                and (vt.figure is None or now - vt.figure[2] >= FIGURE_EVERY_S)]
+        want = sorted(want, key=lambda vt: vt.figure[2] if vt.figure else 0.0)[:FIGURE_MAX]
+        if not want:
+            return
+        for vt, (label, p) in zip(want, self._figures(small, [vt.obs.bbox for vt in want])):
+            prev = vt.figure
+            row = prev[3] + 1 if prev and prev[0] == label and now - prev[2] <= 3.0 else 1
+            vt.figure = (label, p, now, row)
 
     def _footprints(self) -> np.ndarray:
         """Where the presences are in the picture, with a margin: there the empty house is not learned again."""
@@ -928,12 +975,21 @@ class Engine:
         for o in obs:
             if not o.hand:
                 o.extra["birth"] = self._may_be_born(o, scan, births_open, now)
+        born = [o for o in obs if not o.hand and o.extra.get("birth")]
+        if born and self._figures_ready() and not self.registering:
+            for o, (label, p) in zip(born, self._figures(small, [o.bbox for o in born])):
+                o.extra["figure"] = (label, p)
+                if label == NOTHING and p >= FIGURE_NOT_P:
+                    o.extra["birth"] = False      # the network is sure: a light, a shadow, a module
+                    self.figure_blocked += 1
         if self._zone is not None and quiet > SETTLE_S + BIRTH_S:
             self._zone = None
         self.observations = obs
         t_rules = time.perf_counter()
         self.tracks = self.tracker.update(obs, now, frozen=frozen, quiet_s=quiet, animated=self._animated,
                                           hand_mask=hands if active else None)
+        if self._figures_ready():
+            self._figure_tracks(small, now)
         t_track = time.perf_counter()
         # figurines put down while the house waited are looked for, but not while the whole picture is changing
         # (a covered camera)
@@ -1192,6 +1248,10 @@ class Engine:
             "holes": self.holes,
             "retunes": self.retunes,
             "adapting": bool(self._adapt_since),     # the light of the hall is changing: the presences are kept
+            "figures": {"loaded": self.figures is not None, "on": self.figures_on and not self._figure_failed,
+                        "blocked": self.figure_blocked, "ms": round(self._figure_ms, 1),
+                        "kept": self.tracker.figure_kept if self.tracker else 0,
+                        "named": self.tracker.figure_named if self.tracker else 0},
             "adaptations": self.adaptations,
             "shift_px": self._moved["shift"],
             "gains": self.segmenter.gains if self.segmenter else {},

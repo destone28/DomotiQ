@@ -346,6 +346,7 @@ async def periodic(ctx: Context) -> None:
     silent_since: float | None = None     # the router answers but the sketch does not
     resets: list[float] = []
     clock_warned = False
+    registering = False                  # a registration is waiting for its figurine (told to the vision)
     while True:
         now = time.time()
         mono = time.monotonic()
@@ -360,6 +361,11 @@ async def periodic(ctx: Context) -> None:
             ctx.house.expire_confirmations(now)
             if ctx.registration:
                 ctx.registration.poll()
+                # while a new character is being registered, a figurine the network does not know yet must be born
+                waiting = any(s.status in ("waiting", "choose") for s in ctx.registration.sessions.values())
+                if waiting != registering:
+                    registering = waiting
+                    ctx.vision.set_registering(waiting)
             if not (ctx.sim.enabled and ctx.sim.mute):
                 await ctx.lights.refresh()
             if ctx.voice is not None:

@@ -92,6 +92,15 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
 
     engine = Engine(layout, calib_dir, Path(cfg["dataset"]), Path(cfg["recordings"]), grab)
     engine.set_privacy(cfg.get("blur_private", True))
+    # the network that knows the figurines of this house, if one was trained for it (scripts/figures/)
+    models = Path(cfg.get("models") or "")
+    if cfg.get("models") and (models / "vision" / "figures.onnx").exists():
+        try:
+            from .figures import FigureClassifier
+            engine.figures = FigureClassifier(models)
+        except Exception as e:  # noqa: BLE001
+            logging.warning("figure classifier not available: %s", e)
+    engine.figures_on = bool(cfg.get("figures", True))
     if cfg.get("device") != "synthetic":
         # nothing is recognized until the light of the webcam is set on the empty house
         try:
@@ -216,6 +225,10 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                     engine.pause(bool(msg[1]), time.time())
                 elif kind == "privacy":
                     engine.set_privacy(bool(msg[1]))
+                elif kind == "figures":
+                    engine.figures_on = bool(msg[1])
+                elif kind == "registering":
+                    engine.registering = bool(msg[1])
                 elif kind == "want":
                     want[bool(msg[1])] = time.time()
                 elif kind == "cmd":
@@ -297,6 +310,8 @@ class VisionProcess(VisionLink):
             "recordings": str(paths.recordings),
             "device": device or settings.get("camera.device"),
             "blur_private": settings.get("camera.blur_bathroom", True),
+            "models": str(paths.models),
+            "figures": settings.get("camera.figures", True),
             "log_level": logging.getLogger().level or logging.INFO,
         }
         self._mp = mp.get_context("spawn")
@@ -489,6 +504,13 @@ class VisionProcess(VisionLink):
     def set_privacy(self, blur_private: bool) -> None:
         self.cfg["blur_private"] = bool(blur_private)
         self._send("privacy", bool(blur_private))
+
+    def set_figures(self, on: bool) -> None:
+        self.cfg["figures"] = bool(on)
+        self._send("figures", bool(on))
+
+    def set_registering(self, on: bool) -> None:
+        self._send("registering", bool(on))
 
     def status(self) -> dict[str, Any]:
         return {"available": self.available, "alive": bool(self._proc and self._proc.is_alive()), **self._status}

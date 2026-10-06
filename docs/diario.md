@@ -319,3 +319,6 @@ In ordine:
 
   Le cause erano due: un istante senza presenze alla fine della regolazione, e le pareti illuminate in un altro modo prese per mani. Ora la casa si accorge del cambio di luce (subito, o quando la sera scende piano) e tiene i personaggi com'erano un attimo prima. Poi regola la webcam e reimpara la casa vuota con la luce nuova intorno a loro. Sulla casa sintetica nessun personaggio cambia, anche con una luce più buia da un lato.
 - **La casa ferma dopo il buio** (D-67). La casa vuota salvata al buio alle 21:00 faceva sembrare "abbagliata" la luce normale, e dalle 23:13 la casa aspettava senza guardare. Ora il buio si misura sull'immagine stessa, e la casa vuota non si può più salvare al buio: la webapp chiede di accendere la luce.
+
+## 7 ottobre 2026 — La rete delle statuine
+- **La rete che conosce le statuine** (D-68). Dieci minuti di registrazione con tutte le statuine, luci, scenari e ombre. Da lì 7.635 ritagli etichettati, perché ogni registrazione ora salva il riquadro di ogni personaggio; poi una rete piccola addestrata sul PC. Sul blocco di tempo lasciato fuori ha il 97,4% di accuratezza, e quando è sicura non ha mai sbagliato. Nella casa è un secondo parere disattivabile: scarta le macchie che non sono statuine, tiene i nomi quando cambia la luce, dà il nome a un nuovo arrivato invece di chiederlo.

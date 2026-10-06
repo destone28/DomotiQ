@@ -53,6 +53,7 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna qu
 | Qwen2.5-0.5B-Instruct (GGUF) | Apache-2.0 | intenti delle frasi libere |
 | Qwen3.5-0.8B (GGUF Q4_0, bartowski) | Apache-2.0 | risposte libere alle domande sul mondo, quando il visitatore sceglie di aspettarle (servizio `domotiq-chat`, D-63) |
 | YOLOX-Nano (ONNX, release 0.1.1rc0) | Apache-2.0, addestrato su COCO | categoria di un oggetto nuovo |
+| Rete delle statuine (`figures.onnx`, nostra) | pesi nostri, addestrati da zero sulle registrazioni della casa (D-68) | secondo parere sulle macchie: quale personaggio, o "niente"; un file per casa in `models/vision/`, non nel repository |
 | Voce Piper it_IT-serena-medium, revisione ea046e84 | CC BY 4.0 (dataset serena-synthetic-it-27h) | voce italiana |
 | Voce Piper en_US-ljspeech-medium | pubblico dominio (LJ Speech) | voce inglese |
 
@@ -69,6 +70,8 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna qu
 | httpx | BSD-3-Clause | test delle API |
 | Pillow | MIT-CMU (HPND) | pulizia dei metadati delle immagini |
 | uv | MIT / Apache-2.0 | ambiente Python sul PC |
+| PyTorch 2.14 (CPU) | BSD-3-Clause | addestramento della rete delle statuine (`scripts/figures/train.py`), solo sul PC |
+| onnx 1.23 | Apache-2.0 | esportazione della rete delle statuine in ONNX, solo sul PC |
 | piper-tts 1.8.0 e le voci Piper it_IT-serena, it_IT-paola, it_IT-riccardo, en_US-ljspeech, en_US-ryan, en_GB-alan | GPL-3.0 (piper-tts); licenze delle singole voci, alcune escludono l'uso commerciale (es. it_IT-paola, derivata da "lessac") | solo sul PC, per leggere le frasi di prova di `scripts/stt_bench.py`; non distribuite e non installate sulla scheda |
 | FreeCAD | LGPL-2.1+ | CAD del diorama |
 

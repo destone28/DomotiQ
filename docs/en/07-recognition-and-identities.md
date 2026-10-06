@@ -189,6 +189,29 @@ While the camera is being set (about 10 seconds, with no frames) the presences s
 
 In a very different light the walls and the edges of the furniture look another way and may look like big blobs coming in from the edges, that is hands. That is what happened on casa1 on the evening of 6 October: for 30 seconds the "hands" "took" three characters and moved them to other rooms, then some fifteen cars and animals were born where they had been. Now the change of the light is recognized first, and the empty house learned again has no such "hands". The earlier rules stay: "hands" that stay without a break for 30 seconds are no hands, and if the light is close to the one of the empty house they join it (except where a character stands).
 
+## The network that knows the figurines
+
+Besides the difference from the empty house and the colour signature, the house can have a second opinion: a small neural network trained on the figurines of this house, seen by its webcam under different lights and shadows. It looks at the crop of a blob and says which character it is, or "niente" (nothing: a light shining on a wall, a shadow, a module). On the board every crop costs about 10 ms, so the house uses it only when needed:
+- **A new blob** the network sees as "niente", at least 90% sure, does not become a presence. Not while a new character is being registered: the network does not know it yet.
+- **A character that no longer looks like its colours** (another light) keeps its name while the network, at least 80% sure, still sees it.
+- **A newcomer** takes the name of a character nobody else holds, instead of being asked "who is it?", when the network is 95% sure of it twice in a row.
+
+It is switched off in **Settings → Figurines also recognized by the network (second opinion)**; *Diagnostics* shows how often it helped. Without the network file (`models/vision/figures.onnx` and `figures.json`) the house works as before.
+
+**Training it.** The network is trained on the PC with the programs in `scripts/figures/`, from the recordings of the house (**Calibration → Record**). Every recording saves, for every recognized character, the box of its blob: that is the crop with its name.
+1. With all the characters in the house and recognized, record a few minutes moving them to different rooms and positions, under different lights (the hall light, a lamp at the side, the scenes of the house) and with the shadows of people nearby.
+2. Copy `var/recordings/rec-*` and `var/config/identities.json` to the PC, then:
+   ```
+   python scripts/figures/build_crops.py <recordings> identities.json crops
+   python scripts/figures/preview.py crops preview.png      # check the labels by eye
+   python scripts/figures/train.py net crops --only 2        # test on a block of time left out
+   python scripts/figures/train.py net2 crops --drop net/suspect.json
+   ```
+   The second training leaves out the crops the network is very sure carry another label (the house was wrong there).
+3. Copy `figures.onnx` and `figures.json` to `models/vision/` on the board and restart the house.
+
+PyTorch is needed on the PC (not on the board). The classes are the names of the characters: after a new character, or for the other house with different figurines, the network must be trained again.
+
 ## Privacy
 
 - **Everything around the house is blurred** on every image that leaves the board (the stand, the visitors, their phones), as soon as the house knows where the base is.

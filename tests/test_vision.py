@@ -1426,3 +1426,69 @@ def test_a_recording_tells_the_blob_of_every_figurine(engine, renderer):
     x, y, w, h = boxes[-1]
     px = engine.calib.image_of(np.array([[300.0, 100.0]]), 40.0)[0]
     assert x - 10 <= px[0] <= x + w + 10 and y - 10 <= px[1] <= y + h + 10
+
+
+# ------------------------------------------------------------ the network that knows the figurines: a second opinion
+class _Figures:
+    """The network, with its answer already decided."""
+
+    def __init__(self, label, p=0.97):
+        self.label, self.p, self.calls = label, p, 0
+
+    def classify(self, img, bboxes):
+        self.calls += len(bboxes)
+        return [(self.label, self.p)] * len(bboxes)
+
+
+def _put_down(engine, renderer, placed, thing, t0):
+    hand = {"hands": [Hand(thing.x, thing.y)]}
+    run(engine, renderer, [(placed, hand)] * 3 + [(placed + [thing], hand)] * 2, t0=t0)
+    return run(engine, renderer, [(placed + [thing], {})] * 35, t0=t0 + 0.5)
+
+
+def test_a_blob_the_network_sees_as_nothing_is_not_born(engine, renderer):
+    run(engine, renderer, [([], {})] * 40)
+    engine.figures = _Figures("niente")
+    red = Thing(300, 100, "#d03030")
+    assert _put_down(engine, renderer, [], red, 4.0) == []
+    assert engine.status()["figures"]["blocked"] >= 1
+    engine.registering = True                                # a new character is being registered: always born
+    green = Thing(150, 250, "#30a040")
+    assert len(_put_down(engine, renderer, [red], green, 7.0)) == 1
+    engine.registering = False
+    engine.figures_on = False                                # the switch in the settings: as before
+    blue = Thing(480, 280, "#3050d0")
+    tracks = _put_down(engine, renderer, [red, green], blue, 10.0)
+    assert any(np.hypot(t.x - blue.x, t.y - blue.y) < 12 for t in tracks)
+
+
+@pytest.mark.parametrize("network", [True, False])
+def test_the_network_keeps_a_name_the_colours_no_longer_match(engine, renderer, network):
+    """Another light, other colours: the name stays while the network still sees that character. Without it, the
+    name went for most of the time (it came back only because nothing moves by itself)."""
+    red = Thing(300, 100, "#d03030")
+    tracks = bring(engine, renderer, [red])
+    sig = engine.track_signature(tracks[0].id)[0]
+    engine.set_identities([Identity("id-red", "Rosso", category="person", signature=sig)])
+    tracks = run(engine, renderer, [([red], {})] * 20, t0=10.0)
+    assert [t.identity for t in tracks] == ["id-red"]
+    engine.figures = _Figures("Rosso", 0.9) if network else None
+    greenish = Thing(300, 100, "#30a040")                    # the same figurine, its colours seen otherwise
+    nameless = sum(1 for i in range(60)
+                   if [t.identity for t in engine.feed(renderer.render([greenish]), 20.0 + i * 0.1)] != ["id-red"])
+    if network:
+        assert nameless == 0 and engine.status()["figures"]["kept"] > 0
+    else:
+        assert nameless > 30
+
+
+def test_the_network_names_a_newcomer_instead_of_asking(engine, renderer):
+    asked = []
+    engine.on_question = lambda track, cands: asked.append(track.id)
+    run(engine, renderer, [([], {})] * 40)
+    # registered with colours that do not match what the webcam sees now: the house would ask who it is
+    engine.set_identities([Identity("id-viola", "Viola", category="person", signature=[0.0] * 64)])
+    engine.figures = _Figures("Viola", 0.98)
+    tracks = _put_down(engine, renderer, [], Thing(300, 100, "#7030c0"), 4.0)
+    assert [t.identity for t in tracks] == ["id-viola"] and asked == []
+    assert engine.status()["figures"]["named"] == 1
