@@ -169,7 +169,7 @@ La webcam ha esposizione e colori bloccati sulla luce in cui è stata salvata la
 - la luminosità dell'immagine cambia di oltre il 12% in 2 secondi (una luce accesa o spenta);
 - la luminosità resta per 3 secondi oltre il 15% lontana da quella in cui ha imparato la casa vuota l'ultima volta (la sera che arriva piano);
 - gran parte della casa cambia senza mani;
-- le "mani" coprono quasi metà della casa (due braccia vere ne coprono al massimo un quarto: sono le pareti illuminate in un altro modo);
+- le "mani" coprono quasi metà della casa e insieme la luminosità è cambiata (due braccia vere coprono al massimo un quarto della casa e la luminosità la cambiano appena: sono le pareti illuminate in un altro modo);
 - la luce va oltre quello che la correzione delle stanze riesce a seguire;
 - la webcam viene regolata di nuovo.
 
@@ -183,7 +183,7 @@ Non conta mentre una luce della casa è appena cambiata (il suo riflesso si misu
 
 Misurato su casa1: la luce della stanza spenta porta l'immagine al 45-57%, mentre gli scenari della casa (cinema, notte) non scendono sotto il 95%.
 
-Una webcam coperta o abbagliata non viene mai imparata come casa vuota, e lo stesso vale per una sala troppo buia (sotto un terzo della luminosità della casa vuota). I personaggi restano e la webapp avvisa *La webcam vede quasi buio* (vedi il capitolo 11). Neanche una webcam urtata: prima di imparare, la casa controlla che pareti e mobili siano al loro posto. Se non ci sono, non impara niente e chiede subito una nuova calibrazione. *Diagnostica* mostra quando la luce sta cambiando e quante volte la casa si è adattata.
+Una webcam coperta o abbagliata non viene mai imparata come casa vuota, e lo stesso vale per una sala troppo buia (sotto un terzo della luminosità della casa vuota). I personaggi restano e la webapp avvisa *La webcam vede quasi buio* (vedi il capitolo 11). Quando la luce torna, la casa riguarda cosa c'è, come dopo una festa: al buio qualcuno può aver spostato una statuina, e la casa la ritrova al suo nuovo posto, con il suo nome. Neanche una webcam urtata: prima di imparare, la casa controlla che pareti e mobili siano al loro posto. Se non ci sono, non impara niente e chiede subito una nuova calibrazione. *Diagnostica* mostra quando la luce sta cambiando e quante volte la casa si è adattata.
 
 Mentre la webcam si regola (circa 10 secondi, senza immagini) le presenze restano dove sono sulla piantina, anche nell'istante tra la fine della regolazione e il primo fotogramma. Prima sparivano tutte e tornavano, e la casa salutava e riaccoglieva tutti ("arrivederci Viola, a presto Mister Brown"). Se una regolazione non riporta l'immagine vicina alla casa vuota (una sala più buia di quanto la webcam riesca a seguire), la successiva aspetta il doppio, fino a un quarto d'ora: su casa1 la webcam si regolava ogni 70 secondi sempre con gli stessi valori.
 

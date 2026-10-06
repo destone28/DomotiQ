@@ -113,6 +113,8 @@ ADAPT_WINDOW_S = 2.0
 # hundredths, and only while it moves
 ADAPT_DRIFT, ADAPT_DRIFT_S = 0.15, 3.0
 ADAPT_HANDS = 0.45       # two arms over the house are a quarter of it at most
+ADAPT_HANDS_LIGHT = 0.08 # ...and only with the brightness changed this much too: an arm hardly changes it, the light
+                         # always does (a real hand taken for the light would be ignored, and what it moved missed)
 ADAPT_STILL = 0.02
 ADAPT_STILL_S = 1.0
 ADAPT_MIN_S = 2.0
@@ -187,6 +189,7 @@ class Engine:
         self.holes = 0
         self._clipped_since = 0.0                  # since when the light is beyond what the rooms can correct
         self._adapt_since = 0.0                    # the light of the hall is changing: since when (0: it is not)
+        self._adapt_dark = False                   # ...and meanwhile the webcam saw almost nothing
         self._adapt_seen: set[str] = set()         # ...the tracks in sight when it began
         self._adapt_frames: deque = deque(maxlen=ADAPT_FRAMES)
         self._adapt_levels: deque = deque()        # (time, brightness) while it changes
@@ -275,6 +278,7 @@ class Engine:
         if not self.ready or self.tracker is None or self._scan_pending or now < self._scan_until:
             return False
         self._adapt_since = now
+        self._adapt_dark = False
         self._adapt_frames.clear()
         self._adapt_levels.clear()
         # the "hands" of the last seconds were the light: what they took stays where it was, and where it is
@@ -305,6 +309,7 @@ class Engine:
             # a covered or blinded camera is no light to learn the empty house in: the presences stay as they are
             # until it sees again, and the house says so
             self._flooded_since = self._flooded_since or now
+            self._adapt_dark = True
             self._adapt_frames.clear()
             self._adapt_levels.clear()
             return self.tracks
@@ -356,6 +361,7 @@ class Engine:
         the presences it stays as it was. Then they are found again where they were, before anything new is born."""
         seg = self.segmenter
         frames = list(self._adapt_frames)
+        dark, self._adapt_dark = self._adapt_dark, False
         if frames:
             median = np.median(np.stack(frames), axis=0).astype(np.uint8) if len(frames) > 1 else frames[0]
             keep = self._footprints()
@@ -363,6 +369,17 @@ class Engine:
             seg.light_changed(seg.region_names, now, 0.5)
             seg._g = None
             seg.corrected(median, update=True, now=now)
+            if dark:
+                # the house could not see for a while: what clearly stands out may be a figurine put down in the
+                # dark, and is not learned as the empty house
+                obs, _fg, _lab = seg.process(median, now)
+                h, w = keep.shape
+                for o in obs:
+                    chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
+                    if not o.hand and (chroma_d >= SCAN_CHROMA or light_d <= -SCAN_DARKER):
+                        x, y, bw, bh = o.bbox
+                        m = ADAPT_MARGIN_PX
+                        keep[max(0, y - m):min(h, y + bh + m), max(0, x - m):min(w, x + bw + m)] = True
             seg.absorb(median, (seg.mask > 0) & ~keep)
             seg.light_changed(seg.region_names, now, ADAPT_SETTLE_S)
         # what the old light left half-learned is gone with it
@@ -379,6 +396,11 @@ class Engine:
                 t.last_seen = max(t.last_seen, now)
             elif not t.shown:
                 del tr.tracks[tid]                 # not yet a presence: what the old light made
+        if dark:
+            # as after a party: anybody may have been moved in the dark; what is in sight is taken as it is (the
+            # characters it knows closely, wherever they are now, and the car), once the lights stand still
+            tr.touch_all()
+            self._scan_pending, self._scan_since = True, 0.0
         took = now - self._adapt_since
         levels = [r for _, r in self._adapt_levels]
         self._light_level = float(np.median(levels)) if levels else self._ratio
@@ -809,7 +831,9 @@ class Engine:
         self._still_hands(small, obs, now)
         hands = seg.hand_mask if seg.hand_mask is not None else np.zeros(fg.shape, bool)
         house = max(float(np.count_nonzero(seg.mask)), 1.0)
-        if float(np.count_nonzero(hands & (seg.mask > 0))) / house > ADAPT_HANDS and self.light_adapt(now, "hands"):
+        if float(np.count_nonzero(hands & (seg.mask > 0))) / house > ADAPT_HANDS \
+                and abs(math.log(max(ratio, 1e-3) / self._light_level)) > math.log(1.0 + ADAPT_HANDS_LIGHT) \
+                and self.light_adapt(now, "hands"):
             return self._adapting(small, ratio, now)  # no arms cover half the house: the walls lit another way
         active = bool(hands.any())
         self._hands_since = (self._hands_since or now) if active else 0.0

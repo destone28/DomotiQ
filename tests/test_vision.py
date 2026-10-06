@@ -1365,3 +1365,22 @@ def test_a_knocked_webcam_is_never_learned_as_a_change_of_the_light(engine, rend
     st = engine.status()
     assert st["moved"] and st["adaptations"] == 0 and st["adapting"] and _same(tracks, before)
     assert float(np.abs(engine.segmenter.reference_bgr - reference).mean()) < 0.5
+
+
+def test_after_the_dark_the_house_looks_again_at_what_is_in_sight(engine, renderer):
+    """casa1 at 19:00: the hall went dark and the webcam saw 9-17 out of 50. A figurine moved meanwhile was not seen;
+    when the light comes back the house takes what is in sight as at a start (the characters it knows closely,
+    wherever they are now), instead of learning the figurine as part of the empty house."""
+    red = Thing(300, 100, "#d03030")
+    tracks = bring(engine, renderer, [red])
+    sig = engine.track_signature(tracks[0].id)[0]
+    engine.set_identities([Identity("id-red", "Rosso", category="person", signature=sig)])
+    tracks = run(engine, renderer, [([red], {})] * 20, t0=10.0)
+    assert [t.identity for t in tracks] == ["id-red"]
+    moved = Thing(480, 280, "#d03030")
+    run(engine, renderer, [([red], {"brightness": 0.1})] * 30, t0=20.0)        # the hall goes dark
+    tracks = run(engine, renderer, [([moved], {"brightness": 0.1})] * 40, t0=23.0)   # moved, unseen
+    assert engine.status()["dark"] and [t.identity for t in tracks] == ["id-red"]
+    tracks = run(engine, renderer, [([moved], {})] * 100, t0=27.0)              # the light comes back
+    assert [t.identity for t in tracks] == ["id-red"] and not engine.status()["dark"]
+    assert np.hypot(tracks[0].x - moved.x, tracks[0].y - moved.y) < 12

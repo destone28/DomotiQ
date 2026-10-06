@@ -630,7 +630,7 @@ Misure sul PC, con il modello della scheda e le tre voci italiane di Piper a due
   - la luminosità dell'immagine cambia di oltre il 12% in 2 secondi;
   - la luminosità resta per 3 secondi oltre il 15% lontana da quella in cui la casa vuota è stata imparata l'ultima volta;
   - gran parte della casa cambia senza mani;
-  - le "mani" coprono oltre il 45% della casa;
+  - le "mani" coprono oltre il 45% della casa e la luminosità è cambiata di almeno l'8% (un braccio vero la cambia appena: una mano vera presa per la luce verrebbe ignorata);
   - la luce va oltre quello che la correzione delle stanze segue;
   - la webcam viene regolata di nuovo.
 
@@ -639,6 +639,7 @@ Misure sul PC, con il modello della scheda e le tre voci italiane di Piper a due
 - **La luminosità.** Se l'immagine è fuori dal 70-143% della casa vuota, la webcam si regola subito, senza i 5 secondi senza mani. Se non si può regolare, la casa aspetta al massimo 3 secondi.
 - **La mappa.** Quando la luminosità è ferma (entro il 2% per un secondo, almeno 2 secondi dopo il cambio), la casa vuota si reimpara dalla mediana degli ultimi 5 fotogrammi. I fotogrammi sono riportati alla luce in cui era stata salvata: la luce di ogni stanza viene misurata di nuovo su tutto il pavimento libero. Intorno a ogni presenza la casa vuota resta com'era. Un secondo dopo le presenze si ritrovano al loro posto, poi la casa riprende a guardare. Con una luce che non sta mai ferma, la casa vuota si reimpara comunque dopo 30 secondi.
 - **Webcam coperta o sala troppo buia.** Un'immagine sotto un terzo della luminosità della casa vuota, o abbagliata, non si impara mai. Le presenze restano e la webapp avvisa: "La webcam vede quasi buio: la sala è troppo buia o la webcam è coperta. Accendi una luce; intanto i personaggi restano dove erano". Su casa1 alle 18:40-18:59, con la sala al buio, la webcam arrivava a 9-17 su 50 anche al guadagno massimo. Viola compariva e spariva in cinque stanze diverse, e tutti uscivano insieme.
+- **Dopo il buio.** Se durante il cambio la webcam ha visto quasi buio, quando la luce torna la casa vuota non impara quello che spicca chiaramente (potrebbe essere una statuina posata al buio). Poi la casa riguarda cosa c'è, come dopo una festa: prende i personaggi che conosce bene, ovunque siano ora, e l'auto.
 - **Webcam urtata.** Prima di imparare, la casa controlla che pareti e mobili siano dove li ha la casa vuota (lo stesso confronto dei bordi dell'avviso "la webcam si è spostata"). Se non ci sono, non impara niente: altrimenti terrebbe l'immagine sbagliata e non chiederebbe più di ricalibrare. Le presenze restano e l'avviso compare subito.
 - **La fine della regolazione.** Le presenze tenute durante la regolazione della webcam restano fino al primo fotogramma.
 - **Diagnostica.** Mostra quando la luce sta cambiando e quante volte la casa si è adattata.

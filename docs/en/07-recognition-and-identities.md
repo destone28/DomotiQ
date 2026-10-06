@@ -169,7 +169,7 @@ The camera has its exposure and colours locked on the light in which the empty h
 - the brightness of the picture changes by more than 12% within 2 seconds (a light switched on or off);
 - the brightness stays more than 15% away from the one the empty house was last learned in for 3 seconds (the evening coming slowly);
 - much of the house changes with no hand;
-- "hands" cover almost half of the house (two real arms cover a quarter at most: they are the walls, lit another way);
+- "hands" cover almost half of the house and the brightness has changed too (two real arms cover a quarter of the house at most and hardly change the brightness: they are the walls, lit another way);
 - the light goes beyond what the correction of the rooms can follow;
 - the camera is set again.
 
@@ -183,7 +183,7 @@ It does not count while a light of the house has just changed (its glow is measu
 
 Measured on casa1: the room light switched off brings the picture to 45-57%, while the scenes of the house (cinema, night) never go below 95%.
 
-A covered or dazzled camera is never learned as the empty house, and neither is a hall that is too dark (below a third of the brightness of the empty house). The characters stay and the web app warns *The webcam sees almost nothing* (see chapter 11). Nor is a knocked camera: before learning, the house checks that walls and furniture are where they were. If they are not, it learns nothing and asks for a new calibration at once. *Diagnostics* shows when the light is changing and how many times the house adapted.
+A covered or dazzled camera is never learned as the empty house, and neither is a hall that is too dark (below a third of the brightness of the empty house). The characters stay and the web app warns *The webcam sees almost nothing* (see chapter 11). When the light comes back, the house looks again at what is in sight, as after a party: in the dark somebody may have moved a figurine, and the house finds it in its new place, with its name. Nor is a knocked camera: before learning, the house checks that walls and furniture are where they were. If they are not, it learns nothing and asks for a new calibration at once. *Diagnostics* shows when the light is changing and how many times the house adapted.
 
 While the camera is being set (about 10 seconds, with no frames) the presences stay where they are on the map, also in the instant between the end of the setting and the first frame. Before, they all disappeared and came back, and the house said goodbye and welcomed everybody again ("arrivederci Viola, a presto Mister Brown"). When a setting does not bring the picture back close to the empty house (a hall darker than the camera can follow), the next one waits twice as long, up to a quarter of an hour: on casa1 the camera was set every 70 seconds, always with the same values.
 
