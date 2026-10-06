@@ -156,8 +156,13 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 
 **Soluzione.** Calibra ([capitolo 5](05-collaudo.md#9-calibrazione-della-webcam)).
 
+### Avviso *La casa vuota è stata salvata al buio*
+**Causa.** La casa vuota è stata salvata con la sala al buio (prima che la webapp lo rifiutasse): con la luce accesa tutto sembra diverso da quella.
+
+**Soluzione.** Togli le statuine e, con la luce accesa, fai **Calibrazione → Regola la luce e salva la casa vuota**; poi rimettile a mano.
+
 ### Avviso *La webcam vede quasi buio*
-**Causa.** Da più di cinque secondi l'immagine è sotto un terzo della luminosità della casa vuota: la sala è troppo buia (su casa1 di sera, con la luce della stanza spenta, la webcam arrivava a 9-17 su 50 anche al guadagno massimo) oppure qualcosa copre la webcam.
+**Causa.** Da più di cinque secondi l'immagine è troppo scura (grigio medio sotto 25 su 255): la sala è troppo buia (su casa1 di sera, con la luce della stanza spenta, la webcam arrivava a 9-17 su 50 anche al guadagno massimo) oppure qualcosa copre la webcam.
 
 **Soluzione.** Accendi una luce, o togli quello che copre la webcam. Nel frattempo i personaggi restano dove erano e la casa non impara niente da quell'immagine. Quando la luce torna, la casa si adatta da sola.
 

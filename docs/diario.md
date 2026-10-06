@@ -318,3 +318,4 @@ In ordine:
   - una quindicina di auto e animali nati nel soggiorno.
 
   Le cause erano due: un istante senza presenze alla fine della regolazione, e le pareti illuminate in un altro modo prese per mani. Ora la casa si accorge del cambio di luce (subito, o quando la sera scende piano) e tiene i personaggi com'erano un attimo prima. Poi regola la webcam e reimpara la casa vuota con la luce nuova intorno a loro. Sulla casa sintetica nessun personaggio cambia, anche con una luce più buia da un lato.
+- **La casa ferma dopo il buio** (D-67). La casa vuota salvata al buio alle 21:00 faceva sembrare "abbagliata" la luce normale, e dalle 23:13 la casa aspettava senza guardare. Ora il buio si misura sull'immagine stessa, e la casa vuota non si può più salvare al buio: la webapp chiede di accendere la luce.

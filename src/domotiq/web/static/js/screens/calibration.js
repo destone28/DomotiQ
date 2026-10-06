@@ -74,7 +74,7 @@ export function mount(root) {
       const msg = (lang() === "en" && r.message_en) || r.message;
       $("#status").textContent = msg || (r.ok ? "OK" : (r.error || ""));
       if (r.ok) toast(msg || t("common.done"), "success");
-      else if (r.error) toast(r.error, "warning");
+      else if (r.error) toast(msg || r.error, "warning");
       load();
       return r;
     } catch (e) { toast(e.message, "alarm"); return null; } finally {

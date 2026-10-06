@@ -414,6 +414,12 @@ async def periodic(ctx: Context) -> None:
                         "en": "The house recognizes nothing until the light is set: Calibration → Set the light and save the empty house"})
                 else:
                     ctx.house.clear_alert("camera-light")
+                if vst.get("empty_dark"):
+                    ctx.house.set_alert("camera-empty-dark", name={
+                        "it": "La casa vuota è stata salvata al buio: togli le statuine e, con la luce accesa, rifai Calibrazione → Regola la luce e salva la casa vuota",
+                        "en": "The empty house was saved in the dark: take the figurines away and, with the light on, do Calibration → Set the light and save the empty house again"})
+                else:
+                    ctx.house.clear_alert("camera-empty-dark")
                 if vst.get("dark"):
                     ctx.house.set_alert("camera-dark", name={
                         "it": "La webcam vede quasi buio: la sala è troppo buia o la webcam è coperta. Accendi una luce; intanto i personaggi restano dove erano",

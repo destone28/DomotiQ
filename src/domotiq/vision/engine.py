@@ -123,6 +123,12 @@ ADAPT_FRAMES = 5
 ADAPT_SETTLE_S = 1.0
 ADAPT_RETUNE_S = 3.0     # a light the webcam must be set again for: the house waits for that this long at most
 ADAPT_MARGIN_PX = 12     # around every presence the empty house stays as it was
+# What the webcam sees at all, whatever the empty house it is compared with: a mean grey below DARK_LEVEL is a hall
+# too dark or a covered webcam, above DAZZLED_LEVEL a dazzled one. Such a picture is never learned, nor saved, as the
+# empty house. On casa1: room light on 55-65, at night with the gain at its highest 9-17. On 6 October at 21:00 the
+# empty house was saved in the dark (13): compared with it the lit room looked 3.5 times brighter, "dazzled", and the
+# house waited for hours without learning anything
+DARK_LEVEL, DAZZLED_LEVEL = 25.0, 235.0
 COCO_CLASSES = ["person", "dog", "cat", "animal", "car", "object"]
 
 
@@ -180,6 +186,8 @@ class Engine:
         self._session_at = float("-inf")          # when the hands now at work came
         self._empty0: np.ndarray | None = None     # the empty house as it was saved, before anything joined it
         self._ratio = 1.0                          # brightness of the picture / of the empty house
+        self._level = 128.0                        # mean grey of the picture in the house (0-255)
+        self._empty_level = 128.0                  # ...and of the empty house as it was saved
         self._off_since = 0.0                      # since when that ratio is beyond RETUNE_DARK..RETUNE_BRIGHT
         self._settle_until = 0.0                   # the webcam has just been set again: the house waits
         self._retuned_at = float("-inf")
@@ -215,6 +223,9 @@ class Engine:
     def retune_wanted(self, now: float) -> bool:
         """The picture has stayed much darker or brighter than the empty house, with no hand and no light of
         the house just changed: the webcam must be set again."""
+        # an empty house saved in the dark is no light to set the webcam for: the house asks to save it again
+        if self._empty_level < DARK_LEVEL:
+            return False
         # while the house follows a change of the hall light it asks at once, hands or not: they are the light
         adapting = bool(self._adapt_since) and not RETUNE_DARK <= self._ratio <= RETUNE_BRIGHT
         return (self.ready and self.light_ok and (adapting or bool(self._off_since) and now - self._off_since >= RETUNE_S
@@ -305,9 +316,9 @@ class Engine:
         """While the light of the hall changes: nothing is looked at, the presences are those of just before. Once the
         brightness stands still (and the webcam has been set again, if it had to be), the empty house is learned
         again."""
-        if not 0.33 < ratio < 3.0:
-            # a covered or blinded camera is no light to learn the empty house in: the presences stay as they are
-            # until it sees again, and the house says so
+        if not self._seeing():
+            # a hall too dark, a covered or dazzled webcam: no light to learn the empty house in. The presences stay
+            # as they are until it sees again, and the house says so
             self._flooded_since = self._flooded_since or now
             self._adapt_dark = True
             self._adapt_frames.clear()
@@ -323,7 +334,7 @@ class Engine:
         still = len(levels) >= 3 and now - levels[0][0] >= 0.8 * ADAPT_STILL_S and hi <= (1.0 + ADAPT_STILL) * lo
         waited = now - self._adapt_since
         retune = not RETUNE_DARK <= ratio <= RETUNE_BRIGHT and now - self._retuned_at >= self._retune_every \
-            and waited < ADAPT_RETUNE_S
+            and self._empty_level >= DARK_LEVEL and waited < ADAPT_RETUNE_S
         if (still and waited >= ADAPT_MIN_S and not retune) or (waited >= ADAPT_MAX_S and len(levels) >= 3):
             shift, response = self._shift_of(small)
             if shift > 3.0 and response > 0.05:
@@ -574,12 +585,24 @@ class Engine:
         return chroma_d >= BIRTH_CHROMA or light_d <= -BIRTH_DARKER or light_d >= BIRTH_LIGHTER
 
     def _light_ratio(self, small: np.ndarray) -> float:
-        """How bright the picture is against the empty house as it was saved (the light the webcam was set for)."""
+        """How bright the picture is against the empty house as it was saved (the light the webcam was set for); the
+        mean grey of the picture is kept too (`_level`)."""
         seg = self.segmenter
         ref = self._empty0 if self._empty0 is not None else seg.reference_bgr
         level = cv2.mean(small, mask=seg.mask)[:3]
         ref_level = cv2.mean(ref, mask=seg.mask)[:3]
+        self._level = sum(level) / 3.0
         return (sum(level) + 3.0) / (sum(ref_level) + 3.0)
+
+    def _seeing(self) -> bool:
+        """The webcam sees the house: neither too dark (or covered) nor dazzled."""
+        return DARK_LEVEL <= self._level <= DAZZLED_LEVEL
+
+    def _saved_empty(self) -> None:
+        """The empty house as it was saved, and how bright it is."""
+        seg = self.segmenter
+        self._empty0 = seg.reference_bgr.copy()
+        self._empty_level = sum(cv2.mean(self._empty0, mask=seg.mask)[:3]) / 3.0
 
     def _absorb_stuck(self, small: np.ndarray, hands: np.ndarray) -> None:
         seg = self.segmenter
@@ -677,7 +700,7 @@ class Engine:
             if ref is not None and ref.shape[1::-1] == ANALYSIS:
                 self.segmenter.set_reference([ref])
                 self.segmenter.set_noise(self._load_noise())
-                self._empty0 = self.segmenter.reference_bgr.copy()
+                self._saved_empty()
                 self._backgrounds()
 
     def _load_noise(self) -> np.ndarray | None:
@@ -757,8 +780,19 @@ class Engine:
         frames = [self._fit(f) for f in frames if f is not None]
         if len(frames) < 3:
             return {"ok": False, "error": "no frames from the camera"}
+        level = float(np.mean([sum(cv2.mean(f, mask=self.segmenter.mask)[:3]) / 3.0 for f in frames]))
+        if level < DARK_LEVEL:
+            # in the dark the house would learn a black picture, and in the light everything would look different
+            log.info("empty house not saved: too dark (%.0f)", level)
+            return {"ok": False, "error": "dark", "level": round(level),
+                    "message": "La casa è troppo buia per salvare la casa vuota: accendi la luce della sala e riprova.",
+                    "message_en": "The house is too dark to save the empty house: turn on the hall light and try again."}
+        if level > DAZZLED_LEVEL:
+            return {"ok": False, "error": "dazzled", "level": round(level),
+                    "message": "La webcam è abbagliata: togli la luce che la colpisce e riprova.",
+                    "message_en": "The webcam is dazzled: move away the light shining on it and try again."}
         self.segmenter.set_reference(frames)
-        self._empty0 = self.segmenter.reference_bgr.copy()
+        self._saved_empty()
         self._light_level = 1.0                     # the light it is saved in
         cv2.imwrite(str(self.dir / "reference.png"), np.clip(self.segmenter.reference_bgr, 0, 255).astype(np.uint8))
         if self.segmenter.noise is not None:
@@ -869,7 +903,7 @@ class Engine:
         # most of the house different from the empty one for long: the camera was covered or knocked,
         # or the light changed beyond what the house can follow (a covered camera is just dark: the light
         # correction of the rooms ends at its limit)
-        if share > 0.35 or not 0.33 < ratio < 3.0:
+        if share > 0.35 or not self._seeing():
             self._flooded_since = self._flooded_since or now
         else:
             self._flooded_since = 0.0
@@ -903,7 +937,7 @@ class Engine:
         t_track = time.perf_counter()
         # figurines put down while the house waited are looked for, but not while the whole picture is changing
         # (a covered camera)
-        steady = not light_event and share <= 0.35 and 0.33 < ratio < 3.0
+        steady = not light_event and share <= 0.35 and self._seeing()
         self._absorb_ghosts(small, fg, obs, hands, frozen or scan or share > 0.35, now, steady)
         # the hall light drifts slowly: follow it on the free floor, when nothing moves
         calm = not frozen and not any(o.hand for o in obs)
@@ -1148,7 +1182,8 @@ class Engine:
             "moved": self.moved,
             "flooded": bool(self._flooded_since and self.frame_at - self._flooded_since > 5.0),
             # ...because it sees almost nothing: the hall is too dark (on casa1 at night: 9-17 of 50) or it is covered
-            "dark": bool(self._flooded_since and self.frame_at - self._flooded_since > 5.0 and self._ratio <= 0.33),
+            "dark": bool(self._flooded_since and self.frame_at - self._flooded_since > 5.0 and self._level < DARK_LEVEL),
+            "empty_dark": self.ready and self._empty_level < DARK_LEVEL,   # the empty house was saved in the dark
             "light_ok": self.light_ok,
             "hand": bool(self.frame_at - self._hand_at < SETTLE_S),
             "absorbed": self.absorbed,

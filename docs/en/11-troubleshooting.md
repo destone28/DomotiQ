@@ -156,8 +156,13 @@ The installer (which needs internet) reloads the firmware when needed; without i
 
 **Fix.** Calibrate ([chapter 5](05-testing.md#9-camera-calibration)).
 
+### Banner *The empty house was saved in the dark*
+**Cause.** The empty house was saved with the hall in the dark (before the web app refused it): with the light on everything looks different from it.
+
+**Fix.** Take the figurines away and, with the light on, do **Calibration → Set the light and save the empty house**; then put them back by hand.
+
 ### Banner *The webcam sees almost nothing*
-**Cause.** For more than five seconds the picture has been below a third of the brightness of the empty house: the hall is too dark (on casa1 in the evening, with the room light off, the camera reached 9-17 out of 50 even at the highest gain) or something covers the camera.
+**Cause.** For more than five seconds the picture has been too dark (mean grey below 25 out of 255): the hall is too dark (on casa1 in the evening, with the room light off, the camera reached 9-17 out of 50 even at the highest gain) or something covers the camera.
 
 **Fix.** Turn on a light, or remove what covers the camera. Meanwhile the characters stay where they were and the house learns nothing from that picture. When the light comes back, the house adapts by itself.
 

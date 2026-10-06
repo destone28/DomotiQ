@@ -654,3 +654,11 @@ Il registro e il database delle posizioni di casa1 mostrano la sera del 6/10. Al
 Sulla casa sintetica, con la luce della sala che cala in modo disuguale (più buia da un lato) e la webcam regolata di nuovo:
 - **Prima.** Compariva una presenza sconosciuta per 6 secondi; con un calo più forte, per 56 secondi, e la webcam non si regolava mai.
 - **Ora.** Nessuna presenza cambia o nasce e la webcam viene chiesta subito. Vale anche per la sera che scende piano in un minuto e mezzo, mentre una mano dopo l'adattamento porta ancora le statuine.
+
+### D-67 — Il buio si misura sull'immagine, e la casa vuota non si salva al buio (6/10)
+**Scelta:**
+- **Buio e abbagliamento.** Si giudicano sulla luminosità vera dell'immagine (grigio medio nella casa, 0-255), non sul confronto con la casa vuota salvata: sotto 25 la sala è troppo buia o la webcam è coperta, sopra 235 è abbagliata. Su casa1 con la luce della stanza accesa l'immagine sta a 55-65, al buio a 9-17.
+- **Salvare la casa vuota al buio.** "Salva la casa vuota" e "Regola la luce e salva la casa vuota" rifiutano un'immagine sotto 25 con il messaggio "La casa è troppo buia per salvare la casa vuota: accendi la luce della sala e riprova." (e una abbagliata con un messaggio suo).
+- **Una casa vuota già salvata al buio.** La casa si adatta lo stesso, non regola la webcam su di essa e avvisa: "La casa vuota è stata salvata al buio: togli le statuine e, con la luce accesa, rifai Calibrazione → Regola la luce e salva la casa vuota".
+
+**Perché:** alle 21:00 del 6/10 la casa vuota è stata salvata con la stanza al buio (grigio medio 13). Quando la luce è tornata, l'immagine era 3,5 volte più chiara di quella casa vuota e l'adattamento di D-66 l'ha presa per una webcam abbagliata. Dalle 23:13 la casa ha aspettato senza imparare niente, con i personaggi fermi. Dalle 20:01 si erano accumulati 30 adattamenti e 16 regolazioni della webcam.

@@ -1384,3 +1384,28 @@ def test_after_the_dark_the_house_looks_again_at_what_is_in_sight(engine, render
     tracks = run(engine, renderer, [([moved], {})] * 100, t0=27.0)              # the light comes back
     assert [t.identity for t in tracks] == ["id-red"] and not engine.status()["dark"]
     assert np.hypot(tracks[0].x - moved.x, tracks[0].y - moved.y) < 12
+
+
+def test_a_dark_picture_is_never_saved_as_the_empty_house(engine, renderer):
+    """casa1, 6 October at 21:00: "Set the light and save the empty house" with the room in the dark."""
+    reference = engine.segmenter.reference_bgr.copy()
+    r = engine.take_empty([renderer.render(brightness=0.1) for _ in range(5)])
+    assert not r["ok"] and r["error"] == "dark" and "accendi la luce" in r["message"]
+    assert np.array_equal(engine.segmenter.reference_bgr, reference)
+    assert engine.take_empty([renderer.render(brightness=0.6) for _ in range(5)])["ok"]
+
+
+def test_an_empty_house_saved_in_the_dark_does_not_stop_the_house(engine, renderer):
+    """The empty house saved in the dark before the save was refused: compared with it the lit room looked 3.5 times
+    brighter, the house took it for a dazzled webcam and waited for hours without looking. Now it adapts, asks for
+    the empty house to be saved again, and does not set the webcam again for a light it cannot follow."""
+    red = Thing(300, 100, "#d03030")
+    before = _named(engine, renderer, [red])
+    engine._empty0 = engine._empty0 * 0.09                   # as saved in the dark
+    engine._empty_level = sum(cv2.mean(engine._empty0, mask=engine.segmenter.mask)[:3]) / 3.0
+    for i in range(60):
+        tracks = engine.feed(renderer.render([red]), 20.0 + i * 0.1)
+        assert not engine.retune_wanted(20.0 + i * 0.1)
+    st = engine.status()
+    assert st["empty_dark"] and not st["adapting"] and not st["flooded"] and not st["dark"]
+    assert _same(tracks, before)
