@@ -89,6 +89,9 @@ REST_DIFF = 6                # grey levels a cell may change by and still be the
 RETUNE_S = 5.0
 ADOPT_PX = 28            # pointing at something in the web app: the empty house comes back this far around
 RETUNE_EVERY_S = 60.0
+RETUNE_MAX_S = 900.0     # a retune that did not bring the picture back near the empty house (a hall darker than the
+                         # webcam can follow) waits twice as long before the next one, up to this: on casa1 the
+                         # webcam was set again every 70 s with the same values, and the presences went every time
 NO_HAND_S = 1.0          # a difference that appeared this long after the last hand is light, never a presence
 COCO_CLASSES = ["person", "dog", "cat", "animal", "car", "object"]
 
@@ -152,6 +155,8 @@ class Engine:
         self._settle_until = 0.0                   # the webcam has just been set again: the house waits
         self._retuned_at = float("-inf")
         self.retunes = 0
+        self._retune_every = RETUNE_EVERY_S
+        self._back_since_retune = True     # the picture came near the empty house again after the last retune
         self.holes = 0
         self._clipped_since = 0.0                  # since when the light is beyond what the rooms can correct
         self._hand_since: np.ndarray | None = None # since when each pixel has been part of a hand (0: not)
@@ -173,7 +178,7 @@ class Engine:
         """The picture has stayed much darker or brighter than the empty house, with no hand and no light of
         the house just changed: the webcam must be set again."""
         return (self.ready and self.light_ok and bool(self._off_since) and now - self._off_since >= RETUNE_S
-                and (now - self._hand_at >= RETUNE_S or self._stuck) and now - self._retuned_at >= RETUNE_EVERY_S
+                and (now - self._hand_at >= RETUNE_S or self._stuck) and now - self._retuned_at >= self._retune_every
                 and not self._animated and all(now - t >= LIGHT_GLOW_S for t in self._light_at.values()))
 
     def light_retuned(self, now: float) -> None:
@@ -181,6 +186,8 @@ class Engine:
         moment. The empty house, the presences and who they are do not change."""
         self.retunes += 1
         self._retuned_at = now
+        self._retune_every = RETUNE_EVERY_S if self._back_since_retune else min(2 * self._retune_every, RETUNE_MAX_S)
+        self._back_since_retune = False
         self._off_since = self._clipped_since = 0.0
         self._hands_since, self._stuck = 0.0, False
         self._settle_until = now + LIGHT_FREEZE_S
@@ -641,6 +648,8 @@ class Engine:
         else:
             self._flooded_since = 0.0
         self._ratio = ratio
+        if RETUNE_DARK <= ratio <= RETUNE_BRIGHT and not clipped and now > self._settle_until:
+            self._back_since_retune = True
         if (ratio < RETUNE_DARK or ratio > RETUNE_BRIGHT or clipped) and (not active or self._stuck):
             self._off_since = self._off_since or now
         else:
@@ -663,7 +672,8 @@ class Engine:
             self._zone = None
         self.observations = obs
         t_rules = time.perf_counter()
-        self.tracks = self.tracker.update(obs, now, frozen=frozen, quiet_s=quiet, animated=self._animated)
+        self.tracks = self.tracker.update(obs, now, frozen=frozen, quiet_s=quiet, animated=self._animated,
+                                          hand_mask=hands if active else None)
         t_track = time.perf_counter()
         if relearn:
             self._relearn(small, fg, obs)

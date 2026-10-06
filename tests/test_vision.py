@@ -1149,3 +1149,101 @@ def test_hands_that_never_leave_are_the_light_of_the_hall(engine, renderer):
     for i in range(400):
         tracks = engine.feed(renderer.render([], hands=flickering(i)), 60 + i * 0.1)
     assert tracks == [] and engine.status()["absorbed"] >= 1 and not engine._stuck
+
+
+# ------------------------------------------------------------ a figurine moves only with a hand close to it
+def _hand_at(tr, x, y):
+    """A hand of 10 x 10 pixels over the point (x, y) of the map."""
+    mask = np.zeros((480, 640), bool)
+    px = tr.calib.image_of(np.array([[x, y]]), 20.0)[0]
+    mask[int(px[1]) - 5:int(px[1]) + 5, int(px[0]) - 5:int(px[0]) + 5] = True
+    return mask
+
+
+def test_a_figurine_moves_only_with_a_hand_close_and_settles_on_the_median(layout):
+    """On casa1 the middle of Viola's blob jumped by 15 mm back and forth while nobody touched her, and her place
+    on the map followed it."""
+    from domotiq.vision import tracker as T
+    a = _look(45, 50, 30)
+    tr = _tracker(layout, [Identity("id-a", "A", signature=list(a))])
+    t = 100.0
+    for k in range(T.SETTLE_FRAMES + 2):            # just seen: the median of its first frames, one odd one left out
+        tr.update([_blob(200 + (15 if k == 1 else 0), 60, a)], now=t, quiet_s=100)
+        t += 0.1
+    vt = next(iter(tr.tracks.values()))
+    def place(x):                                   # where a blob there stands on the map (its feet)
+        return _blob(x, 60, a).position(tr.calib, vt.category, tr.tops)
+    assert vt.settled and (vt.x, vt.y) == place(200)
+    for k in range(30):                             # its blob jumps back and forth, no hand close: it stays
+        tr.update([_blob(200 + 15 * (k % 2), 60, a)], now=t, quiet_s=100)
+        t += 0.1
+    assert (vt.x, vt.y) == place(200)
+    # a hand far away (in another room) moves nothing either
+    for k in range(10):
+        tr.update([_blob(212, 60, a)], now=t, quiet_s=0.0, hand_mask=_hand_at(tr, 500, 150))
+        t += 0.1
+    assert (vt.x, vt.y) == place(200)
+    # a hand close pushes it 40 mm: it follows; when the hand has gone, its place is the median of what is seen
+    for k in range(5):
+        tr.update([_blob(200 + 10 * k, 60, a)], now=t, quiet_s=0.0, hand_mask=_hand_at(tr, 215 + 10 * k, 60))
+        t += 0.1
+    assert not vt.settled
+    for k in range(int(T.HAND_NEAR_S / 0.1) + T.SETTLE_FRAMES + 5):
+        x = 260 + (20 if k in (7, 9) else 0)        # two frames with the arm's shadow on it
+        tr.update([_blob(x, 60, a)], now=t, quiet_s=1.0 + 0.1 * k)
+        t += 0.1
+    assert vt.settled and (vt.x, vt.y) == place(260)
+
+
+def test_a_figurine_does_not_climb_on_furniture_by_itself(layout):
+    """"Mister Brown, scendi dalla fioriera" was said again and again: his blob touched the planter now and then."""
+    from domotiq.vision import tracker as T
+    from domotiq.vision.pipeline import surfaces
+    a = _look(45, 50, 30)
+    tr = _tracker(layout, [Identity("id-a", "A", signature=list(a))])
+    tr.tops = surfaces(layout)
+    t = 100.0
+    for k in range(T.SETTLE_FRAMES + 2):            # put down next to the kitchen table
+        tr.update([_blob(60, 100, a)], now=t, quiet_s=100)
+        t += 0.1
+    vt = next(iter(tr.tracks.values()))
+    assert vt.settled and vt.on is None
+    for k in range(30):                             # its blob reaches over the table now and then: still off it
+        tr.update([_blob(60 if k % 3 else 105, 100, a)], now=t, quiet_s=100)
+        t += 0.1
+    assert vt.on is None
+    # a hand puts it on the table: it is on it once the hand has gone
+    for k in range(4):
+        tr.update([_blob(60 + 15 * k, 100, a)], now=t, quiet_s=0.0, hand_mask=_hand_at(tr, 70 + 15 * k, 100))
+        t += 0.1
+    for k in range(int(T.HAND_NEAR_S / 0.1) + T.SETTLE_FRAMES + 3):
+        tr.update([_blob(105, 97, a)], now=t, quiet_s=1.0 + 0.1 * k)
+        t += 0.1
+    assert vt.settled and vt.on == "kitchen-table"
+
+
+def test_the_presences_stay_while_the_webcam_is_set_again():
+    """Every 70 s the webcam was set again for 9 s with no frame, and every presence left the house and came back."""
+    import time
+    from domotiq.model import Track
+    from domotiq.vision.worker import VisionProcess
+    vp = object.__new__(VisionProcess)
+    vp._tracks, vp._tracks_at, vp._tuning_at = [Track("t-1", 10.0, 10.0, "person")], time.time() - 5.0, 0.0
+    assert vp.tracks() == []                          # no frame for 5 s: the vision is gone
+    vp._tuning_at = time.time() - 4.0                 # ...but it is setting the webcam: they stay
+    assert [t.id for t in vp.tracks()] == ["t-1"]
+
+
+def test_a_retune_that_does_not_help_waits_longer_and_longer(engine):
+    from domotiq.vision import engine as E
+    engine.light_retuned(100.0)
+    assert engine._retune_every == E.RETUNE_EVERY_S
+    engine.light_retuned(200.0)                       # the picture never came near the empty house again
+    engine.light_retuned(400.0)
+    assert engine._retune_every == 4 * E.RETUNE_EVERY_S
+    for k in range(10):
+        engine.light_retuned(1000.0 + k)
+    assert engine._retune_every == E.RETUNE_MAX_S
+    engine._back_since_retune = True                  # it did help: the next one is at the usual interval
+    engine.light_retuned(2000.0)
+    assert engine._retune_every == E.RETUNE_EVERY_S

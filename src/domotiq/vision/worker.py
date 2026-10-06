@@ -115,37 +115,45 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
         if c is None:
             return
         logging.info("the light of the hall changed: setting the webcam again")
-        camera.set_balance(None)
+        conn.send(("tuning", True))               # meanwhile no frame: the presences stay as they are
         try:
-            values = tune(c, measure)
-        except RuntimeError as e:
-            logging.warning("setting the webcam again failed: %s", e)
-            apply_controls(camera)                # back to the light it had
+            camera.set_balance(None)
+            try:
+                values = tune(c, measure)
+            except RuntimeError as e:
+                logging.warning("setting the webcam again failed: %s", e)
+                apply_controls(camera)            # back to the light it had
+                engine.light_retuned(time.time())
+                return
+            camera.set_balance(values["balance"])
+            lock_file.write_text(json.dumps(values))
+            camera.flush()
             engine.light_retuned(time.time())
-            return
-        camera.set_balance(values["balance"])
-        lock_file.write_text(json.dumps(values))
-        camera.flush()
-        engine.light_retuned(time.time())
+        finally:
+            conn.send(("tuning", False))
 
     def adjust() -> dict[str, Any]:
         """Let the camera find exposure and white balance on the empty house, then freeze them."""
         c: Controls | None = camera.controls
         if c is None:
             return {"ok": False, "error": "no camera"}
-        camera.set_balance(None)
+        conn.send(("tuning", True))
         try:
-            values = tune(c, measure)
-        except RuntimeError as e:
-            c.automatic()
-            return {"ok": False, "error": str(e)}
-        camera.set_balance(values["balance"])
-        lock_file.write_text(json.dumps(values))
-        camera.flush()
-        engine.light_ok = True
-        result = engine.take_empty()
-        result["camera"] = values
-        return result
+            camera.set_balance(None)
+            try:
+                values = tune(c, measure)
+            except RuntimeError as e:
+                c.automatic()
+                return {"ok": False, "error": str(e)}
+            camera.set_balance(values["balance"])
+            lock_file.write_text(json.dumps(values))
+            camera.flush()
+            engine.light_ok = True
+            result = engine.take_empty()
+            result["camera"] = values
+            return result
+        finally:
+            conn.send(("tuning", False))
 
     commands = {
         "corners": lambda p: engine.set_corners(p.get("points") or []),
@@ -273,6 +281,8 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
 
 
 # ==================================================================== parent
+TUNING_HOLD_S = 60.0    # the presences are kept at most this long while the webcam is being set again
+
 class VisionProcess(VisionLink):
     def __init__(self, paths, layout, settings, identities, device: str | None = None) -> None:
         self.paths = paths
@@ -294,6 +304,7 @@ class VisionProcess(VisionLink):
         self._lock = threading.Lock()
         self._tracks: list[Track] = []
         self._tracks_at = 0.0
+        self._tuning_at = 0.0             # the webcam is being set again (no frames): when it started, 0 when not
         self._jpeg: dict[bool, bytes | None] = {False: None, True: None}
         self._jpeg_at: dict[bool, float] = {False: 0.0, True: 0.0}
         self._status: dict[str, Any] = {}
@@ -351,7 +362,9 @@ class VisionProcess(VisionLink):
                 self._start()
                 continue
             kind = msg[0]
-            if kind == "tracks":
+            if kind == "tuning":
+                self._tuning_at = time.time() if msg[1] else 0.0
+            elif kind == "tracks":
                 self._tracks = [Track(**d) for d in msg[1]]
                 self._tracks_at = time.time()
                 self._camera = bool(msg[2].get("camera"))
@@ -421,7 +434,11 @@ class VisionProcess(VisionLink):
         return self._camera and self._proc is not None and self._proc.is_alive()
 
     def tracks(self) -> list[Track]:
-        if time.time() - self._tracks_at > 2.0:
+        now = time.time()
+        # while the webcam is set again (about ten seconds) no frame comes: the presences stay where they were,
+        # instead of all leaving the house and coming back ("arrivederci Viola, a presto Mister Brown")
+        tuning = self._tuning_at and now - self._tuning_at < TUNING_HOLD_S
+        if now - self._tracks_at > 2.0 and not tuning:
             return []
         return list(self._tracks)
 

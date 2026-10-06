@@ -65,8 +65,8 @@ SUPPRESS_S, SUPPRESS_MM = 30.0, 25.0   # where one was found, nothing new is bor
 PRESENCE_MIN, CHECK_GAP_S = 0.8, 1.0
 PRESENCE_DOUBTED, CHECK_GAP_DOUBTED_S, DOUBT_S = 0.92, 2.5, 120.0
 HIDDEN_FLAG_S = 1.0         # not seen for longer: told to the house as hidden
-ON_FRAMES = 5               # frames on the same piece of furniture before the house is told
-OFF_FRAMES = 15             # ...and off it: the edge of the bed, a shadow, do not take a figurine down and up again
+# What a figurine stands on is decided with its place, once a hand has left it: the furniture seen in most of the
+# frames that settle its place (a figurine does not climb on the planter by itself, nor get off the bed)
 # A character lying down, or on the bed, does not look quite as when it was registered: much closer to it than to
 # anybody else is enough, after a few more frames
 ID_ACCEPT_LOOSE, ID_MARGIN_LOOSE, CONFIRM_LOOSE = 0.45, 0.15, 4
@@ -102,6 +102,14 @@ PUT_DOWN_SIG = 0.7          # ...or the one new thing the hands left, even looki
 FROZEN_JUMP_MM = 30.0       # a figurine stays where it is unless a hand carries it: farther is another blob (with a
                             # hand at work: the hand took it, and it is carried), however long it was unseen
 HAND_RECENT_S = 3.6         # for this long after the last hand a figurine may stand somewhere else (pushed, put down)
+# A figurine moves on the map only when a hand comes close to it (it may be pushed, taken, put down): with no hand
+# within HAND_NEAR_MM, a shadow, the light of the hall, its blob merging with something next to it do not move it,
+# not even by a few millimetres (on casa1 the middle of a blob jumped by 15 mm back and forth while nobody touched
+# the figurine). Once the hand has left it (HAND_NEAR_S), its place is the median of the next SETTLE_FRAMES places
+# seen (about a second; see docs/decisioni.md D-60 for how many), and there it stays.
+HAND_NEAR_MM = 50.0
+HAND_NEAR_S = 0.6
+SETTLE_FRAMES = 10
 PLACE_MM = 40.0             # who stood here before: an unknown thing this close to where a character was last seen
 FRAGMENT_MM = 40.0          # an unknown blob this close to a character, coloured like it, is a piece of it
 MERGED_GROWTH = 0.5         # a figurine put down against another: their blobs are one, bigger by at least half
@@ -148,11 +156,13 @@ class VTrack:
     born: int = 0                          # the frame it was first seen in
     area: float = 0.0                      # how big its blob usually is, measured with no hand around
     on: str | None = None                  # the furniture it stands on
-    on_next: str | None = None             # ...what it seems to stand on now, and for how many frames
-    on_frames: int = 0
     misses: int = 0                        # frames in a row it did not look like the character it is named after
     presence: float = 0.0
     checked_at: float = 0.0                # when its presence was first over the threshold
+    hand_at: float = float("-inf")         # when a hand was last close to it: only then it may move on the map
+    settle: list[tuple[float, float, str | None]] = field(default_factory=list)   # places (and furniture) seen
+                                                                                   # since the hand left it
+    settled: bool = False                  # its place is fixed until a hand comes close again
 
     def to_track(self, layout, previous_room: str | None) -> Track:
         room = layout.locate(self.x, self.y, previous_room)
@@ -273,10 +283,12 @@ class Tracker:
 
     # ------------------------------------------------------------ update
     def update(self, observations: list[Observation], now: float | None = None, frozen: bool = False,
-               quiet_s: float = float("inf"), animated: set[str] | None = None) -> list[Track]:
+               quiet_s: float = float("inf"), animated: set[str] | None = None,
+               hand_mask: np.ndarray | None = None) -> list[Track]:
         """`frozen`: a hand at work or the light changing, nothing is born or lost; `quiet_s`: seconds since
-        the last hand; `animated`: rooms whose light is animated (a party). An observation may start a new
-        track only if its extra["birth"] allows it."""
+        the last hand; `animated`: rooms whose light is animated (a party); `hand_mask`: the pixels of the
+        hands in this frame (only figurines close to them may move). An observation may start a new track only
+        if its extra["birth"] allows it."""
         now = time.time() if now is None else now
         self._frozen = frozen
         self._quiet_s = quiet_s
@@ -287,6 +299,7 @@ class Tracker:
         hands = [o for o in observations if o.hand]
         things = [o for o in observations if not o.hand]
         self.hands = hands
+        self._hands_near(hand_mask, now)
         self._associate(things, now, births=not frozen)
         self._carry(hands, now)
         self._remember(hands, now)
@@ -460,25 +473,9 @@ class Tracker:
             t.jumps.append(now)            # jumped, or seen again after a frame without it
         t.raw, t.frame = (cx, cy), self.frame
         fid = o.standing_on(self.calib, self.tops)[1] if t.category != CAR and o.area_mm2 < 6000 else None
-        t.on_frames = t.on_frames + 1 if fid == t.on_next else 1
-        t.on_next = fid
-        if t.on_frames >= (ON_FRAMES if fid is not None else OFF_FRAMES):
-            t.on = fid                     # some frames alike: no flicker on the edge of the bed
         if t.jumps and now - t.jumps[0] > CAR_SURE_S:     # kept as long as the longest look back (the car's)
             t.jumps = [j for j in t.jumps if now - j <= CAR_SURE_S]
-        dt = max(now - t.last_seen, 1e-3)
-        if t.hits:
-            vx, vy = (x - t.x) / dt, (y - t.y) / dt
-            t.vx, t.vy = 0.6 * t.vx + 0.4 * vx, 0.6 * t.vy + 0.4 * vy
-            # a little smoothing on still figurines, none when they move
-            speed = float(np.hypot(t.vx, t.vy))
-            t.moving = speed > 15.0
-            k = 0.85 if t.moving else 0.45
-            x, y = t.x + k * (x - t.x), t.y + k * (y - t.y)
-        # nothing moves by itself: once it has settled, a figurine keeps its place on the map until a hand has been
-        # around (a shadow or a changing light on its blob does not move it)
-        if not (t.hits < NEW_HITS or now - t.since < NEW_S or self._frozen or self._quiet_s <= HAND_RECENT_S):
-            x, y = t.x, t.y
+        x, y = self._place(t, x, y, fid, now)
         t.x, t.y = x, y
         t.obs = o
         t.last_seen = now
@@ -491,6 +488,51 @@ class Tracker:
             del t.history[:10]
         if self._quiet_s > 5.0:
             t.area = o.area_mm2 if not t.area else 0.8 * t.area + 0.2 * o.area_mm2
+
+    def _place(self, t: VTrack, x: float, y: float, fid: str | None, now: float) -> tuple[float, float]:
+        """Where a figurine is on the map, from where its blob is now (and `fid`, the furniture it seems to stand
+        on): it follows what is seen only while a hand is close to it; then the median of the first SETTLE_FRAMES
+        places seen with no hand around (a new figurine too), and the furniture seen most in them; after that it
+        does not move by itself."""
+        if t.hits and now - t.hand_at <= HAND_NEAR_S:
+            dt = max(now - t.last_seen, 1e-3)
+            vx, vy = (x - t.x) / dt, (y - t.y) / dt
+            t.vx, t.vy = 0.6 * t.vx + 0.4 * vx, 0.6 * t.vy + 0.4 * vy
+            # a little smoothing on still figurines, none when they move
+            t.moving = float(np.hypot(t.vx, t.vy)) > 15.0
+            k = 0.85 if t.moving else 0.45
+            t.settle.clear()
+            t.settled = False
+            return t.x + k * (x - t.x), t.y + k * (y - t.y)
+        t.vx = t.vy = 0.0
+        t.moving = False
+        if t.settled:
+            return t.x, t.y                      # nothing moves by itself
+        t.settle.append((x, y, fid))
+        if len(t.settle) >= SETTLE_FRAMES:
+            t.settled = True
+            fids = [f for _, _, f in t.settle]
+            t.on = max(dict.fromkeys(fids), key=fids.count)
+        xs, ys, _ = zip(*t.settle)
+        return float(np.median(xs)), float(np.median(ys))
+
+    def _hands_near(self, hand_mask: np.ndarray | None, now: float) -> None:
+        """The figurines a hand is close to in this frame (HAND_NEAR_MM around them, looked for in the picture):
+        only these may move on the map."""
+        if hand_mask is None or not hand_mask.any():
+            return
+        h, w = hand_mask.shape[:2]
+        for t in self.tracks.values():
+            if t.carried:
+                t.hand_at = now
+                continue
+            pts = self.calib.image_of(np.array([[t.x, t.y], [t.x + HAND_NEAR_MM, t.y],
+                                                [t.x, t.y + HAND_NEAR_MM]]), 20.0)
+            r = int(max(4.0, np.hypot(*(pts[1] - pts[0])), np.hypot(*(pts[2] - pts[0]))))
+            cx, cy = int(round(pts[0][0])), int(round(pts[0][1]))
+            x0, x1, y0, y1 = max(0, cx - r), min(w, cx + r + 1), max(0, cy - r), min(h, cy + r + 1)
+            if x0 < x1 and y0 < y1 and hand_mask[y0:y1, x0:x1].any():
+                t.hand_at = now
 
     def _carry(self, hands: list[Observation], now: float) -> None:
         """A track that vanished under a hand is carried, not gone."""
@@ -505,6 +547,9 @@ class Tracker:
                 if bx - 8 <= px[0] <= bx + bw + 8 and by - 8 <= px[1] <= by + bh + 8:
                     t.carried, t.carried_since = True, now
                     t.moving = True
+                    t.hand_at = now
+                    t.settle.clear()
+                    t.settled = False
                     if t.identity:
                         self._touched.add(t.identity)      # in a hand: it may be put down anywhere
                     break
@@ -669,6 +714,8 @@ class Tracker:
         t.carried = False
         t.x, t.y, t.vx, t.vy = best.x, best.y, 0.0, 0.0
         t.raw, t.jumps = None, []
+        t.settle.clear()
+        t.settled, t.on = True, best.on          # hidden behind the other one: where it is, until they part
         t.last_seen = now
         return True
 

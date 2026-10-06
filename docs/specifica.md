@@ -252,6 +252,8 @@ Lo stesso file serve alla piantina della webapp, alla visione (stanze, zone escl
 - Senza foto: dimensione e forma viste dall'alto (l'auto è grande; persona e animale si distinguono per l'allungamento dovuto all'altezza).
 - La categoria proposta si conferma sempre ("Sembra un cane: giusto?").
 
+Posizioni sulla piantina (D-60): una statuina si sposta solo con una mano entro 5 cm; quando la mano se ne va, il suo posto è la mediana di 10 immagini, poi resta fisso, e così il mobile su cui sta. Mentre la webcam si regola le presenze restano; una regolazione che non aiuta fa aspettare il doppio alla successiva, fino a 15 minuti.
+
 ### 8.6 Avvisi di riconoscimento (D15)
 Il riconoscimento non dipende dal modello dell'auto né dai colori scelti, ma segnala subito:
 - colore troppo vicino al pavimento, alle pareti o ai prati;

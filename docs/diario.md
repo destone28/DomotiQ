@@ -296,3 +296,7 @@ In ordine:
   - la casa ha sentito due volte la propria voce mentre aspettava una risposta;
   - un discorso fatto vicino alla casa è stato preso per "è un'auto".
   Dopo l'aggiornamento delle 9:49, il registro (ora con le frasi dette) ha mostrato altri due casi: "Non so che ore sono" chiesto a ogni riavvio dell'applicazione e "un'auto nuova in camera". Corretti tutti, con un test per ciascuno.
+- **I personaggi fermi sulla piantina** (D-60). Il database delle posizioni ha mostrato perché ieri sera tutti uscivano e rientravano. Ogni 70 secondi la webcam si regolava di nuovo, sempre con gli stessi valori, e per 9 secondi la casa non riceveva immagini: dopo 2 secondi toglieva tutti dalla piantina. In più le posizioni seguivano ogni immagine: la macchia di Viola saltava di 15 mm senza che nessuno la toccasse.
+  - Ora una statuina si sposta solo se una mano le arriva entro 5 cm.
+  - Dopo, il suo posto è la mediana di 10 immagini. Il numero è misurato su quattro registrazioni: con 10 l'errore resta entro 2 mm, con 8 arriva a 6.
+  - Durante la regolazione della webcam le presenze restano dove sono, e le regolazioni che non servono si diradano fino a una ogni 15 minuti.

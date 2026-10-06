@@ -515,3 +515,31 @@ Con la voce pulita gli errori in italiano scendono da 17,7% a 9,2%. Le voci sint
   - dentro una stanza la casa non chiede mai di "un'auto nuova" (dopo il riavvio l'aveva chiesto per la camera): la chiama "un oggetto".
 
 **Perché:** richiesta di Emilio ("ricontrolla gli ultimi log di frasi dette e ricevute e sistema le frasi"). Ogni caso ha un test in `tests/test_exchanges.py`.
+
+### D-60 — I personaggi fermi sulla piantina: si spostano solo con una mano vicina (6/10)
+**Scelta:**
+- **Solo con una mano vicina.** La posizione di una statuina sulla piantina cambia, anche di un millimetro, solo se una mano è entro 5 cm da lei (`HAND_NEAR_MM`, cercata nei pixel della mano) o la sta portando. Prima bastava una mano in qualsiasi punto della casa, o un cambio di luce, perché tutte le statuine seguissero la propria macchia.
+- **La mediana dopo la mano.** Quando la mano se ne va (dopo 0,6 s), il posto diventa la mediana delle prime 10 posizioni viste (`SETTLE_FRAMES`) e resta fisso. Il mobile su cui sta (letto, fioriera) si decide insieme, contando quello visto più volte in quelle immagini; senza una mano non cambia. Lo stesso vale per una statuina appena comparsa.
+- **Le presenze durante la regolazione della webcam.** Mentre la webcam si regola (circa 9 s senza immagini) il processo della visione lo dice, e la casa tiene le presenze dove sono; prima le toglieva dopo 2 s.
+- **Le regolazioni inutili si diradano.** Una regolazione che non riporta l'immagine vicina alla casa vuota fa aspettare il doppio alla successiva, fino a 15 minuti.
+
+**Perché:** richiesta di Emilio. Nel database delle posizioni di casa1 (un campione al secondo) per la sera del 5/10:
+- **Tutti sparivano ogni 70 s.** Tutte le presenze sparivano insieme per 8-9 s, proprio durante le regolazioni della webcam ("the light of the hall changed", sempre con gli stessi valori: esposizione 625, guadagno 64). Il narratore salutava tutti e poi li riaccoglieva.
+- **Le posizioni saltavano.** Il centro della macchia di Viola, in cucina, saltava tra x = 47 e x = 62 mm, quello di Mister Green, sul vialetto vicino alla fioriera, di 30 mm, e la piantina li seguiva.
+
+**Quante immagini.** `scripts/settle_bench.py` su quattro registrazioni di casa1 (10 minuti a 9 immagini al secondo e tre più brevi), 21 periodi di quiete: distanza tra la mediana delle prime N immagini dopo la mano e il posto in cui la statuina resta poi ferma.
+
+| N | mediana | 90% | 95% | massimo |
+|---|---|---|---|---|
+| 1 | 0,9 mm | 22 mm | 121 mm | 150 mm |
+| 3 | 0,6 mm | 19 mm | 22 mm | 121 mm |
+| 5 | 0,5 mm | 1,9 mm | 2,9 mm | 11 mm |
+| 8 | 0,4 mm | 1,1 mm | 2,1 mm | 6,4 mm |
+| **10** | **0,3 mm** | **0,9 mm** | **1,5 mm** | **2,0 mm** |
+| 15 | 0,2 mm | 0,7 mm | 0,9 mm | 1,3 mm |
+
+Le prime immagini dopo la mano possono essere molto storte (l'ombra del braccio, la statuina che oscilla). Con 10 la mediana le scarta tutte e l'errore non supera mai 2 mm, a fronte di una statuina larga 20-30 mm. Oltre, il guadagno è sotto il millimetro e il posto arriva più tardi. Le immagini vengono analizzate comunque, quindi il costo di calcolo è nullo: conta solo il tempo, circa 1,1 s a 9 immagini al secondo.
+
+**Risultato** (le stesse registrazioni, prima e dopo):
+- **Spostamenti senza una mano vicina.** Nella registrazione lunga sono scesi da 338 a 41 mm, e quelli rimasti cadono tutti nel secondo in cui il posto si fissa; nella breve da 117 a 51 mm. Le statuine col posto già fissato si sono mosse in tutto di 1,5 mm in 10 minuti.
+- **Riconoscimento.** Chi è riconosciuto, dove e quando è identico a prima.
