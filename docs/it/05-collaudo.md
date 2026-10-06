@@ -39,7 +39,7 @@ Apri **Altro → Diagnostica**.
 
 ## 4. Luci
 
-In **Comandi → Luci** scegli una stanza, un colore e **Accendi**; ripeti per tutte e sei le stanze (nel locale tecnico la luce è la matrice LED della UNO Q, con il colore sul LED RGB accanto), poi scegli *Tutte le stanze* e **Automatico** per restituire le luci alla casa. Una luce accesa a mano resta accesa per due minuti; **Spegni** tiene una stanza al buio per un minuto.
+In **Comandi → Luci** scegli una stanza e tocca un colore: la luce si accende subito. Ripeti per tutte e sei le stanze (nel locale tecnico la luce è la matrice LED della UNO Q, con il colore sul LED RGB accanto), poi scegli *Tutte le stanze* e tocca **A** per restituire le luci alla casa. Una luce accesa a mano resta accesa per due minuti; il cerchio barrato tiene una stanza al buio per un minuto.
 
 ## 5. Tasti e LED
 

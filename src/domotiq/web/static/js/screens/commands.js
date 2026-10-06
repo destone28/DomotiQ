@@ -30,7 +30,9 @@ async function cmd(name, body) {
 
 export function mount(root) {
   const s = store.state;
-  let room = "all", color = COLORS[0], effect = "solid", brightness = 60;
+  // every choice reaches the house at once: a colour turns the light on, "auto" gives it back to the house, "off"
+  // turns it off; the effect and the brightness change the light already on
+  let room = "all", color = "auto", effect = "solid", brightness = 60;
   const rooms = s.layout.lights.map(l => l.room);
   root.innerHTML = `
     ${pageHead(t("cmd.title"), t("cmd.lead"))}
@@ -47,14 +49,10 @@ export function mount(root) {
         ${rooms.map(r => `<option value="${r}">${esc(roomName(s, r))}</option>`).join("")}
       </select></label>
       <div class="field"><span class="muted small">${t("cmd.color")}</span><div class="swatches" id="colors"></div></div>
+      <p class="muted small">${t("cmd.lights_lead")}</p>
       <label class="field"><span>${t("cmd.effect")}</span><select id="effect">
         ${EFFECTS.map(e => `<option value="${e}">${t("effect." + e)}</option>`).join("")}</select></label>
       <label class="field"><span>${t("cmd.brightness")}</span><input type="range" min="5" max="100" value="60" id="bri"></label>
-      <div class="grid3">
-        <button class="btn primary" id="on">${t("cmd.light_on")}</button>
-        <button class="btn" id="off">${t("cmd.light_off")}</button>
-        <button class="btn ghost" id="auto">${t("cmd.light_auto")}</button>
-      </div>
       <label class="row spread" style="margin-top:12px"><span>${t("cmd.follow")}</span>
         <span class="switch"><input type="checkbox" id="follow" ${store.state.follow !== false ? "checked" : ""}><span></span></span></label>
     </div>
@@ -79,16 +77,44 @@ export function mount(root) {
     </div>`;
 
   const $ = (q) => root.querySelector(q);
-  $("#colors").innerHTML = COLORS.map(c => `<button data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join("");
+  $("#colors").innerHTML =
+    `<button data-c="auto" class="auto" title="${t("cmd.swatch_auto")}" aria-label="${t("cmd.swatch_auto")}">A</button>` +
+    `<button data-c="off" class="off" title="${t("cmd.swatch_off")}" aria-label="${t("cmd.swatch_off")}"></button>` +
+    COLORS.map(c => `<button data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join("");
   const selColor = () => $("#colors").querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.c === color));
-  selColor();
-  $("#colors").onclick = (e) => { const b = e.target.closest("button"); if (b) { color = b.dataset.c; selColor(); } };
-  $("#room").onchange = (e) => { room = e.target.value; };
-  $("#effect").onchange = (e) => { effect = e.target.value; };
-  $("#bri").oninput = (e) => { brightness = +e.target.value; };
-  $("#on").onclick = () => cmd("light", { room, color, effect, brightness });
-  $("#off").onclick = () => cmd("lights_off", { room });
-  $("#auto").onclick = () => cmd("lights_auto", { room });
+  const lit = () => color !== "auto" && color !== "off";
+  const apply = () => {
+    if (color === "auto") cmd("lights_auto", { room });
+    else if (color === "off") cmd("lights_off", { room });
+    else cmd("light", { room, color, effect, brightness });
+  };
+  // the room chosen shows how its light is now: lit by hand (its colour), off by hand, or left to the house
+  const showRoom = () => {
+    const light = room === "all" ? null : s.layout.lights.find(l => l.room === room);
+    const now = light && store.state.lights ? store.state.lights[light.id] : null;
+    if (now) {
+      if (now.source !== "manual") color = "auto";
+      else if (now.effect === "off") color = "off";
+      else {
+        color = now.color;
+        effect = EFFECTS.includes(now.effect) ? now.effect : "solid";
+        brightness = now.brightness;
+      }
+    }
+    $("#effect").value = effect;
+    $("#bri").value = brightness;
+    selColor();
+  };
+  showRoom();
+  $("#colors").onclick = (e) => { const b = e.target.closest("button"); if (b) { color = b.dataset.c; selColor(); apply(); } };
+  $("#room").onchange = (e) => { room = e.target.value; showRoom(); };
+  $("#effect").onchange = (e) => { effect = e.target.value; if (lit()) apply(); };
+  let briTimer = null;
+  $("#bri").oninput = (e) => {
+    brightness = +e.target.value;
+    clearTimeout(briTimer);
+    if (lit()) briTimer = setTimeout(apply, 250);
+  };
   $("#follow").onchange = (e) => cmd("follow", { on: e.target.checked });
   $("#party").onclick = () => cmd("party");
   $("#grill").onclick = () => cmd(store.state.grill ? "grill_stop" : "grill");
@@ -113,7 +139,13 @@ export function mount(root) {
     if (document.activeElement !== $("#vol")) $("#vol").value = b.volume ?? 70;
   };
   render();
-  return { update(type) { if (["house", "hello"].includes(type)) render(); } };
+  return {
+    update(type) {
+      if (["house", "hello"].includes(type)) render();
+      // a light that went back to the house (two minutes are up) shows it, unless the brightness is being moved
+      if (type === "lights" && room !== "all" && document.activeElement !== $("#bri")) showRoom();
+    },
+  };
 }
 
 function roomName(s, id) {

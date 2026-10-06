@@ -142,11 +142,11 @@ During a party the microcontroller runs the light show by itself, in time with t
 
 | Scene | Lights |
 |---|---|
-| **Normal** | follow-me lights |
-| **Cinema** | the living room dim blue, everything else off |
-| **Relax** | follow-me lights, warm and dim |
-| **Night** | a courtesy light: follow-me lights, orange and very dim |
-| **Away** | everything off; the default *Intruder while Away* rule watches the house |
+| **Normal** | the lights follow people, in their favourite colour if they told the house |
+| **Cinema** | in the living room the flickering blue glow of a screen (*Sparkle*), every other room off, even where people are |
+| **Relax** | a fire in the living room (*Fire*), an orange light breathing in the bedroom; warm dim lights where people are |
+| **Night** | everything off but a small orange night light in the bathroom; whoever gets up finds a very dim orange courtesy light |
+| **Away** | the empty house looks lived in: one room at a time (kitchen, living room, bedroom or bathroom) lights up for 15-30 seconds, then another one. The default *Intruder while Away* rule watches the house |
 
 Scenes are chosen from **Controls**, by voice ("Scenario cinema", "Good night") or by a rule, and the house says the name of the new scene.
 

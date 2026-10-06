@@ -300,3 +300,4 @@ In ordine:
   - Ora una statuina si sposta solo se una mano le arriva entro 5 cm.
   - Dopo, il suo posto è la mediana di 10 immagini. Il numero è misurato su quattro registrazioni: con 10 l'errore resta entro 2 mm, con 8 arriva a 6.
   - Durante la regolazione della webcam le presenze restano dove sono, e le regolazioni che non servono si diradano fino a una ogni 15 minuti.
+- **Scenari e luci dalla webapp** (D-61). Gli scenari ora si vedono anche a casa vuota: lo schermo del cinema in soggiorno, il caminetto del relax, la lucina della notte in bagno, e in modalità Via le stanze che si accendono a turno come se ci fosse qualcuno. Nella webapp le luci non hanno più i tasti Accendi, Spegni e Automatico: un colore accende subito, **A** restituisce la stanza alla casa, il cerchio barrato la spegne.

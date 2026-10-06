@@ -170,6 +170,10 @@ input[type=color] { width: 56px; height: 40px; border: 1px solid var(--line); bo
 .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
 .swatches button { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); }
 .swatches button.sel { box-shadow: 0 0 0 3px var(--primary); }
+/* "A": the house decides; the crossed circle: off */
+.swatches button.auto { background: var(--surface); color: var(--text); font-weight: 700; font-size: 15px; }
+.swatches button.off { background: linear-gradient(135deg, transparent 45%, var(--muted) 45%, var(--muted) 55%, transparent 55%),
+  #111; }
 
 .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 14px; }
 .kv dt { color: var(--muted); }

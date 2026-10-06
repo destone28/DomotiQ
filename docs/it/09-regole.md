@@ -142,11 +142,11 @@ Durante una festa il microcontrollore gestisce da solo lo spettacolo di luci, a 
 
 | Scenario | Luci |
 |---|---|
-| **Normale** | luci che seguono le persone |
-| **Cinema** | il soggiorno in un blu tenue, tutto il resto spento |
-| **Relax** | luci che seguono le persone, calde e tenui |
-| **Notte** | una luce di cortesia: luci che seguono le persone, arancioni e molto tenui |
-| **Via** | tutto spento; la regola di partenza *Intruso con la casa in modalità Via* sorveglia la casa |
+| **Normale** | le luci seguono le persone, nel loro colore preferito se l'hanno detto alla casa |
+| **Cinema** | in soggiorno il bagliore azzurro e tremolante di uno schermo (*Scintille*), tutte le altre stanze spente, anche dove c'è gente |
+| **Relax** | in soggiorno un caminetto (*Fuoco*), in camera una luce arancione che respira; dove c'è gente luci calde e tenui |
+| **Notte** | tutto spento tranne una lucina arancione in bagno; chi si alza trova una luce di cortesia arancione molto tenue |
+| **Via** | la casa vuota sembra abitata: una stanza alla volta (cucina, soggiorno, camera o bagno) si accende per 15-30 secondi, poi un'altra. La regola di partenza *Intruso con la casa in modalità Via* sorveglia la casa |
 
 Gli scenari si scelgono da **Comandi**, a voce ("Scenario cinema", "Good night") o con una regola, e la casa dice il nome del nuovo scenario.
 

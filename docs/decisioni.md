@@ -543,3 +543,19 @@ Le prime immagini dopo la mano possono essere molto storte (l'ombra del braccio,
 **Risultato** (le stesse registrazioni, prima e dopo):
 - **Spostamenti senza una mano vicina.** Nella registrazione lunga sono scesi da 338 a 41 mm, e quelli rimasti cadono tutti nel secondo in cui il posto si fissa; nella breve da 117 a 51 mm. Le statuine col posto già fissato si sono mosse in tutto di 1,5 mm in 10 minuti.
 - **Riconoscimento.** Chi è riconosciuto, dove e quando è identico a prima.
+
+### D-61 — Scenari che si riconoscono a colpo d'occhio; le luci della webapp senza tasti (6/10)
+**Scelta:**
+- **Ogni scenario ha un aspetto suo anche a casa vuota.**
+  - **Normale:** le luci seguono le persone.
+  - **Cinema:** il bagliore azzurro e tremolante di uno schermo in soggiorno (effetto *Scintille*), il resto spento.
+  - **Relax:** un caminetto in soggiorno (*Fuoco*) e una luce arancione che respira in camera.
+  - **Notte:** una lucina arancione all'8% in bagno.
+  - **Via:** una stanza alla volta si accende per 15-30 secondi, come se in casa ci fosse qualcuno (`simulate` in `scenes.py`, `House._simulate_presence`). La regola dell'intruso resta.
+- **Le luci della webapp senza tasti.** Spariscono **Accendi**, **Spegni** e **Automatico**: ogni scelta arriva subito alla casa.
+  - Un colore accende la luce.
+  - Due cerchi in più fra i colori: **A** restituisce la stanza alla casa, il cerchio barrato la spegne.
+  - Effetto e luminosità cambiano la luce già accesa; la luminosità arriva dopo 250 ms di pausa.
+  - Scegliendo una stanza i controlli mostrano com'è la sua luce in quel momento.
+
+**Perché:** richiesta di Emilio. Prima, senza statuine in casa, Normale, Relax, Notte e Via erano tutti spenti, e Cinema si distingueva solo per una luce blu tenue.

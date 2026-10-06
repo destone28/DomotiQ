@@ -292,6 +292,32 @@ def test_intruder_rule_only_while_away(env):
     assert any(c[0] == "say" and "Intruso" in c[1] for c in env.executor.calls)
 
 
+def test_every_scene_looks_different_with_nobody_home(env):
+    """Normal, cinema, relax, night and away: before, with no figurine in the house, four of them were all dark."""
+    def lit():
+        return {k: (v["effect"], v["color"]) for k, v in env.lights.state().items() if v["effect"] != "off"}
+    looks = {}
+    for scene in ("normal", "cinema", "relax", "night"):
+        env.house.set_scene(scene)
+        env.house.tick(1000.0)
+        looks[scene] = lit()
+    assert looks["normal"] == {}                                    # the lights follow people
+    assert looks["cinema"] == {"living": ("sparkle", "#3a5cff")}    # the glow of a screen
+    assert looks["relax"]["living"][0] == "fire" and looks["relax"]["bedroom"][0] == "breathe"
+    assert looks["night"] == {"bathroom": ("solid", "#ff7a30")}     # a night light
+    # away: one room at a time lights up, as if somebody were in, then another one
+    env.house.set_scene("away")
+    env.house.tick(2000.0)
+    first = lit()
+    assert len(first) == 1 and next(iter(first)) in ("kitchen", "living", "bedroom", "bathroom")
+    env.house.tick(2000.0 + 31.0)
+    second = lit()
+    assert len(second) == 1 and second != first
+    env.house.set_scene("normal")                                   # nothing of it is left
+    env.house.tick(2100.0)
+    assert lit() == {}
+
+
 def test_alarm_of_a_one_off_event_ends_by_itself(env):
     rule = {"id": "r-x", "name": {"it": "x", "en": "x"}, "alert": True,
             "when": {"type": "enter_room", "room": "kitchen"},

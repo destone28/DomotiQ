@@ -39,7 +39,7 @@ Open **More → Diagnostics**.
 
 ## 4. Lights
 
-In **Controls → Lights**, choose a room, a colour and **On**; repeat for all six rooms (in the utility room the light is the LED matrix of the UNO Q, with the colour on the RGB LED next to it), then choose *All rooms* and **Automatic** to give the lights back to the house. A light switched on by hand stays on for two minutes; **Off** keeps a room dark for one minute.
+In **Controls → Lights**, choose a room and tap a colour: the light turns on at once. Repeat for all six rooms (in the utility room the light is the LED matrix of the UNO Q, with the colour on the RGB LED next to it), then choose *All rooms* and tap **A** to give the lights back to the house. A light turned on by hand stays on for two minutes; the crossed circle keeps a room dark for one minute.
 
 ## 5. Buttons and LEDs
 

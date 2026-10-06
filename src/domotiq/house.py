@@ -11,6 +11,7 @@ those events instead of looking at the tracks themselves.
 
 from __future__ import annotations
 
+import random
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -60,6 +61,9 @@ class House:
             "bathroom": {"t": None, "rh": None, "ts": 0.0},
         }
         self.scene = "normal"
+        self._lit_room: str | None = None   # Away: the room lit now, as if somebody were in, and until when
+        self._lit_until = 0.0
+        self._rng = random.Random(7)
         self.grill_on = False
         self.party_on = False
         self.climate = "normal"
@@ -332,6 +336,7 @@ class House:
             return False
         self.scene = scene
         self.lights.clear_prefix("scene")
+        self._lit_room, self._lit_until = None, 0.0
         for room, req in SCENES[scene].get("rooms", {}).items():
             self.lights.set(room, "scene", LightRequest(req.get("effect", "solid"), req["color"],
                                                         req.get("brightness", 40), priority=SCENE))
@@ -345,6 +350,21 @@ class House:
         self._now = now
         self._update_follow(now)
         self._update_cars(now)
+        self._simulate_presence(now)
+
+    def _simulate_presence(self, now: float) -> None:
+        """Away: one room at a time lights up for a while, then another one, as if somebody were in."""
+        sim = SCENES.get(self.scene, {}).get("simulate")
+        if not sim or now < self._lit_until:
+            return
+        if self._lit_room:
+            self.lights.clear(self._lit_room, "scene")
+        rooms = [r for r in sim["rooms"] if r != self._lit_room and self.layout.light_of_room(r) is not None]
+        self._lit_room = self._rng.choice(rooms) if rooms else None
+        if self._lit_room:
+            self.lights.set(self._lit_room, "scene", LightRequest("solid", sim["color"], sim["brightness"],
+                                                                  priority=SCENE))
+        self._lit_until = now + self._rng.uniform(*sim["every_s"])
 
     # ================================================================ sensors
     def on_thermo(self, index: int, temp: float, rh: float, now: float | None = None) -> None:

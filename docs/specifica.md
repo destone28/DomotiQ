@@ -428,7 +428,7 @@ Allarmi e vincoli → party → scenario → regole → luci che seguono. Il liv
 Le regole d'allarme contano solo le presenze certe: un personaggio noto (confermato o riconosciuto bene) o una cosa sconosciuta ferma e ben visibile da almeno 6 s (D-25). L'allarme si inserisce e si disinserisce come un antifurto: disinserito, le regole d'allarme non scattano e quelle in corso si spengono; reinserito, chi è già in un posto sorvegliato viene notato di nuovo (D-27). Notifica rossa per le regole che suonano l'allarme o mandano una notifica di tipo allarme, ambra per le altre.
 
 ### 11.8 Scenari
-Normale (luci che seguono), Cinema (soggiorno blu tenue, resto spento), Relax (luci calde tenui dove c'è gente), Notte (tutto spento), Via (tutto spento). Si scelgono dalla webapp o a voce; la casa ne dice il nome.
+Ogni scenario si riconosce anche a casa vuota (D-61): Normale (luci che seguono), Cinema (bagliore azzurro tremolante di uno schermo in soggiorno, resto spento), Relax (caminetto in soggiorno, luce arancione che respira in camera, luci calde tenui dove c'è gente), Notte (lucina arancione in bagno, luce di cortesia molto tenue), Via (una stanza alla volta accesa per 15-30 s, come se in casa ci fosse qualcuno). Si scelgono dalla webapp o a voce; la casa ne dice il nome.
 
 ### 11.9 Sicurezza delle luci
 Mai più di 3 lampeggi al secondo, in nessun effetto.
