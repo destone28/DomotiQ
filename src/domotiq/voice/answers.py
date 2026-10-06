@@ -161,6 +161,12 @@ def summary(ctx: "Context", lang: str) -> str:
     parts = []
     if people:
         where = [f"{describe(ctx, t, lang)} {room(ctx, t.room, lang)}" for t in people[:5]]
+        if len(people) > 5:                   # "7 persone" and five said: the others are told too
+            more = len(people) - 5
+            if lang == "it":
+                where.append("un'altra persona" if more == 1 else f"altre {more} persone")
+            else:
+                where.append("one more person" if more == 1 else f"{more} more people")
         if lang == "it":
             parts.append(f"In casa ci {'è' if len(people) == 1 else 'sono'} {len(people)} "
                          f"{'persona' if len(people) == 1 else 'persone'}: {join(where, lang)}.")

@@ -18,7 +18,11 @@ the character to get down at once.
 
 What it has said about a character it does not say again while that
 character stays where it was (a figurine seen again after a shadow, its
-name found again, the edge of the bed): only a real move is news.
+name found again, the edge of the bed): only a real move is news. A move
+from one room to another always is; coming into sight, going out of it or
+getting on a piece of furniture in the same room is not, when it was said
+less than ten minutes before (a figurine at the edge of the picture comes
+and goes, and "scendi dalla fioriera" was said every minute).
 """
 
 from __future__ import annotations
@@ -48,6 +52,7 @@ class Narrator:
         self._lines: list[tuple[float, str, dict[str, str]]] = []   # (when, track, line)
         self._hushed: set[str] = set()     # newcomers just named aloud: the dialogue already said it
         self._told: dict[str, tuple[tuple, float]] = {}    # name -> ((room, furniture) last said, when)
+        self._history: dict[str, dict[tuple, float]] = {}  # name -> {(room, furniture) said: when}
         bus = self.ctx.bus
         bus.subscribe("room_enter", self._on_enter)
         bus.subscribe("room_exit", self._on_exit)
@@ -148,15 +153,20 @@ class Narrator:
         it, en = V.said_each(f"narrator.{key}", table, {"name": name, **it_values}, {"name": name, **en_values})
         return {"it": it, "en": en}
 
-    def _again(self, name: str | None, where: tuple, now: float) -> bool:
-        """Already said, a moment ago: this character, in this room and on this furniture. Otherwise it is news, and
-        remembered as the last thing said about that character."""
+    def _again(self, name: str | None, where: tuple, now: float, moved: bool = True) -> bool:
+        """Already said, a moment ago: this character, in this room and on this furniture (the last thing said
+        about it, or, when it did not move from one room to another, anything said in the last REPEAT_S).
+        Otherwise it is news, and remembered."""
         if not name:
             return False
         last = self._told.get(name)
         if last is not None and last[0] == where and now - last[1] < REPEAT_S:
             return True
+        said = self._history.setdefault(name, {})
+        if not moved and now - said.get(where, float("-inf")) < REPEAT_S:
+            return True
         self._told[name] = (where, now)
+        said[where] = now
         return False
 
     def _add(self, key: str, line: dict[str, str], now: float | None = None) -> None:
@@ -181,7 +191,9 @@ class Narrator:
                 t = self.ctx.house.tracks.get(track)
                 on = t.on if t is not None and move.get("to") is not None else None
                 line = self.line(move, on)
-                if line and not self._again(move.get("name"), (move.get("to"), on), now):
+                moved = move.get("from") not in OUTSIDE and move.get("to") not in OUTSIDE and \
+                    move.get("from") != move.get("to")
+                if line and not self._again(move.get("name"), (move.get("to"), on), now, moved):
                     self._add(track, line, now)
         self._lines = [x for x in self._lines if now - x[0] < STALE_S]
         if not self._lines or not self._quiet():

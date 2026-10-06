@@ -409,6 +409,8 @@ def parse(form: str, sentence: str, names: list[str], confidence: float = 1.0) -
         if said and _kind_of(normalize(said)):
             return Reply("kind", kind or _kind_of(normalize(said)), None, "llm")   # "name Gatto": a cat
         return Reply("other", source="llm")
+    if head == "kind" and not kinds and not name:
+        return Reply("other", source="llm")             # what it is was never said: talk nearby ("...del modello")
     if kind and head != "name":
         return Reply("kind", kind, name, "llm")
     if name:
@@ -463,6 +465,7 @@ class Dialogue:
     def __init__(self, voice: "Voice") -> None:
         self.voice = voice
         self.ctx = voice.ctx
+        self.heard = False              # in the last dialogue somebody said something, whatever it was
 
     async def interpret(self, text: str) -> Reply:
         voice = self.voice
@@ -490,6 +493,7 @@ class Dialogue:
         pending: str | None = None      # a new name waiting for a yes
         prompt: tuple[str, str] | None = None
         others = silences = 0
+        self.heard = False
         for _ in range(MAX_TURNS):
             if prompt:
                 await voice.reply(*prompt)
@@ -498,6 +502,7 @@ class Dialogue:
             if cid not in house.confirmations or spoke:
                 return                  # answered on a phone, or someone pressed Talk
             r = await self.interpret(text)
+            self.heard = self.heard or r.kind != "silence"
             if cid not in house.confirmations:
                 return
             ask = ask_name(category)

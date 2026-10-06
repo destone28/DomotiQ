@@ -286,3 +286,13 @@ In ordine:
   - Vosk scrive "dove" per "dov'è" e "come la casa" per "com'è la casa", e le regole non lo capivano;
   - l'elenco dei nomi trovava "honda" in "andato al mare".
   Ora la casa prova anche le altre frasi probabili, ascolta i nomi sconosciuti con una scrittura nota, accetta le scritture di Vosk e conta solo i nomi interi. Con la voce pulita la casa capisce il 90,8% delle frasi in italiano (prima 82,3%), e prende per comandi il 5,6% delle frasi che non lo sono (prima 13,3%).
+
+**Mattina (6/10).**
+- **I registri delle prove al banco** (D-59). Ho riletto le frasi sentite di ieri sera e di stamattina; quelle dette dalla casa le ho ricostruite trascrivendo l'audio che la casa tiene sul disco, perché il registro non le scriveva. Da oggi il registro le scrive (`said`).
+- Cosa è venuto fuori:
+  - "accendi il condizionatore" accendeva le luci;
+  - "il colore preferito di Mister Blu è l'azzurro" era preso per una domanda;
+  - il narratore ripeteva ogni minuto "scendi dalla fioriera" alle statuine sul vialetto;
+  - la casa ha sentito due volte la propria voce mentre aspettava una risposta;
+  - un discorso fatto vicino alla casa è stato preso per "è un'auto".
+  Corretti tutti, con un test per ciascuno.

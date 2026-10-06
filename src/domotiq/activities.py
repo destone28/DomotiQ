@@ -98,6 +98,7 @@ class Actions:
         spoken = self.speaks(level)
         self.ctx.bus.publish("say", text=line, lang=lang, spoken=spoken)
         if spoken and self.ctx.voice is not None:
+            log.info("said %r", line)            # with what it heard, the log tells every exchange
             await self.ctx.voice.speak(line, lang)
 
     async def sound(self, name: str) -> None:
@@ -306,6 +307,19 @@ class Actions:
         self.ctx.lights.set(room, "manual", LightRequest("off", "#000000", 0, priority=RULE + 5),
                             duration_s=60)
         await self.ctx.lights.refresh()
+
+    async def climate(self, mode: str, on: bool = True, duration_s: float = 120) -> None:
+        """The air conditioning ("cool") or the heating ("warm") asked aloud: the house has neither, and shows them
+        as the thermostat does, with a wave of light in every room for two minutes. Off stops it, and also the
+        wave the thermostat started."""
+        lights = self.ctx.lights
+        lights.clear("all", "climate")
+        if on:
+            colour = "#20d0ff" if mode == "cool" else "#ff7a20"
+            lights.set("all", "climate", LightRequest(mode, colour, 60, priority=RULE + 10), duration_s=duration_s)
+        else:
+            lights.clear_prefix("rule:r-climate-")
+        await lights.refresh()
 
     async def lights_auto(self, room: str = "all") -> None:
         self.ctx.lights.clear(room, "manual")

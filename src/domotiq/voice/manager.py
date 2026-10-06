@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, Any, Callable
 import numpy as np
 
 from ..audio.mic import MIC_RATE, Microphone
-from ..identities import NameTaken
+from ..identities import MAX_FACTS, NameTaken
 from ..model import CATEGORY_NAMES
 from ..scenes import scene_name
 from . import answers, facts, memory
@@ -63,6 +63,9 @@ TAG_DELAY_S = 2.0     # the facts of a character are looked at this long after a
 ENTRANCE_S = 180.0    # after the intercom, the first figurine that comes in within this long is the one who rang
 CONTEXT_S = 90.0      # a question with no name, this soon after one about a character, is about that character
 ALTERNATIVES = 5      # the likely sentences kept for a request: the first one the rules understand is taken
+SELF_ECHO_S = 0.35    # after the house's own voice, the microphone waits this long before it hears again
+WHO_UNANSWERED = 2    # questions about a newcomer in a row with no answer at all...
+WHO_QUIET_S = 180.0   # ...and for this long the next ones are asked on the phones only
 ROOM_INTENTS = ("who_in", "count", "temperature", "humidity", "lights_on", "lights_off")
 # what is left of "e in bagno?", "and what about the kitchen?" once the room is taken away
 FOLLOW_WORDS = {"e", "ed", "ma", "invece", "allora", "in", "nel", "nella", "nello", "nell", "al", "alla", "sul", "sulla",
@@ -121,6 +124,8 @@ class Voice:
         # the other sentences the free recognizer found likely in a request ("chi già in cucina" may also be "chi
         # c'è in cucina"): the first one the rules understand is taken
         self._alternatives: tuple[bytes, list[str]] = (b"", [])
+        self._who_unanswered = 0
+        self._who_quiet_until = 0.0
         self.busy = asyncio.Lock()
         self._talk_stop: asyncio.Event | None = None
         self._talk_task: asyncio.Task | None = None
@@ -299,7 +304,7 @@ class Voice:
             spot = await loop.run_in_executor(self.pool_free, self.listener.session, lang, self._names_grammar())
         stop = stop or asyncio.Event()
         started = loop.time()
-        state = {"speech": False, "quiet": 0.0, "opened": None, "held": started}
+        state = {"speech": False, "quiet": 0.0, "opened": None, "held": started, "voice": float("-inf")}
         kept = bytearray()
         feeds: list[asyncio.Future] = []
         free_feeds: list[asyncio.Future] = []
@@ -314,6 +319,12 @@ class Voice:
                     return
                 state["opened"] = now
                 self.opened_at = time.monotonic()
+            audio_out = self.ctx.audio
+            if audio_out is not None and audio_out.speaking:
+                state["voice"] = now                   # a line already on its way plays meanwhile: its words
+                return                                 # are no answer ("per favore" heard from the narrator)
+            if now - state["voice"] < SELF_ECHO_S:
+                return
             kept.extend(chunk)
             feeds.append(loop.run_in_executor(self.pool, session.feed, chunk))
             if free is not None:
@@ -696,6 +707,8 @@ class Voice:
             if not (remembers and remembers(text, names)):   # asked already: the answer comes at once
                 filler = filler or asyncio.create_task(self._filler("Vediamo..." if lang == "it" else "Let me see..."))
             intent = await self.llm.understand(text, names)
+            if intent is not None and intent.name == "other" and len(text.split()) < 3:
+                intent = None                         # "domani": better to say it was not understood
         if filler is not None:
             await filler
         if intent is not None and intent.source == "llm" and intent.name in ACTIONS and intent.confidence < SURE:
@@ -841,6 +854,15 @@ class Voice:
         elif name == "grill_stop":
             await act.grill_stop()
             await self.reply("Barbecue spento.", "Barbecue off.")
+        elif name == "climate":
+            heating, on = a.get("mode") == "warm", bool(a.get("on", True))
+            await act.climate("warm" if heating else "cool", on)
+            if on:
+                await self.reply("Accendo il riscaldamento." if heating else "Accendo il climatizzatore.",
+                                 "Turning on the heating." if heating else "Turning on the air conditioning.")
+            else:
+                await self.reply("Riscaldamento spento." if heating else "Climatizzatore spento.",
+                                 "Heating off." if heating else "Air conditioning off.")
         elif name == "car_where":
             await self.say(answers.car_where(ctx, lang))
         elif name == "house_summary":
@@ -869,7 +891,7 @@ class Voice:
         elif name in ("yes", "no", "cancel"):
             await self.reply("D'accordo.", "OK.")
         elif name == "fact":
-            await self._learn_fact(a.get("name", ""), a.get("text", ""))
+            await self._learn_fact(a.get("name", ""), a.get("fact") or a.get("text", ""), a.get("question"))
         elif name == "ask_fact":
             await self._ask_fact(a.get("name", ""), a.get("text", ""), a.get("topic"), asked=intent.source == "llm")
         elif name == "remember":
@@ -1132,8 +1154,10 @@ class Voice:
             if self._all_facts() == told:             # nothing changed meanwhile
                 return
 
-    async def _learn_fact(self, name: str, text: str) -> None:
-        """"Ricorda che Marco fa il medico": "fa il medico" joins what the house knows about Marco."""
+    async def _learn_fact(self, name: str, text: str, question: str | None = None) -> None:
+        """"Ricorda che Marco fa il medico": "fa il medico" joins what the house knows about Marco. With `question`
+        ("il colore preferito di Marco è il rosso"), the fact is the answer to that question of the chatty mode,
+        in place of an older answer."""
         ident = self.ctx.identities.by_name(name)
         if not ident:
             await self.reply(f"Non conosco nessuno che si chiama {name}.", f"I don't know anyone called {name}.")
@@ -1147,7 +1171,12 @@ class Voice:
         if len(fact.split()) < 2:
             await self.reply("Cosa devo ricordare?", "What should I remember?")
             return
-        self.ctx.identities.add_fact(ident.id, fact)
+        new = facts.put(ident.facts, question, fact, MAX_FACTS) if question else ident.facts + [fact]
+        if new is None:
+            await self.reply(f"Di {ident.name} so già troppe cose: cancellane qualcuna dalla webapp.",
+                             f"I already know too much about {ident.name}: delete something in the web app.")
+            return
+        self.ctx.identities.update(ident.id, facts=new)
         await self.reply(f"Me lo ricorderò: {ident.name} {fact}.", f"I'll remember: {ident.name} {fact}.")
 
     # ================================================================ intercom
@@ -1340,17 +1369,28 @@ class Voice:
         cid = ev.get("id")
         house = self.ctx.house
         stop = self._asking_stop.setdefault(cid, asyncio.Event())
+        newcomer = (ev.get("context") or {}).get("kind") == "who" and bool(ev.get("allow_name"))
         try:
             await self.chatter.preempt()
             async with self.busy:
                 if cid not in house.confirmations:
                     return
+                if newcomer and time.monotonic() < self._who_quiet_until:
+                    return                            # the last ones got no answer: for a while the phones ask
+                await self._silent()                  # a line of the narrator already on its way ends first
                 await self.ctx.actions.say(ev.get("question") or {})
                 if not self.ctx.actions.speaks("normal") or not (self.listener and self.listener.ok) \
                         or not self.mic.available:
                     return                            # silent mode or no microphone: the phones answer
-                if (ev.get("context") or {}).get("kind") == "who" and ev.get("allow_name"):
+                if newcomer:
                     await self.who.run(ev, stop)      # a newcomer: a dialogue that understands any answer
+                    if self.who.heard or cid not in house.confirmations:
+                        self._who_unanswered = 0
+                    else:
+                        self._who_unanswered += 1     # nobody said anything: a shadow, or nobody is there
+                        if self._who_unanswered >= WHO_UNANSWERED:
+                            self._who_unanswered = 0
+                            self._who_quiet_until = time.monotonic() + WHO_QUIET_S
                     return
                 labels = [((o.get("label") or {}).get(self.lang) or "") for o in ev.get("options") or []]
                 grammar = [w for w in labels if w] + yes_no_grammar(self.lang)
@@ -1375,6 +1415,13 @@ class Voice:
         finally:
             self._asking_stop.pop(cid, None)
             await self.ctx.actions.thinking(False)
+
+    async def _silent(self, most_s: float = 15.0) -> None:
+        """Until the house has finished saying what it is saying (at most `most_s`)."""
+        end = time.monotonic() + most_s
+        audio = self.ctx.audio
+        while time.monotonic() < end and (self.in_flight or (audio is not None and audio.speaking)):
+            await asyncio.sleep(0.1)
 
     async def _new_name(self, cid: str, text: str, conf: float, stop: asyncio.Event) -> bool:
         """The answer to "who is it?" is a name the house does not know yet: check it, then use it."""

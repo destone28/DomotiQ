@@ -138,6 +138,8 @@ Quando è sicura che c'è qualcosa che non riconosce, la casa lo chiede subito, 
 | "aspetta" | aspetta e ascolta di nuovo |
 | un comando o una domanda ("che ore sono?") | risponde, poi chiede di nuovo il nome |
 | una battuta o altro | chiede di nuovo il nome; la seconda volta lascia stare |
+| un discorso che non parla del nuovo arrivato ("...per migliorare la velocità del modello") | come una battuta: il tipo che dice il modello linguistico conta solo se la frase lo nomina |
+| silenzio | chiede ancora una volta, poi lascia la domanda ai telefoni. Se due nuovi arrivati di fila non ricevono nessuna risposta, per tre minuti la casa li chiede solo sui telefoni |
 
 Le risposte brevi e comuni le capiscono delle regole, all'istante. Le altre frasi le classifica il modello linguistico locale (capitolo 8). Sulla scheda servono da 3 a 6 secondi, e intanto la casa dice "Fammi pensare..." e i tasti respirano.
 

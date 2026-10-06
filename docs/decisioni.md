@@ -497,3 +497,19 @@ Con la voce pulita gli errori in italiano scendono da 17,7% a 9,2%. Le voci sint
 **Scartati, dopo le stesse misure:**
 - **Un secondo riconoscimento con il solo vocabolario della casa**, usato quando la frase non vuol dire niente. Capiva qualche comando in più, ma prendeva per comandi il 28% delle frasi che non lo sono.
 - **Una soglia di sicurezza sui nomi dell'elenco.** Toglieva più nomi giusti che comandi sbagliati.
+
+### D-59 — Le prove al banco del 5 e 6/10: climatizzatore a voce, informazioni dette così, il narratore e la voce della casa (6/10)
+**Scelta:** dai registri di casa1 (frasi sentite e decisioni). Le frasi dette dalla casa sono state ricostruite trascrivendo l'audio che la casa tiene sul disco.
+- **Climatizzatore e riscaldamento a voce.** "Accendi il condizionatore" accendeva le luci e diceva "Fatto."; "condizionatore" da solo riceveva "Questa proprio non la so". Ora un'intenzione `climate` (condizionatore, climatizzatore, clima, aria condizionata, riscaldamento, termosifoni, stufa) fa quello che fa il termostato: un'onda azzurra (o arancione) in tutte le stanze per due minuti, "Accendo il climatizzatore."; "spegni" la ferma, anche quella del termostato.
+- **Informazioni dette così come sono.** "Il colore preferito di Mister Blu è l'azzurro" era preso per una domanda ("questo non lo so ancora"). Ora "il/la ... (preferito) di NOME è ..." e "NAME's favourite ... is ..." diventano informazioni del personaggio, se parlano di qualcosa che le informazioni dicono (un argomento) o di un preferito. Il colore prende il posto della risposta a "qual è il tuo colore preferito?", il lavoro si scrive "fa il pompiere". Con "?", con due nomi o con un'altra domanda resta una domanda.
+- **Il narratore.** Ieri sera "Mister Brown, scendi dalla fioriera" e "a presto, Mister Brown" si sono sentiti ogni minuto per un quarto d'ora: le statuine sul vialetto comparivano e sparivano al bordo dell'inquadratura. Ora la stessa frase sullo stesso personaggio non si ripete per dieci minuti, se nel frattempo non è passato da una stanza a un'altra.
+- **La voce della casa non è una risposta.** Due volte la casa ha sentito la propria voce mentre aspettava una risposta ("rossellina ora in giardino guarda chi c'è nel locale tecnico mister blu", "per favore"): una frase del narratore, partita poco prima, suonava dopo la domanda. Ora il microfono scarta quello che sente mentre la casa parla (e 0,35 s dopo), e una domanda aspetta che finisca la frase già partita.
+- **Il dialogo sul nuovo arrivato.** Un discorso fatto vicino alla casa ("si sta allenando per migliorare la velocità del modello") è stato preso per "è un'auto": il modello linguistico aveva detto "kind car" con 0,54. Ora il tipo che dice il modello conta solo se la frase lo nomina. Se due nuovi arrivati di fila non ricevono nessuna risposta, per tre minuti la casa li chiede solo sui telefoni: ieri sera le domande sono state 25 in tre ore, quasi tutte senza risposta.
+- **Altro:**
+  - "Com'è la casa?" diceva "7 persone" e ne nominava 5: ora aggiunge "e altre 2 persone";
+  - una o due parole che le regole non capiscono e che il modello giudica "altro" ("domani") ricevono "Non ho capito", non una risposta inventata;
+  - "ristorante" è una domanda sul cibo ("se devo andare al ristorante con Rossellina");
+  - la parola di un nome sentita da sola ("brown" in "le misure brown") non conta più come colore;
+  - il registro di sistema riporta anche le frasi dette dalla casa (`said`).
+
+**Perché:** richiesta di Emilio ("ricontrolla gli ultimi log di frasi dette e ricevute e sistema le frasi"). Ogni caso ha un test in `tests/test_exchanges.py`.

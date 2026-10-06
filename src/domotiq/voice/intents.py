@@ -176,6 +176,12 @@ PATTERNS: list[tuple[str, list[str]]] = [
                r"\b(usciamo|esco|esciamo|stiamo uscendo)\b", r"\b(we re|we are|i m|i am) (leaving|going out)\b",
                r"\bguardiamo un film\b", r"\bwatch a (film|movie)\b", r"\b(romantic|romantica|atmosfera)\b",
                r"\bserie tv\b", r"\bla tv\b", r"\bwatch tv\b", r"\brilassiam\w*\b", r"\brelax\w*\b"]),
+    # the air conditioning and the heating: the house has neither, and shows them with a wave of light, as the
+    # thermostat does ("accendi il condizionatore" turned on the lights before)
+    ("climate", [r"\b(condizionatore|climatizzatore|aria condizionata|riscaldamento|termosifon\w*|stufa|"
+                 r"air conditioning|air conditioner|aircon|heating|heater)\b",
+                 r"\b(accendi|spegni|spengi|spegne|metti|attiva|disattiva|turn on|turn off|switch on|switch off)\b"
+                 r".*\bclima\b"]),
     ("lights_off", [r"\b(spegni|spengi|spegne|turn off|switch off|lights off)\b", r"\bswitch (\w+ )?off\b", r"\bbuio\b",
                     r"\bspendi (la|le|il|i|tutte|tutto)\b",
                     r"\bturn (\w+ )?off\b", r"\btoo bright\b", r"\btroppa luce\b", r"\btogli la luce\b"]),
@@ -524,11 +530,55 @@ def _named_as(t: str, names: list[str]) -> str | None:
     return " ".join(w.capitalize() for w in words)
 
 
+# a fact told as it is, with no "ricorda che" ("il colore preferito di Mister Blu è l'azzurro", "Mister Blu's
+# favourite colour is light blue"), on lower case text with its accents and apostrophes
+_STATED = [
+    ("it", re.compile(r"^(?:il|la|lo|i|gli|le|l')\s*(?P<what>[^\W\d_]+(?: preferit[oaie])?) "
+                      r"(?:di|del|della|dello|dei|degli|delle) (?P<who>.+?) (?:è|e|sono) (?P<value>.+)$")),
+    ("en", re.compile(r"^(?P<who>.+?)'s (?P<what>favou?rite [a-z]+) (?:is|are) (?P<value>.+)$")),
+    ("en", re.compile(r"^the (?P<what>favou?rite [a-z]+) of (?P<who>.+?) (?:is|are) (?P<value>.+)$")),
+]
+
+
+def stated_fact(text: str, names: Iterable[str]) -> dict[str, str] | None:
+    """A fact about a character told as it is: its name, the fact as it reads after the name ("ha come colore
+    preferito l'azzurro", the line of the answer to "qual è il tuo colore preferito?") and, for a colour, that
+    question (the fact takes the place of the older answer). None for anything else: a question, a sentence
+    about two characters, about something the facts do not tell ("la casa di Viola è...")."""
+    from . import facts
+    low = re.sub(r"\s+", " ", text.lower().replace("’", "'")).strip(" .!")
+    for lang, rx in _STATED:
+        m = rx.match(low)
+        if m is None:
+            continue
+        who, what, value = find_names(normalize(m["who"]), names), m["what"], m["value"].strip()
+        if len(who) != 1 or find_names(normalize(value), names) or "?" in value \
+                or len(normalize(m["who"]).split()) > len(normalize(who[0]).split()) + 1:
+            return None                     # "...di Viola e Rossana": two characters; "...è il rosso?": a question
+        topics = facts.topics(what)
+        if not topics and not re.search(r"preferit|favou?rite", what):
+            return None
+        if "colour" in topics and find_color(normalize(value)):
+            line = facts.answer_line("a-colour", f"colour {find_color(normalize(value))}", "", lang)
+            return {"name": who[0], "fact": line, "question": "a-colour"}
+        if lang == "en":
+            fact = f"loves {value}"
+        elif "job" in topics:
+            fact = f"fa {value}"            # "il lavoro di Mister Green è il pompiere": "fa il pompiere"
+        else:
+            fact = f"ha come {what} {value}"
+        return {"name": who[0], "fact": fact}
+    return None
+
+
 def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
     t = normalize(text)
     if not t:
         return None
     names = list(names)
+    stated = stated_fact(text, names)
+    if stated is not None:
+        return Intent("fact", stated, 0.9)
     short = len(t.split()) <= 3
     found_names = find_names(t, names)
     for intent, patterns in PATTERNS:
@@ -641,6 +691,9 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
             if not scene:
                 continue
             args["scene"] = scene
+        elif intent == "climate":
+            args["mode"] = "warm" if re.search(r"riscald|termosif|stufa|heat", t) else "cool"
+            args["on"] = not re.search(r"\b(spegni|spengi|spegne|disattiva|ferma|basta|stop|turn off|switch off)\b", t)
         elif intent == "language":
             args["language"] = "en" if re.search(r"inglese|english", t) else "it"
         elif intent == "verbosity":

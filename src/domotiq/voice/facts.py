@@ -46,6 +46,7 @@ from .intents import normalize
 TOPICS: list[tuple[str, str]] = [
     ("food", r"\bmangi\w*|\bgrigliat\w*|\bbarbecue\b|\bbbq\b|\bgrill\w*|\bmange\w*|\bcib[oi]\b|\bpiatto\b|\bpranz\w*|\bcen[ae]\b|\bcenare\b|\bcolazion\w*|"
              r"\bmerend\w*|\bcucinar\w*|\bcucinat\w*|\bcucino\b|\bcucini\b|\bricett\w*|\bgolos\w*|\bpizz\w*|"
+             r"\bristorant\w*|\btrattori\w*|\brestaurants?\b|"
              r"\bpasta\b|\bspaghett\w*|\blasagn\w*|\brisott\w*|\bgelat\w*|\bcroccantin\w*|\bcrocchett\w*|"
              r"\beat\w*|\bate\b|\bfoods?\b|\bdish\b|\bmeals?\b|\blunch\w*|\bdinners?\b|\bbreakfast\w*|\bcook\w*|"
              r"\brecipes?\b|\bsnacks?\b|\bhungry\b|\bkibble\b"),
@@ -138,11 +139,18 @@ LIKES = "likes"        # the topic of "what does Giulia like?": the facts that s
 
 
 def _without(text: str, names: Iterable[str]) -> str:
-    """The sentence, normalized, without the names of the characters ("Viola" is a colour, "Brown" too)."""
+    """The sentence, normalized, without the names of the characters ("Viola" is a colour, "Brown" too), also a
+    name of two words heard by one of them ("le misure brown" for Mister Brown is no question about a colour)."""
+    from .intents import find_names
+    names = [n for n in names if n]
     t = f" {normalize(text)} "
-    for n in sorted({normalize(n) for n in names if n}, key=len, reverse=True):
+    for n in sorted({normalize(n) for n in names}, key=len, reverse=True):
         t = t.replace(f" {n} ", " ")
-    return t.strip()
+    for n in find_names(normalize(text), names):
+        if len(normalize(n).split()) > 1:
+            for w in normalize(n).split():
+                t = t.replace(f" {w} ", " ")
+    return " ".join(t.split())
 
 
 def _job_said(text: str, names: Iterable[str]) -> bool:

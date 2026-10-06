@@ -138,6 +138,8 @@ When it is sure there is something it does not recognize, the house asks at once
 | "wait" | waits and listens again |
 | a command or a question ("what time is it?") | answers it, then asks the name again |
 | a joke or anything else | asks the name again; the second time it lets it go |
+| talk that is not about the newcomer ("...to make the model faster") | as a joke: the kind the language model says counts only if the sentence names it |
+| silence | asks once more, then leaves the question to the phones. When two newcomers in a row get no answer at all, for three minutes the house asks about them on the phones only |
 
 Short, common answers are understood by rules, at once. Any other sentence is classified by the local language model (chapter 8). On the board that takes 3 to 6 seconds, and meanwhile the house says "Let me think..." and the buttons breathe.
 
