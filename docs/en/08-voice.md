@@ -190,7 +190,7 @@ All the other sounds (doorbell, chime, the beeps of Talk, alarm, notification) a
 
 ## Setting the clock by voice
 
-The UNO Q has no battery for its clock. If two minutes after start-up the time is still unknown, the house asks once (unless it is Silent): "I don't know the time: what time is it now?", and listens for the answer at once, with no Talk button. It does the same after "What time is it?" when it does not know. At any time you can also hold **Talk** and say the time:
+The UNO Q has no battery for its clock. The time set (by a phone, by voice or in the settings) holds as long as the board stays on: when only the application starts again, for an update or the watchdog, the house does not ask it again. If two minutes after start-up the time is still unknown, the house asks once (unless it is Silent): "I don't know the time: what time is it now?", and listens for the answer at once, with no Talk button. It does the same after "What time is it?" when it does not know. At any time you can also hold **Talk** and say the time:
 
 - Italian: "Sono le quindici e trenta", "Sono le tre e mezza", "Sono le tre e venticinque", "Sono le dieci e un quarto", "Sono le tre e tre quarti", "Sono le otto meno venti", "Sono le sette meno un quarto", "È l'una e dieci". Any minute works, in words or digits; "del pomeriggio" or "di sera" add twelve hours.
 - English: "It's half past three", "It's quarter to five", "It's twenty past six", "It's ten to seven pm", "It's five twenty", "Set the clock at three thirty". "pm", "afternoon" or "evening" add twelve hours.

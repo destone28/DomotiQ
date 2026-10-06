@@ -295,4 +295,4 @@ In ordine:
   - il narratore ripeteva ogni minuto "scendi dalla fioriera" alle statuine sul vialetto;
   - la casa ha sentito due volte la propria voce mentre aspettava una risposta;
   - un discorso fatto vicino alla casa è stato preso per "è un'auto".
-  Corretti tutti, con un test per ciascuno.
+  Dopo l'aggiornamento delle 9:49, il registro (ora con le frasi dette) ha mostrato altri due casi: "Non so che ore sono" chiesto a ogni riavvio dell'applicazione e "un'auto nuova in camera". Corretti tutti, con un test per ciascuno.

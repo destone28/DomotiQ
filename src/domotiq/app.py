@@ -41,6 +41,8 @@ from .vision.link import NoVision, VisionLink
 
 log = logging.getLogger("domotiq")
 
+INDOOR_ROOMS = ("kitchen", "living", "bedroom", "bathroom", "utility")   # no car is asked about there
+
 
 @dataclass
 class Context:
@@ -85,7 +87,8 @@ def build(args: argparse.Namespace) -> Context:
     ctx = Context(args=args, paths=paths, settings=settings, layout=layout, store=store, bus=bus,
                   identities=identities, mcu=mcu, lights=lights, house=house,
                   rules=None, actions=None,  # type: ignore[arg-type]
-                  clock=HouseClock(can_set=not args.simulate), sim=sim, vision=NoVision())
+                  clock=HouseClock(can_set=not args.simulate, state=paths.config / "clock.json"), sim=sim,
+                  vision=NoVision())
     ctx.actions = Actions(ctx)
     ctx.rules = RuleEngine(paths, bus, house, lights, store, ctx.actions)
     ctx.registration = Registration(ctx)
@@ -184,6 +187,8 @@ def _wire_vision(ctx: Context) -> None:
         where_en = room_phrase(ctx, track.get("room"), "en")
         options = [{"value": c, "label": {"it": n, "en": n}} for c, n in zip(cands, names)]
         category = track.get("category") or "object"
+        if category == "car" and track.get("room") in INDOOR_ROOMS:
+            category = "object"                       # "un'auto nuova in camera": something else, surely
         if unknown:
             # a newcomer: what the house thinks it is, to be confirmed or corrected, and its name; registered
             # ones of the same kind not in the house may be proposed (never a person: a new person is asked

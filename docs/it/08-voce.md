@@ -190,7 +190,7 @@ Tutti gli altri suoni (campanello, campanello breve, i bip di Parla, allarme, no
 
 ## Impostare l'ora a voce
 
-La UNO Q non ha una batteria per l'orologio. Se due minuti dopo l'avvio l'ora è ancora sconosciuta, la casa lo chiede una volta (a meno che non sia Silenziosa): "Non so che ore sono: che ore sono adesso?", e ascolta subito la risposta, senza il tasto Parla. Fa lo stesso dopo "Che ore sono?" quando non lo sa. In qualsiasi momento si può anche tenere premuto **Parla** e dire l'ora:
+La UNO Q non ha una batteria per l'orologio. L'ora impostata (da un telefono, a voce o dalle impostazioni) vale finché la scheda resta accesa: se riparte solo l'applicazione, per un aggiornamento o per il watchdog, la casa non la chiede di nuovo. Se due minuti dopo l'avvio l'ora è ancora sconosciuta, la casa lo chiede una volta (a meno che non sia Silenziosa): "Non so che ore sono: che ore sono adesso?", e ascolta subito la risposta, senza il tasto Parla. Fa lo stesso dopo "Che ore sono?" quando non lo sa. In qualsiasi momento si può anche tenere premuto **Parla** e dire l'ora:
 
 - In italiano: "Sono le quindici e trenta", "Sono le tre e mezza", "Sono le tre e venticinque", "Sono le dieci e un quarto", "Sono le tre e tre quarti", "Sono le otto meno venti", "Sono le sette meno un quarto", "È l'una e dieci". Va bene qualsiasi minuto, in lettere o in cifre; "del pomeriggio" o "di sera" aggiungono dodici ore.
 - In inglese: "It's half past three", "It's quarter to five", "It's twenty past six", "It's ten to seven pm", "It's five twenty", "Set the clock at three thirty". "pm", "afternoon" o "evening" aggiungono dodici ore.

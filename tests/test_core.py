@@ -347,6 +347,22 @@ def test_phone_sets_the_clock_only_when_unknown():
     assert c.set(time.time() + 120, "settings") and c.source == "settings"
 
 
+def test_the_time_set_holds_until_the_board_stops(tmp_path, monkeypatch):
+    """After an update the application starts again and asked "Non so che ore sono": the board had not stopped."""
+    from domotiq import clock as clock_mod
+    monkeypatch.setattr(clock_mod.HouseClock, "ntp_synced", staticmethod(lambda: False))
+    boot = tmp_path / "boot_id"
+    boot.write_text("boot-1\n")
+    monkeypatch.setattr(clock_mod, "BOOT_ID", boot)
+    state = tmp_path / "clock.json"
+    c = clock_mod.HouseClock(can_set=False, state=state)
+    assert not c.known
+    assert c.set(time.time() + 3, "phone")
+    assert clock_mod.HouseClock(can_set=False, state=state).known          # the application started again
+    boot.write_text("boot-2\n")                                          # the board started again: ask
+    assert not clock_mod.HouseClock(can_set=False, state=state).known
+
+
 # ------------------------------------------------------------------ a sound card that resets by itself
 def test_a_reset_of_the_sound_card_is_noticed(tmp_path):
     from domotiq.audio.output import card_identity

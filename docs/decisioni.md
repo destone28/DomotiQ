@@ -510,6 +510,8 @@ Con la voce pulita gli errori in italiano scendono da 17,7% a 9,2%. Le voci sint
   - una o due parole che le regole non capiscono e che il modello giudica "altro" ("domani") ricevono "Non ho capito", non una risposta inventata;
   - "ristorante" è una domanda sul cibo ("se devo andare al ristorante con Rossellina");
   - la parola di un nome sentita da sola ("brown" in "le misure brown") non conta più come colore;
-  - il registro di sistema riporta anche le frasi dette dalla casa (`said`).
+  - il registro di sistema riporta anche le frasi dette dalla casa (`said`);
+  - l'ora impostata vale finché la scheda resta accesa (`var/config/clock.json` con l'identificativo dell'avvio della scheda): dopo il riavvio dell'applicazione la casa chiedeva di nuovo "Non so che ore sono";
+  - dentro una stanza la casa non chiede mai di "un'auto nuova" (dopo il riavvio l'aveva chiesto per la camera): la chiama "un oggetto".
 
 **Perché:** richiesta di Emilio ("ricontrolla gli ultimi log di frasi dette e ricevute e sistema le frasi"). Ogni caso ha un test in `tests/test_exchanges.py`.

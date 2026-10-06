@@ -91,6 +91,18 @@ def test_a_newcomer_is_asked_about_and_named_aloud_without_talk(ctx):
     asyncio.run(scenario())
 
 
+def test_no_new_car_is_asked_about_inside_a_room(ctx):
+    """After a start the house asked "Mi sembra di vedere un'auto nuova in camera": no car is ever in a room."""
+    async def scenario():
+        hear(ctx, [""])
+        newcomer(ctx, category="car", room="bedroom")
+        await settle(ctx)
+        q = next(iter(ctx.house.confirmations.values()))
+        assert q["context"]["category"] == "object" and "auto" not in q["question"]["it"]
+        assert "oggetto" in ctx.said[0]
+    asyncio.run(scenario())
+
+
 def test_a_newcomer_is_one_of_the_registered_characters(ctx):
     async def scenario():
         viola = ctx.identities.add("Viola", "person")
