@@ -167,6 +167,18 @@ The house then answers questions about what it knows, however they are put: "Cos
 
 These offers are heard without Talk like the others, at most one every 10 minutes of each kind. **Ask a question**, in **Controls** and on the card of each character, makes the house ask one of these questions at once, outside chatty mode too, preferring those the character has not answered yet: to a character picked at random among those in the house, or to the one of the card, even if it is not in the house.
 
+### When it does not know, it asks and learns
+
+When the house cannot answer, it does not just say "I don't know".
+- **About a character** ("what does Rossellina love?", "what music does Marco listen to?") it says it does not know and asks: "Do you know? Tell me and I'll remember it.", then listens with no Talk.
+  - The answer becomes a fact of the character, written by the subject of the question. Examples: "le piace il gelato" → "ama il gelato", "rock" → "listens to rock", "Napoli" → "viene da Napoli".
+  - The house says what it understood ("Thanks! I'll remember: Marco loves ice cream.") and uses it for any question on the same subject, in other words too: "what does Marco love?" and "what does Marco like?" get the same answer.
+  - An answer that has no place among the facts ("does Marco have a driving licence?" → "yes") is kept as it is: the next time "I was told yes."
+- **About the world** ("what's the weather tomorrow?") it asks the same way, and to the next question that is the same or alike it answers "I was told that it rains tomorrow.". What is about today or tomorrow holds for a day.
+- **About itself** (its rooms, its furniture, "who built you?", "why is the kitchen yellow?") it imagines a plausible explanation and says it is what it thinks: "I think it's because whoever built me wanted it that way.". The same question always gets the same answer.
+
+"I don't know", "dunno", silence or a command instead of an answer ("turn on the light") teach nothing: the house answers "All right, I'll ask somebody else." or does what was asked. An answer heard badly is not kept. What the house learns about the world and itself is in `var/config/knowledge.json` (the last 300 things); about the characters, among their facts, which the web app shows and anyone can correct.
+
 ## Speech recognition
 
 The Vosk models are `vosk-model-small-it-0.22` and `vosk-model-small-en-us-0.15` (Apache-2.0). The house uses them in two ways:

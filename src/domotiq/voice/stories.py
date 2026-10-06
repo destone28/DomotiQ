@@ -873,6 +873,12 @@ class StoryTeller:
                 if it else
                 f"How could I forget! And I also remember when {ident.name} {item['en']}, on {when}, {year}."]
 
+    def unknown(self, question: str, names: list[str] | None = None) -> bool:
+        """A free question the life of the house has no answer for (no subject of its own, nobody named): life_answer
+        would only say it does not know."""
+        t = normalize(question)
+        return life_topic(t) is None and not (names or find_names(t, self.ctx.identities.names()))
+
     def knows(self, question: str) -> bool:
         """The question is about the life of the house: the database answers it, not the model of the commands
         (which took "Luca ha pagato le bollette?" for "where is Luca")."""

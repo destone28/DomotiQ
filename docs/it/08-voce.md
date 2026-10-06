@@ -167,6 +167,18 @@ La casa risponde poi alle domande su quello che sa, anche dette con altre parole
 
 Queste proposte si ascoltano senza Parla come le altre, al massimo una ogni 10 minuti per tipo. **Fai una domanda**, in **Comandi** e sulla scheda di ogni personaggio, fa fare alla casa una di queste domande subito, anche fuori dalla modalità chiacchierona, preferendo quelle a cui il personaggio non ha ancora risposto: a un personaggio scelto a caso tra quelli in casa, o a quello della scheda, anche se non è in casa.
 
+### Quando non sa, chiede e impara
+
+Quando la casa non sa rispondere, non si limita a dire "non lo so".
+- **Su un personaggio** ("cosa ama Rossellina?", "che musica ascolta Marco?") dice che non lo sa e chiede: "Tu lo sai? Dimmelo e me lo ricorderò.", poi ascolta senza Parla.
+  - La risposta diventa un'informazione del personaggio, scritta in base all'argomento della domanda. Esempi: "le piace il gelato" → "ama il gelato", "il rock" → "ascolta il rock", "Napoli" → "viene da Napoli", "la maestra" → "fa la maestra".
+  - La casa ripete cosa ha capito ("Grazie! Me lo segno: Marco ama il gelato.") e la usa per ogni domanda dello stesso argomento, anche detta con altre parole: "cosa ama Marco?" e "cosa piace a Marco?" hanno la stessa risposta.
+  - Una risposta che non trova posto fra le informazioni ("Marco ha la patente?" → "sì") resta com'è: la volta dopo "Mi hanno detto di sì."
+- **Sul mondo** ("che tempo farà domani?") chiede allo stesso modo, e alla prossima domanda uguale o simile risponde "Mi hanno detto che domani piove.". "Che tempo fa domani?" e "domani piove?" sono la stessa domanda. Quello che riguarda oggi o domani vale per un giorno.
+- **Su sé stessa** (le stanze, i mobili, "chi ti ha costruita?", "perché la cucina è gialla?") inventa una spiegazione plausibile e dice che è quello che pensa: "Penso che sia perché chi mi ha costruita voleva così.". Alla stessa domanda dà sempre la stessa risposta.
+
+"Non lo so", "boh", il silenzio o un comando al posto della risposta ("accendi la luce") non insegnano niente: la casa risponde "Va bene, lo chiederò a qualcun altro." o esegue il comando. Una risposta sentita male (riconoscimento poco sicuro) non viene tenuta. Quello che la casa impara sul mondo e su sé stessa sta in `var/config/knowledge.json` (le ultime 300 cose); quello sui personaggi tra le loro informazioni, che la webapp mostra e chiunque può correggere.
+
 ## Riconoscimento vocale
 
 I modelli Vosk sono `vosk-model-small-it-0.22` e `vosk-model-small-en-us-0.15` (Apache-2.0). La casa li usa in due modi:

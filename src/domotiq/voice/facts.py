@@ -357,6 +357,94 @@ def answer_line(qid: str, outcome: str, text: str, lang: str) -> str | None:
     return None
 
 
+# what an answer to "tu lo sai?" becomes, by the topic of the question the house could not answer: a fact that reads
+# after the name, like the ones typed in the web app ("ama il gelato"); food, origin and colour take the lines of the
+# questions of chatty mode, so that a newer answer takes the place of the older one
+LEARN_TEMPLATES = {
+    LIKES: ("ama {v}", "loves {v}"),
+    "drink": ("beve volentieri {v}", "likes drinking {v}"),
+    "music": ("ascolta {v}", "listens to {v}"),
+    "sport": ("pratica {v}", "plays {v}"),
+    "job": ("fa {v}", "works as {v}"),
+    "fear": ("ha paura di {v}", "is afraid of {v}"),
+    "hobby": ("nel tempo libero ama {v}", "in the free time loves {v}"),
+    "travel": ("va in vacanza {v}", "goes on holiday {v}"),
+    "animals": ("ha {v}", "has {v}"),
+    "family": ("ha {v}", "has {v}"),
+    "age": ("ha {v} anni", "is {v} years old"),
+    "seat": ("preferisce sedersi {v}", "prefers sitting {v}"),
+}
+# how somebody says it of the character, before the answer itself ("le piace il gelato", "lei ama ballare")
+_THIRD = {
+    "it": r"(lei|lui|loro|a lei|a lui|le|gli)|(si chiama|ama|amano|adora|adorano|preferisce|piace|piacciono|mangia|"
+          r"beve|ascolta|pratica|gioca a|gioca|fa|lavora come|lavora|viene|vive|abita|ha paura di|ha paura|ha|[eè])",
+    "en": r"(she|he|they|her|him)|(loves|likes|adores|prefers|eats|drinks|listens to|plays|works as|is afraid of|"
+          r"comes from|lives in|has|is|'s)",
+}
+
+
+def nothing_told(text: str) -> bool:
+    """"Non lo so", "boh", "no": an answer that tells nothing."""
+    return bool(_NOTHING.search(normalize(_strip(_plain(text), _FILLERS["it"] + "|" + _FILLERS["en"]))))
+
+
+def learned_line(topic: str | None, text: str, names: Iterable[str], lang: str) -> tuple[str | None, str] | None:
+    """The fact an answer to a question the house could not answer becomes, as (question of chatty mode or None,
+    line); None when the answer tells nothing ("non lo so") or no line fits the topic (the answer is then kept as it
+    is, see knowledge.py). The character it is about is left out: "Rossellina ama il gelato" is "ama il gelato"."""
+    from .intents import find_color
+    if lang not in LANGS:
+        return None
+    k = LANGS.index(lang)
+    t = _plain(text)
+    for n in sorted((n for n in names if n), key=len, reverse=True):
+        t = re.sub(rf"(?i)\b{re.escape(n)}\b", " ", t)
+    t = re.sub(r"\s+", " ", t).strip(" ,.;:!")
+    if not t or _NOTHING.search(normalize(t)):
+        return None
+    if topic == "colour":
+        colour = find_color(normalize(t))
+        return ("a-colour", ANSWER_FACTS["a-colour"]["colour"][colour][k]) if colour in ANSWER_FACTS["a-colour"]["colour"] \
+            else None
+    if topic in ("food", "origin"):
+        qid = "k-dish" if topic == "food" else "a-from"
+        t = _strip(t, _THIRD[lang])
+        line = answer_line(qid, "answered", t, lang)
+        return (qid, line) if line else None
+    template = LEARN_TEMPLATES.get(topic or "")
+    if template is None:
+        return None
+    if topic == "sport" and lang == "it" and re.search(r"\bgioca a\b", t, re.I):
+        template = ("gioca a {v}", template[1])            # "gioca a calcio", not "pratica calcio"
+    for _ in range(3):
+        t = _strip(t, _FILLERS[lang])
+        t = _strip(t, _THIRD[lang])
+    t = _strip(t, _TRAILERS + "|" + _FILLERS[lang], at_end=True)
+    if not t or not re.search(r"[^\W\d_]|\d", t) or _NOTHING.search(normalize(t)) or len(t.split()) > 8:
+        return None
+    if topic == "job" and lang == "it" and not re.match(r"(il|lo|la|l'|i|gli|le|un|una|uno)\b", t, re.I):
+        return None, f"lavora come {t}"
+    if topic == "age":
+        from .intents import EN_NUMBERS, IT_NUM
+        n = re.search(r"\d+", t)
+        words = normalize(t).replace(" anni", "").replace(" years old", "").split()
+        if n is not None:
+            t = n.group(0)
+        elif words and all(w in IT_NUM or w in EN_NUMBERS or w == "e" for w in words):
+            t = " ".join(words)                                 # "trenta": "ha trenta anni"
+        else:
+            return None, ("ha " + t) if lang == "it" else ("is " + t)
+    if topic == "fear" and lang == "it":
+        if re.match(r"(di|dei|del|della|delle|degli|dello|d')\b", t, re.I):
+            return None, f"ha paura {t}"                      # "dei ragni": "ha paura dei ragni"
+        art = re.match(r"(il|lo|la|i|gli|le|l')\s*", t, re.I)
+        if art:                                               # "i ragni": "ha paura dei ragni"
+            di = {"il": "del", "lo": "dello", "la": "della", "i": "dei", "gli": "degli", "le": "delle", "l'": "dell'"}
+            rest = t[art.end():]
+            return None, f"ha paura {di[art.group(1).lower()]}{'' if di[art.group(1).lower()].endswith(chr(39)) else ' '}{rest}"
+    return None, template[k].replace("{v}", t)
+
+
 def told(lines: Iterable[str], qid: str) -> Any:
     """What the facts say as the answer to question `qid` ("yes", "no", an option, a colour), the latest line
     winning; None if they say nothing about it."""

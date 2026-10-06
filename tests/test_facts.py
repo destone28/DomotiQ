@@ -351,6 +351,7 @@ def test_questions_are_answered_from_the_facts(ctx):
     async def scenario():
         place(ctx, "Rossellina", KITCHEN, ROSSELLINA)
         model = with_model(ctx, Model())
+        hear(ctx, [])                                               # asked "tu lo sai?", nobody answers
         for q in ("Cosa mangia Rossellina?", "qual è il pranzo preferito da Rossellina",
                   "cosa posso cucinare a Rossellina"):
             await ctx.voice.handle(q)
@@ -358,7 +359,7 @@ def test_questions_are_answered_from_the_facts(ctx):
         await ctx.voice.handle("di dove è Rossellina")
         assert ctx.said[-1] == "So che Rossellina viene da Torino."
         await ctx.voice.handle("che musica ascolta Rossellina")
-        assert ctx.said[-1] == "Non lo so: Rossellina non me l'ha ancora detto."
+        assert ctx.said[-1].startswith("Non lo so: Rossellina non me l'ha ancora detto. ")   # ...and it asks
         assert model.asked == [] and model.understood == []        # the keywords were enough
         await ctx.actions.set_language("en")
         await ctx.voice.handle("what does Rossellina like to eat")
@@ -388,8 +389,9 @@ def test_questions_about_a_character_are_answered_at_once_without_the_model(ctx)
         assert ctx.said[-1] == "So che Marco ama il jazz."
         await ctx.voice.handle("Marco va matto per qualcosa?")
         assert ctx.said[-1] == "So che Marco ama il jazz."
+        hear(ctx, [])
         await ctx.voice.handle("Marco gioca con Fido?")             # nothing about it: honest, and at once
-        assert ctx.said[-1] in {it.replace("{name}", "Marco") for it, _ in F.UNKNOWN}
+        assert any(ctx.said[-1].startswith(it.replace("{name}", "Marco") + " ") for it, _ in F.UNKNOWN)
         await ctx.voice.handle("Marco è sul divano?")               # where Marco is now
         assert ctx.said[-1] == "Marco è in cucina."
         await ctx.voice.handle("dove Marco")

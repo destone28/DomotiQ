@@ -36,7 +36,7 @@ from ..audio.mic import MIC_RATE, Microphone
 from ..identities import MAX_FACTS, NameTaken
 from ..model import CATEGORY_NAMES
 from ..scenes import scene_name
-from . import answers, facts, memory
+from . import answers, facts, knowledge, memory
 from .chatter import ECHO_S, NAME_CONFIDENCE, PROPOSALS, QUESTIONS, WELCOME, Chatter, yes_no_grammar, yes_or_no
 from .narrator import Narrator
 from .stories import StoryTeller
@@ -63,6 +63,7 @@ TAG_DELAY_S = 2.0     # the facts of a character are looked at this long after a
 ENTRANCE_S = 180.0    # after the intercom, the first figurine that comes in within this long is the one who rang
 CONTEXT_S = 90.0      # a question with no name, this soon after one about a character, is about that character
 ALTERNATIVES = 5      # the likely sentences kept for a request: the first one the rules understand is taken
+TEACH_CONFIDENCE = 0.5  # an answer to "tu lo sai?" heard less surely than this is not kept
 SELF_ECHO_S = 0.35    # after the house's own voice, the microphone waits this long before it hears again
 WHO_UNANSWERED = 2    # questions about a newcomer in a row with no answer at all...
 WHO_QUIET_S = 180.0   # ...and for this long the next ones are asked on the phones only
@@ -110,6 +111,9 @@ class Voice:
         # the microphone is on the same USB sound card: it follows the output if that is found later
         self.mic = Microphone(device, follow=(lambda: audio.device if not audio.dry else None) if audio else None)
         self.llm = None if ctx.args.no_llm else LanguageModel()
+        # what the house was told when it did not know, and what it imagined about itself (knowledge.py)
+        self.knowledge = knowledge.Knowledge(ctx.paths.config / "knowledge.json")
+        self._imagine = random.Random()
         self.llm_ok = False
         self.llm_ready = False                 # its instructions are in the cache: a question costs a few seconds
         self._jokes = random.randrange(100)
@@ -668,13 +672,22 @@ class Voice:
         intent = self._in_context(text, intent, names)
         if intent is None:
             intent = self._room_follow_up(text, names)  # "chi c'è in cucina?" ... "e in bagno?"
+        # an alternative may tell more than what the rules made of the best sentence: nothing, a name the house
+        # does not know, or a question about a character with no subject ("cosa ma rossellino", taken for "dov'è
+        # Rossellina", for "cosa ama Rossellina")
+        weak = intent is not None and (self._no_subject(intent) or self._name_alone(intent, text))
         for alt in alternatives or ():
-            if intent is not None and not self._unknown_name(intent, names):
+            if intent is not None and not self._unknown_name(intent, names) and not weak:
                 break
             other = parse(alt, names)
-            if other is not None and not self._unknown_name(other, names):
-                log.info("understood in an alternative of %r: %r", text, alt)
-                text, intent = alt, other
+            if other is None or self._unknown_name(other, names):
+                continue
+            if weak and not (other.name not in ("where_is", "other") and other.confidence > intent.confidence
+                             and other.args.get("name") == intent.args.get("name")
+                             and (other.name != "ask_fact" or other.args.get("topic"))):
+                continue
+            log.info("understood in an alternative of %r: %r", text, alt)
+            text, intent, weak = alt, other, False
         if (intent is None or self._unknown_name(intent, names)) and spotted is not None \
                 and not find_names(normalize(text), names):
             who = await self._spotted_names(spotted, names)
@@ -718,6 +731,8 @@ class Voice:
             if not await self._yes_no(it, en):
                 await self.reply("D'accordo, niente.", "All right, nothing then.")
                 return
+        if intent is None and self.knowledge.find(text, None, names) is not None:
+            intent = Intent("other", {}, 0.6, "rules")      # "domani piove?": the house was told about it
         if intent is None and len(text.split()) >= 3:
             intent = Intent("other", {}, 0.5, "rules")      # not a command: a free question about the house
         if intent is None:
@@ -907,8 +922,11 @@ class Voice:
         elif name == "story":
             await self.stories.tell(a.get("names"), a.get("room"), bool(a.get("party")))
         elif name in ("recall", "other"):
-            await self.stories.answer(a.get("text", ""), a.get("names") or self._mentioned(a.get("text", "")),
-                                      memory=name == "recall")
+            text, named = a.get("text", ""), a.get("names") or self._mentioned(a.get("text", ""))
+            if name == "other" and self.stories.unknown(text, named):
+                await self._not_known(text)
+            else:
+                await self.stories.answer(text, named, memory=name == "recall")
         else:
             await self.say(answers.off_topic(lang))
 
@@ -931,6 +949,12 @@ class Voice:
         """The rules took a short sentence with a name for "where is" ("Marco è medico?"), not "dov'è Marco"."""
         return (intent.name == "where_is" and intent.source == "rules" and intent.confidence < 0.8
                 and len(normalize(text).split()) > len(normalize(intent.args.get("name", "")).split()))
+
+    @staticmethod
+    def _no_subject(intent: Intent) -> bool:
+        """A question about a character with no subject the house can tell ("cosa ma rossellino" for "cosa ama
+        Rossellina"): an alternative may have it."""
+        return intent.name == "ask_fact" and not intent.args.get("topic")
 
     @staticmethod
     def _unknown_name(intent: Intent, names: list[str]) -> bool:
@@ -1108,10 +1132,75 @@ class Voice:
         elif self.stories.knows(text):
             await self.stories.answer(text, [ident.name])     # "dove va in vacanza Luca?": made up, then kept
         else:
+            known = self.knowledge.find(text, ident.id, names)
+            if known is not None:
+                await self.say(knowledge.told(known, self.lang, ident.name))
+                return
             it, en = V.said("facts-unknown", facts.UNKNOWN, name=ident.name)
-            await self.reply(it, en)
+            await self._teach_me(text, (it, en), ident, topic)
+
+    async def _not_known(self, text: str) -> None:
+        """A question with no answer anywhere in the house: what it was told for a question alike, or (about the house
+        itself) a plausible answer it imagines and says it thinks, kept for the next time; otherwise it asks
+        whoever asked."""
+        lang = self.lang
+        names = self._names()
+        known = self.knowledge.find(text, None, names)
+        if known is not None:
+            await self.say(knowledge.told(known, lang))
+            return
+        if knowledge.about_house(text):
+            rooms = [(answers.room(self.ctx, r, "it"), answers.room(self.ctx, r, "en"))
+                     for r in ("kitchen", "living", "bedroom", "bathroom", "garage", "garden")]
+            people = [i.name for i in self.ctx.identities.all() if i.category in ("person",)]
+            line = knowledge.invent(text, lang, people, rooms, self._imagine)
+            self.knowledge.learn(text, line, None, names, invented=True)
+            await self.say(line)
+            return
+        await self._teach_me(text, V.pick("teach.unknown", V.TEACH_UNKNOWN))
+
+    async def _teach_me(self, text: str, unknown: tuple[str, str], ident=None, topic: str | None = None) -> None:
+        """The house does not know: it says so, asks whoever asked, listens with no need to press Talk and keeps the
+        answer: a fact of the character (by the subject of the question), or as it was said, for the next question
+        alike. "Non lo so", silence, or a command instead of an answer, and nothing is kept."""
+        lang = self.lang
+        ask = V.pick("teach.ask", V.TEACH_ASK)
+        await self.reply(f"{unknown[0]} {ask[0]}", f"{unknown[1]} {ask[1]}")
+        if not (self.listener and self.listener.ok and self.mic.available):
+            return
+        heard, conf, _ = await self._listen(None, max_s=7.0, auto_end=True, hold=self.chatter._speaking,
+                                            echo=ECHO_S)
+        names = self._names()
+        if not heard:
+            return
+        if facts.nothing_told(heard):
+            await self.reply(*V.pick("teach.nobody", V.TEACH_NOBODY))
+            return
+        other = parse(heard, names)
+        if other is not None and other.name in ACTIONS + ("cancel",):
+            await self.execute(other)                 # not an answer: "accendi la luce", "lascia stare"
+            return
+        if conf < TEACH_CONFIDENCE:
+            await self.reply(*V.pick("teach.misheard", V.TEACH_MISHEARD))
+            return
+        if ident is not None:
+            learned = facts.learned_line(topic, heard, names, lang)
+            if learned is not None:
+                qid, line = learned
+                new = facts.put(ident.facts, qid, line, MAX_FACTS) if qid else (
+                    ident.facts + [line] if len(ident.facts) < MAX_FACTS else None)
+                if new is not None:
+                    self.ctx.identities.update(ident.id, facts=new)
+                    log.info("learned about %s: %r", ident.name, line)
+                    await self.reply(*V.said("teach.fact", V.TEACH_FACT, name=ident.name, fact=line))
+                    return
+        self.knowledge.learn(text, heard, ident.id if ident is not None else None, names)
+        log.info("learned for %r: %r", text, heard)
+        await self.reply(*V.pick("teach.thanks", V.TEACH_THANKS))
 
     def _on_identities(self, ev) -> None:
+        if ev.get("action") == "delete" and ev.get("identity"):
+            self.knowledge.forget_who(ev.get("identity"))   # what it was told about somebody who is gone
         if ev.get("action") != "delete":
             self._tag_facts_later()
             if self.listener and self.listener.ok:

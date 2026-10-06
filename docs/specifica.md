@@ -343,6 +343,8 @@ Riconoscimento delle richieste (D-58): per una richiesta libera Vosk tiene le 5 
 4. Se l'intento è incerto: "Intendi accendere la luce in cucina?".
 5. Se la domanda non riguarda la casa: "Sono la casa: posso dirti chi c'è, dove, che temperatura fa, e posso accendere luci, fare festa o grigliare."
 
+Quando non sa (D-62): su un personaggio o sul mondo chiede "Tu lo sai?" e tiene la risposta (informazione del personaggio per argomento, o `var/config/knowledge.json`) per le domande uguali o simili; su sé stessa inventa una spiegazione plausibile detta come "Penso che…".
+
 Dalle prove al banco (D-59): "accendi il condizionatore/il riscaldamento" fa l'onda di luce del termostato; "il colore preferito di X è Y" è un'informazione su X, non una domanda; il narratore non ripete la stessa frase sullo stesso personaggio per dieci minuti se non cambia stanza; il microfono scarta la voce della casa; dopo due nuovi arrivati senza risposta la casa li chiede per tre minuti solo sui telefoni.
 
 Intenti: dov'è X, chi c'è in una stanza, quante persone, dov'è l'auto, temperatura, umidità, che ore sono, imposta l'ora, luce accesa/spenta/colore per stanza o tutte, scenario, party, grigliata, riassunto della casa, cosa sai fare, lingua, loquacità, volume, aggiungi personaggio, sì/no/annulla, una storia, cosa ha fatto X oggi, ricorda che X…, cosa sai di X, domande su un personaggio ("cosa mangia X?", "di dove è X?") con le sue informazioni, che comprendono le risposte date alle domande della modalità chiacchierona, ricordi e domande libere sulla vita di casa.

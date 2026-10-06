@@ -559,3 +559,16 @@ Le prime immagini dopo la mano possono essere molto storte (l'ombra del braccio,
   - Scegliendo una stanza i controlli mostrano com'è la sua luce in quel momento.
 
 **Perché:** richiesta di Emilio. Prima, senza statuine in casa, Normale, Relax, Notte e Via erano tutti spenti, e Cinema si distingueva solo per una luce blu tenue.
+
+### D-62 — Quando non sa, la casa chiede e impara; su sé stessa immagina (6/10)
+**Scelta:**
+- **Sui personaggi.** Alla domanda su un personaggio a cui le sue informazioni non rispondono, la casa dice che non lo sa e chiede "Tu lo sai?", poi ascolta senza Parla.
+  - La risposta diventa un'informazione scritta in base all'argomento della domanda (`facts.learned_line`). Esempi: "ama il gelato" per le cose che ama, "ascolta il rock" per la musica, "viene da Napoli" per la provenienza, "fa la maestra" per il lavoro.
+  - Cibo, provenienza e colore usano le stesse frasi delle domande della modalità chiacchierona, così una risposta nuova prende il posto della vecchia.
+  - Una risposta senza un argomento delle informazioni resta com'è, legata al personaggio, in `var/config/knowledge.json`.
+- **Sul mondo.** Una domanda libera a cui niente risponde (il meteo, una curiosità) segue lo stesso schema e va nello stesso archivio. Due domande sono la stessa se condividono metà delle parole che contano, oppure se parlano entrambe del meteo. Quello che riguarda oggi o domani vale un giorno.
+- **Su sé stessa.** Per le stanze, i mobili o "tu" la casa inventa una spiegazione plausibile, introdotta da "Penso che…", la tiene e la ripete uguale. Il tono dipende dalla domanda: perché, chi, quando, dove, quanto, come.
+- **Cosa non insegna niente.** "Non lo so", "boh", il silenzio o un comando non insegnano niente. Una risposta sentita con meno del 50% di sicurezza non viene tenuta.
+- **Una frase sentita male recupera l'argomento.** "Cosa ama Rossellina" era stato sentito "cosa ma rossellino": le regole lo avevano preso per "dov'è Rossellina", poi per una domanda su Rossellina senza argomento. Ora, quando la lettura della frase migliore è così debole, la casa prova le altre frasi probabili e prende quella che dice di più sullo stesso personaggio.
+
+**Perché:** richiesta di Emilio. "Ambrogio, cosa ama Rossellina?" aveva avuto come risposta "Di Rossellina questo non lo so ancora", mentre la casa sapeva che ama i cartoni animati della Disney e ballare: la parola "ama" era stata sentita "ma". In più, per tutto quello che non sapeva, la casa non imparava niente.

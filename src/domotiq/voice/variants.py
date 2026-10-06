@@ -178,6 +178,23 @@ NONE_OF_ASK = [("Va bene. {ask}", "All right. {ask}"), ("D'accordo. {ask}", "OK.
 THINKING = [("Fammi pensare...", "Let me think..."), ("Vediamo...", "Let me see..."), ("Un attimo...", "One moment...")]
 WAKE_PROMPT = [("Dimmi!", "Yes?"), ("Sì, dimmi!", "Yes, tell me!"), ("Eccomi!", "I'm here!")]   # said at once
 
+# what the house does not know: it asks, and learns (knowledge.py)
+TEACH_ASK = [("Tu lo sai? Dimmelo e me lo ricorderò.", "Do you know? Tell me and I'll remember it."),
+             ("Se lo sai, dimmelo: così la prossima volta lo saprò.", "If you know, tell me: next time I'll know."),
+             ("Me lo insegni tu? Dimmelo e lo terrò a mente.", "Will you teach me? Tell me and I'll keep it in mind.")]
+TEACH_UNKNOWN = [("Questo non lo so.", "I don't know that."), ("Questa non la so.", "I don't know that one."),
+                 ("Non lo so proprio.", "I really don't know.")]
+TEACH_NOBODY = [("Va bene, lo chiederò a qualcun altro.", "All right, I'll ask somebody else."),
+                ("Nessun problema, prima o poi lo scoprirò.", "No problem, sooner or later I'll find out."),
+                ("D'accordo, allora resta un mistero!", "All right, then it stays a mystery!")]
+TEACH_THANKS = [("Grazie! Me lo ricorderò.", "Thanks! I'll remember it."),
+                ("Grazie, adesso lo so!", "Thanks, now I know!"),
+                ("Bene, me lo segno!", "Good, I'll make a note of it!")]
+TEACH_FACT = [("Grazie! Me lo segno: {name} {fact}.", "Thanks! I'll remember: {name} {fact}."),
+              ("Bene, adesso lo so: {name} {fact}.", "Good, now I know: {name} {fact}.")]
+TEACH_MISHEARD = [("Scusa, non ho capito bene: me lo dirai un'altra volta.",
+                   "Sorry, I didn't quite get it: you'll tell me another time.")]
+
 # ------------------------------------------------------------------ what happens in the house
 ARRIVE = [
     ("Ecco {name} {where}!", "Here's {name} {where}!"),
