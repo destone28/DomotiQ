@@ -309,3 +309,6 @@ In ordine:
   - la casa ripete quello che ha imparato;
   - una parola sola non basta più per ripetere una risposta;
   - nella webapp c'è la pagina **Cosa ha imparato** per correggere o cancellare ogni risposta.
+- **La parola di attivazione *Domotiq*** (D-65). Il riconoscimento vocale non conosce "domotiq" e la toglieva dalla grammatica: la casa non poteva sentirla. Ora la ascolta come «domotica» e la conferma con il riconoscimento libero.
+  - Sul PC, con le voci di Piper, sveglia la casa 41 volte su 42.
+  - Frasi qualsiasi che finiscono come lei ("il cancello è automatico") non la svegliano.

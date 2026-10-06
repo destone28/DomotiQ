@@ -91,7 +91,10 @@ export function mount(root) {
         if (body.voice.wake_enabled && body.voice.wake_word) {
           const w = await api("POST", "/api/voice/wake_check", { word: body.voice.wake_word });
           const unknown = w.unknown.length ? t("set.wake_unknown", { words: w.unknown.join(", ") }) : "";
-          $("#wake-hint").textContent = t("set.wake_heard", { spoken: w.spoken }) + (unknown ? " " + unknown : "");
+          // a word it does not know is heard by words it knows that sound the same ("domotiq" as "domotica")
+          const heard = w.heard_as && w.heard_as !== w.spoken ? t("set.wake_heard_as", { spoken: w.spoken, heard: w.heard_as })
+            : t("set.wake_heard", { spoken: w.spoken });
+          $("#wake-hint").textContent = heard + (unknown ? " " + unknown : "");
           if (unknown) toast(unknown, "warning", 8000);
         }
       } catch (e) { toast(e.message, "alarm"); }

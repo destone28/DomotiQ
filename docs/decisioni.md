@@ -609,3 +609,17 @@ Un quinto posto nel server dei comandi avrebbe invalidato i quattro salvati: lla
 - **16:11:31.** Riprovando, "come si fa la vita" (sentito male) ha tenuto una terza risposta.
 
 Emilio ha chiesto anche di poter correggere una risposta generata male.
+
+### D-65 — Una parola di attivazione che il riconoscimento non conosce si ascolta con una grafia che conosce (6/10)
+**Scelta:**
+- **La grafia.** La parola di attivazione si ascolta con le parole che il modello conosce e suonano uguali, come già i nomi dei personaggi: *Domotiq* si ascolta come «domotica».
+- **Le grafie provate.** Alle grafie di prima (lettere doppie scritte singole, parola divisa in due) si aggiungono quelle "come suona": *q*, *k* e *ck* come *c*, *w* come *v*, *y* come *i*, *x* come *s*, *j* come *i*, *ph* come *f*, *th* come *t*. Poi una vocale in fondo, se la parola finisce con una consonante, e la parola divisa in due.
+- **La conferma.** Il riconoscimento libero non scrive mai una parola che non conosce. Per una parola ascoltata così vale la sua grafia, o una o più parole che suonano quasi uguali (lettere simili almeno al 70%: «domotiche», «domo tic»).
+- **Detta da sola.** Anche la parola detta da sola si conferma con il riconoscimento libero, mentre una parola conosciuta come «Ambrogio» risponde subito come prima.
+- **La webapp.** Dice come la casa sentirà la parola ("che il riconoscimento vocale non conosce e sente come «domotica»"). Avvisa solo per le parole senza nessuna grafia conosciuta.
+
+**Perché:** Emilio ha messo *Domotiq* come parola di attivazione alle 17:00 e la casa non l'ha più sentita. Il modello italiano non conosce "domotiq", quindi Vosk la toglieva dalla grammatica, che restava vuota. La webapp lo aveva segnalato ("non conosce: domotiq"), ma la parola non poteva funzionare in nessun modo.
+
+Misure sul PC, con il modello della scheda e le tre voci italiane di Piper a due velocità:
+- **Le grafie possibili.** «domotica», «domotico» e «domo tic» svegliano tutte la casa 41 volte su 42. La conferma della parola detta da sola è decisiva. Senza, 10 frasi qualsiasi su 156 che finiscono come lei ("il cancello è automatico", "un film romantico") la svegliavano. Con la conferma nessuna, a parte "la domotica è il futuro", che contiene di fatto la parola.
+- **"Ambrogio".** Nella stessa prova sveglia la casa 24 volte su 24 e con le frasi qualsiasi una volta su 156, come prima.

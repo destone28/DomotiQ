@@ -31,10 +31,17 @@ MODELS = {"it": "vosk-model-small-it-0.22", "en": "vosk-model-small-en-us-0.15"}
 RATE = 16000
 
 
+# letters an Italian word does not have, written as they sound ("domotiq" is said "domotic")
+SOUNDS = [("ck", "c"), ("ph", "f"), ("th", "t"), ("qu", "cu"), ("q", "c"), ("k", "c"), ("w", "v"), ("y", "i"),
+          ("x", "s"), ("j", "i")]
+
+
 def respellings(word: str) -> list[str]:
     """Other spellings of a word, closest first, for a model that does not know it: its double letters written
     single ("rossellina": "rosellina", "rosselina", "roselina"), then each of these as two words of three letters
-    at least ("rosse lina", "rose lina")."""
+    at least ("rosse lina", "rose lina"). Then the word as it sounds, with no letters foreign to Italian
+    ("domotiq": "domotic"), with a vowel at the end when it ends with a consonant ("domotica", "domotico"), and as
+    two words."""
     doubles = [i for i in range(len(word) - 1) if word[i] == word[i + 1] and word[i].isalpha()]
     forms = [word]
     for i in doubles:
@@ -44,7 +51,16 @@ def respellings(word: str) -> list[str]:
     out = forms[1:]
     for f in forms:
         out += [f"{f[:i]} {f[i:]}" for i in range(3, len(f) - 2)]
-    return list(dict.fromkeys(out))
+    sounded = word
+    for letters, sound in SOUNDS:
+        sounded = sounded.replace(letters, sound)
+    if sounded != word:
+        out.append(sounded)
+    if sounded[-1:].isalpha() and sounded[-1] not in "aeiou":
+        out += [sounded + v for v in "aoei"]
+    if sounded != word:
+        out += [f"{sounded[:i]} {sounded[i:]}" for i in range(3, len(sounded) - 2)]
+    return list(dict.fromkeys(f for f in out if f != word))
 
 
 class Listener:

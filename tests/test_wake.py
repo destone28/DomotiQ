@@ -29,8 +29,13 @@ def test_the_word_of_activation_is_on_only_when_chosen(ctx):
     ctx.settings.set("voice.wake_enabled", True)
     ctx.settings.set("voice.wake_word", "Casa 1")
     assert v.wake_phrase() == "casa uno"
-    v.listener = SimpleNamespace(ok=True, known=lambda w, lang: w != "zork")
-    assert v.wake_check("Zork 2") == {"spoken": "zork due", "unknown": ["zork"]}
+    v.listener = SimpleNamespace(ok=True, known=lambda w, lang: w != "zork",
+                                 spelling=lambda p, lang: None if "zork" in p else p)
+    assert v.wake_check("Zork 2") == {"spoken": "zork due", "unknown": ["zork"], "heard_as": ""}
+    # a word the recognizer knows only by another spelling: heard as that, not unknown
+    v.listener = SimpleNamespace(ok=True, known=lambda w, lang: w != "domotiq",
+                                 spelling=lambda p, lang: p.replace("domotiq", "domotica"))
+    assert v.wake_check("Domotiq") == {"spoken": "domotiq", "unknown": [], "heard_as": "domotica"}
 
 
 def test_the_word_waits_for_the_house_to_be_free(ctx):
@@ -135,6 +140,9 @@ class _Listener:
 
     def known(self, word, lang):
         return True
+
+    def spelling(self, phrase, lang):
+        return phrase
 
 
 def _said(*words, pause=0, then=(), quiet=20):
@@ -313,4 +321,45 @@ def test_the_word_alone_is_answered_at_once(ctx):
         assert max(chunks) <= 3 + 1 + 5 + 3                    # the word, then half a second (and a little lag)
         assert ("leds", 0, 0) not in log                       # still blinking: the house answers next
         v.busy.release()
+    asyncio.run(scenario())
+
+
+class _SpelledSession(_Session):
+    """Held to "domotiq", known to the recognizer only as "domotica": it takes anything ending like it for the word
+    (and writes the word itself, as stt.Session does with a spelling)."""
+
+    def feed_partial(self, pcm):
+        self.heard += self._words(pcm)
+        return " ".join("domotiq" if w in ("domotica", "domotiche", "automatico") else "[unk]" for w in self.heard)
+
+
+def test_a_word_the_recognizer_does_not_know_is_heard_by_a_spelling_it_knows(ctx):
+    """"Domotiq" as the word of activation was never heard: the recognizer does not know it, and left it out."""
+    async def scenario():
+        v = ctx.voice
+        made = []
+
+        class Listener(_Listener):
+            def session(self, lang, grammar=None, respell=True, alternatives=0):
+                made.append((grammar, respell))
+                return _SpelledSession(grammar) if grammar else _Session(grammar)
+
+            def known(self, word, lang):
+                return word != "domotiq"
+
+            def spelling(self, phrase, lang):
+                return phrase.replace("domotiq", "domotica")
+        v.listener = Listener()
+        v.mic = _Mic(_said("domotiche", "accendi", "la", "luce"), [])
+        assert await v._wake_listen("domotiq") == (True, "accendi la luce")
+        assert made[0] == (["domotiq"], True)                  # listened for by its spelling
+        v.busy.release()
+        await ctx.actions.thinking(False)
+        v.mic = _Mic(_said("domotica", quiet=25), [])          # alone: the free recognizer tells it is the word
+        assert await v._wake_listen("domotiq") == (True, "")
+        v.busy.release()
+        # a word ending alike, then silence: taken for it by the recognizer held to the word, not by the free one
+        v.mic = _Mic(_said("il", "cancello", "e", "automatico", quiet=25), [])
+        assert await v._wake_listen("domotiq") == (False, "")
+        assert not v.busy.locked()
     asyncio.run(scenario())

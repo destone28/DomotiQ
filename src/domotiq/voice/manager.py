@@ -22,6 +22,7 @@ interrupts it.
 from __future__ import annotations
 
 import asyncio
+import difflib
 import logging
 import random
 import re
@@ -81,6 +82,7 @@ ABOUT_CUE = re.compile(r"\b(cosa fa|che fa|che lavoro|di dove|dove vive|dove abi
 # the word of activation (Settings -> Voice): in place of Talk
 WAKE_GAP_S = 1.2      # not listened for until this long after the house spoke: its own voice may say it
 WAKE_CONFIDENCE = 0.6 # heard alone and less surely than this, it does not wake the house
+WAKE_LIKE = 0.7       # a word the recognizer does not know ("domotiq"): what it writes instead sounds this alike
 WAKE_MAX_S = 60.0     # one opening of the microphone while listening for it, then the next one
 WAKE_PREROLL_S = 2.0  # the audio kept from before the word is caught: what is said right with it is not lost
 WAKE_TAIL_S = 0.1     # the end of the word itself, still being said when it is caught
@@ -100,6 +102,14 @@ for _i, _lang in enumerate(("it", "en")):
     FREQUENT[_lang].append(WELCOME[_lang])
     FREQUENT[_lang] += V.fixed_lines(V.THINKING, V.GIVE_UP, V.LATER, V.NOTHING, V.WAITING, V.WHAT_IS_IT,
                                      V.NAME_AGAIN, V.CAR_PARKED, V.WHICH_ONES, V.WAKE_PROMPT)[_lang]
+
+
+def _sounding(phrase: str, words: list[str]) -> list[tuple[int, int]]:
+    """Where (first word, how many words) the words sound like the phrase: one to three words with the letters of the
+    phrase, nearly ("domotiche" or "domo tic" for "domotiq")."""
+    want = phrase.replace(" ", "")
+    return [(i, n) for n in (1, 2, 3) for i in range(len(words) - n + 1)
+            if difflib.SequenceMatcher(None, want, "".join(words[i:i + n])).ratio() >= WAKE_LIKE]
 
 
 def _bare(text: str) -> str:
@@ -426,11 +436,15 @@ class Voice:
         return spoken(s.get("voice.wake_word", "") or "", self.lang)
 
     def wake_check(self, word: str) -> dict[str, Any]:
-        """How the speech recognizer would hear this word of activation, and its words it does not know."""
+        """How the speech recognizer would hear this word of activation: as it is, or as words it knows that sound
+        the same ("domotiq" as "domotica"); and its words it cannot hear at all."""
         phrase = spoken(word, self.lang)
-        unknown = [] if not (self.listener and self.listener.ok) else \
-            [w for w in phrase.split() if not self.listener.known(w, self.lang)]
-        return {"spoken": phrase, "unknown": unknown}
+        if not (self.listener and self.listener.ok):
+            return {"spoken": phrase, "unknown": [], "heard_as": phrase}
+        heard = self.listener.spelling(phrase, self.lang)
+        unknown = [w for w in phrase.split()
+                   if not self.listener.known(w, self.lang) and self.listener.spelling(w, self.lang) is None]
+        return {"spoken": phrase, "unknown": unknown, "heard_as": heard or ""}
 
     def _wake_free(self) -> bool:
         """Nothing else needs the house or the microphone: the word of activation can be listened for."""
@@ -480,9 +494,10 @@ class Voice:
         the word in what was said (talk near the house)."""
         loop = asyncio.get_running_loop()
         lang = self.lang
-        # the word as the model knows it (wake_check tells the words it does not know): the free recognizer must
-        # write it the same way
-        spot = await loop.run_in_executor(self.pool, self.listener.session, lang, [phrase], False)
+        # the word as the model knows it, or as words it knows that sound the same ("domotiq" as "domotica"):
+        # the partial results have the word itself
+        spot = await loop.run_in_executor(self.pool, self.listener.session, lang, [phrase], True)
+        heard_as = self.listener.spelling(phrase, lang) or phrase
         stop = asyncio.Event()
         chunks: asyncio.Queue = asyncio.Queue()
 
@@ -561,9 +576,11 @@ class Voice:
             self._wake_idle.set()
         if not held:
             return False, ""
-        if not speech and sure >= WAKE_CONFIDENCE:
+        if not speech and sure >= WAKE_CONFIDENCE and heard_as == phrase:
             # the word alone, heard surely: the house answers at once, with no wait for the free recognizer (what
-            # it was given is left to finish on its own), and the LEDs go on blinking until it speaks
+            # it was given is left to finish on its own), and the LEDs go on blinking until it speaks. A word the
+            # model knows only by another spelling is heard in the end of other words too ("automatico" for
+            # "domotica"): the free recognizer tells
             log.info("word of activation, alone")
             return True, ""
         try:
@@ -579,11 +596,15 @@ class Voice:
         except BaseException:
             self.busy.release()
             raise
-        words, want = spoken(text, lang).split(), phrase.split()
-        at = [i for i in range(len(words) - len(want) + 1) if words[i:i + len(want)] == want]
+        words = spoken(text, lang).split()
+        at = [(i, len(want)) for want in {tuple(phrase.split()), tuple(heard_as.split())}
+              for i in range(len(words) - len(want) + 1) if tuple(words[i:i + len(want)]) == want]
+        if not at and heard_as != phrase:
+            at = _sounding(phrase, words)                   # "domotiq" written "domotiche" by the free recognizer
         if at:
-            rest = words[at[-1] + len(want):]
-        elif len(words) <= 1 and sure >= WAKE_CONFIDENCE:
+            i, n = max(at)
+            rest = words[i + n:]
+        elif len(words) <= 1 and sure >= WAKE_CONFIDENCE and heard_as == phrase:
             rest = []                                       # the word alone, heard a little differently
         else:
             self.busy.release()                             # not the word: talk near the house
