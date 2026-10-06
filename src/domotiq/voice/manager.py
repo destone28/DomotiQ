@@ -64,6 +64,7 @@ ENTRANCE_S = 180.0    # after the intercom, the first figurine that comes in wit
 CONTEXT_S = 90.0      # a question with no name, this soon after one about a character, is about that character
 ALTERNATIVES = 5      # the likely sentences kept for a request: the first one the rules understand is taken
 TEACH_CONFIDENCE = 0.5  # an answer to "tu lo sai?" heard less surely than this is not kept
+CORRECT_S = 180.0       # "sbagliato" this long after an answer of what the house learned corrects it
 SELF_ECHO_S = 0.35    # after the house's own voice, the microphone waits this long before it hears again
 WHO_UNANSWERED = 2    # questions about a newcomer in a row with no answer at all...
 WHO_QUIET_S = 180.0   # ...and for this long the next ones are asked on the phones only
@@ -101,6 +102,11 @@ for _i, _lang in enumerate(("it", "en")):
                                      V.NAME_AGAIN, V.CAR_PARKED, V.WHICH_ONES, V.WAKE_PROMPT)[_lang]
 
 
+def _bare(text: str) -> str:
+    """A sentence said back inside another: with no full stop or question mark of its own."""
+    return text.strip().rstrip(" .!?")
+
+
 class Voice:
     def __init__(self, ctx: "Context") -> None:
         self.ctx = ctx
@@ -112,7 +118,7 @@ class Voice:
         self.mic = Microphone(device, follow=(lambda: audio.device if not audio.dry else None) if audio else None)
         self.llm = None if ctx.args.no_llm else LanguageModel()
         # what the house was told when it did not know, and what it imagined about itself (knowledge.py)
-        self.knowledge = knowledge.Knowledge(ctx.paths.config / "knowledge.json")
+        self.knowledge = getattr(ctx, "knowledge", None) or knowledge.Knowledge(ctx.paths.config / "knowledge.json")
         # the free answers to questions about the world, written by a second model when the visitor waits for them
         self.chat = None if ctx.args.no_llm else ChatModel()
         self._imagine = random.Random()
@@ -132,6 +138,9 @@ class Voice:
         self._alternatives: tuple[bytes, list[str]] = (b"", [])
         self._who_unanswered = 0
         self._who_quiet_until = 0.0
+        # the last answer the house gave from what it learned (or was just told): "sbagliato", "non è vero" or "te lo
+        # dico io" right after it correct it
+        self._last_answer: dict[str, Any] | None = None
         self.busy = asyncio.Lock()
         self._talk_stop: asyncio.Event | None = None
         self._talk_task: asyncio.Task | None = None
@@ -673,6 +682,10 @@ class Voice:
             return
         if await self.chatter.answer_by_talk(text):
             return                                    # "sì" to the offer the house has just made
+        lesson = knowledge.lesson(text)
+        if lesson is not None and await self._lesson(*lesson):
+            return                                    # "te lo dico io", "sbagliato": what it said or thought is wrong
+        self._last_answer = None
         intent = parse(text, names)
         intent = self._in_context(text, intent, names)
         if intent is None:
@@ -736,8 +749,10 @@ class Voice:
             if not await self._yes_no(it, en):
                 await self.reply("D'accordo, niente.", "All right, nothing then.")
                 return
-        if intent is None and self.knowledge.find(text, None, names) is not None:
-            intent = Intent("other", {}, 0.6, "rules")      # "domani piove?": the house was told about it
+        if intent is None and (len(text.split()) >= 3 or knowledge.subject(text)) \
+                and self.knowledge.find(text, None, names) is not None:
+            # "domani piove?": the house was told about it; a word or two with no subject ("pizza") is no question
+            intent = Intent("other", {}, 0.6, "rules")
         if intent is None and len(text.split()) >= 3:
             intent = Intent("other", {}, 0.5, "rules")      # not a command: a free question about the house
         if intent is None:
@@ -1142,6 +1157,7 @@ class Voice:
             known = self.knowledge.find(text, ident.id, names)
             if known is not None:
                 await self.say(knowledge.told(known, self.lang, ident.name))
+                self._answered(text, ident.id)
                 return
             it, en = V.said("facts-unknown", facts.UNKNOWN, name=ident.name)
             await self._teach_me(text, (it, en), ident, topic)
@@ -1155,6 +1171,7 @@ class Voice:
         known = self.knowledge.find(text, None, names)
         if known is not None:
             await self.say(knowledge.told(known, lang))
+            self._answered(text)
             return
         if knowledge.about_house(text):
             rooms = [(answers.room(self.ctx, r, "it"), answers.room(self.ctx, r, "en"))
@@ -1163,6 +1180,7 @@ class Voice:
             line = knowledge.invent(text, lang, people, rooms, self._imagine)
             self.knowledge.learn(text, line, None, names, invented=True)
             await self.say(line)
+            self._answered(text)
             return
         if self.chat is not None and self.chat.ready:
             await self._think_or_be_told(text)
@@ -1207,7 +1225,8 @@ class Voice:
                 return
             self.knowledge.learn(text, heard, None, names)
             log.info("learned for %r: %r", text, heard)
-            await self.reply(*V.pick("teach.thanks", V.TEACH_THANKS))
+            await self.reply(*V.said("teach.kept", V.TEACH_KEPT, q=_bare(text), a=_bare(heard)))
+            self._answered(text)
             return
         await self.reply(*V.pick("think.wait", V.THINK_WAIT))
         await self.ctx.actions.thinking(True)          # the buttons breathe while it thinks
@@ -1219,6 +1238,7 @@ class Voice:
         self.knowledge.learn(text, answer, None, names, generated=True)
         lead = V.pick("think.said", V.THINK_SAID)
         await self.say(f"{lead[0 if lang == 'it' else 1]} {answer}")
+        self._answered(text)
 
     async def _teach_me(self, text: str, unknown: tuple[str, str], ident=None, topic: str | None = None) -> None:
         """The house does not know: it says so, asks whoever asked, listens with no need to press Talk and keeps the
@@ -1257,7 +1277,61 @@ class Voice:
                     return
         self.knowledge.learn(text, heard, ident.id if ident is not None else None, names)
         log.info("learned for %r: %r", text, heard)
-        await self.reply(*V.pick("teach.thanks", V.TEACH_THANKS))
+        if ident is None:
+            await self.reply(*V.said("teach.kept", V.TEACH_KEPT, q=_bare(text), a=_bare(heard)))
+        else:
+            await self.reply(*V.pick("teach.thanks", V.TEACH_THANKS))
+        self._answered(text, ident.id if ident is not None else None)
+
+    def _answered(self, question: str, who: str | None = None) -> None:
+        self._last_answer = {"q": question, "who": who, "at": time.monotonic()}
+
+    async def _lesson(self, kind: str, rest: str) -> bool:
+        """"Te lo dico io (come si fa la pizza)", "sbagliato", "non è vero, si fa con acqua e farina": what somebody
+        tells takes the place of what the house said, thought or was told before for that question. The question is
+        the one in the sentence, or the last one the house answered from what it learned (a few minutes ago at most);
+        the answer is the rest of the sentence, or what is said next. False: no lesson after all ("sbagliato" with
+        no answer to correct)."""
+        names = self._names()
+        last = self._last_answer
+        if last is not None and time.monotonic() - last["at"] > CORRECT_S:
+            last = None
+        if kind == "correct" and rest.startswith("che "):
+            rest = ""                                  # "non è vero che si fa con le uova": no answer yet
+        if kind == "teach" and rest and knowledge.is_question(rest):
+            question, who, answer = rest, None, ""
+        elif last is not None:
+            question, who = last["q"], last["who"]
+            answer = rest if len(rest.split()) >= 3 else ""
+        elif kind == "correct":
+            return False
+        else:
+            await self.reply(*V.pick("teach.which", V.TEACH_WHICH))
+            return True
+        self._last_answer = None
+        if not answer:
+            await self.reply(*(V.pick("teach.go", V.TEACH_GO) if kind == "teach" or last is None
+                               else V.pick("teach.right", V.TEACH_RIGHT)))
+            if not (self.listener and self.listener.ok and self.mic.available):
+                return True
+            heard, conf, _ = await self._listen(None, max_s=8.0, auto_end=True, hold=self.chatter._speaking,
+                                                echo=ECHO_S)
+            if not heard or facts.nothing_told(heard):
+                await self.reply(*V.pick("think.drop", V.THINK_DROP))
+                return True
+            other = parse(heard, names)
+            if other is not None and other.name in ACTIONS + ("cancel",):
+                await self.execute(other)             # not an answer: "accendi la luce", "lascia stare"
+                return True
+            if conf < TEACH_CONFIDENCE:
+                await self.reply(*V.pick("teach.misheard", V.TEACH_MISHEARD))
+                return True
+            answer = heard
+        self.knowledge.learn(question, answer, who, names)
+        log.info("corrected for %r: %r", question, answer)
+        await self.reply(*V.said("teach.fixed", V.TEACH_FIXED, q=_bare(question), a=_bare(answer)))
+        self._answered(question, who)
+        return True
 
     def _on_identities(self, ev) -> None:
         if ev.get("action") == "delete" and ev.get("identity"):

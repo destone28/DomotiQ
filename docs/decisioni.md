@@ -588,3 +588,24 @@ Le prime immagini dopo la mano possono essere molto storte (l'ombra del braccio,
 - **Qwen3.5-2B:** non ci sta in memoria insieme al resto.
 
 Un quinto posto nel server dei comandi avrebbe invalidato i quattro salvati: llama.cpp rifiuta lo stato salvato con un altro numero di posti (*n_stream mismatch*). Il modello da 0,8B occupa circa 700 MB in più.
+
+### D-64 — Quello che qualcuno insegna vale più di quello che la casa ha pensato; le risposte si correggono (6/10)
+**Scelta:**
+- **Chi vince.** Fra le risposte imparate per una domanda, quella detta da qualcuno vince su quella pensata dal modello o immaginata dalla casa, anche se è più vecchia.
+- **Insegnare sostituisce.** Una risposta detta da qualcuno prende il posto di tutte le risposte alla stessa domanda (o a una simile) sullo stesso personaggio, o su nessuno. Una risposta pensata prende il posto solo di quelle pensate o immaginate prima.
+- **"Te lo dico io", anche più tardi.** "Te lo dico io come si fa la pizza" è una lezione, non una domanda nuova: la casa dice "Dimmi pure!", ascolta e tiene la risposta per "come si fa la pizza". Senza la domanda vale per l'ultima risposta che la casa ha dato da quello che ha imparato; se non ce n'è, la casa chiede "Su che cosa? Fammi prima la domanda.".
+- **"Sbagliato".** Entro 3 minuti da una risposta presa da quello che ha imparato, "sbagliato", "hai sbagliato", "non è vero", "non è così" o "non è giusto" fanno chiedere "Scusa! Qual è la risposta giusta?". La risposta detta nella stessa frase ("non è vero, ci vuole acqua e farina") vale subito. Con altro detto in mezzo, o più tardi, "sbagliato" non corregge niente.
+- **La casa ripete quello che ha imparato.** "Corretto! Se mi chiedono come si fa la pizza, risponderò: …". Lo stesso vale per una risposta insegnata quando la casa l'ha chiesta. Una parola sentita male si corregge subito con un altro "sbagliato".
+- **Una parola o due non bastano.** "Pizza" o "la pizza" non ripetono più la risposta a "come si fa la pizza": servono almeno tre parole, o un argomento riconosciuto come il meteo ("domani piove?").
+- **Domande diverse restano diverse.** "Dove si compra la pizza?" non è "come si fa la pizza?": quando le due domande cominciano con una parola diversa (come, dove, quando, chi, perché, quanto, quale, cosa), non sono la stessa domanda.
+- **I nomi non contano come argomento.** Il nome di un personaggio non conta come argomento della domanda, nemmeno sentito un po' male ("rossellino").
+- **La pagina "Cosa ha imparato".** Nella webapp, in **Altro**, c'è una pagina con tutte le risposte imparate. Per ognuna mostra la domanda, la risposta, se è stata detta, pensata o immaginata, e quando. Si possono correggere la risposta e la domanda sentita male ("come si fa la vita"), oppure cancellarle. Una risposta corretta diventa una risposta detta da qualcuno. Ogni modifica va nel registro delle modifiche. API: `GET /api/knowledge`, `PUT` e `DELETE /api/knowledge/{id}`.
+- **Le informazioni dei personaggi.** Restano correggibili dalla loro scheda, come prima.
+
+**Perché:** richiesta di Emilio ("risolvi il disastro"). Il registro di casa1 del pomeriggio del 6/10:
+- **16:08.** "Come si fa la pizza?", la risposta pensata dal modello da 0,8B era senza senso ("C'è un po' di tempo per preparare le uova…"). È stata detta e tenuta.
+- **16:10.** "La pizza" e poi "pizza", frammenti sentiti per caso, l'hanno fatta ripetere.
+- **16:10:56.** "Lo dico io come si fa la pizza" è stata presa per una domanda nuova. La risposta giusta è finita sotto quella domanda, mentre quella sbagliata restava sotto "come si fa la pizza" e continuava a vincere perché più vicina alla domanda.
+- **16:11:31.** Riprovando, "come si fa la vita" (sentito male) ha tenuto una terza risposta.
+
+Emilio ha chiesto anche di poter correggere una risposta generata male.

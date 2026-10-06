@@ -99,7 +99,7 @@ The house keeps events for 7 days and positions for 24 hours.
 
 Every other page, in three groups, plus your nickname:
 
-- **The house**: **Events**, **Rules**, **Simulation**;
+- **The house**: **Events**, **Rules**, **What it learned**, **Simulation**;
 - **Setting up**: **Calibration**, **Diagnostics**, **Settings**;
 - **For the stand**: **Printable sign**, **About**;
 - **You**: **Your nickname**, shown in the change log.
@@ -109,6 +109,20 @@ Every other page, in three groups, plus your nickname:
 <img src="../images/screens/en/rules.png" alt="Rules" width="260">
 
 The list of rules, each with a switch to turn it on or off, and the **+ New rule** button. Tapping a rule opens the When / If / Then editor. Everything about rules is in [chapter 9](09-rules.md).
+
+### What it learned
+
+The answers the house was told, imagined or thought when it did not know (chapter 8), the latest first. For each one the page shows:
+- the question, and the character, if it is about somebody;
+- the answer;
+- whether it was *told by somebody*, *imagined by the house* or *thought by the house*, and when;
+- if it is about today or tomorrow: *valid until tomorrow*.
+
+**Edit** opens the answer.
+- **Save.** The answer can be corrected, and so can a question heard wrong ("come si fa la vita" instead of "come si fa la pizza"): from then on the house says the corrected one, as if somebody had taught it.
+- **Forget.** Deletes it.
+
+Every change goes into the change log.
 
 ### Characters and objects
 
@@ -184,6 +198,7 @@ Then open `http://localhost:8080/`. The house keeps its data in `var/` inside th
 | `GET /api/stream` | live view (MJPEG) |
 | `GET/POST/PUT/DELETE /api/rules` | rules |
 | `GET/PUT/DELETE /api/identities` | characters |
+| `GET /api/knowledge`, `PUT/DELETE /api/knowledge/{id}` | what the house learned: list, correction (`{"answer": ..., "question": ...}`), deletion |
 | `POST /api/commands/{name}` | party, grill, grill_stop, scene, light, lights_off, lights_auto, language, verbosity, volume, follow, intercom, say, alarm (`{"armed": false}` switches the alarm off) |
 | `POST /api/confirm/{id}` | answer a question of the house (`{"value": ...}`; `{"together": [...]}` for *both*, `{"nothing": true}` for *nothing there*) |
 | `POST /api/time` | time from a phone (only if the house does not know it) |

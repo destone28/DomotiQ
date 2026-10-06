@@ -98,6 +98,11 @@ def test_knowledge_matches_alike_questions_and_forgets_tomorrow(tmp_path):
 PIZZA = "Si impasta farina, acqua e lievito. Poi si stende e si cuoce in forno."
 
 
+def said_back(line, options, q, a):
+    """The line is one of the options, with this question and answer said back."""
+    return line in [V.fill((it, en), q=q, a=a)[0] for it, en in options]
+
+
 class _Chat:
     """The free answers model, with its answer already written."""
     ready = True
@@ -139,13 +144,15 @@ def test_told_by_the_visitor_instead(ctx):
         chat = ctx.voice.chat = _Chat()
         hear(ctx, ["te lo dico io", "si impasta e si cuoce nel forno a legna"])
         await ctx.voice.handle("come si fa la pizza")
-        assert any(t in ctx.said for t, _ in V.THINK_TELL) and any(t in ctx.said[-1] for t, _ in V.TEACH_THANKS)
+        assert any(t in ctx.said for t, _ in V.THINK_TELL)
+        assert said_back(ctx.said[-1], V.TEACH_KEPT, "come si fa la pizza", "si impasta e si cuoce nel forno a legna")
         assert chat.asked == []
         await ctx.voice.handle("come si fa la pizza")
         assert ctx.said[-1] == "Mi hanno detto che si impasta e si cuoce nel forno a legna."
         hear(ctx, ["con farina acqua e lievito poi nel forno"])     # the answer at once, no "te lo dico io"
         await ctx.voice.handle("come si fa il pane")
-        assert any(t in ctx.said[-1] for t, _ in V.TEACH_THANKS) and chat.asked == []
+        assert said_back(ctx.said[-1], V.TEACH_KEPT, "come si fa il pane", "con farina acqua e lievito poi nel forno")
+        assert chat.asked == []
     asyncio.run(scenario())
 
 
@@ -173,3 +180,80 @@ def test_a_free_answer_is_tidied_before_it_is_said():
     assert cut == "La pizza si fa con farina e acqua. Poi si cuoce."            # no sentence cut in the middle
     assert tidy("**Ecco** una curiosità 😊 sugli elefanti: sono grandi.") == "Ecco una curiosità sugli elefanti: sono grandi."
     assert tidy("<think>hmm</think>Parigi.") == "Parigi." and tidy("ciao") is None
+
+
+# ------------------------------------------------------------------ what somebody tells wins (casa1, 6 October)
+WRONG_PIZZA = "C'è un po' di tempo per preparare le uova."
+RIGHT_PIZZA = "per fare la pizza ci vuole acqua farina lievito e sale"
+
+
+def test_what_somebody_tells_takes_the_place_of_what_the_house_thought(tmp_path):
+    k = knowledge.Knowledge(tmp_path / "k.json")
+    k.learn("come si fa la pizza", WRONG_PIZZA, generated=True, now=1000.0)
+    k.learn("come si fa la pizza", RIGHT_PIZZA, now=1001.0)
+    assert [i["a"] for i in k.items] == [RIGHT_PIZZA]
+    k.learn("come si fa la pizza", WRONG_PIZZA, generated=True, now=1002.0)   # thought again: it does not win
+    assert k.find("la pizza come si fa", now=1003.0)["a"] == RIGHT_PIZZA
+    assert k.find("dove si compra la pizza", now=1003.0) is None            # not the same question
+    assert knowledge._stems("scusa ma rossellino", ["Rossellina"]) == {"scusa"}  # a name heard wrong is no subject
+
+
+def test_a_word_or_two_do_not_repeat_what_the_house_thought(ctx):
+    """After "come si fa la pizza", "la pizza" and "pizza" got the same (wrong) answer again."""
+    async def scenario():
+        ctx.voice.chat = _Chat(WRONG_PIZZA)
+        hear(ctx, ["aspetto"])
+        await ctx.voice.handle("come si fa la pizza")
+        for heard in ("la pizza", "pizza"):
+            await ctx.voice.handle(heard)
+            assert WRONG_PIZZA not in ctx.said[-1], heard
+    asyncio.run(scenario())
+
+
+def test_te_lo_dico_io_with_the_question_corrects_what_it_thought(ctx):
+    """"Lo dico io come si fa la pizza" was taken for a new question, and its answer kept apart from the wrong one."""
+    async def scenario():
+        chat = ctx.voice.chat = _Chat(WRONG_PIZZA)
+        hear(ctx, ["aspetto"])
+        await ctx.voice.handle("come si fa la pizza")
+        await ctx.voice.handle("accendi la luce in cucina")      # something else in between
+        hear(ctx, [RIGHT_PIZZA])
+        await ctx.voice.handle("lo dico io come si fa la pizza")
+        assert ctx.said[-2] in [t for t, _ in V.TEACH_GO]
+        assert said_back(ctx.said[-1], V.TEACH_FIXED, "come si fa la pizza", RIGHT_PIZZA)
+        await ctx.voice.handle("come si fa la pizza")
+        assert ctx.said[-1] == f"Mi hanno detto che {RIGHT_PIZZA}."
+        assert len(ctx.voice.knowledge.items) == 1 and chat.asked == ["come si fa la pizza"]
+    asyncio.run(scenario())
+
+
+def test_wrong_right_after_an_answer_asks_for_the_right_one(ctx):
+    async def scenario():
+        ctx.voice.chat = _Chat(WRONG_PIZZA)
+        hear(ctx, ["aspetto"])
+        await ctx.voice.handle("come si fa la pizza")
+        hear(ctx, [RIGHT_PIZZA])
+        await ctx.voice.handle("sbagliato")
+        assert ctx.said[-2] in [t for t, _ in V.TEACH_RIGHT]
+        assert said_back(ctx.said[-1], V.TEACH_FIXED, "come si fa la pizza", RIGHT_PIZZA)
+        # the right answer in the same sentence, a word heard wrong corrected at once
+        await ctx.voice.handle("non è vero, ci vuole acqua farina lievito sale e olio")
+        assert said_back(ctx.said[-1], V.TEACH_FIXED, "come si fa la pizza", "ci vuole acqua farina lievito sale e olio")
+        await ctx.voice.handle("come si fa la pizza")
+        assert ctx.said[-1] == "Mi hanno detto che ci vuole acqua farina lievito sale e olio."
+    asyncio.run(scenario())
+
+
+def test_a_lesson_with_nothing_to_correct(ctx):
+    async def scenario():
+        await ctx.voice.handle("sbagliato")                     # no answer to correct: no lesson
+        assert not any(ctx.said[-1] == t for t, _ in V.TEACH_RIGHT + V.TEACH_WHICH)
+        await ctx.voice.handle("te lo dico io")
+        assert ctx.said[-1] in [t for t, _ in V.TEACH_WHICH]
+        ctx.voice.chat = _Chat(WRONG_PIZZA)
+        hear(ctx, ["aspetto"])
+        await ctx.voice.handle("come si fa la pizza")
+        ctx.voice._last_answer["at"] -= 600                     # minutes later "sbagliato" is about something else
+        await ctx.voice.handle("sbagliato")
+        assert not any(ctx.said[-1] == t for t, _ in V.TEACH_RIGHT)
+    asyncio.run(scenario())

@@ -38,6 +38,7 @@ from .settings import Paths, Settings
 from .sim import Simulation
 from .store import Store
 from .vision.link import NoVision, VisionLink
+from .voice.knowledge import Knowledge
 
 log = logging.getLogger("domotiq")
 
@@ -64,6 +65,7 @@ class Context:
     registration: Registration | None = None
     audio: Any = None
     voice: Any = None
+    knowledge: Any = None            # what the house learned when it did not know (voice/knowledge.py)
     classifier: Any = None
     started: float = 0.0
     version: str = __version__
@@ -92,6 +94,7 @@ def build(args: argparse.Namespace) -> Context:
     ctx.actions = Actions(ctx)
     ctx.rules = RuleEngine(paths, bus, house, lights, store, ctx.actions)
     ctx.registration = Registration(ctx)
+    ctx.knowledge = Knowledge(paths.config / "knowledge.json")
     house.status["simulation"] = sim.enabled
     return ctx
 

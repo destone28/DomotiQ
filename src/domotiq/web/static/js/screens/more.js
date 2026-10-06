@@ -19,6 +19,7 @@ export function mount(root) {
     <div class="card menu"><ul class="list">
       ${item("events", "📜", t("more.events"), t("more.events_sub"))}
       ${item("rules", "📏", t("more.rules"), t("more.rules_sub"))}
+      ${item("knowledge", "🧠", t("more.knowledge"), t("more.knowledge_sub"))}
       ${item("sim", "🕹️", t("more.sim"), t("more.sim_sub"))}
     </ul></div>
     <h2>${t("more.setup")}</h2>

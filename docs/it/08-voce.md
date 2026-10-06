@@ -182,7 +182,14 @@ Quando la casa non sa rispondere, non si limita a dire "non lo so".
 - **"Te lo dico io"**: "Dimmi pure!", e la casa tiene la risposta. Anche la risposta detta subito, senza "te lo dico io", vale.
 - **"Lascia stare"** o "non lo so": "D'accordo, lasciamo stare.". Un comando al posto della scelta viene eseguito.
 
-Quello che la casa ha pensato o si è sentita dire resta in `var/config/knowledge.json`: alla stessa domanda, o a una simile, risponde subito.
+Quello che la casa ha pensato o si è sentita dire resta in `var/config/knowledge.json`: alla stessa domanda, o a una simile, risponde subito. La casa ripete quello che ha imparato ("Grazie! Se mi chiedono come si fa la pizza, risponderò: …"), così una parola sentita male si corregge subito.
+
+**Correggere una risposta sbagliata.**
+- **"Sbagliato".** Subito dopo una risposta presa da quello che ha imparato (entro 3 minuti, senza altro in mezzo), "sbagliato", "non è vero", "non è così" o "non è giusto" fanno chiedere "Scusa! Qual è la risposta giusta?". La risposta detta nella stessa frase vale subito: "Non è vero, ci vuole acqua, farina, lievito e sale".
+- **"Te lo dico io come si fa la pizza".** Corregge anche più tardi: "Dimmi pure!", e la risposta prende il posto di quella di prima. "Te lo dico io" da solo vale per l'ultima risposta; se non ce n'è, la casa chiede prima la domanda.
+- **Chi vince.** Quello che qualcuno insegna vince sempre su quello che la casa ha pensato o immaginato.
+- **Dalla webapp.** Tutto si corregge o si cancella anche dalla pagina **Altro → Cosa ha imparato** (capitolo 6), compresa una domanda sentita male.
+- **Le domande corte.** Una parola o due ("pizza") non bastano per ripetere una risposta imparata: servono almeno tre parole, o un argomento come il meteo ("domani piove?").
 
 "Non lo so", "boh", il silenzio o un comando al posto della risposta ("accendi la luce") non insegnano niente: la casa risponde "Va bene, lo chiederò a qualcun altro." o esegue il comando. Una risposta sentita male (riconoscimento poco sicuro) non viene tenuta. Quello che la casa impara sul mondo e su sé stessa sta in `var/config/knowledge.json` (le ultime 300 cose); quello sui personaggi tra le loro informazioni, che la webapp mostra e chiunque può correggere.
 

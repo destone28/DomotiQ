@@ -99,7 +99,7 @@ La casa conserva gli eventi per 7 giorni e le posizioni per 24 ore.
 
 Tutte le altre pagine, in tre gruppi, più il tuo soprannome:
 
-- **La casa**: **Eventi**, **Regole**, **Simulazione**;
+- **La casa**: **Eventi**, **Regole**, **Cosa ha imparato**, **Simulazione**;
 - **Messa a punto**: **Calibrazione**, **Diagnostica**, **Impostazioni**;
 - **Per lo stand**: **Cartello da stampare**, **Informazioni**;
 - **Tu**: **Il tuo soprannome**, che compare nel registro delle modifiche.
@@ -109,6 +109,20 @@ Tutte le altre pagine, in tre gruppi, più il tuo soprannome:
 <img src="../images/screens/it/rules.png" alt="Regole" width="260">
 
 L'elenco delle regole, ognuna con un interruttore per attivarla o disattivarla, e il pulsante **+ Nuova regola**. Toccando una regola si apre l'editor Quando / Se / Allora. Tutto sulle regole è nel [capitolo 9](09-regole.md).
+
+### Cosa ha imparato
+
+Le risposte che la casa si è sentita dire, ha immaginato o ha pensato quando non sapeva rispondere (capitolo 8), dalla più recente. Per ognuna la pagina mostra:
+- la domanda, e il personaggio, se riguarda qualcuno;
+- la risposta;
+- se è stata *detta da qualcuno*, *immaginata dalla casa* o *pensata dalla casa*, e quando;
+- se riguarda oggi o domani: *vale fino a domani*.
+
+**Modifica** apre la risposta.
+- **Salva.** Si possono correggere la risposta e la domanda sentita male ("come si fa la vita" invece di "come si fa la pizza"): da quel momento la casa dice quella corretta, come se gliel'avesse insegnata qualcuno.
+- **Dimentica.** La cancella.
+
+Ogni modifica va nel registro delle modifiche.
 
 ### Personaggi e oggetti
 
@@ -184,6 +198,7 @@ Poi apri `http://localhost:8080/`. La casa tiene i suoi dati in `var/` dentro la
 | `GET /api/stream` | diretta (MJPEG) |
 | `GET/POST/PUT/DELETE /api/rules` | regole |
 | `GET/PUT/DELETE /api/identities` | personaggi |
+| `GET /api/knowledge`, `PUT/DELETE /api/knowledge/{id}` | quello che la casa ha imparato: elenco, correzione (`{"answer": ..., "question": ...}`), cancellazione |
 | `POST /api/commands/{name}` | party, grill, grill_stop, scene, light, lights_off, lights_auto, language, verbosity, volume, follow, intercom, say, alarm (`{"armed": false}` disinserisce l'allarme) |
 | `POST /api/confirm/{id}` | risposta a una domanda della casa (`{"value": ...}`; `{"together": [...]}` per *tutti e due*, `{"nothing": true}` per *non c'è niente*) |
 | `POST /api/time` | ora da un telefono (solo se la casa non la conosce) |

@@ -194,6 +194,18 @@ TEACH_FACT = [("Grazie! Me lo segno: {name} {fact}.", "Thanks! I'll remember: {n
               ("Bene, adesso lo so: {name} {fact}.", "Good, now I know: {name} {fact}.")]
 TEACH_MISHEARD = [("Scusa, non ho capito bene: me lo dirai un'altra volta.",
                    "Sorry, I didn't quite get it: you'll tell me another time.")]
+# what it was told for a question about the world, said back so that a word heard wrong can be corrected at once
+TEACH_KEPT = [("Grazie! Se mi chiedono {q}, risponderò: {a}.", "Thanks! If I'm asked {q}, I'll answer: {a}."),
+              ("Bene, adesso lo so. Alla domanda {q} risponderò: {a}.",
+               "Good, now I know. To the question {q} I'll answer: {a}.")]
+# "te lo dico io", "sbagliato": somebody teaches or corrects it
+TEACH_GO = [("Dimmi pure!", "Go ahead!"), ("Ti ascolto!", "I'm listening!"), ("Sono tutta orecchi!", "I'm all ears!")]
+TEACH_RIGHT = [("Scusa! Qual è la risposta giusta?", "Sorry! What is the right answer?"),
+               ("Allora dimmi tu la risposta giusta!", "Then tell me the right answer!")]
+TEACH_WHICH = [("Su che cosa? Fammi prima la domanda.", "About what? Ask me the question first.")]
+TEACH_FIXED = [("Corretto! Se mi chiedono {q}, risponderò: {a}.", "Corrected! If I'm asked {q}, I'll answer: {a}."),
+               ("Ho capito, grazie. Alla domanda {q} adesso rispondo: {a}.",
+                "Got it, thanks. To the question {q} I now answer: {a}.")]
 
 # a question about the world: think about it (the free answers model, some seconds) or be told (llm.ChatModel)
 THINK_OFFER = [("Ci devo pensare un attimo. Preferisci aspettare qualche secondo, o me lo dici tu?",

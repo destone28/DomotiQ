@@ -573,6 +573,34 @@ def create_app(ctx: "Context") -> FastAPI:
             return {"ok": False, "error": "no_voice"}
         return ctx.voice.chatter.ask_now((body or {}).get("identity") or None)
 
+    # ============================================================ what the house learned
+    @app.get("/api/knowledge")
+    async def knowledge_list():
+        """What the house was told, imagined or thought for the questions it could not answer, the latest first."""
+        names = {i.id: i.name for i in ctx.identities.all()}
+        return [dict(item, name=names.get(item.get("who"))) for item in ctx.knowledge.listing()]
+
+    @app.put("/api/knowledge/{item_id}")
+    async def knowledge_correct(item_id: str, body: dict, w: Who = Depends(who)):
+        """A wrong answer (or a question heard wrong) corrected: from now on it is what was told here."""
+        before = ctx.knowledge.get(item_id)
+        if before is None:
+            raise HTTPException(404, "no such answer")
+        item = ctx.knowledge.correct(item_id, str(body.get("answer") or ""), str(body.get("question") or ""),
+                                     [i.name for i in ctx.identities.all()])
+        if item is None:
+            raise HTTPException(400, "no answer")
+        audit(w, "knowledge", item_id, "update", before, {"name": item["q"], "answer": item["a"]})
+        return item
+
+    @app.delete("/api/knowledge/{item_id}")
+    async def knowledge_forget(item_id: str, w: Who = Depends(who)):
+        before = ctx.knowledge.get(item_id)
+        if before is None or not ctx.knowledge.forget(item_id):
+            raise HTTPException(404, "no such answer")
+        audit(w, "knowledge", item_id, "delete", before)
+        return {"ok": True}
+
     @app.post("/api/alerts/{key}/dismiss")
     async def dismiss_alert(key: str):
         ctx.house.dismiss_alert(key)

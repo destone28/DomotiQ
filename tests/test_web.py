@@ -298,3 +298,26 @@ def test_the_recognition_waits_for_the_end_of_a_party(web):
     ctx.bus.publish("party", state="started", duration=20)
     ctx.bus.publish("party", state="ended")
     assert paused == [True, False]
+
+
+def test_what_the_house_learned_is_corrected_and_forgotten(web):
+    """An answer the house thought wrong, and a question heard wrong, corrected in the web app."""
+    ctx, c = web
+    k = ctx.knowledge
+    k.learn("come si fa la pizza", "C'è un po' di tempo per preparare le uova.", generated=True)
+    k.learn("come si fa la vita", "prendi farina lievito acqua e sale")
+    listed = c.get("/api/knowledge").json()
+    assert [i["q"] for i in listed] == ["come si fa la vita", "come si fa la pizza"]
+    pizza, vita = listed[1], listed[0]
+    r = c.put(f"/api/knowledge/{pizza['id']}", json={"answer": "acqua, farina, lievito e sale"})
+    assert r.status_code == 200 and not r.json().get("generated")
+    assert k.find("come si fa la pizza")["a"] == "acqua, farina, lievito e sale"
+    r = c.put(f"/api/knowledge/{vita['id']}", json={"question": "come si fa il pane", "answer": vita["a"]})
+    assert r.status_code == 200 and k.find("come si fa il pane")["a"] == vita["a"]
+    assert k.find("come si fa la vita") is None
+    assert c.put(f"/api/knowledge/{vita['id']}", json={"answer": " "}).status_code == 400
+    assert c.delete(f"/api/knowledge/{vita['id']}").json()["ok"]
+    assert c.delete(f"/api/knowledge/{vita['id']}").status_code == 404
+    assert [i["q"] for i in c.get("/api/knowledge").json()] == ["come si fa la pizza"]
+    log = c.get("/api/audit").json()
+    assert {e["action"] for e in log if e["entity"] == "knowledge"} == {"update", "delete"}

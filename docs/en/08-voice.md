@@ -182,7 +182,14 @@ When the house cannot answer, it does not just say "I don't know".
 - **"I'll tell you"**: "Go ahead!", and the house keeps the answer. The answer said at once, with no "I'll tell you", counts too.
 - **"Never mind"** or "I don't know": "All right, let's leave it.". A command instead of the choice is carried out.
 
-What the house thought or was told stays in `var/config/knowledge.json`: to the same question, or one alike, it answers at once.
+What the house thought or was told stays in `var/config/knowledge.json`: to the same question, or one alike, it answers at once. The house says back what it learned ("Thanks! If I'm asked how do you make pizza, I'll answer: …"), so a word heard wrong can be corrected at once.
+
+**Correcting a wrong answer.**
+- **"Wrong".** Right after an answer taken from what it learned (within 3 minutes, with nothing else in between), "wrong", "that's not true" or "not right" make the house ask "Sorry! What is the right answer?". The answer said in the same sentence counts at once: "That's not true, you need water, flour, yeast and salt".
+- **"Let me tell you how to make pizza".** This corrects later on too: "Go ahead!", and the answer takes the place of the old one. "I'll tell you" alone is about the last answer; if there is none, the house first asks for the question.
+- **What wins.** What somebody teaches always wins over what the house thought or imagined.
+- **From the web app.** Everything can also be corrected or deleted on the **More → What it learned** page (chapter 6), including a question heard wrong.
+- **Short questions.** A word or two ("pizza") are not enough to repeat a learned answer: it takes at least three words, or a subject such as the weather ("will it rain tomorrow?").
 
 "I don't know", "dunno", silence or a command instead of an answer ("turn on the light") teach nothing: the house answers "All right, I'll ask somebody else." or does what was asked. An answer heard badly is not kept. What the house learns about the world and itself is in `var/config/knowledge.json` (the last 300 things); about the characters, among their facts, which the web app shows and anyone can correct.
 

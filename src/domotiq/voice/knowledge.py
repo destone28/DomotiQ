@@ -19,12 +19,14 @@ piove") is kept for a day only.
 
 from __future__ import annotations
 
+import difflib
 import json
 import logging
 import random
 import re
 import threading
 import time
+import uuid
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -53,14 +55,52 @@ HOUSE = re.compile(r"\b(casa|casetta|plastico|diorama|house|home|stanz\w*|pareti
                    r"divano|letto|cucina|bagno|garage|giardino|vialetto|totem|luci|led|webcam|telecamera|"
                    r"tu|te|ti|tuo|tua|tuoi|tue|hai|sei|you|your|yours)\b")
 YES_NO = re.compile(r"^(si|sì|no|certo|certo che si|certo che no|yes|no|of course|of course not|sure)$")
+# the word a question starts from: "come si fa la pizza?" and "dove si compra la pizza?" are not the same question
+ASKS = {"come": "come", "how": "come", "dove": "dove", "where": "dove", "quando": "quando", "when": "quando",
+        "perche": "perche", "why": "perche", "chi": "chi", "who": "chi", "quanto": "quanto", "quanti": "quanto",
+        "quanta": "quanto", "quante": "quanto", "quale": "quale", "quali": "quale", "qual": "quale", "which": "quale",
+        "cosa": "cosa", "what": "cosa"}
+QUESTION = re.compile(r"^(ma |e |allora )?(come|cosa|che|chi|dove|quando|perche|quanto|quanti|quanta|quante|quale|"
+                      r"quali|qual|how|what|who|where|when|why|which|is|are|do|does|can)\b")
+# somebody wants to teach the house ("te lo dico io", "te lo dico io come si fa la pizza"), or tells it that what it
+# has just said is wrong ("sbagliato", "non è vero, si fa con acqua e farina")
+TEACH = re.compile(r"^(no |ma |adesso |allora |aspetta |guarda )*((te|ti) )?(lo |la )?(dico io|ti dico io|"
+                   r"insegno io|spiego io|so io|i ll tell you|i will tell you|let me tell you)\b ?(?P<rest>.*)$")
+WRONG = re.compile(r"^(no |ma |guarda )*(e |hai |la risposta e |risposta |that s |you re |that is |you are |it s )?"
+                   r"(sbagliat\w*|non e vero|non e cosi|non e giusto|non e esatto|non e corretto|ti sbagli|falso|"
+                   r"wrong|not true|not right|incorrect)\b ?(?P<rest>.*)$")
 
 
 def _stems(text: str, names: Iterable[str] = ()) -> set[str]:
-    """The words that tell what a question is about, cut to five letters ("piove" and "pioverà" are alike)."""
+    """The words that tell what a question is about, cut to five letters ("piove" and "pioverà" are alike); the names
+    of the characters, also heard a little wrong ("rossellino"), are no subject."""
+    names = [n for n in names if n]
     t = normalize(text)
-    for n in sorted({normalize(n) for n in names if n}, key=len, reverse=True):
+    for n in sorted({normalize(n) for n in names}, key=len, reverse=True):
         t = f" {t} ".replace(f" {n} ", " ").strip()
-    return {w[:5] for w in t.split() if w not in STOP and len(w) > 1}
+    name_words = {w for n in find_names(normalize(text), names) for w in normalize(n).split()}
+    words = [w for w in t.split()
+             if not any(difflib.SequenceMatcher(None, w, nw).ratio() >= 0.8 for nw in name_words)]
+    return {w[:5] for w in words if w not in STOP and len(w) > 1}
+
+
+def _asks(text: str) -> str | None:
+    return next((ASKS[w] for w in normalize(text).split() if w in ASKS), None)
+
+
+def lesson(text: str) -> tuple[str, str] | None:
+    """("teach", what follows) for "te lo dico io (come si fa la pizza)", ("correct", what follows) for "sbagliato(,
+    si fa con...)", None for anything else."""
+    t = normalize(text)
+    for kind, pattern in (("teach", TEACH), ("correct", WRONG)):
+        m = pattern.match(t)
+        if m:
+            return kind, m.group("rest").strip()
+    return None
+
+
+def is_question(text: str) -> bool:
+    return bool(QUESTION.match(normalize(text)))
 
 
 def about_house(text: str) -> bool:
@@ -84,6 +124,8 @@ class Knowledge:
                 self.items = [i for i in data if isinstance(i, dict) and i.get("q") and i.get("a")]
             except (OSError, ValueError) as e:
                 log.warning("what the house learned could not be read: %s", e)
+        for item in self.items:
+            item.setdefault("id", uuid.uuid4().hex[:10])   # to be corrected or deleted from the web app
 
     def _save(self) -> None:
         if self.path is None:
@@ -98,11 +140,17 @@ class Knowledge:
 
     def find(self, question: str, who: str | None = None, names: Iterable[str] = (),
              now: float | None = None) -> dict[str, Any] | None:
-        """What the house was told (or imagined) for this question or one alike, about the same character (None:
-        about no character); the latest wins."""
+        """What the house was told (or imagined, or thought) for this question or one alike, about the same character
+        (None: about no character). What somebody told wins over what the house imagined or thought; then the
+        closest, then the latest."""
+        best = self._alike(question, who, names, now)
+        return best[0] if best else None
+
+    def _alike(self, question: str, who: str | None, names: Iterable[str], now: float | None,
+               every: bool = False) -> list[dict[str, Any]]:
         now = time.time() if now is None else now
-        mine, topic = _stems(question, names), subject(question)
-        best, score = None, 0.0
+        mine, topic, asks = _stems(question, names), subject(question), _asks(question)
+        found: list[tuple[float, dict[str, Any]]] = []
         for item in self.items:
             if item.get("who") != who or (item.get("until") and item["until"] < now):
                 continue
@@ -113,19 +161,24 @@ class Knowledge:
                 s = len(mine & theirs) / len(mine | theirs)
                 if s < ALIKE and not (len(theirs) >= 2 and theirs <= mine):
                     continue
+                if asks and _asks(item["q"]) not in (None, asks):
+                    continue                           # "dove si compra la pizza?" is no "come si fa la pizza?"
             else:
                 s = 1.0 if normalize(item["q"]) == normalize(question) else 0.0
                 if not s:
                     continue
-            if s >= score:
-                best, score = item, s
-        return best
+            found.append((s, item))
+        if every:
+            return [item for _, item in found]
+        found.sort(key=lambda f: (not (f[1].get("generated") or f[1].get("invented")), f[0], f[1].get("at", 0)),
+                   reverse=True)
+        return [item for _, item in found]
 
     def learn(self, question: str, answer: str, who: str | None = None, names: Iterable[str] = (),
               invented: bool = False, now: float | None = None, generated: bool = False) -> dict[str, Any]:
         now = time.time() if now is None else now
-        item = {"q": question.strip(), "a": answer.strip(), "k": sorted(_stems(question, names)),
-                "topic": subject(question), "who": who, "at": round(now)}
+        item = {"id": uuid.uuid4().hex[:10], "q": question.strip(), "a": answer.strip(),
+                "k": sorted(_stems(question, names)), "topic": subject(question), "who": who, "at": round(now)}
         if invented:
             item["invented"] = True
         if generated:
@@ -133,13 +186,51 @@ class Knowledge:
         if TIMELY.search(normalize(question)) or TIMELY.search(normalize(answer)):
             item["until"] = round(now + DAY_S)             # "domani piove": true for a day
         with self._lock:
-            old = self.find(question, who, names, now)
-            if old is not None and old.get("k") == item["k"]:
-                self.items.remove(old)                     # told again: the newer answer wins
+            for old in self._alike(question, who, names, now, every=True):
+                # what somebody tells takes the place of every answer to that question (a wrong one the house thought
+                # of first, above all); what the house thinks takes only the place of what it thought before
+                if not (invented or generated) or old.get("generated") or old.get("invented"):
+                    self.items.remove(old)
             self.items.append(item)
             del self.items[:-MAX_ITEMS]
             self._save()
         return item
+
+    def get(self, item_id: str) -> dict[str, str] | None:
+        """The question (as "name", for the change log) and the answer of one item, as they are now."""
+        item = next((i for i in self.items if i.get("id") == item_id), None)
+        return {"name": item["q"], "answer": item["a"]} if item else None
+
+    def listing(self) -> list[dict[str, Any]]:
+        """Everything learned, the latest first, for the web app."""
+        return sorted(reversed(self.items), key=lambda i: i.get("at", 0), reverse=True)
+
+    def correct(self, item_id: str, answer: str, question: str | None = None,
+                names: Iterable[str] = ()) -> dict[str, Any] | None:
+        """Somebody corrected an answer, and maybe the question heard wrong ("come si fa la vita"), in the web app:
+        from now on it is what they told."""
+        answer = re.sub(r"\s+", " ", answer or "").strip()[:300]
+        question = re.sub(r"\s+", " ", question or "").strip()[:200]
+        with self._lock:
+            item = next((i for i in self.items if i.get("id") == item_id), None)
+            if item is None or not answer:
+                return None
+            item["a"] = answer
+            if question and question != item["q"]:
+                item.update(q=question, k=sorted(_stems(question, names)), topic=subject(question))
+            item.pop("generated", None)
+            item.pop("invented", None)
+            item["at"] = round(time.time())
+            self._save()
+        return item
+
+    def forget(self, item_id: str) -> bool:
+        with self._lock:
+            before = len(self.items)
+            self.items = [i for i in self.items if i.get("id") != item_id]
+            if len(self.items) != before:
+                self._save()
+            return len(self.items) != before
 
     def forget_who(self, who: str) -> None:
         with self._lock:
