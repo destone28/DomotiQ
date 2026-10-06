@@ -115,6 +115,7 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
         if c is None:
             return
         logging.info("the light of the hall changed: setting the webcam again")
+        engine.light_adapt(time.time(), "webcam")  # the presences as they are now, before the picture changes
         conn.send(("tuning", True))               # meanwhile no frame: the presences stay as they are
         try:
             camera.set_balance(None)
@@ -364,6 +365,10 @@ class VisionProcess(VisionLink):
             kind = msg[0]
             if kind == "tuning":
                 self._tuning_at = time.time() if msg[1] else 0.0
+                if not msg[1]:
+                    # the presences held meanwhile stay until the first frame: with no tracks for 10 s they were
+                    # all taken away for an instant, and came back ("everybody out and in" on casa1 at 17:45)
+                    self._tracks_at = time.time()
             elif kind == "tracks":
                 self._tracks = [Track(**d) for d in msg[1]]
                 self._tracks_at = time.time()

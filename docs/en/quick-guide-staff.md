@@ -33,7 +33,7 @@ Scan QR 1 on the sign (Wi-Fi), then QR 2 (the house). If the phone asks: *Stay c
 | You see | Do |
 |---|---|
 | Banner *The webcam has moved: calibrate again* | Calibrate (below). |
-| Ghost objects, or figurines not seen, after the hall light changed | Usually the webcam sets itself again within a few seconds (30 seconds at most if the house sees "hands" everywhere). If not: empty the house, **Calibration → Set the light and save the empty house**. |
+| Ghost objects, or figurines not seen, after the hall light changed | Usually the house adapts by itself within a few seconds: the characters stay where they were, the webcam sets itself again and the empty house is learned again in the new light (*Diagnostics* counts the adaptations). If not: empty the house, **Calibration → Set the light and save the empty house**. |
 | The house does not recognize a character it knows, or calls it by the wrong name | On the question pick **Someone already known…** and tap **This one**; or tap the character on the plan → **Who is it?** / **Someone else: change** and pick it from the list. The house learns that look. |
 | A figurine in the house does not show on the plan | **House → Unrecognized item**, then tap where it is on the plan (or in **Live**, in the picture), and choose who it is. |
 | A **?** on a character, or *The house asks* | Answer aloud right after the question, with no Talk, with any sentence: a name, "no, it's a dog", "there's nobody", "both of them". Or tap the name on the question, or **Both**; for a newcomer you can type a new name, choose its kind and tap **Add**, or tap **Nothing there**. |

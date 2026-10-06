@@ -33,7 +33,7 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 | Vedi | Fai |
 |---|---|
 | Fascia *La webcam si è spostata: rifare la calibrazione* | Calibra (vedi sotto). |
-| Oggetti fantasma, o statuine non viste, dopo che la luce del padiglione è cambiata | Di solito la webcam si riregola da sola in pochi secondi (al più tardi dopo 30 secondi se la casa vede "mani" ovunque). Se no: svuota la casa, **Calibrazione → Regola la luce e salva la casa vuota**. |
+| Oggetti fantasma, o statuine non viste, dopo che la luce del padiglione è cambiata | Di solito la casa si adatta da sola in pochi secondi: i personaggi restano dov'erano, la webcam si riregola e la casa vuota si reimpara con la luce nuova (*Diagnostica* conta gli adattamenti). Se no: svuota la casa, **Calibrazione → Regola la luce e salva la casa vuota**. |
 | La casa non riconosce un personaggio che conosce, o lo chiama col nome sbagliato | Nella domanda scegli **Uno già noto…** e tocca **Questo**; oppure tocca il personaggio sulla piantina → **Chi è?** / **È un altro: cambia** e sceglilo dall'elenco. La casa impara quell'aspetto. |
 | Una statuina in casa non compare sulla piantina | **Casa → Elemento non riconosciuto**, poi tocca sulla piantina dove si trova (oppure in **Diretta**, nell'immagine), e scegli chi è. |
 | Un **?** su un personaggio, oppure *La casa chiede* | Rispondi a voce subito dopo la domanda, senza Parla, con una frase qualsiasi: un nome, "no, è un cane", "non c'è nessuno", "tutti e due". Oppure tocca il nome sulla domanda o **Tutti e due**; per un nuovo arrivato puoi scrivere un nome nuovo, sceglierne il tipo e toccare **Aggiungi**, oppure toccare **Non c'è niente**. |

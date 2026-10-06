@@ -156,6 +156,11 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 
 **Soluzione.** Calibra ([capitolo 5](05-collaudo.md#9-calibrazione-della-webcam)).
 
+### Avviso *La webcam vede quasi buio*
+**Causa.** Da più di cinque secondi l'immagine è sotto un terzo della luminosità della casa vuota: la sala è troppo buia (su casa1 di sera, con la luce della stanza spenta, la webcam arrivava a 9-17 su 50 anche al guadagno massimo) oppure qualcosa copre la webcam.
+
+**Soluzione.** Accendi una luce, o togli quello che copre la webcam. Nel frattempo i personaggi restano dove erano e la casa non impara niente da quell'immagine. Quando la luce torna, la casa si adatta da sola.
+
 ### Avviso *La webcam vede tutta la casa diversa*
 **Causa.** Per più di cinque secondi oltre un terzo della casa appare diverso dalla casa vuota: la luce della sala è cambiata molto, qualcosa copre la webcam, oppure la webcam è stata urtata.
 
@@ -164,7 +169,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### Compaiono oggetti fantasma, o quelli veri non vengono visti, dopo che la luce del padiglione è cambiata
 **Causa.** L'esposizione bloccata e il riferimento della casa vuota non corrispondono più alla luce del padiglione.
 
-**Soluzione.** Di solito la casa si arrangia: se l'immagine resta per 5 secondi molto più buia o più chiara della casa vuota, la webcam si riregola da sola senza perdere calibrazione, casa vuota e presenze (in *Diagnostica* il contatore *retunes* sale di uno). Se non basta, svuota la casa e tocca **Regola la luce e salva la casa vuota**.
+**Soluzione.** Di solito la casa si arrangia. Si accorge del cambio di luce e tiene i personaggi come erano un attimo prima. Se serve riregola subito la webcam, senza perdere la calibrazione. Poi reimpara la casa vuota con la luce nuova, tranne intorno ai personaggi. In *Diagnostica* il contatore degli adattamenti sale di uno. Se non basta, svuota la casa e tocca **Regola la luce e salva la casa vuota**.
 
 ### La casa non nota i personaggi che metto
 **Causa.** La casa crede che ci sia una mano sopra la casa e aspetta che se ne vada (in *Diagnostica* risulta una mano anche quando nessuno tocca la casa). Succede se sul bordo della base è appoggiato qualcosa di grande: un modulo, un cavo, il braccio di un visitatore.

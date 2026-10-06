@@ -623,3 +623,33 @@ Emilio ha chiesto anche di poter correggere una risposta generata male.
 Misure sul PC, con il modello della scheda e le tre voci italiane di Piper a due velocità:
 - **Le grafie possibili.** «domotica», «domotico» e «domo tic» svegliano tutte la casa 41 volte su 42. La conferma della parola detta da sola è decisiva. Senza, 10 frasi qualsiasi su 156 che finiscono come lei ("il cancello è automatico", "un film romantico") la svegliavano. Con la conferma nessuna, a parte "la domotica è il futuro", che contiene di fatto la parola.
 - **"Ambrogio".** Nella stessa prova sveglia la casa 24 volte su 24 e con le frasi qualsiasi una volta su 156, come prima.
+
+### D-66 — Quando cambia la luce della sala, i personaggi restano com'erano e la casa vuota si reimpara con la luce nuova (6/10)
+**Scelta:**
+- **Accorgersene.** La casa si accorge da sola di un cambio della luce della sala. I segnali:
+  - la luminosità dell'immagine cambia di oltre il 12% in 2 secondi;
+  - la luminosità resta per 3 secondi oltre il 15% lontana da quella in cui la casa vuota è stata imparata l'ultima volta;
+  - gran parte della casa cambia senza mani;
+  - le "mani" coprono oltre il 45% della casa;
+  - la luce va oltre quello che la correzione delle stanze segue;
+  - la webcam viene regolata di nuovo.
+
+  Non conta subito dopo un cambio delle luci della casa, né durante la ricerca dei personaggi all'avvio: lì la casa vuota non si può reimparare, perché vi entrerebbero personaggi non ancora trovati.
+- **L'ultimo stato prima del cambio.** Da quel momento le presenze restano esattamente com'erano: stessi nomi, stessi posti, niente nasce, niente sparisce, nessun fotogramma viene guardato. Le prese in mano e le mani vicine degli ultimi 5 secondi erano la luce, e si annullano.
+- **La luminosità.** Se l'immagine è fuori dal 70-143% della casa vuota, la webcam si regola subito, senza i 5 secondi senza mani. Se non si può regolare, la casa aspetta al massimo 3 secondi.
+- **La mappa.** Quando la luminosità è ferma (entro il 2% per un secondo, almeno 2 secondi dopo il cambio), la casa vuota si reimpara dalla mediana degli ultimi 5 fotogrammi. I fotogrammi sono riportati alla luce in cui era stata salvata: la luce di ogni stanza viene misurata di nuovo su tutto il pavimento libero. Intorno a ogni presenza la casa vuota resta com'era. Un secondo dopo le presenze si ritrovano al loro posto, poi la casa riprende a guardare. Con una luce che non sta mai ferma, la casa vuota si reimpara comunque dopo 30 secondi.
+- **Webcam coperta o sala troppo buia.** Un'immagine sotto un terzo della luminosità della casa vuota, o abbagliata, non si impara mai. Le presenze restano e la webapp avvisa: "La webcam vede quasi buio: la sala è troppo buia o la webcam è coperta. Accendi una luce; intanto i personaggi restano dove erano". Su casa1 alle 18:40-18:59, con la sala al buio, la webcam arrivava a 9-17 su 50 anche al guadagno massimo. Viola compariva e spariva in cinque stanze diverse, e tutti uscivano insieme.
+- **Webcam urtata.** Prima di imparare, la casa controlla che pareti e mobili siano dove li ha la casa vuota (lo stesso confronto dei bordi dell'avviso "la webcam si è spostata"). Se non ci sono, non impara niente: altrimenti terrebbe l'immagine sbagliata e non chiederebbe più di ricalibrare. Le presenze restano e l'avviso compare subito.
+- **La fine della regolazione.** Le presenze tenute durante la regolazione della webcam restano fino al primo fotogramma.
+- **Diagnostica.** Mostra quando la luce sta cambiando e quante volte la casa si è adattata.
+
+**Perché:** richiesta di Emilio: quando cambia la luce la casa deve accorgersene e regolare da sola luminosità e mappa, tenendo l'ultimo stato salvato prima del cambio, per evitare false apparizioni o sparizioni dei personaggi dovute a ombre e luci diverse.
+
+Il registro e il database delle posizioni di casa1 mostrano la sera del 6/10. Alle 17:45 la webcam si è regolata di nuovo, con il guadagno al massimo:
+- **17:45:46.** Tutti e sette i personaggi sono usciti e rientrati nello stesso secondo. Alla fine dei 10 secondi di regolazione l'ultimo fotogramma era vecchio e la casa ha ricevuto per un istante un elenco vuoto.
+- **17:46:16.** Trenta secondi dopo, le pareti illuminate diversamente dalla casa vuota, viste come "mani" ferme, sono entrate nella casa vuota. Intanto avevano "preso in mano" i personaggi: Mister Brown, Mister Green e Viola sono saltati in altre stanze, Rossellina e Giallo Galli sono usciti e ricomparsi altrove.
+- **17:46:40-17:48:28.** Nel soggiorno sono nate una quindicina di auto e animali dove erano state le "mani".
+
+Sulla casa sintetica, con la luce della sala che cala in modo disuguale (più buia da un lato) e la webcam regolata di nuovo:
+- **Prima.** Compariva una presenza sconosciuta per 6 secondi; con un calo più forte, per 56 secondi, e la webcam non si regolava mai.
+- **Ora.** Nessuna presenza cambia o nasce e la webcam viene chiesta subito. Vale anche per la sera che scende piano in un minuto e mezzo, mentre una mano dopo l'adattamento porta ancora le statuine.

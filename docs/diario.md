@@ -312,3 +312,9 @@ In ordine:
 - **La parola di attivazione *Domotiq*** (D-65). Il riconoscimento vocale non conosce "domotiq" e la toglieva dalla grammatica: la casa non poteva sentirla. Ora la ascolta come «domotica» e la conferma con il riconoscimento libero.
   - Sul PC, con le voci di Piper, sveglia la casa 41 volte su 42.
   - Frasi qualsiasi che finiscono come lei ("il cancello è automatico") non la svegliano.
+- **La luce della sala** (D-66). Il database delle posizioni della sera mostra cosa è successo alle 17:45, quando la webcam si è regolata di nuovo per la sera:
+  - tutti fuori e dentro nello stesso secondo;
+  - tre personaggi saltati in altre stanze;
+  - una quindicina di auto e animali nati nel soggiorno.
+
+  Le cause erano due: un istante senza presenze alla fine della regolazione, e le pareti illuminate in un altro modo prese per mani. Ora la casa si accorge del cambio di luce (subito, o quando la sera scende piano) e tiene i personaggi com'erano un attimo prima. Poi regola la webcam e reimpara la casa vuota con la luce nuova intorno a loro. Sulla casa sintetica nessun personaggio cambia, anche con una luce più buia da un lato.

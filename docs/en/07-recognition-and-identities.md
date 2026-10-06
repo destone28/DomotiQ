@@ -40,7 +40,7 @@ In a diorama every change is made by a hand: a figurine comes in, goes out or mo
 - **A change with no hand around** (a reflection, the hall light, a lamp at the side) never becomes a presence. Faint changes become part of the empty house after about 3 seconds. What looks like a figurine never does, so taking it away leaves no ghost. The exception is something that clearly stands out, appears with a hand around and stays for 2 seconds: a figurine put down while the house was waiting.
 - **The place left** by a figurine that had become part of the empty house (for instance after the house learned the empty house again), once it matches the saved empty house again, is no presence: the empty house takes it back.
 - **When the house changes the light of a room**, for 2.5 seconds its glow on walls and floor is not taken for a presence.
-- **When the hall light changes**, the house measures the light of every room again and waits. The picture may stay much darker or brighter than the empty house for 5 seconds (less than 0.55 times or more than 1.8 times), with no hand and no light of the house just changed: then the camera sets itself again on what it sees, at most once a minute. Calibration, empty house, presences and names stay as they are, since nobody moved anything. If the light still goes beyond what the correction can follow, after 4 seconds the house learns the empty house again from the current picture, leaving out the characters it is following.
+- **When the hall light changes** the characters stay as they were just before, and the house learns the empty house again in the new light: see *The light of the hall*.
 - **At start-up** the house waits for the lights to stand still (the microcontroller sends them again), then recognizes the registered characters that are in the house and the car: only those that closely look like a character and are shaped like a figurine, so the glow of a lamp or the LEDs of a module do not become somebody. A new character that was already in the house, or one lying down that looks less alike, shows up as soon as somebody moves it.
 - **A presence followed for less than 2.5 seconds** is noise, even if it took a name: it does not stay on the plan as hidden.
 - **Alarms only for sure presences.** The alarm rules (chapter 9) count a character the house knows, or something unknown that has stood there, still and clearly visible, for at least 6 seconds. A blob just born sets nothing off.
@@ -163,11 +163,31 @@ When the party is over the house measures the light of every room again, waits f
 
 ## The light of the hall
 
-The camera has its exposure and colours locked on the light in which the empty house was saved. When the light of the hall changes a lot (a light switched on or off), the picture stays darker or brighter than the empty house: below 70% or above 143% for 5 seconds, the camera sets itself again. Measured on casa1: the room light switched off brings the picture to 45-57%, while the scenes of the house (cinema, night) never go below 95%, so they do not set it again.
+The camera has its exposure and colours locked on the light in which the empty house was saved.
 
-While the camera is being set (about 10 seconds, with no frames) the presences stay where they are on the map. Before, they all disappeared and came back, and the house said goodbye and welcomed everybody again ("arrivederci Viola, a presto Mister Brown"). When a setting does not bring the picture back close to the empty house (a hall darker than the camera can follow), the next one waits twice as long, up to a quarter of an hour: on casa1 the camera was set every 70 seconds, always with the same values.
+**How it notices.** The house notices by itself when the light of the hall changes:
+- the brightness of the picture changes by more than 12% within 2 seconds (a light switched on or off);
+- the brightness stays more than 15% away from the one the empty house was last learned in for 3 seconds (the evening coming slowly);
+- much of the house changes with no hand;
+- "hands" cover almost half of the house (two real arms cover a quarter at most: they are the walls, lit another way);
+- the light goes beyond what the correction of the rooms can follow;
+- the camera is set again.
 
-In a very different light the walls and the edges of the furniture look another way and may look like big blobs coming in from the edges, that is hands. A real hand leaves: "hands" that stay without a break for 30 seconds are no hands. They no longer stop the camera from being set again; and if the light is close to the one of the empty house anyway, they join the empty house as they look now (except where a character stands). Before, the house stayed stuck: with "hands" always there it no longer followed the moves and dropped to 3 pictures a second.
+It does not count while a light of the house has just changed (its glow is measured room by room), nor while the house looks for the characters at a start.
+
+**What it does.**
+- **The characters stay.** From then on the characters stay exactly as they were just before: the same names, the same places, nothing is born, nothing disappears, and the house does not look. What seemed "taken by a hand" in the last seconds stays where it was: those hands were the light.
+- **The brightness.** If the picture is below 70% or above 143% of the empty house, the camera is set again at once.
+- **The map.** Once the brightness stands still (within 2% for a second), the house learns the empty house again from the median of the last 5 frames, except around the characters.
+- **Back to work.** A second later it finds the characters again in their places and goes back to looking: a few seconds in all.
+
+Measured on casa1: the room light switched off brings the picture to 45-57%, while the scenes of the house (cinema, night) never go below 95%.
+
+A covered or dazzled camera is never learned as the empty house, and neither is a hall that is too dark (below a third of the brightness of the empty house). The characters stay and the web app warns *The webcam sees almost nothing* (see chapter 11). Nor is a knocked camera: before learning, the house checks that walls and furniture are where they were. If they are not, it learns nothing and asks for a new calibration at once. *Diagnostics* shows when the light is changing and how many times the house adapted.
+
+While the camera is being set (about 10 seconds, with no frames) the presences stay where they are on the map, also in the instant between the end of the setting and the first frame. Before, they all disappeared and came back, and the house said goodbye and welcomed everybody again ("arrivederci Viola, a presto Mister Brown"). When a setting does not bring the picture back close to the empty house (a hall darker than the camera can follow), the next one waits twice as long, up to a quarter of an hour: on casa1 the camera was set every 70 seconds, always with the same values.
+
+In a very different light the walls and the edges of the furniture look another way and may look like big blobs coming in from the edges, that is hands. That is what happened on casa1 on the evening of 6 October: for 30 seconds the "hands" "took" three characters and moved them to other rooms, then some fifteen cars and animals were born where they had been. Now the change of the light is recognized first, and the empty house learned again has no such "hands". The earlier rules stay: "hands" that stay without a break for 30 seconds are no hands, and if the light is close to the one of the empty house they join it (except where a character stands).
 
 ## Privacy
 

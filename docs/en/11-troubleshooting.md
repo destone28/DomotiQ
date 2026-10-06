@@ -156,6 +156,11 @@ The installer (which needs internet) reloads the firmware when needed; without i
 
 **Fix.** Calibrate ([chapter 5](05-testing.md#9-camera-calibration)).
 
+### Banner *The webcam sees almost nothing*
+**Cause.** For more than five seconds the picture has been below a third of the brightness of the empty house: the hall is too dark (on casa1 in the evening, with the room light off, the camera reached 9-17 out of 50 even at the highest gain) or something covers the camera.
+
+**Fix.** Turn on a light, or remove what covers the camera. Meanwhile the characters stay where they were and the house learns nothing from that picture. When the light comes back, the house adapts by itself.
+
 ### Banner *The webcam sees the whole house changed*
 **Cause.** For more than five seconds, more than a third of the house looks different from the empty house: the hall light changed a lot, something covers the camera, or the camera was knocked.
 
@@ -164,7 +169,7 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### Ghost objects appear, or real ones are missed, after the hall light changed
 **Cause.** The locked exposure and the empty-house reference no longer fit the light of the hall.
 
-**Fix.** Usually the house copes by itself: if the picture stays much darker or brighter than the empty house for 5 seconds, the camera sets itself again without losing the calibration, the empty house and the presences (the *retunes* counter in *Diagnostics* goes up by one). If that is not enough, empty the house and tap **Set the light and save the empty house**.
+**Fix.** Usually the house copes by itself. It notices the change of light and keeps the characters as they were just before. If needed it sets the camera again at once, without losing the calibration. Then it learns the empty house again in the new light, except around the characters. In *Diagnostics* the adaptations counter goes up by one. If that is not enough, empty the house and tap **Set the light and save the empty house**.
 
 ### The house does not notice the characters I put down
 **Cause.** The house thinks a hand is over the house and waits for it to leave (*Diagnostics* shows a hand even when nobody touches the house). It happens when something big lies on the edge of the base: a module, a cable, a visitor's arm.

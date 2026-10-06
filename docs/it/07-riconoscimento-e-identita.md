@@ -40,7 +40,7 @@ In un plastico ogni cambiamento lo fa una mano: una statuina entra, esce o si sp
 - **Una differenza senza mano intorno** (un riflesso, la luce della sala, una lampada laterale) non diventa mai una presenza. Le differenze tenui entrano a far parte della casa vuota dopo circa 3 secondi. Ciò che sembra una statuina invece non ci entra mai, così toglierla non lascia un fantasma. Fa eccezione una cosa che spicca chiaramente, compare con una mano intorno e resta per 2 secondi: è una statuina posata mentre la casa aspettava.
 - **Il posto lasciato** da una statuina entrata nella casa vuota (per esempio dopo che la casa ha reimparato la casa vuota), quando torna uguale alla casa vuota salvata, non è una presenza: la casa vuota se lo riprende.
 - **Quando la casa cambia la luce di una stanza**, per 2,5 secondi il suo riflesso su pareti e pavimento non viene preso per una presenza.
-- **Quando cambia la luce della sala**, la casa rimisura la luce di ogni stanza e aspetta. L'immagine può restare per 5 secondi molto più buia o più chiara della casa vuota (meno di 0,55 volte o più di 1,8 volte), senza mani e senza una luce della casa appena cambiata: allora la webcam si riregola da sola su quello che vede, al massimo una volta al minuto. Calibrazione, casa vuota, presenze e nomi restano come sono, perché nessuno ha spostato niente. Se la luce va comunque oltre quello che la correzione riesce a seguire, dopo 4 secondi la casa reimpara la casa vuota dall'immagine attuale, lasciando da parte i personaggi che sta seguendo.
+- **Quando cambia la luce della sala** i personaggi restano com'erano un attimo prima, e la casa reimpara la casa vuota con la luce nuova: vedi *La luce della sala*.
 - **All'accensione** la casa aspetta che le luci stiano ferme (il microcontrollore le rimanda), poi riconosce i personaggi registrati che sono in casa e l'auto: solo quelli che somigliano da vicino a un personaggio e hanno la forma di una statuina, così l'alone di una lampada o i LED di un modulo non diventano qualcuno. Un personaggio nuovo che era già in casa, o uno sdraiato che somiglia meno, compare appena qualcuno lo sposta.
 - **Una presenza seguita meno di 2,5 secondi** è rumore, anche se ha preso un nome: non resta sulla piantina come nascosta.
 - **Allarmi solo su presenze certe.** Le regole d'allarme (capitolo 9) contano un personaggio che la casa conosce, o una cosa sconosciuta che sta lì, ferma e ben visibile, da almeno 6 secondi. Una macchia appena nata non fa suonare niente.
@@ -163,11 +163,31 @@ A festa finita la casa misura di nuovo la luce di ogni stanza, aspetta che le lu
 
 ## La luce della sala
 
-La webcam ha esposizione e colori bloccati sulla luce in cui è stata salvata la casa vuota. Quando la luce della sala cambia molto (una luce accesa o spenta), l'immagine resta più scura o più chiara della casa vuota: sotto il 70% o sopra il 143% per 5 secondi, la webcam si regola di nuovo da sola. Misurato su casa1: la luce della stanza spenta porta l'immagine al 45-57%, mentre gli scenari della casa (cinema, notte) non scendono sotto il 95%, quindi non la fanno regolare.
+La webcam ha esposizione e colori bloccati sulla luce in cui è stata salvata la casa vuota.
 
-Mentre la webcam si regola (circa 10 secondi, senza immagini) le presenze restano dove sono sulla piantina. Prima sparivano tutte e tornavano, e la casa salutava e riaccoglieva tutti ("arrivederci Viola, a presto Mister Brown"). Se una regolazione non riporta l'immagine vicina alla casa vuota (una sala più buia di quanto la webcam riesca a seguire), la successiva aspetta il doppio, fino a un quarto d'ora: su casa1 la webcam si regolava ogni 70 secondi sempre con gli stessi valori.
+**Come se ne accorge.** La casa si accorge da sola quando cambia la luce della sala:
+- la luminosità dell'immagine cambia di oltre il 12% in 2 secondi (una luce accesa o spenta);
+- la luminosità resta per 3 secondi oltre il 15% lontana da quella in cui ha imparato la casa vuota l'ultima volta (la sera che arriva piano);
+- gran parte della casa cambia senza mani;
+- le "mani" coprono quasi metà della casa (due braccia vere ne coprono al massimo un quarto: sono le pareti illuminate in un altro modo);
+- la luce va oltre quello che la correzione delle stanze riesce a seguire;
+- la webcam viene regolata di nuovo.
 
-Con una luce molto diversa le pareti e i bordi dei mobili cambiano aspetto e possono sembrare grandi macchie che entrano dai bordi, cioè mani. Una mano vera se ne va: "mani" che restano senza interruzione per 30 secondi non sono mani. Non impediscono più alla webcam di regolarsi; e se la luce è comunque vicina a quella della casa vuota, entrano nella casa vuota così come si vedono adesso (tranne dove c'è un personaggio). Prima la casa restava bloccata: con le "mani" sempre presenti non seguiva più gli spostamenti e scendeva a 3 immagini al secondo.
+Non conta mentre una luce della casa è appena cambiata (il suo riflesso si misura stanza per stanza), né durante la ricerca dei personaggi all'avvio.
+
+**Cosa fa.**
+- **I personaggi restano.** Da quel momento i personaggi restano esattamente com'erano un attimo prima: stessi nomi, stessi posti, niente nasce, niente sparisce e la casa non guarda. Quello che negli ultimi secondi sembrava "preso in mano" resta dov'era: quelle mani erano la luce.
+- **La luminosità.** Se l'immagine è sotto il 70% o sopra il 143% della casa vuota, la webcam si regola di nuovo subito.
+- **La mappa.** Quando la luminosità sta ferma (entro il 2% per un secondo), la casa reimpara la casa vuota dalla mediana degli ultimi 5 fotogrammi, tranne intorno ai personaggi.
+- **Si riparte.** Un secondo dopo ritrova i personaggi al loro posto e ricomincia a guardare: in tutto, pochi secondi.
+
+Misurato su casa1: la luce della stanza spenta porta l'immagine al 45-57%, mentre gli scenari della casa (cinema, notte) non scendono sotto il 95%.
+
+Una webcam coperta o abbagliata non viene mai imparata come casa vuota, e lo stesso vale per una sala troppo buia (sotto un terzo della luminosità della casa vuota). I personaggi restano e la webapp avvisa *La webcam vede quasi buio* (vedi il capitolo 11). Neanche una webcam urtata: prima di imparare, la casa controlla che pareti e mobili siano al loro posto. Se non ci sono, non impara niente e chiede subito una nuova calibrazione. *Diagnostica* mostra quando la luce sta cambiando e quante volte la casa si è adattata.
+
+Mentre la webcam si regola (circa 10 secondi, senza immagini) le presenze restano dove sono sulla piantina, anche nell'istante tra la fine della regolazione e il primo fotogramma. Prima sparivano tutte e tornavano, e la casa salutava e riaccoglieva tutti ("arrivederci Viola, a presto Mister Brown"). Se una regolazione non riporta l'immagine vicina alla casa vuota (una sala più buia di quanto la webcam riesca a seguire), la successiva aspetta il doppio, fino a un quarto d'ora: su casa1 la webcam si regolava ogni 70 secondi sempre con gli stessi valori.
+
+Con una luce molto diversa le pareti e i bordi dei mobili cambiano aspetto e possono sembrare grandi macchie che entrano dai bordi, cioè mani. È quello che è successo su casa1 la sera del 6 ottobre: per 30 secondi le "mani" hanno "preso" e spostato tre personaggi in altre stanze, poi dove erano state sono nati una quindicina di auto e animali. Ora il cambio di luce si riconosce prima, e la casa vuota imparata di nuovo non ha più quelle "mani". Restano le regole di prima: "mani" ferme senza interruzione per 30 secondi non sono mani, e se la luce è vicina a quella della casa vuota entrano nella casa vuota (tranne dove c'è un personaggio).
 
 ## Privacy
 

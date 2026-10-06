@@ -735,7 +735,7 @@ def test_the_webcam_is_set_again_when_the_hall_gets_dark_and_nothing_moves(engin
         tracks = engine.feed(renderer.render([red], brightness=0.45), t + i * 0.1)
         if wanted is None and engine.retune_wanted(t + i * 0.1):
             wanted = i * 0.1
-    assert wanted is not None and 5.0 <= wanted <= 6.5      # after five seconds of a darker hall
+    assert wanted is not None and wanted <= 0.5             # at once: the house follows the change of the light
     assert [x.identity for x in tracks] == ["id-marco"]     # nobody left meanwhile
     engine.light_retuned(18.0)                              # the webcam found its light again
     assert not engine.retune_wanted(18.1)
@@ -1132,23 +1132,24 @@ def test_something_pointed_at_in_the_web_app_becomes_a_presence(engine, renderer
 
 def test_hands_that_never_leave_are_the_light_of_the_hall(engine, renderer):
     """The room light switched off (0.57 of the empty house on casa1): the walls, lit another way, are big blobs that
-    look like hands, and their edges flicker, so they never stand still. Hands that never leave do not stop the
-    webcam from being set again; with the light of the empty house they join it."""
+    look like hands, and their edges flicker, so they never stand still. They blocked the webcam for 30 s, and then
+    became places where things were born. Now the change of the light is noticed at once: the webcam is asked for at
+    once, hands or not, and once it is set the empty house is learned again in the new light."""
     run(engine, renderer, [([], {})] * 40)
 
     def flickering(i):
         return [Hand(300 + 6 * (i % 2), 150 + 4 * (i % 3))]
-    for i in range(200):                                     # 20 s: a real hand at work, maybe
+    wanted = None
+    for i in range(30):
         engine.feed(renderer.render([], hands=flickering(i), brightness=0.6), 10 + i * 0.1)
-    assert engine.status()["hand"] and not engine.retune_wanted(30.0)
-    for i in range(200):                                     # 20 s more: no hand stays that long
-        engine.feed(renderer.render([], hands=flickering(i), brightness=0.6), 30 + i * 0.1)
-    assert engine.status()["brightness"] < 0.7 and engine.retune_wanted(50.0)
-    engine.light_retuned(50.0)
-    # the light of the empty house, and the same "hand": after a while it joins the empty house
-    for i in range(400):
-        tracks = engine.feed(renderer.render([], hands=flickering(i)), 60 + i * 0.1)
-    assert tracks == [] and engine.status()["absorbed"] >= 1 and not engine._stuck
+        if wanted is None and engine.retune_wanted(10 + i * 0.1):
+            wanted = i * 0.1
+    assert wanted is not None and wanted <= 0.5 and engine.status()["adapting"]
+    engine.light_retuned(20.0)
+    # the light of the empty house, and the same "hand": the house learns it as part of the empty house
+    for i in range(100):
+        tracks = engine.feed(renderer.render([], hands=flickering(i)), 20 + i * 0.1)
+    assert tracks == [] and engine.status()["adaptations"] == 1 and not engine._stuck
 
 
 # ------------------------------------------------------------ a figurine moves only with a hand close to it
@@ -1247,3 +1248,120 @@ def test_a_retune_that_does_not_help_waits_longer_and_longer(engine):
     engine._back_since_retune = True                  # it did help: the next one is at the usual interval
     engine.light_retuned(2000.0)
     assert engine._retune_every == E.RETUNE_EVERY_S
+
+
+# ------------------------------------------------------------ the light of the hall changes: the presences stay
+def _uneven(renderer, things, left, right, **kw):
+    """The house under a hall light brighter on one side (a window): `left` and `right` of the picture."""
+    ramp = np.linspace(left, right, ANALYSIS[0], dtype=np.float32)[None, :, None]
+    return np.clip(renderer.render(things, **kw).astype(np.float32) * ramp, 0, 255).astype(np.uint8)
+
+
+def _named(engine, renderer, things):
+    tracks = bring(engine, renderer, things)
+    for t, ident in zip(sorted(tracks, key=lambda t: t.x), ("id-a", "id-b", "id-c")):
+        engine.tracker.assign(t.id, ident)
+    tracks = run(engine, renderer, [(things, {})] * 5, t0=4.0 + 4.0 * len(things))
+    return {t.identity: (t.x, t.y) for t in tracks}
+
+
+def _same(tracks, before):
+    return {t.identity for t in tracks} == set(before) and all(
+        np.hypot(t.x - before[t.identity][0], t.y - before[t.identity][1]) < 3.0 for t in tracks)
+
+
+def test_the_hall_light_changes_and_every_presence_stays_as_it_was(engine, renderer):
+    """casa1, 6 October at 17:45: the evening came and the webcam was set again. Everybody went out and came back,
+    three characters jumped to other rooms and fifteen cars and animals were born in the living room: the walls, lit
+    another way than in the empty house, were "hands". Through a change of the light the presences stay as they were
+    just before; the webcam is asked for at once, and the empty house is learned again in the new light."""
+    things = [Thing(300, 100, "#d03030"), Thing(480, 280, "#30a040")]
+    before = _named(engine, renderer, things)
+    t, retuned, level = 20.0, None, 1.0
+    for i in range(200):
+        now = t + i * 0.1
+        tracks = engine.feed(_uneven(renderer, things, 0.25 * level, 0.6 * level, cast=(1.1, 1.0, 0.85)), now)
+        assert _same(tracks, before), (now, [(x.identity, round(x.x), round(x.y)) for x in tracks])
+        if retuned is None and engine.retune_wanted(now):
+            retuned = now
+            t += 10.0                                  # ten seconds with no frames while the webcam is set
+            engine.light_retuned(now + 10.0)
+            level = 2.0                                # ...and the picture is brighter again
+    assert retuned is not None and retuned - 20.0 <= 0.5
+    st = engine.status()
+    assert st["adaptations"] >= 1 and not st["adapting"] and st["retunes"] == 1
+    assert len(engine.tracker.tracks) == 2           # nothing was born
+
+
+def test_the_evening_comes_slowly_and_nobody_moves(engine, renderer):
+    """No sudden change: the light of the hall goes down unevenly over a minute and a half."""
+    things = [Thing(150, 250, "#3050d0"), Thing(300, 100, "#d03030")]
+    before = _named(engine, renderer, things)
+    for i in range(900):
+        k = 1.0 - 0.55 * i / 900
+        tracks = engine.feed(_uneven(renderer, things, 0.7 * k, 1.1 * k), 20.0 + i * 0.1)
+        assert _same(tracks, before), (i, [(x.identity, round(x.x), round(x.y)) for x in tracks])
+    assert engine.status()["adaptations"] >= 1 and len(engine.tracker.tracks) == 2
+
+
+def test_after_the_light_changed_a_hand_still_brings_figurines(engine, renderer):
+    red, blue = Thing(300, 100, "#d03030"), Thing(480, 280, "#3050d0")
+    before = _named(engine, renderer, [red])
+    dark = {"brightness": 0.5}
+    run(engine, renderer, [([red], dark)] * 60, t0=20.0)          # the room light goes off, and the house follows
+    assert engine.status()["adaptations"] == 1 and _same(engine.tracks, before)
+    hand = dict(dark, hands=[Hand(blue.x, blue.y)])
+    run(engine, renderer, [([red], hand)] * 3 + [([red, blue], hand)] * 2, t0=30.0)
+    tracks = run(engine, renderer, [([red, blue], dark)] * 40, t0=30.5)
+    assert len(tracks) == 2 and any(np.hypot(x.x - blue.x, x.y - blue.y) < 12 for x in tracks)
+    assert any(x.identity == "id-a" and np.hypot(x.x - before["id-a"][0], x.y - before["id-a"][1]) < 3 for x in tracks)
+    assert engine.status()["adaptations"] == 1                    # a hand is no change of the light
+
+
+def test_a_covered_camera_is_never_learned_as_the_empty_house(engine, renderer):
+    red = Thing(300, 100, "#d03030")
+    before = _named(engine, renderer, [red])
+    reference = engine.segmenter.reference_bgr.mean()
+    run(engine, renderer, [([red], {"brightness": 0.03})] * 70, t0=20.0)
+    assert engine.status()["flooded"] and engine.status()["dark"] and _same(engine.tracks, before)
+    assert abs(engine.segmenter.reference_bgr.mean() - reference) < 5.0
+    tracks = run(engine, renderer, [([red], {})] * 50, t0=30.0)    # uncovered: nothing changed
+    assert _same(tracks, before) and not engine.status()["flooded"]
+
+
+def test_the_presences_stay_until_the_first_frame_after_the_webcam_is_set():
+    """At the end of the ten seconds the webcam was being set, the presences were dropped for an instant (the last
+    frame was ten seconds old) and came back: everybody went out of the house and in again."""
+    import time
+    from domotiq.model import Track
+    from domotiq.vision.worker import VisionProcess
+    vp = object.__new__(VisionProcess)
+    vp._tracks, vp._tracks_at = [Track("t-1", 10.0, 10.0, "person")], time.time() - 11.0
+    vp._tuning_at, vp._stopping = time.time() - 10.0, False
+
+    class Conn:
+        sent = [("tuning", False)]
+
+        def recv(self):
+            if self.sent:
+                return self.sent.pop(0)
+            vp._stopping = True
+            raise EOFError
+    vp._conn = Conn()
+    vp._read()
+    assert vp._tuning_at == 0.0 and [t.id for t in vp.tracks()] == ["t-1"]
+
+
+def test_a_knocked_webcam_is_never_learned_as_a_change_of_the_light(engine, renderer):
+    """Most of the house different with no hand may be the webcam knocked, not the light: the walls are elsewhere.
+    The house would learn the wrong picture and never ask for a new calibration."""
+    red = Thing(300, 100, "#d03030")
+    before = _named(engine, renderer, [red])
+    reference = engine.segmenter.reference_bgr.copy()
+    knocked = np.float32([[1, 0, 12], [0, 1, 8]])
+    assert engine.light_adapt(20.0, "changed")
+    for i in range(40):
+        tracks = engine.feed(cv2.warpAffine(renderer.render([red]), knocked, ANALYSIS), 20.0 + i * 0.1)
+    st = engine.status()
+    assert st["moved"] and st["adaptations"] == 0 and st["adapting"] and _same(tracks, before)
+    assert float(np.abs(engine.segmenter.reference_bgr - reference).mean()) < 0.5
