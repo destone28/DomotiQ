@@ -17,6 +17,7 @@ Wi-Fi password: ____________________
 1. **Light**: turn on the light of the house (the strip over the diorama, if there is one) before the board, and leave it always on.
 2. **Power on**: plug in the board's power supply and wait for the lights to stop breathing.
 3. **Empty house**: only the first time in a new place, or after moving furniture or modules. Take away all the figurines and do **More → Calibration → Set the light and save the empty house**. If the house still sees figurines, or it is too dark, it does not save and says why.
+   Right after, still with the house empty: **Photograph in every light of the house** (one minute), then switch on one at a time the lights of the hall (lamps, LEDs, windows) and for each one **Add the light of now**. Then the house recognises by itself the lights it has already seen.
 4. **Figurines**: put them down **by hand, one at a time**, taking your hand away each time. The house announces them by name. If it asks "who is it?", answer.
 5. **Check**: in **Characters** every figurine has its name and room. In **Diagnostics** there are no warnings (webcam, light, empty house saved in the dark).
 
@@ -43,7 +44,7 @@ Scan QR 1 on the sign (Wi-Fi), then QR 2 (the house). If the phone asks: *Stay c
 | You see | Do |
 |---|---|
 | Banner *The webcam has moved: calibrate again* | Calibrate (below). |
-| Ghost objects, or figurines not seen, after the hall light changed | Usually the house adapts by itself within a few seconds: the characters stay where they were, the webcam sets itself again and the empty house is learned again in the new light (*Diagnostics* counts the adaptations). If not: empty the house, **Calibration → Set the light and save the empty house**. |
+| Ghost objects, or figurines not seen, after the hall light changed | Usually the house adapts by itself within a few seconds: the characters stay where they were and the house compares with the most similar picture of the empty house, or learns it again in the new light (*Diagnostics* counts the adaptations). If it is a new light: empty the house and **Calibration → Add the light of now**. |
 | The house does not recognize a character it knows, or calls it by the wrong name | On the question pick **Someone already known…** and tap **This one**; or tap the character on the plan → **Who is it?** / **Someone else: change** and pick it from the list. The house learns that look. |
 | A figurine in the house does not show on the plan | **House → Unrecognized item**, then tap where it is on the plan (or in **Live**, in the picture), and choose who it is. |
 | A **?** on a character, or *The house asks* | Answer aloud right after the question, with no Talk, with any sentence: a name, "no, it's a dog", "there's nobody", "both of them". Or tap the name on the question, or **Both**; for a newcomer you can type a new name, choose its kind and tap **Add**, or tap **Nothing there**. |

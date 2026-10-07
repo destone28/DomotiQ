@@ -144,6 +144,19 @@ FIGURE_LIKELY_P = 0.5    # the empty house learned again around what the network
 FIGURE_SCAN_P = 0.8      # at a start, what the network sees as a character this sure is taken, whatever its colours
 FIGURE_EVERY_S = 0.5
 FIGURE_MAX = 4
+# Empty houses in more lights (var/calibration/empties): with the house empty, its own lights are shown one after
+# the other and the empty house is photographed in each; so is the light of the hall that somebody switches on
+# (Calibration). When the light changes, or at a start, the stored empty house most like the picture, once the light
+# of every room is measured on it, is the one compared with; the house learns the empty house from the picture itself
+# only when none is close enough (a figurine it does not follow could become part of it, D-71). The closest is the one
+# with the smallest median difference over the free floor and walls, away from the presences (0-255); it is taken as
+# it is only if 90% of those points are within EMPTY_FIT: a light uneven within a room (the driveway lit from one side)
+# is close in the median and far in a corner
+EMPTIES_DIR = "empties"
+SAVED_EMPTY = "casa vuota salvata"   # the empty house saved in Calibration, among the others
+EMPTIES_MAX = 30
+EMPTY_FIT = 10.0         # a stored empty house this close (90% of the points) is taken as it is: nothing is learned
+EMPTY_BETTER = 0.8       # and it replaces the one in use only if this much closer
 # The journal of the vision (var/journal): every presence told to the house, every name given, every blob the network
 # refused, with its crop, to be reviewed in the web app; what people confirm or correct teaches the network. The same
 # track with the same name, or a refused blob at the same place, is written once a minute at most; JOURNAL_MAX entries
@@ -188,6 +201,8 @@ class Engine:
         self._last_ref_update = 0.0
         self._moved = {"checked": 0.0, "shift": 0.0, "count": 0}
         self._background: dict[str, np.ndarray] = {}
+        self._empties: list[dict[str, Any]] = []   # the empty house in more lights: label, file, when, level, picture
+        self.empty_in_use = ""                     # the label of the stored empty house compared with now
         self._flooded_since = 0.0
         self.light_ok = True                       # the worker clears it while the webcam light is not set
         self.blur_private = True                   # the bathroom blurred in the images that leave the board
@@ -536,6 +551,7 @@ class Engine:
         if frames:
             median = np.median(np.stack(frames), axis=0).astype(np.uint8) if len(frames) > 1 else frames[0]
             keep = self._footprints()
+            fit = self._pick_empty(median, keep)        # an empty house photographed in this light, if there is one
             seg.fg_prev = keep.astype(np.uint8) * 255   # the light of the rooms measured everywhere but on them
             seg.light_changed(seg.region_names, now, 0.5)
             seg._g = None
@@ -561,7 +577,8 @@ class Engine:
                         x, y, bw, bh = o.bbox
                         m = ADAPT_MARGIN_PX
                         keep[max(0, y - m):min(h, y + bh + m), max(0, x - m):min(w, x + bw + m)] = True
-            seg.absorb(median, (seg.mask > 0) & ~keep)
+            if fit is None or fit > EMPTY_FIT:
+                seg.absorb(median, (seg.mask > 0) & ~keep)
             seg.light_changed(seg.region_names, now, ADAPT_SETTLE_S)
         # what the old light left half-learned is gone with it
         self._ghost = self._fg_since = self._hand_since = self._zone = None
@@ -886,6 +903,8 @@ class Engine:
                 self.segmenter.set_noise(self._load_noise())
                 self._saved_empty()
                 self._backgrounds()
+            self._load_empties()
+            self.empty_in_use = SAVED_EMPTY if self.ready else ""
 
     def _load_noise(self) -> np.ndarray | None:
         """The noise saved with the empty house (None: the first quiet frames after the start will teach it)."""
@@ -951,6 +970,7 @@ class Engine:
         self._setup(calib)
         for name in ("reference.png", NOISE_FILE):
             (self.dir / name).unlink(missing_ok=True)
+        self.clear_empties()                        # pictures of another position of the webcam
         return {"ok": True, "message": "Angoli salvati. Ora togli tutto e premi Casa vuota.",
                 "message_en": "Corners saved. Now clear the house and press Empty house."}
 
@@ -994,10 +1014,129 @@ class Engine:
             (self.dir / NOISE_FILE).unlink(missing_ok=True)
         self._backgrounds()
         self._moved.update(shift=0.0, count=0)
+        self._store_empty(np.clip(self.segmenter.reference_bgr, 0, 255).astype(np.uint8), SAVED_EMPTY, level)
+        self.empty_in_use = SAVED_EMPTY
         if self.tracker:
             self.tracker.tracks.clear()             # the house is empty now
         self.rescan()
         return {"ok": True, "message": "Casa vuota salvata.", "message_en": "Empty house saved."}
+
+    # ------------------------------------------------------------ the empty house in more lights
+    def add_empty(self, frames: list[np.ndarray] | None = None, label: str = "", force: bool = False) -> dict[str, Any]:
+        """The empty house photographed in the light of now, kept with the others; the one in use does not change."""
+        if not self.ready:
+            return {"ok": False, "error": "save the empty house first",
+                    "message": "Prima salva la casa vuota.", "message_en": "Save the empty house first."}
+        left = [] if force else self._in_sight()
+        if left:
+            return {"ok": False, "error": "figurines", "names": left,
+                    "message": "Sulla casa vedo ancora: " + ", ".join(left) + ". Toglile e riprova.",
+                    "message_en": "I still see on the house: " + ", ".join(left) + ". Take them away and try again."}
+        if frames is None:
+            if self.grab is None:
+                return {"ok": False, "error": "no camera"}
+            frames = self.grab(EMPTY_FRAMES)
+        frames = [self._fit(f) for f in frames if f is not None]
+        if len(frames) < 3:
+            return {"ok": False, "error": "no frames from the camera"}
+        level = float(np.mean([sum(cv2.mean(f, mask=self.segmenter.mask)[:3]) / 3.0 for f in frames]))
+        if not DARK_LEVEL <= level <= DAZZLED_LEVEL:
+            return {"ok": False, "error": "dark" if level < DARK_LEVEL else "dazzled", "level": round(level),
+                    "message": "Con questa luce la webcam non vede abbastanza: non la salvo.",
+                    "message_en": "In this light the webcam does not see enough: not saved."}
+        picture = np.median(np.stack(frames), axis=0).astype(np.uint8)
+        self._store_empty(picture, label or time.strftime("luce delle %H:%M"), level)
+        return {"ok": True, "count": len(self._empties), "level": round(level),
+                "message": f"Casa vuota salvata anche con questa luce ({len(self._empties)} luci).",
+                "message_en": f"Empty house saved in this light too ({len(self._empties)} lights)."}
+
+    def empties(self) -> list[dict[str, Any]]:
+        return [{"label": e["label"], "t": e["t"], "level": e["level"], "in_use": e["label"] == self.empty_in_use}
+                for e in self._empties]
+
+    def clear_empties(self) -> dict[str, Any]:
+        d = self.dir / EMPTIES_DIR
+        for f in d.glob("*") if d.exists() else ():
+            f.unlink(missing_ok=True)
+        self._empties, self.empty_in_use = [], ""
+        return {"ok": True, "message": "Case vuote per le luci cancellate.", "message_en": "Empty houses per light cleared."}
+
+    def _store_empty(self, picture: np.ndarray, label: str, level: float) -> None:
+        d = self.dir / EMPTIES_DIR
+        d.mkdir(parents=True, exist_ok=True)
+        same = [e for e in self._empties if e["label"] == label]
+        name = same[0]["file"] if same else f"{int(time.time() * 1000) % 10 ** 10:010d}.png"
+        cv2.imwrite(str(d / name), picture)
+        self._empties = [e for e in self._empties if e["label"] != label]
+        self._empties.append({"label": label, "file": name, "t": round(time.time()), "level": round(level, 1),
+                              "picture": picture})
+        while len(self._empties) > EMPTIES_MAX:
+            old = self._empties.pop(0)
+            (d / old["file"]).unlink(missing_ok=True)
+        self._save_empties()
+
+    def _save_empties(self) -> None:
+        d = self.dir / EMPTIES_DIR
+        tmp = d / "empties.part"
+        tmp.write_text(json.dumps([{k: v for k, v in e.items() if k != "picture"} for e in self._empties],
+                                  ensure_ascii=False, indent=1), encoding="utf-8")
+        tmp.replace(d / "empties.json")
+
+    def _load_empties(self) -> None:
+        self._empties = []
+        d = self.dir / EMPTIES_DIR
+        try:
+            items = json.loads((d / "empties.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        for e in items:
+            pic = cv2.imread(str(d / str(e.get("file", ""))))
+            if pic is not None and pic.shape[1::-1] == ANALYSIS:
+                self._empties.append({**e, "picture": pic})
+
+    def _fit_of(self, picture: np.ndarray, cur: np.ndarray, keep: np.ndarray) -> tuple[float, float]:
+        """How far the picture is from an empty house once the light of every room is measured, as the house does
+        when a light changes: the median difference on the free floor and walls, away from the presences, and the
+        difference within which 90% of those points are."""
+        seg = self.segmenter
+        flat_keep = keep.ravel()
+        a = picture.reshape(-1, 3).astype(np.float32)
+        b = cur.reshape(-1, 3).astype(np.float32)
+        diffs = []
+        for idx in seg.samples:
+            idx = idx[~flat_keep[idx]] if len(idx) else idx
+            if len(idx) < 50:
+                continue
+            ra, rb = a[idx], b[idx]
+            gains = np.median(rb, axis=0) / np.maximum(np.median(ra, axis=0), 1.0)
+            diffs.append(np.abs(rb - ra * gains).max(axis=1))
+        if not diffs:
+            return float("inf"), float("inf")
+        d = np.concatenate(diffs)
+        return float(np.median(d)), float(np.percentile(d, 90))
+
+    def _pick_empty(self, cur: np.ndarray, keep: np.ndarray | None = None) -> float | None:
+        """The stored empty house most like the picture becomes the one compared with, if it is clearly closer than
+        the one in use. Tells within how much 90% of the points of the one in use are now (None without stored empty
+        houses)."""
+        seg = self.segmenter
+        if not self._empties or seg is None or seg.reference_bgr is None:
+            return None
+        keep = np.zeros(seg.mask.shape, bool) if keep is None else keep
+        now_fit, now_p90 = self._fit_of(np.clip(seg.reference_bgr, 0, 255).astype(np.uint8), cur, keep)
+        fits = [(*self._fit_of(e["picture"], cur, keep), k) for k, e in enumerate(self._empties)]
+        best, p90, k = min(fits)
+        if best < EMPTY_BETTER * now_fit:
+            e = self._empties[k]
+            seg.reference_bgr = e["picture"].astype(np.float32)
+            seg._reference_changed()
+            seg._prev_gains, seg._g, seg.gains = None, None, {}
+            self.empty_in_use = e["label"]
+            self._backgrounds()                     # floor, walls and lawns in this light
+            log.info("the empty house of \"%s\" taken for this light (%.1f, 90%% within %.1f; the one before %.1f)",
+                     e["label"], best, p90, now_fit)
+            return p90
+        return now_p90
 
     def reset(self) -> dict[str, Any]:
         for name in ("calibration.json", "reference.png", NOISE_FILE):
@@ -1039,6 +1178,7 @@ class Engine:
             settled = all(now - t >= LIGHT_BLOCK_S for t in self._light_at.values())
             if settled or now - self._scan_since >= SCAN_WAIT_S:
                 self._scan_pending, self._scan_until, self._scan_since = False, now + SCAN_S, 0.0
+                self._pick_empty(small, self._footprints())   # the empty house of this light, before looking
             else:
                 self.tracks = self.tracker.update([], now, frozen=True, quiet_s=float("inf"), animated=self._animated)
                 return self.tracks
@@ -1405,6 +1545,8 @@ class Engine:
     def status(self) -> dict[str, Any]:
         return {
             "calibrated": self.calibrated,
+            "empties": len(self._empties),
+            "empty_in_use": self.empty_in_use,
             "reference": bool(self.ready),
             "fps": round(self.fps, 1),
             "proc_ms": round(self.proc_ms, 1),

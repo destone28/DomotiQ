@@ -781,3 +781,16 @@ Sul blocco della notte la rete nuova dà "Mister Blu" a ritagli etichettati Viol
 - **La soglia del 90% non andava più bene.** La rete nuova è sicura in un'altra misura: sul blocco più recente nessuna statuina vera supera 0,71 di "niente". Al 90% avrebbe fermato solo il 19% dei "niente"; a 0,75 non scarta nessuna statuina e ne ferma l'86% (la rete di prima, al 90%, il 52%). Con la luce LED, dalle 16:24, ne ferma il 76% (la rete di prima il 74%).
 - **I nomi.** Sulle statuine con la luce LED la rete nuova dà il nome giusto a 913 su 995 (quella di prima a 901), e nessun nome sbagliato tra quelli dati al 95%.
 - **I colori simili.** Alle 16:41 la casa aveva chiamato Rossana la statuina rosa Rossellina, mentre la rete era sicura al 96% che fosse Rossellina.
+
+### D-75 — La casa vuota fotografata con più luci (7/10)
+**Scelta:**
+- **Le luci della casa.** Calibrazione → *Fotografa con tutte le luci della casa*. Con la casa vuota, la casa mostra le sue luci una dopo l'altra e in ognuna salva una foto della casa vuota (`var/calibration/empties/`), in circa un minuto. Le luci sono: tutte spente, tutte accese con la luce di chi entra in una stanza, una stanza alla volta, gli scenari cinema, relax e notte. Poi le luci tornano come prima.
+- **Le luci della sala.** Calibrazione → *Aggiungi la luce di adesso* aggiunge le luci che la casa non comanda: lampade, il LED, la luce della finestra. Ogni salvataggio di "Salva la casa vuota" entra tra le foto.
+- **Come la casa le usa.** Quando la luce cambia, e a ogni avvio prima di cercare i personaggi, la casa prende la foto più simile all'immagine. Il confronto si fa dopo aver misurato la luce di ogni stanza, sul pavimento e sulle pareti libere, lontano dalle presenze.
+  - Se la foto è abbastanza vicina, la casa non impara niente da quello che vede.
+  - Se nessuna lo è, impara come prima (D-66, D-71), partendo dalla foto più vicina.
+- **Le regole sulle foto.**
+  - Le foto non si salvano con statuine sopra, se non si conferma che non lo sono, né al buio.
+  - Le foto si cancellano quando si rifanno gli angoli. Dopo aver spostato un arredo vanno cancellate a mano (*Cancella*) e rifatte.
+
+**Perché:** proposta accettata da Emilio. Imparare la casa vuota da quello che si vede si adatta a tutto, ma può inglobare una statuina che la casa non sta seguendo: è successo a ogni riavvio con un'altra luce (D-71). Scegliere tra foto scattate a casa vuota non sbaglia mai così, e la casa sa quali delle sue luci sono accese. Le foto da angolazioni diverse invece non servono alla casa vuota: il confronto è pixel per pixel con la webcam, che è fissa.

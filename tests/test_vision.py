@@ -1434,6 +1434,36 @@ def test_at_a_start_the_network_has_the_last_word(engine, renderer):
     assert len(tracks) == 1
 
 
+def test_an_empty_house_photographed_in_each_light_is_taken_when_the_light_changes(engine, renderer, tmp_path):
+    """The light of the hall changes to one the empty house was photographed in: the house compares with that
+    picture, and learns nothing from what it sees (a figurine it does not follow stays a figurine)."""
+    dim = [_uneven(renderer, [], 0.45, 0.8, cast=(1.1, 1.0, 0.85)) for _ in range(5)]
+    assert engine.add_empty(dim, "lampada")["ok"]
+    assert [e["label"] for e in engine.empties()] == ["casa vuota salvata", "lampada"]
+    red = Thing(300, 100, "#d03030")
+    tracks = bring(engine, renderer, [red])
+    assert len(tracks) == 1
+    green = Thing(480, 280, "#30a040")          # put down while the light changed: not followed yet
+    for i in range(150):
+        engine.feed(_uneven(renderer, [red, green], 0.45, 0.8, cast=(1.1, 1.0, 0.85)), 20.0 + i * 0.1)
+    st = engine.status()
+    assert st["adaptations"] >= 1 and st["empty_in_use"] == "lampada"
+    # nothing learned: the stored picture of the empty house is the reference, without the green figurine
+    ref = np.clip(engine.segmenter.reference_bgr, 0, 255).astype(np.uint8)
+    u, v = (int(c) for c in renderer.calib.image_of(np.array([[green.x, green.y]], np.float64), 15.0)[0])
+    assert np.abs(ref[v, u].astype(int) - np.median(np.stack(dim), axis=0)[v, u].astype(int)).max() <= 2
+    # a new engine on the same folder knows the stored empty houses, and at a start takes the one of this light
+    again = Engine(engine.layout, engine.dir, tmp_path / "ds2", tmp_path / "rec2")
+    assert again.status()["empties"] == 2
+    for i in range(80):
+        again.feed(_uneven(renderer, [red, green], 0.45, 0.8, cast=(1.1, 1.0, 0.85)), i * 0.1)
+    assert again.empty_in_use == "lampada"
+    # an empty house is never kept with figurines on it, nor in the dark
+    assert not engine.add_empty([renderer.render([red]) for _ in range(5)], "con statuina")["ok"]
+    assert not engine.add_empty([renderer.render([], brightness=0.05) for _ in range(5)], "buio")["ok"]
+    assert engine.clear_empties()["ok"] and engine.empties() == []
+
+
 def test_a_dark_picture_is_never_saved_as_the_empty_house(engine, renderer):
     """casa1, 6 October at 21:00: "Set the light and save the empty house" with the room in the dark."""
     reference = engine.segmenter.reference_bgr.copy()

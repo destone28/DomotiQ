@@ -17,6 +17,7 @@ Password del Wi-Fi: ____________________
 1. **Luce**: accendi la luce della casa (la striscia sopra il diorama, se c'è) prima della scheda, e lasciala sempre accesa.
 2. **Accensione**: collega l'alimentatore della scheda e aspetta che le luci smettano di respirare.
 3. **Casa vuota**: solo la prima volta in un posto nuovo, o se hai spostato arredi o moduli. Togli tutte le statuine e fai **Altro → Calibrazione → Regola la luce e salva la casa vuota**. Se la casa vede ancora statuine, o se è troppo buio, non salva e dice perché.
+   Subito dopo, sempre a casa vuota: **Fotografa con tutte le luci della casa** (un minuto), poi accendi una alla volta le luci del padiglione (lampade, LED, finestre) e per ognuna **Aggiungi la luce di adesso**. Così la casa riconosce da sola le luci già viste.
 4. **Statuine**: posale **a mano, una alla volta**, togliendo la mano ogni volta. La casa le annuncia per nome. Se chiede "chi è?", rispondi.
 5. **Controllo**: in **Personaggi** ogni statuina ha il suo nome e la sua stanza. In **Diagnostica** non ci sono avvisi (webcam, luce, casa vuota salvata al buio).
 
@@ -43,7 +44,7 @@ Inquadra il QR 1 del cartello (Wi-Fi), poi il QR 2 (la casa). Se il telefono lo 
 | Vedi | Fai |
 |---|---|
 | Fascia *La webcam si è spostata: rifare la calibrazione* | Calibra (vedi sotto). |
-| Oggetti fantasma, o statuine non viste, dopo che la luce del padiglione è cambiata | Di solito la casa si adatta da sola in pochi secondi: i personaggi restano dov'erano, la webcam si riregola e la casa vuota si reimpara con la luce nuova (*Diagnostica* conta gli adattamenti). Se no: svuota la casa, **Calibrazione → Regola la luce e salva la casa vuota**. |
+| Oggetti fantasma, o statuine non viste, dopo che la luce del padiglione è cambiata | Di solito la casa si adatta da sola in pochi secondi: i personaggi restano dov'erano e la casa confronta con la foto della casa vuota più simile, o la reimpara con la luce nuova (*Diagnostica* conta gli adattamenti). Se è una luce nuova: svuota la casa e **Calibrazione → Aggiungi la luce di adesso**. |
 | La casa non riconosce un personaggio che conosce, o lo chiama col nome sbagliato | Nella domanda scegli **Uno già noto…** e tocca **Questo**; oppure tocca il personaggio sulla piantina → **Chi è?** / **È un altro: cambia** e sceglilo dall'elenco. La casa impara quell'aspetto. |
 | Una statuina in casa non compare sulla piantina | **Casa → Elemento non riconosciuto**, poi tocca sulla piantina dove si trova (oppure in **Diretta**, nell'immagine), e scegli chi è. |
 | Un **?** su un personaggio, oppure *La casa chiede* | Rispondi a voce subito dopo la domanda, senza Parla, con una frase qualsiasi: un nome, "no, è un cane", "non c'è nessuno", "tutti e due". Oppure tocca il nome sulla domanda o **Tutti e due**; per un nuovo arrivato puoi scrivere un nome nuovo, sceglierne il tipo e toccare **Aggiungi**, oppure toccare **Non c'è niente**. |

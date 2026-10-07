@@ -177,6 +177,11 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
         "empty": lambda p: ((camera.flush(), engine.take_empty(force=bool(p.get("force"))))[1] if engine.light_ok
                             else adjust(bool(p.get("force")))),
         "adjust": lambda p: adjust(bool(p.get("force"))),
+        # the empty house in more lights: the light of now added, the list, all of them cleared
+        "empty_add": lambda p: (camera.flush(), engine.add_empty(label=str(p.get("label") or ""),
+                                                                 force=bool(p.get("force"))))[1],
+        "empties": lambda p: {"ok": True, "empties": engine.empties(), "in_use": engine.empty_in_use},
+        "empties_clear": lambda p: engine.clear_empties(),
         "reset": lambda p: (lock_file.unlink(missing_ok=True), camera.controls and camera.controls.automatic(),
                             setattr(engine, "light_ok", cfg.get("device") == "synthetic"), engine.reset())[3],
         "capture": lambda p: engine.capture(int(p.get("count", 1))),
@@ -536,7 +541,7 @@ class VisionProcess(VisionLink):
         return {"available": self.available, "alive": bool(self._proc and self._proc.is_alive()), **self._status}
 
     def command(self, name: str, **params: Any) -> dict[str, Any]:
-        timeout = 60.0 if name in ("adjust", "empty", "capture", "export") else 15.0
+        timeout = 60.0 if name in ("adjust", "empty", "empty_add", "capture", "export") else 15.0
         r = self._call("cmd", name, params, timeout)
         return r if isinstance(r, dict) else {"ok": False, "error": "the vision process did not answer"}
 

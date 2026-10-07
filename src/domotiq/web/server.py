@@ -831,6 +831,43 @@ def create_app(ctx: "Context") -> FastAPI:
             audit(w, "calibration", name, "update")
         return result
 
+    # ------------------------------------------------------------ the empty house in more lights
+    @app.get("/api/empties")
+    async def empties_list():
+        return await asyncio.get_running_loop().run_in_executor(None, lambda: ctx.vision.command("empties"))
+
+    @app.post("/api/empties")
+    async def empties_add(request: Request, w: Who = Depends(who)):
+        """The empty house photographed in the light of now (a light of the hall the house does not command)."""
+        try:
+            body = await request.json()
+        except (json.JSONDecodeError, ValueError):
+            body = {}
+        result = await asyncio.get_running_loop().run_in_executor(
+            None, lambda: ctx.vision.command("empty_add", label=str(body.get("label") or ""),
+                                             force=bool(body.get("force"))))
+        if result.get("ok"):
+            audit(w, "calibration", "empty_add", "update")
+        return result
+
+    @app.post("/api/empties/sweep")
+    async def empties_sweep(request: Request, w: Who = Depends(who)):
+        """The empty house photographed in every light of the house, one after the other."""
+        from ..lightsweep import photograph_lights
+        try:
+            body = await request.json()
+        except (json.JSONDecodeError, ValueError):
+            body = {}
+        result = await photograph_lights(ctx, force=bool(body.get("force")))
+        audit(w, "calibration", "empty_sweep", "update")
+        return result
+
+    @app.delete("/api/empties")
+    async def empties_clear(w: Who = Depends(who)):
+        result = await asyncio.get_running_loop().run_in_executor(None, lambda: ctx.vision.command("empties_clear"))
+        audit(w, "calibration", "empties", "delete")
+        return result
+
     @app.get("/api/vision/raw.jpg")
     async def vision_raw(overlay: int = 0):
         jpg = None

@@ -25,6 +25,12 @@ export function mount(root) {
         <button class="btn" id="empty">${t("cal.empty")}</button>
       </div>
       <p class="muted small" id="status"></p>
+      <div class="step"><b>4</b><span>${t("cal.step4")}</span></div>
+      <div class="grid2">
+        <button class="btn" id="sweep">${t("cal.sweep")}</button>
+        <button class="btn" id="addlight">${t("cal.add_light")}</button>
+      </div>
+      <p class="muted small"><span id="empties"></span> <a href="#" id="clear-empties">${t("cal.clear_empties")}</a></p>
     </div>
     <div class="loading" id="loading" hidden><div class="box"><div class="spinner"></div><p id="loading-text"></p></div></div>
     <h2>${t("cal.dataset")}</h2>
@@ -61,21 +67,22 @@ export function mount(root) {
   $("#ov").onchange = (e) => { overlay = e.target.checked; load(); };
   // while the house works the page says so, and nothing can be pressed twice
   const WORKING = { corners: "cal.working_corners", adjust: "cal.working", empty: "cal.working_empty",
-    capture: "cal.working_capture", record: "cal.working_record" };
+    capture: "cal.working_capture", record: "cal.working_record", sweep: "cal.working_sweep", light: "cal.working_light" };
   let busy = false;
-  const cmd = async (name, body) => {
+  const cmd = async (name, body, method = "POST", path = `/api/vision/${name}`) => {
     if (busy) return null;
     busy = true;
     $("#loading-text").textContent = t(WORKING[name] || "cal.working_generic");
     $("#loading").hidden = false;
     root.querySelectorAll("button").forEach(b => { b.disabled = true; });
     try {
-      const r = await api("POST", `/api/vision/${name}`, body || {});
+      const r = await api(method, path, body || {});
       const msg = (lang() === "en" && r.message_en) || r.message;
       $("#status").textContent = msg || (r.ok ? "OK" : (r.error || ""));
       if (r.ok) toast(msg || t("common.done"), "success");
       else if (r.error) toast(msg || r.error, "warning");
       load();
+      empties();
       return r;
     } catch (e) { toast(e.message, "alarm"); return null; } finally {
       busy = false;
@@ -98,6 +105,30 @@ export function mount(root) {
     if (r && r.ok) { corners.length = 0; marks(); await adjust(); }
   };
   $("#empty").onclick = () => save("empty");
+  // the empty house in more lights: the lights of the house one after the other, then the lights of the hall
+  const empties = async () => {
+    try {
+      const r = await api("GET", "/api/empties");
+      const list = r.empties || [];
+      const use = list.find(e => e.in_use);
+      $("#empties").textContent = list.length
+        ? t("cal.empties", { n: list.length, use: use ? use.label : "—" }) : t("cal.empties_none");
+    } catch (e) { $("#empties").textContent = ""; }
+  };
+  // what the house takes for a figurine may be a reflection of the new light: photographed anyway if somebody says so
+  const photo = async (name, path) => {
+    const r = await cmd(name, {}, "POST", path);
+    if (r && !r.ok && r.error === "figurines" && await ask(t("cal.save_anyway", { names: (r.names || []).join(", ") }))) {
+      await cmd(name, { force: true }, "POST", path);
+    }
+  };
+  $("#sweep").onclick = () => photo("sweep", "/api/empties/sweep");
+  $("#addlight").onclick = () => photo("light", "/api/empties");
+  $("#clear-empties").onclick = async (e) => {
+    e.preventDefault();
+    if (await ask(t("cal.clear_ask"))) await cmd("clear", {}, "DELETE", "/api/empties");
+  };
+  empties();
   $("#adjust").onclick = adjust;
   $("#cap").onclick = () => cmd("capture", { count: 1 });
   $("#burst").onclick = () => cmd("capture", { count: 10 });
