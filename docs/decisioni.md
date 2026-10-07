@@ -726,6 +726,7 @@ La replica della registrazione del 7/10 con la rete accesa:
 ### D-71 — Un avvio con un'altra luce non impara più le statuine come casa vuota (7/10)
 **Scelta:**
 - **La ricerca all'avvio con la rete.** All'avvio la casa prende quello che la rete vede come un personaggio almeno all'80%, anche quando i colori, in un'altra luce, non sono quelli registrati. Prima prendeva solo quello che somigliava da vicino ai colori registrati.
+- **All'avvio la rete ha l'ultima parola.** Con la rete, la ricerca dell'avvio non prende una macchia che la rete vede come "niente", anche se ha i colori di un personaggio. Alle 16:16, con la casa vuota, erano nati così Mister Green, Mister Brown e Viola: macchie della luce diversa da quella della casa vuota salvata.
 - **Nessuna presenza nota, come dopo il buio.** Se la casa non conosce nessuna presenza quando reimpara la casa vuota in una luce nuova, fa come dopo il buio: quello che spicca (un altro colore, più scuro, o una statuina per la rete) non entra nella casa vuota, e la casa riguarda cosa c'è.
 - **La rete guarda prima dell'annuncio.** Con la rete accesa, una presenza nuova viene annunciata solo dopo che la rete l'ha guardata (al più un fotogramma dopo). Prima una macchia riconosciuta subito dai colori poteva essere annunciata prima del suo parere.
 - **"La mano ha lasciato qualcosa".** Quando una mano prende un personaggio e lascia qualcosa di nuovo, quel nome non va più a una macchia che la rete ha appena visto come "niente". Alle 15:11 era stato annunciato così un "Mister Blu" su un pavimento vuoto.
@@ -735,3 +736,22 @@ La replica della registrazione del 7/10 con la rete accesa:
 - **Cosa era successo.** A ogni riavvio (14:45 e 15:10, due aggiornamenti) la casa era partita con una luce diversa da quella della casa vuota salvata alle 12:55. La ricerca dei personaggi non aveva trovato nessuno, perché i colori non tornavano, e 7-8 secondi dopo la casa aveva reimparato la casa vuota "con 0 presenze", cioè con tutte le statuine dentro.
 - **Le conseguenze.** Da lì la casa non le vedeva più, e quando venivano spostate lasciavano presenze fantasma dove erano state: "Rossellina" e "Viola" su un pavimento vuoto, la rete sicura al 94% che lì non ci fosse niente.
 - **La prova.** Un test riproduce il caso, con una luce 1,6 volte quella della casa vuota: prima la casa trovava 0 statuine su 3, ora 3. Un secondo passaggio controlla che la casa vuota imparata non le contenga.
+
+### D-72 — La rete addestrata di nuovo con i dati di oggi, rivisti (7/10)
+**Scelta:**
+- **I dati.** Ai 7.635 ritagli della notte si aggiungono quelli di oggi: la registrazione delle 14:38, la raccolta continua fino alle 15:20 e le voci del registro. In tutto 2.995 ritagli.
+- **La revisione.** Le etichette della casa sono state controllate con la rete della notte. I 485 ritagli su cui casa e rete erano in disaccordo sono stati guardati uno per uno:
+  - quasi tutti i "Mister Green" sul prato e i "Giallo Galli" sul letto erano prato e letto vuoti, e sono diventati "niente";
+  - molti "niente" erano statuine vere, inglobate nella casa vuota (D-71), e hanno preso il loro nome: Mister Brown, Rossana e Rossellina sdraiati, Mister Green sul prato;
+  - i ritagli incerti, quasi tutti tra Mister Blu e Viola, sono stati tolti.
+- **Anche gli accordi.** Sono stati controllati anche i ritagli su cui casa e rete erano d'accordo, raggruppati per aspetto. Ne restano 2.715.
+- **Il registro della visione.** 186 voci etichettate in più ("Revisione").
+
+**I numeri.** Il blocco di tempo lasciato fuori sono i ritagli più recenti di oggi, 1.306, mai visti dalla rete nuova:
+- **Accuratezza:** 95,6% (la rete della notte 95,4%).
+- **Errori gravi:** nessuna statuina scartata, nessun nome sbagliato tra quelli dati al 95%.
+- **I "niente" riconosciuti con sicurezza:** almeno al 90% l'80% dei "niente" (la rete della notte il 42%), quindi molte più macchie fantasma fermate prima di nascere.
+
+Sul blocco della notte la rete nuova dà "Mister Blu" a ritagli etichettati Viola o Rossellina: anche la rete della notte, che pure li aveva visti in addestramento, dice Mister Blu. Sono etichette sbagliate dalla casa quella notte. Mister Blu e Viola restano la coppia più debole. Sulla scheda la rete della notte resta come `figures-run2.*`.
+
+**Perché:** richiesta di Emilio: controllare tutto quello che è stato imparato e migliorare il riconoscimento dei personaggi.
