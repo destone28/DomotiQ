@@ -51,6 +51,8 @@ class FigureClassifier:
         self.mean, self.std = float(meta.get("mean", 0.5)), float(meta.get("std", 0.25))
         self.rgb = bool(meta.get("rgb", True))
         self.not_p = float(meta["not_p"]) if meta.get("not_p") else None   # measured with this network when trained
+        # the characters it mixes up even when sure, measured when trained: it does not choose between them
+        self.confused = [tuple(pair) for pair in meta.get("confused", []) if len(pair) == 2]
         opts = ort.SessionOptions()
         opts.intra_op_num_threads = threads      # the rest of the vision runs on the other cores
         self.session = ort.InferenceSession(str(folder / "figures.onnx"), opts, providers=["CPUExecutionProvider"])

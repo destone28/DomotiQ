@@ -205,6 +205,7 @@ class Tracker:
         self.figure_named = 0            # newcomers named by the network instead of being asked about
         self.consent = False             # set by the engine: the network must see a figurine before it is told
         self.veto, self.veto_p = False, 1.0   # set by the engine: what the network is this sure is "niente" is not told
+        self.confused: set[frozenset] = set()  # set by the engine: names the network mixes up even when sure
         self.figure_waiting = 0          # presences not told to the house because the network did not see a figurine
         self._by_name: dict[str, str] = {}
         self.frame = 0
@@ -856,7 +857,7 @@ class Tracker:
         stays."""
         left = self._possible(t, t.candidates, now)
         seen = self._figure_name(t, now)
-        if len(left) > 1 and seen in left and not any(
+        if len(left) > 1 and seen in left and not any(self._mixed_up(seen, c) for c in left if c != seen) and not any(
                 u is not t and u.identity == seen and not u.uncertain and not self._gone_from(u)
                 for u in self.tracks.values()):
             left = [seen]                     # the network that knows the figurines, sure twice, tells them apart
@@ -1021,7 +1022,7 @@ class Tracker:
             t.misses = 0
             ident = cands[j]
             seen = self._figure_name(t, now)
-            if seen is not None and seen != ident.id:
+            if seen is not None and seen != ident.id and not self._mixed_up(seen, ident.id):
                 k = next((k for k, c in enumerate(cands) if c.id == seen), None)
                 if k is not None and cost[i, k] < 1e6 and seen in ok:
                     # colours alike (casa1, 7 October: Rossellina named Rossana by her colours): the network that
@@ -1035,7 +1036,8 @@ class Tracker:
                     t.votes[k] = max(0, t.votes[k] - 1)
             if t.votes[ident.id] < (CONFIRM_LOOSE if loose else CONFIRM_FRAMES) and t.identity != ident.id:
                 continue
-            ambiguous = margin < ID_MARGIN and len(close) > 1 and seen != ident.id
+            told = seen == ident.id and not any(self._mixed_up(seen, c) for c in close if c != seen)
+            ambiguous = margin < ID_MARGIN and len(close) > 1 and not told      # the network tells them apart
             if ambiguous and t.identity != ident.id:
                 # two registered characters look the same: follow, but do not guess
                 if not t.uncertain:
@@ -1078,6 +1080,15 @@ class Tracker:
         return self.veto and f is not None and now - f[2] <= FIGURE_FRESH_S \
             and f[0].strip().lower() == "niente" and f[1] >= self.veto_p
 
+    def _mixed_up(self, a: str, b: str) -> bool:
+        """Two characters the network mixes up even when sure (measured when it was trained): it does not choose."""
+        names = {self._name_of(a), self._name_of(b)}
+        return frozenset(names) in self.confused
+
+    def _name_of(self, identity: str) -> str:
+        ident = self.identities.get(identity)
+        return ident.name.strip().lower() if ident else identity
+
     @staticmethod
     def _born_seen(t: VTrack, o: Observation, now: float) -> None:
         """What the network said of the blob it was born from, if it was asked."""
@@ -1119,7 +1130,8 @@ class Tracker:
                 t.locked = False
                 continue
             seen = self._figure_name(t, now)
-            if seen is not None and seen in {i.id for i in free} and seen in set(self._possible(t, [seen], now)):
+            if seen is not None and seen in {i.id for i in free} and seen in set(self._possible(t, [seen], now)) \
+                    and not any(self._mixed_up(seen, i.id) for i in free if i.id != seen):
                 # the network that knows the figurines of this house is sure, twice: nothing to ask
                 self.assign(t.id, seen)
                 t.locked = False

@@ -56,6 +56,17 @@ def crop(img: np.ndarray, bbox: list[int]) -> np.ndarray:
     return cv2.resize(img[y0:y1, x0:x1], (SIZE, SIZE), interpolation=cv2.INTER_AREA)
 
 
+def fixed(fix, t: float) -> str | None:
+    """The label a correction gives at time t: [label, from, to], or a list of them (what it was while a figurine
+    stood there, "niente" once it was taken away and the house kept it, "drop" while it is not clear)."""
+    if not fix:
+        return None
+    for label, a, b in ([fix] if isinstance(fix[0], str) else fix):
+        if a <= t <= b:
+            return label
+    return None
+
+
 def journal_crops(journal: Path, out: Path, index: list, counts: Counter) -> None:
     """The crops of the journal of the vision that somebody labelled in the web app."""
     labels = json.loads((journal / "labels.json").read_text(encoding="utf-8")) if (journal / "labels.json").exists() else {}
@@ -110,11 +121,11 @@ def main() -> None:
             wanted = []
             boxes = [t["bbox"] for t in tracks if t.get("bbox")]
             for t in tracks:
-                fix = fixes.get(t["id"])
-                if fix and fix[1] <= d.get("t", 0.0) <= fix[2]:
+                fix = fixed(fixes.get(t["id"]), d.get("t", 0.0))
+                if fix is not None:
                     # somebody said on the plan what this was: it counts more than what the house said
-                    if t.get("bbox") and t.get("room") != "bathroom" and not t.get("hidden") and fix[0] != "drop":
-                        wanted.append((fix[0], t["id"], t["bbox"], None))
+                    if t.get("bbox") and t.get("room") != "bathroom" and not t.get("hidden") and fix != "drop":
+                        wanted.append((fix, t["id"], t["bbox"], None))
                     continue
                 if t.get("bbox") and t.get("identity") in names and not t.get("uncertain") \
                         and t.get("room") != "bathroom" and not t.get("hidden"):

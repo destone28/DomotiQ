@@ -24,6 +24,7 @@ import math
 import random
 import time
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import cv2
@@ -35,6 +36,11 @@ import torch.nn.functional as F
 SIZE = 48               # the crops (made at 64) are seen at this size: enough for a figurine, half the work
 MIN_SAMPLES = 20
 NOT_MARGIN = 0.04      # above the most "niente" real figurine of the blocks left out
+CONFUSED_P, CONFUSED_MIN = 0.95, 3   # a pair it mixes up this sure, this many times on the blocks left out: the
+                                    # house does not let it choose between the two (their colours do)
+AUG_THREADS = 4        # the crops of a batch are varied by this many threads (OpenCV lets them run together)
+DEVICE = torch.device("cpu")   # --device: "cuda" trains on an NVIDIA card, much faster; the export is the same
+_POOL = ThreadPoolExecutor(AUG_THREADS)
 
 
 # ------------------------------------------------------------------ data
@@ -121,7 +127,6 @@ class FigureNet(nn.Module):
 
 # ------------------------------------------------------------------ training
 def train(train_items, classes, epochs, seed, log_every=5, steps=60):
-    rng = random.Random(seed)
     torch.manual_seed(seed)
     idx = {c: i for i, c in enumerate(classes)}
     imgs = [cv2.imread(e["path"]) for e in train_items]
@@ -132,18 +137,33 @@ def train(train_items, classes, epochs, seed, log_every=5, steps=60):
     # every class seen about as often in each epoch
     per_sample = np.array([1.0 / counts[y] for y in ys])
     per_sample /= per_sample.sum()
-    model = FigureNet(len(classes))
+    weights = weights.to(DEVICE)
+    model = FigureNet(len(classes)).to(DEVICE)
     opt = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=1e-3)
     steps_per_epoch = steps
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=3e-3, total_steps=epochs * steps_per_epoch)
     np_rng = np.random.default_rng(seed)
+    batches = [np_rng.choice(len(imgs), size=128, p=per_sample) for _ in range(epochs * steps_per_epoch)]
+
+    def varied(k: int) -> torch.Tensor:
+        """Batch k varied, in AUG_THREADS parts with their own random sequence (the same at every run)."""
+        parts = np.array_split(batches[k], AUG_THREADS)
+        done = _POOL.map(lambda j: [augment(imgs[i], random.Random(seed * 1_000_003 + k * AUG_THREADS + j))
+                                    for i in parts[j]], range(len(parts)))
+        return tensor([a for part in done for a in part])
+    ahead = ThreadPoolExecutor(1)           # the next batch is varied while this one trains
+    following = ahead.submit(varied, 0)
+    k = 0
     for epoch in range(epochs):
         model.train()
         total, seen = 0.0, 0
         for _ in range(steps_per_epoch):
-            batch = np_rng.choice(len(imgs), size=128, p=per_sample)
-            x = tensor([augment(imgs[i], rng) for i in batch])
-            y = torch.from_numpy(ys[batch])
+            batch = batches[k]
+            x = following.result().to(DEVICE)
+            k += 1
+            if k < len(batches):
+                following = ahead.submit(varied, k)
+            y = torch.from_numpy(ys[batch]).to(DEVICE)
             loss = F.cross_entropy(model(x), y, weight=weights, label_smoothing=0.05)
             opt.zero_grad()
             loss.backward()
@@ -153,6 +173,7 @@ def train(train_items, classes, epochs, seed, log_every=5, steps=60):
             seen += len(batch)
         if (epoch + 1) % log_every == 0 or epoch == epochs - 1:
             print(f"  epoch {epoch + 1}/{epochs} loss {total / seen:.3f}", flush=True)
+    ahead.shutdown()
     return model
 
 
@@ -161,8 +182,8 @@ def predict(model, items):
     model.eval()
     out = []
     for i in range(0, len(items), 256):
-        x = tensor([cv2.imread(e["path"]) for e in items[i:i + 256]])
-        out.append(F.softmax(model(x), dim=1).numpy())
+        x = tensor([cv2.imread(e["path"]) for e in items[i:i + 256]]).to(DEVICE)
+        out.append(F.softmax(model(x), dim=1).cpu().numpy())
     return np.concatenate(out) if out else np.zeros((0, 0))
 
 
@@ -198,10 +219,15 @@ def main() -> None:
     ap.add_argument("--folds", type=int, default=5)
     ap.add_argument("--only", type=int, nargs="*", default=None, help="the blocks of time to leave out, one at a time")
     ap.add_argument("--threads", type=int, default=4)
+    ap.add_argument("--device", default="auto", help="cpu, cuda, or auto (cuda when there is an NVIDIA card)")
     ap.add_argument("--steps", type=int, default=60, help="batches of 128 per epoch")
     ap.add_argument("--drop", type=Path, default=None, help="json list of crop files to leave out (labels found wrong)")
     args = ap.parse_args()
     torch.set_num_threads(args.threads)
+    global DEVICE
+    DEVICE = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else
+                          "cpu" if args.device == "auto" else args.device)
+    print("training on", DEVICE, torch.cuda.get_device_name(0) if DEVICE.type == "cuda" else "")
     items = load(args.crops)
     if args.drop:
         dropped = set(json.loads(args.drop.read_text()))
@@ -213,7 +239,7 @@ def main() -> None:
     print("classes:", {c: counts[c] for c in classes}, "| left out:",
           {c: n for c, n in counts.items() if c not in classes})
     args.out.mkdir(parents=True, exist_ok=True)
-    results, fig_nothing = [], []
+    results, fig_nothing, sure_wrong = [], [], Counter()
     for fold in (args.only if args.only is not None else range(args.folds)):
         tr, va = blocks(items, classes, args.folds, fold)
         t0 = time.time()
@@ -233,6 +259,9 @@ def main() -> None:
         (args.out / f"val_{fold}.json").write_text(json.dumps(
             [{"file": e["file"], "label": e["label"], "p": [round(float(v), 4) for v in pr]} for e, pr in zip(va, probs)]))
         fig_nothing += [float(p[idx["niente"]]) for e, p in zip(va, probs) if e["label"] != "niente"]
+        sure_wrong.update(tuple(sorted((e["label"], classes[int(p.argmax())]))) for e, p in zip(va, probs)
+                          if e["label"] != "niente" and classes[int(p.argmax())] not in ("niente", e["label"])
+                          and float(p.max()) >= CONFUSED_P)
         results.append({"fold": fold, "accuracy": acc, "per_class": per, "confusion": conf.tolist(),
                         "sure_share": float(sure.mean()), "right_when_sure": float((right & sure).sum() / max(sure.sum(), 1))})
     (args.out / "folds.json").write_text(json.dumps({"classes": classes, "folds": results}, indent=1))
@@ -243,6 +272,9 @@ def main() -> None:
     if fig_nothing:
         not_p = round(min(0.95, max(0.6, max(fig_nothing) + NOT_MARGIN)), 2)
         print(f"threshold for 'niente': {not_p} (the highest real figurine of the blocks left out: {max(fig_nothing):.3f})")
+    confused = [list(pair) for pair, n in sure_wrong.items() if n >= CONFUSED_MIN]
+    if confused:
+        print("characters it mixes up even when sure:", {f"{a} / {b}": n for (a, b), n in sure_wrong.items()})
     model = train(items, classes, args.epochs, seed=99, steps=args.steps)
     # the crops the final model is sure are something else than their label: most likely the house was wrong there
     probs = predict(model, items)
@@ -251,7 +283,7 @@ def main() -> None:
     (args.out / "suspect.json").write_text(json.dumps(suspect))
     print(f"crops whose label the model doubts strongly: {len(suspect)}", dict(Counter(
         next(e["label"] for e in items if e["file"] == f) for f in suspect[:2000])))
-    model.eval()
+    model = model.cpu().eval()
     dummy = torch.zeros(1, 3, SIZE, SIZE)
     onnx_path = args.out / "figures.onnx"
     torch.onnx.export(model, dummy, str(onnx_path), input_names=["crops"], output_names=["logits"],
@@ -260,6 +292,7 @@ def main() -> None:
             "trained": time.strftime("%Y-%m-%d %H:%M"), "samples": {c: counts[c] for c in classes}}
     if not_p is not None:
         meta["not_p"] = not_p
+        meta["confused"] = confused
     (args.out / "figures.json").write_text(json.dumps(meta, indent=1, ensure_ascii=False))
     print("exported:", onnx_path, onnx_path.stat().st_size, "bytes")
 

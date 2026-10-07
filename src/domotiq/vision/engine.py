@@ -1278,6 +1278,8 @@ class Engine:
         self.tracker.consent = self._figures_ready() and self.figures_consent and not self.registering
         self.tracker.veto = self._figures_ready() and not self.registering
         self.tracker.veto_p = self._not_p()
+        self.tracker.confused = {frozenset(n.strip().lower() for n in pair)
+                                 for pair in getattr(self.figures, "confused", None) or ()}
         self.tracks = self.tracker.update(obs, now, frozen=frozen, quiet_s=quiet, animated=self._animated,
                                           hand_mask=hands if active else None)
         if self._figures_ready():

@@ -1609,6 +1609,31 @@ def test_the_network_tells_apart_two_characters_of_alike_colours(engine, rendere
     assert not any(t.uncertain for t in tracks) and asked == []
 
 
+def test_the_network_does_not_choose_between_characters_it_mixes_up(engine, renderer):
+    """casa1, 7 October at 20:43: the network called Viola "Mister Blu" 34 times, sure; measured when it was trained,
+    the pair comes with it, and between those two the colours choose, or the house asks."""
+    a, b = Thing(250, 100, "#e0c020"), Thing(560, 100, "#e0c020")
+    bring(engine, renderer, [a, b])
+    left = min(engine.tracks, key=lambda t: t.x)
+    right = max(engine.tracks, key=lambda t: t.x)
+    sig = engine.track_signature(left.id)[0]
+    engine.set_identities([Identity("id-leo", "Leo", signature=sig), Identity("id-ada", "Ada", signature=sig)])
+    engine.tracker.assign(left.id, "id-leo")
+    engine.tracker.assign(right.id, "id-ada")
+    asked = []
+    engine.on_question = lambda tr, cands: asked.append((tr.id, sorted(cands)))
+    run(engine, renderer, [([a, b], {})] * 8, t0=15)
+    engine.figures = _ByPlace("Ada", "Leo")
+    engine.figures.confused = [("Ada", "Leo")]
+    frames = [([a, b], {"hands": [Hand(250, 100), Hand(560, 100, side="top")]})] * 2 + \
+             [([], {"hands": [Hand(90, 60), Hand(560, 120, side="top")]})] * 3 + \
+             [([Thing(90, 60, "#e0c020"), Thing(560, 120, "#e0c020")],
+               {"hands": [Hand(90, 60), Hand(560, 120, side="top")]})] * 2 + \
+             [([Thing(90, 60, "#e0c020"), Thing(560, 120, "#e0c020")], {})] * 30
+    tracks = run(engine, renderer, frames, t0=20)
+    assert all(t.uncertain for t in tracks) and asked
+
+
 def test_the_network_also_stops_what_would_be_taken_late(engine, renderer):
     """Put down while the house waited (a cable lying on the edge looked like a hand): taken late, once still. The
     network is asked there too."""
