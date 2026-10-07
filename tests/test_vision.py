@@ -1387,6 +1387,34 @@ def test_after_the_dark_the_house_looks_again_at_what_is_in_sight(engine, render
     assert np.hypot(tracks[0].x - moved.x, tracks[0].y - moved.y) < 12
 
 
+def test_a_start_in_another_light_does_not_learn_the_figurines_as_the_empty_house(engine, renderer):
+    """casa1, 7 October at 14:45 and 15:10: started again in another light than that of the empty house, the house
+    found nobody (the whole picture differed from it), learned the empty house again in the new light with every
+    figurine in it, and saw them no more; moved, they left presences where they had been. Knowing nobody, the house
+    looks again at what is in sight, as after the dark."""
+    things = [Thing(300, 100, "#d03030"), Thing(480, 280, "#30a040"), Thing(150, 250, "#3050d0")]
+    # registered with colours the webcam does not see in this light; the network knows them in every light
+    engine.set_identities([Identity(f"id-{k}", name, category="person", signature=[0.0] * 64)
+                           for k, name in enumerate(("Rosso", "Verde", "Blu"))])
+    engine.figures = _Figures("Rosso", 0.9)
+    for i in range(250):
+        tracks = engine.feed(_uneven(renderer, things, 1.6, 1.6), i * 0.1)
+    assert engine.status()["adaptations"] >= 1
+    assert len(tracks) == 3
+    engine.figures = None                       # without the network: what stands out is not learned either
+    engine.set_identities([])
+    engine.tracker.tracks.clear()
+    engine.tracks = []
+    for i in range(250):
+        tracks = engine.feed(_uneven(renderer, things, 1.0, 1.0), 30.0 + i * 0.1)
+    seg = engine.segmenter
+    ref = np.clip(seg.reference_bgr, 0, 255).astype(np.uint8)
+    empty = renderer.render([])
+    for th in things:
+        u, v = (int(c) for c in renderer.calib.image_of(np.array([[th.x, th.y]], np.float64), 20.0)[0])
+        assert np.abs(ref[v, u].astype(int) - empty[v, u].astype(int)).max() < 40, (th, ref[v, u], empty[v, u])
+
+
 def test_a_dark_picture_is_never_saved_as_the_empty_house(engine, renderer):
     """casa1, 6 October at 21:00: "Set the light and save the empty house" with the room in the dark."""
     reference = engine.segmenter.reference_bgr.copy()

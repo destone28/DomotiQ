@@ -138,6 +138,8 @@ DARK_LEVEL, DAZZLED_LEVEL = 25.0, 235.0
 # to it at most every FIGURE_EVERY_S, FIGURE_MAX at a time (some 10 ms each on the board, one thread); the tracker weighs what
 # it says (tracker.FIGURE_*)
 FIGURE_NOT_P = 0.9
+FIGURE_LIKELY_P = 0.5    # the empty house learned again around what the network takes for a figurine this sure
+FIGURE_SCAN_P = 0.8      # at a start, what the network sees as a character this sure is taken, whatever its colours
 FIGURE_EVERY_S = 0.5
 FIGURE_MAX = 4
 # The journal of the vision (var/journal): every presence told to the house, every name given, every blob the network
@@ -411,7 +413,7 @@ class Engine:
         tr = self.tracker
         want = [vt for vt in tr.tracks.values()
                 if vt.obs is not None and not vt.carried and vt.frame == tr.frame
-                and (not vt.identity or vt.misses or (tr.consent and not vt.shown))
+                and (not vt.identity or vt.misses or ((tr.consent or tr.veto) and not vt.shown))
                 and (vt.figure is None or now - vt.figure[2] >= FIGURE_EVERY_S)]
         want = sorted(want, key=lambda vt: vt.figure[2] if vt.figure else 0.0)[:FIGURE_MAX]
         if not want:
@@ -521,6 +523,10 @@ class Engine:
         seg = self.segmenter
         frames = list(self._adapt_frames)
         dark, self._adapt_dark = self._adapt_dark, False
+        # nobody known: a start in another light than that of the empty house (casa1, 7 October at 14:45 and 15:10:
+        # the walls were "hands", nothing was found, and every figurine was learned as the empty house). As after
+        # a dark spell, what is in sight may be the figurines
+        blind = dark or not any(t.shown for t in self.tracker.tracks.values())
         if frames:
             median = np.median(np.stack(frames), axis=0).astype(np.uint8) if len(frames) > 1 else frames[0]
             keep = self._footprints()
@@ -528,14 +534,24 @@ class Engine:
             seg.light_changed(seg.region_names, now, 0.5)
             seg._g = None
             seg.corrected(median, update=True, now=now)
-            if dark:
-                # the house could not see for a while: what clearly stands out may be a figurine put down in the
-                # dark, and is not learned as the empty house
+            if blind:
+                # what clearly stands out may be a figurine put down in the dark, or not found yet, and is not
+                # learned as the empty house. The network tells a figurine on what has its colour (Mister Green on
+                # the lawn) from a glow it is sure of
                 obs, _fg, _lab = seg.process(median, now)
                 h, w = keep.shape
-                for o in obs:
+                cand = [o for o in obs if not o.hand]
+                seen = self._figures(median, [o.bbox for o in cand]) if cand and self._figures_ready() else []
+                for k, o in enumerate(cand):
                     chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
-                    if not o.hand and (chroma_d >= SCAN_CHROMA or light_d <= -SCAN_DARKER):
+                    out = chroma_d >= SCAN_CHROMA or light_d <= -SCAN_DARKER
+                    if k < len(seen) and seen[k][0]:
+                        label, p = seen[k]
+                        if label != NOTHING and p >= FIGURE_LIKELY_P:
+                            out = True
+                        elif label == NOTHING and p >= FIGURE_NOT_P:
+                            out = False
+                    if out:
                         x, y, bw, bh = o.bbox
                         m = ADAPT_MARGIN_PX
                         keep[max(0, y - m):min(h, y + bh + m), max(0, x - m):min(w, x + bw + m)] = True
@@ -555,7 +571,7 @@ class Engine:
                 t.last_seen = max(t.last_seen, now)
             elif not t.shown:
                 del tr.tracks[tid]                 # not yet a presence: what the old light made
-        if dark:
+        if blind:
             # as after a party: anybody may have been moved in the dark; what is in sight is taken as it is (the
             # characters it knows closely, wherever they are now, and the car), once the lights stand still
             tr.touch_all()
@@ -805,7 +821,8 @@ class Engine:
         blob = self.segmenter.labels[y:y + h, x:x + w] == o.extra["label"]
         return float(np.median(self._fg_since[y:y + h, x:x + w][blob])) if blob.any() else 0.0
 
-    def _may_be_born(self, o: Observation, scan: bool, births_open: bool, now: float) -> bool:
+    def _may_be_born(self, o: Observation, scan: bool, births_open: bool, now: float,
+                     small: np.ndarray | None = None) -> bool:
         x, y, w, h = o.bbox
         if births_open and not scan and o.extra.get("floor", 1.0) >= MIN_FLOOR \
                 and self._zone[y:y + h, x:x + w].any():
@@ -821,7 +838,15 @@ class Engine:
                 return False
             if o.area_mm2 > 6000:
                 return True
-            return self._figurine_like(o) and bool(self.tracker) and self.tracker.recognizable(o.sig, o.area_mm2, strict=True)
+            if self._figurine_like(o) and bool(self.tracker) and self.tracker.recognizable(o.sig, o.area_mm2,
+                                                                                            strict=True):
+                return True
+            # in another light the colours are not those registered: the network knows the figurines in every light
+            if small is None or not self._figures_ready() or self.registering or o.area_mm2 < 150 \
+                    or not self._new_blob(o):
+                return False
+            label, p = o.extra["figure"] = self._figures(small, [o.bbox])[0]
+            return bool(label) and label != NOTHING and p >= FIGURE_SCAN_P
         if not births_open or not self._zone[y:y + h, x:x + w].any():
             return False
         # brought by the hand: it was not there before the hand came, and it is not the place a hand has just
@@ -1083,11 +1108,14 @@ class Engine:
         births_open = self._zone is not None and SETTLE_S <= quiet <= SETTLE_S + BIRTH_S and not light_event
         for o in obs:
             if not o.hand:
-                o.extra["birth"] = self._may_be_born(o, scan, births_open, now)
+                o.extra["birth"] = self._may_be_born(o, scan, births_open, now, small)
         born = [o for o in obs if not o.hand and o.extra.get("birth") and self._new_blob(o)]
         if born and self._figures_ready() and not self.registering:
-            for o, (label, p) in zip(born, self._figures(small, [o.bbox for o in born])):
-                o.extra["figure"] = (label, p)
+            ask = [o for o in born if "figure" not in o.extra]
+            for o, seen in zip(ask, self._figures(small, [o.bbox for o in ask])):
+                o.extra["figure"] = seen
+            for o in born:
+                label, p = o.extra["figure"]
                 if label == NOTHING and p >= FIGURE_NOT_P:
                     o.extra["birth"] = False      # the network is sure: a light, a shadow, a module
                     self.figure_blocked += 1
@@ -1247,6 +1275,7 @@ class Engine:
                         self.figure_blocked += 1
                         self._journal_refused(small, o, (label, p), now)
                         continue              # the network is sure: a light, a shadow, a module
+                    o.extra["figure"] = (label, p)
                 self.tracker.adopt(o, now)
                 g[y:y + h, x:x + w][blob] = 0
         if frozen:

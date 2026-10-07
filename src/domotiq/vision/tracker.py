@@ -338,8 +338,9 @@ class Tracker:
                 self.figure_waiting += 1
                 continue                   # the network has not seen a figurine there yet
             f = t.figure
-            if not t.shown and self.veto and f is not None and now - f[2] <= FIGURE_FRESH_S \
-                    and f[0].strip().lower() == "niente" and f[1] >= self.veto_p:
+            if not t.shown and self.veto and (f is None or now - f[2] > FIGURE_FRESH_S):
+                continue                   # the network has not looked at it yet: in a moment
+            if not t.shown and self._refused(t, now):
                 continue                   # born, but the network has seen it is no figurine: never told
             t.shown = True
             tr = t.to_track(self.layout, self._rooms.get(t.id))
@@ -487,6 +488,7 @@ class Tracker:
                 continue
             t = VTrack(new_id("t"), *self._position(o, o.category_guess), o, o.sig, o.category_guess,
                        last_seen=now, since=now, born=self.frame)
+            self._born_seen(t, o, now)
             self.tracks[t.id] = t
             self._apply(t, o, now)
             o.extra["track"] = t.id
@@ -704,14 +706,15 @@ class Tracker:
         if room:
             self._doubted[room] = now + DOUBT_S
 
-    def _put_down_as(self, t: VTrack) -> bool:
+    def _put_down_as(self, t: VTrack, now: float) -> bool:
         """The hands took a character and left something new, not recognized: nothing moves by itself, so it is
         that character, lying down or on the bed looking a little different. With more new things, the one
-        coloured most like it."""
+        coloured most like it. Not what the network has just seen is no figurine (a shadow by a wall, casa1 at
+        15:11: "Mister Blu" told on an empty floor)."""
         if not t.identity:
             return False
         new = [u for u in self.tracks.values() if u is not t and not u.identity and not u.carried
-               and u.obs is not None and u.since >= t.carried_since - 0.5]
+               and u.obs is not None and u.since >= t.carried_since - 0.5 and not self._refused(u, now)]
         best = min(new, key=lambda u: distance(t.sig, u.obs.sig), default=None)
         if best is None or (len(new) > 1 and distance(t.sig, best.obs.sig) >= PUT_DOWN_SIG):
             return False
@@ -774,7 +777,7 @@ class Tracker:
                 # the hands left without putting it down: taken out of the house, unless it was put down against
                 # another figurine and the two are seen as one
                 gone = not frozen and quiet_s > CARRIED_GONE_S and now - t.carried_since > CARRIED_GONE_S
-                if gone and (self._put_down_as(t) or self._put_against(t, now)):
+                if gone and (self._put_down_as(t, now) or self._put_against(t, now)):
                     if t.carried:
                         del self.tracks[tid]       # its name went to what the hands put down
                         self._rooms.pop(tid, None)
@@ -1039,6 +1042,7 @@ class Tracker:
         elif self.suppressed(x, y, now):
             return None
         t = VTrack(new_id("t"), x, y, o, o.sig, o.category_guess, last_seen=now, since=now, born=self.frame)
+        self._born_seen(t, o, now)
         self.tracks[t.id] = t
         self._apply(t, o, now)
         o.extra["track"] = t.id
@@ -1046,6 +1050,19 @@ class Tracker:
             t.hits, t.shown, t.asked_new = max(t.hits, NEW_HITS), True, now
             t.presence = 1.0
         return t
+
+    def _refused(self, t: VTrack, now: float) -> bool:
+        """The network has just seen this is no figurine, sure enough to refuse it."""
+        f = t.figure
+        return self.veto and f is not None and now - f[2] <= FIGURE_FRESH_S \
+            and f[0].strip().lower() == "niente" and f[1] >= self.veto_p
+
+    @staticmethod
+    def _born_seen(t: VTrack, o: Observation, now: float) -> None:
+        """What the network said of the blob it was born from, if it was asked."""
+        f = o.extra.get("figure")
+        if f and f[0]:
+            t.figure = (f[0], f[1], now, 1)
 
     def _figure_is(self, t: VTrack, identity: str, now: float, at_least: float) -> bool:
         """The network saw this character in the track a moment ago, at least this sure."""

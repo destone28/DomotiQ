@@ -329,3 +329,5 @@ In ordine:
   - Nella webapp c'è il registro della visione, dove si conferma o si corregge quello che la casa ha visto: le risposte diventano esempi per la rete.
   - Un banco di prova rigioca le registrazioni.
   - Nella guida dello staff c'è la lista di controllo per aprire lo stand.
+- **La raccolta continua** (D-70). Su richiesta di Emilio la casa tiene quello che vede la webcam, entro 500 MB, per addestrare meglio la rete: un'immagine ogni 5 secondi, due al secondo quando succede qualcosa. Il registro della visione è stato rivisto voce per voce, e alla nascita la rete guarda anche le macchie che toccano una statuina.
+- **Le statuine dentro la casa vuota** (D-71). Confrontando i riferimenti della raccolta si è visto che a ogni riavvio, partita con un'altra luce, la casa non trovava nessuno e pochi secondi dopo reimparava la casa vuota con tutte le statuine dentro: da lì non le vedeva più e, spostate, lasciavano fantasmi. Ora all'avvio la rete riconosce i personaggi anche quando i colori non tornano, e una casa che non conosce nessuno non impara come casa vuota quello che spicca.
