@@ -757,6 +757,7 @@ def create_app(ctx: "Context") -> FastAPI:
         ctx.bus.publish("volume", volume=ctx.settings.get("voice.volume"))
         ctx.vision.set_privacy(ctx.settings.get("camera.blur_bathroom", True))
         ctx.vision.set_figures(ctx.settings.get("camera.figures", True), ctx.settings.get("camera.figures_consent", False))
+        ctx.vision.set_collect(ctx.settings.get("camera.collect", False), ctx.settings.get("camera.collect_mb", 500))
         return ctx.settings.public()
 
     @app.post("/api/network")

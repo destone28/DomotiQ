@@ -65,7 +65,9 @@ DEFAULTS: dict[str, Any] = {
     "camera": {"device": None,            # a /dev/v4l/by-id path, if the webcam is not found by itself
                "blur_bathroom": True,     # the bathroom blurred in the live view and the images that leave
                "figures": True,           # the network that knows the figurines gives its second opinion
-               "figures_consent": False},  # ...and nothing new is told before it sees a figurine there
+               "figures_consent": False,  # ...and nothing new is told before it sees a figurine there
+               "collect": False,          # what the webcam sees is kept to teach the network (var/collect)
+               "collect_mb": 500},        # ...at most this much, the oldest goes
     "clock": {"timezone": "Europe/Rome"},
 }
 
@@ -121,6 +123,7 @@ class Paths:
         self.dataset = root / "dataset"
         self.recordings = root / "recordings"
         self.journal = root / "journal"           # what the vision told and refused, with its crops (for review)
+        self.collect = root / "collect"           # what the webcam saw, kept to teach the network (when on)
         self.db = root / "domotiq.db"
         self.models = Path(os.environ.get("DOMOTIQ_MODELS", REPO_DIR / "models"))
         self.data = REPO_DIR / "data"

@@ -1546,3 +1546,30 @@ def test_the_journal_keeps_what_the_vision_told_and_refused(engine, renderer, tm
         assert (engine.journal_dir / f"{e['id']}.jpg").exists()
     refused = next(e for e in entries if e["kind"] == "scartata")
     assert refused["figure"][0] == "niente"
+
+
+def test_the_continuous_collection_keeps_frames_within_its_space(engine, renderer, tmp_path):
+    from domotiq.vision import engine as E
+    red = Thing(300, 100, "#d03030")
+    tracks = bring(engine, renderer, [red])
+    engine.set_identities([Identity("id-red", "Rosso", category="person",
+                                    signature=engine.track_signature(tracks[0].id)[0])])
+    run(engine, renderer, [([red], {})] * 10, t0=10.0)
+    engine.set_collect(tmp_path / "collect", 50)
+    run(engine, renderer, [([red], {})] * 120, t0=20.0)                  # 12 s, nothing happens
+    folders = list((tmp_path / "collect").iterdir())
+    assert len(folders) == 1 and (folders[0] / "calibration.json").exists()
+    lines = [json.loads(x) for x in open(folders[0] / "detections.jsonl")]
+    assert 2 <= len(lines) <= 4                                          # one every 5 s at rest
+    assert all(t.get("bbox") for d in lines for t in d["tracks"])        # the blob of every figurine
+    run(engine, renderer, [([red], {"hands": [Hand(300, 100)]})] * 20, t0=40.0)   # a hand: two a second
+    lines = [json.loads(x) for x in open(folders[0] / "detections.jsonl")]
+    assert sum(1 for d in lines if d["busy"]) >= 3
+    # beyond its space the oldest folder goes
+    old = tmp_path / "collect" / "rec-20000101-000000"
+    old.mkdir()
+    (old / "00001.jpg").write_bytes(b"x" * 60_000_000)
+    engine._collect_trim(keep=folders[0])
+    assert not old.exists() and folders[0].exists()
+    engine.set_collect(None, 50)
+    assert engine.status()["collect"]["on"] is False

@@ -34,6 +34,9 @@ export function mount(root) {
         <p class="muted small">${t("set.figures_hint")}</p>
         <label class="row spread"><span>${t("set.figures_consent")}</span><span class="switch"><input type="checkbox" id="figc" ${s.camera.figures_consent ? "checked" : ""}><span></span></span></label>
         <p class="muted small">${t("set.figures_consent_hint")}</p>
+        <label class="row spread"><span>${t("set.collect")}</span><span class="switch"><input type="checkbox" id="coll" ${s.camera.collect ? "checked" : ""}><span></span></span></label>
+        <label class="field"><span>${t("set.collect_mb")}</span><input type="number" id="collmb" min="50" max="5000" step="50" value="${s.camera.collect_mb || 500}"></label>
+        <p class="muted small">${t("set.collect_hint")}</p>
       </div>
       <div class="card"><h3 class="card-title">💡 ${t("set.lights")} · ${t("set.party")} · ${t("set.grill")} · ${t("set.climate")}</h3>
         ${NUMBERS.map(([path, label, min, max]) => `<label class="field"><span>${t(label)}</span>
@@ -80,7 +83,8 @@ export function mount(root) {
     const $ = (q) => root.querySelector(q);
     $("#save").onclick = $("#save-voice").onclick = async () => {
       const body = { house: { name: { it: $("#hn-it").value, en: $("#hn-en").value } }, buttons: { reversed: $("#rev").checked },
-        lights: { follow_color: $("#fcol").value, follow_favourite: $("#ffav").checked }, camera: { blur_bathroom: $("#blur").checked, figures: $("#figs").checked, figures_consent: $("#figc").checked },
+        lights: { follow_color: $("#fcol").value, follow_favourite: $("#ffav").checked }, camera: { blur_bathroom: $("#blur").checked, figures: $("#figs").checked, figures_consent: $("#figc").checked,
+          collect: $("#coll").checked, collect_mb: Math.max(50, Number($("#collmb").value) || 500) },
         voice: { greet_phones: $("#greet").checked, chatty_questions: $("#chatq").checked,
                  wake_enabled: $("#wake").checked, wake_word: $("#wake-word").value.trim() } };
       root.querySelectorAll("[data-path]").forEach(inp => {

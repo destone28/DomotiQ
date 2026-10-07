@@ -71,6 +71,9 @@ class VisionLink:
     def set_registering(self, on: bool) -> None:
         """A new character is being registered: its figurine is born whatever the network says."""
 
+    def set_collect(self, on: bool, mb: int) -> None:
+        """Whether what the webcam sees is kept to teach the network, and in how much space."""
+
     def command(self, name: str, **params: Any) -> dict[str, Any]:
         """Calibration, capture and the other operations of the calibration page."""
         return {"ok": False, "error": "no camera"}

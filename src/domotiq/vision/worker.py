@@ -105,6 +105,8 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
     if cfg.get("journal"):
         engine.journal_dir = Path(cfg["journal"])
         engine.journal_dir.mkdir(parents=True, exist_ok=True)
+    if cfg.get("collect_dir"):
+        engine.set_collect(Path(cfg["collect_dir"]) if cfg.get("collect") else None, cfg.get("collect_mb", 500))
     if cfg.get("device") != "synthetic":
         # nothing is recognized until the light of the webcam is set on the empty house
         try:
@@ -236,6 +238,8 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                         engine.figures_consent = bool(msg[2])
                 elif kind == "registering":
                     engine.registering = bool(msg[1])
+                elif kind == "collect":
+                    engine.set_collect(Path(cfg["collect_dir"]) if msg[1] and cfg.get("collect_dir") else None, msg[2])
                 elif kind == "want":
                     want[bool(msg[1])] = time.time()
                 elif kind == "cmd":
@@ -316,6 +320,9 @@ class VisionProcess(VisionLink):
             "dataset": str(paths.dataset),
             "recordings": str(paths.recordings),
             "journal": str(paths.journal),
+            "collect_dir": str(paths.collect),
+            "collect": settings.get("camera.collect", False),
+            "collect_mb": settings.get("camera.collect_mb", 500),
             "device": device or settings.get("camera.device"),
             "blur_private": settings.get("camera.blur_bathroom", True),
             "models": str(paths.models),
@@ -520,6 +527,10 @@ class VisionProcess(VisionLink):
 
     def set_registering(self, on: bool) -> None:
         self._send("registering", bool(on))
+
+    def set_collect(self, on: bool, mb: int) -> None:
+        self.cfg["collect"], self.cfg["collect_mb"] = bool(on), int(mb)
+        self._send("collect", bool(on), int(mb))
 
     def status(self) -> dict[str, Any]:
         return {"available": self.available, "alive": bool(self._proc and self._proc.is_alive()), **self._status}

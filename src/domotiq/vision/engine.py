@@ -146,6 +146,14 @@ FIGURE_MAX = 4
 # are kept
 JOURNAL_MAX = 600
 JOURNAL_AGAIN_S = 60.0
+# Continuous collection (a switch in the settings, off by default): what the webcam sees is kept in var/collect, in
+# folders of COLLECT_FOLDER_S in the format of the recordings (frames, and detections.jsonl with the blob of every
+# track), to teach the network that knows the figurines. One frame every COLLECT_REST_S when nothing happens, up to
+# one every COLLECT_BUSY_S while something does (a hand, a light changing, a presence new or with no name); beyond the
+# space given to it (camera.collect_mb) the oldest folders go
+COLLECT_FOLDER_S = 600.0
+COLLECT_REST_S = 5.0
+COLLECT_BUSY_S = 0.5
 COCO_CLASSES = ["person", "dog", "cat", "animal", "car", "object"]
 
 
@@ -228,6 +236,12 @@ class Engine:
         self.registering = False                   # a new character is being registered: no birth is refused
         self.figure_blocked = 0                    # new blobs not born because the network saw "niente"
         self.journal_dir: Path | None = None       # set by the worker
+        self.collect_dir: Path | None = None       # continuous collection, set by the worker (None: off)
+        self.collect_mb = 500
+        self._collecting: dict[str, Any] | None = None
+        self._collect_at = float("-inf")
+        self._collect_bytes = 0
+        self.collected = 0
         self._told: dict[str, tuple[str | None, float]] = {}   # track -> (name written, when)
         self._refused: list[tuple[float, float, float]] = []   # (x, y, when) of the refused blobs written
         self._journal_n = 0
@@ -978,6 +992,7 @@ class Engine:
             return self.tracks                # the party: the presences as they were, the picture for the live view
         if self._resting(small, now):
             self.rested += 1
+            self._collect_frame(small, now, busy=False)
             return self.tracks                # nothing has changed since the last frame looked at
         self.looked += 1
         self._rest_ref, self._rest_at = self._thumb, now
@@ -998,6 +1013,7 @@ class Engine:
             self.light_adapt(now, why)
         if self._adapt_since:
             seg.process(small, now)               # the light of every room measured on what is seen, nothing more
+            self._collect_frame(small, now, busy=True)      # lights and shadows: what the network must learn
             return self._adapting(small, ratio, now)
         obs, fg, _lab = seg.process(small, now)
         t_seg = time.perf_counter()
@@ -1107,6 +1123,10 @@ class Engine:
             self._check_moved(small, now)
         if self._record:
             self._record_frame(small, now)
+        # a presence with no name (a cat, a dog just registered) counts for its first minute: then it is no news
+        busy = active or quiet < SETTLE_S + BIRTH_S or now < self._settle_until or any(
+            t.carried or ((not t.identity or t.uncertain) and now - t.since < 60.0) for t in self.tracks)
+        self._collect_frame(small, now, busy)
         t_end = time.perf_counter()
         self.proc_ms = 0.9 * self.proc_ms + 0.1 * (t_end - t0) * 1000.0
         for key, spent in (("segment", t_seg - t0), ("tracker", t_track - t_rules),
@@ -1363,6 +1383,8 @@ class Engine:
             "holes": self.holes,
             "retunes": self.retunes,
             "adapting": bool(self._adapt_since),     # the light of the hall is changing: the presences are kept
+            "collect": {"on": self.collect_dir is not None, "mb": round(self._collect_bytes / 1_000_000),
+                        "budget": self.collect_mb, "frames": self.collected},
             "figures": {"loaded": self.figures is not None, "on": self.figures_on and not self._figure_failed,
                         "consent": self.figures_consent, "blocked": self.figure_blocked, "ms": round(self._figure_ms, 1),
                         "waiting": self.tracker.figure_waiting if self.tracker else 0,
@@ -1531,6 +1553,73 @@ class Engine:
                         [cv2.IMWRITE_JPEG_QUALITY, 90])
         return {"ok": True, "message": f"Registro {int(seconds)} s in {name}",
                 "message_en": f"Recording {int(seconds)} s into {name}", "name": name}
+
+    # ------------------------------------------------------------ continuous collection
+    def _collect_frame(self, small: np.ndarray, now: float, busy: bool) -> None:
+        if self.collect_dir is None or not self.calibrated:
+            return
+        if now - self._collect_at < (COLLECT_BUSY_S if busy else COLLECT_REST_S):
+            return
+        self._collect_at = now
+        try:
+            c = self._collecting
+            if c is None or now - c["since"] >= COLLECT_FOLDER_S or now < c["since"]:
+                if c is not None:
+                    c["log"].close()
+                d = self.collect_dir / time.strftime("rec-%Y%m%d-%H%M%S", time.localtime(now))
+                d.mkdir(parents=True, exist_ok=True)
+                self.calib.save(d / "calibration.json")
+                if self.segmenter.reference_bgr is not None:
+                    ref = np.clip(self.segmenter.reference_bgr, 0, 255).astype(np.uint8)
+                    cv2.imwrite(str(d / "reference.jpg"), (self.privacy or self._nominal_privacy).apply(ref),
+                                [cv2.IMWRITE_JPEG_QUALITY, 90])
+                c = self._collecting = {"dir": d, "since": now, "n": 0, "log": open(d / "detections.jsonl", "a")}
+                self._collect_trim(keep=d)
+            c["n"] += 1
+            ok, enc = cv2.imencode(".jpg", (self.privacy or self._nominal_privacy).apply(small),
+                                   [cv2.IMWRITE_JPEG_QUALITY, 85])
+            if not ok:
+                return
+            (c["dir"] / f"{c['n']:05d}.jpg").write_bytes(enc.tobytes())
+            line = json.dumps({
+                "t": round(now, 3), "frame": c["n"], "busy": busy,
+                "observations": [{"centroid": [round(v, 1) for v in o.centroid_mm], "bbox": list(o.bbox),
+                                  "area": round(o.area_mm2), "hand": o.hand, "guess": o.category_guess}
+                                 for o in self.observations],
+                "tracks": [dict(t.to_dict(), **self._recorded_blob(t.id)) for t in self.tracks],
+            }) + "\n"
+            c["log"].write(line)
+            c["log"].flush()
+            self._collect_bytes += len(enc) + len(line)
+            self.collected += 1
+            if self._collect_bytes > self.collect_mb * 1_000_000:
+                self._collect_trim(keep=c["dir"])
+        except Exception:  # noqa: BLE001
+            log.exception("continuous collection failed: switched off")
+            self.collect_dir = None
+
+    def _collect_trim(self, keep: Path) -> None:
+        """Beyond the space given, the oldest folders go (never the one being written)."""
+        folders = sorted(p for p in self.collect_dir.iterdir() if p.is_dir() and p.name.startswith("rec-"))
+        sizes = {p: sum(f.stat().st_size for f in p.iterdir() if f.is_file()) for p in folders}
+        total = sum(sizes.values())
+        for p in folders:
+            if total <= self.collect_mb * 1_000_000:
+                break
+            if p == keep:
+                continue
+            shutil.rmtree(p, ignore_errors=True)
+            total -= sizes[p]
+        self._collect_bytes = total
+
+    def set_collect(self, folder: Path | None, mb: int) -> None:
+        if self._collecting is not None and folder is None:
+            self._collecting["log"].close()
+            self._collecting = None
+        self.collect_dir = folder
+        self.collect_mb = max(50, int(mb))
+        if folder is not None:
+            folder.mkdir(parents=True, exist_ok=True)
 
     def _record_frame(self, small: np.ndarray, now: float) -> None:
         rec = self._record
