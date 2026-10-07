@@ -1415,6 +1415,25 @@ def test_a_start_in_another_light_does_not_learn_the_figurines_as_the_empty_hous
         assert np.abs(ref[v, u].astype(int) - empty[v, u].astype(int)).max() < 40, (th, ref[v, u], empty[v, u])
 
 
+def test_at_a_start_the_network_has_the_last_word(engine, renderer):
+    """casa1, 7 October at 16:16: the house started empty in another light than that of the empty house; blobs of
+    the colours of Mister Green, Mister Brown and Viola were taken as they were, the network saying "niente"."""
+    red = Thing(300, 100, "#d03030")
+    tracks = bring(engine, renderer, [red])
+    sig = engine.track_signature(tracks[0].id)[0]
+    engine.set_identities([Identity("id-red", "Rosso", category="person", signature=sig)])
+    engine.figures = _Figures("niente", 0.6)        # not sure enough to refuse a birth, but no figurine
+    engine.tracker.tracks.clear()
+    engine.tracks = []
+    engine.rescan()
+    tracks = run(engine, renderer, [([red], {})] * 60, t0=20.0)
+    assert tracks == []
+    engine.figures.label = "Rosso"                   # a figurine for the network: taken at the start
+    engine.rescan()
+    tracks = run(engine, renderer, [([red], {})] * 60, t0=30.0)
+    assert len(tracks) == 1
+
+
 def test_a_dark_picture_is_never_saved_as_the_empty_house(engine, renderer):
     """casa1, 6 October at 21:00: "Set the light and save the empty house" with the room in the dark."""
     reference = engine.segmenter.reference_bgr.copy()

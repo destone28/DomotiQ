@@ -836,17 +836,22 @@ class Engine:
             chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
             if chroma_d < SCAN_CHROMA and light_d > -SCAN_DARKER:
                 return False
+            seen = None
+            if small is not None and self._figures_ready() and not self.registering and o.area_mm2 >= 150 \
+                    and self._new_blob(o):
+                seen = o.extra["figure"] = self._figures(small, [o.bbox])[0]
+                if not seen[0] or seen[0] == NOTHING:
+                    # the network sees no figurine there: an empty house saved in another light has blobs of
+                    # the colours of the characters (casa1 at 16:16: Mister Green, Mister Brown and Viola born
+                    # in an empty house, the network saying "niente")
+                    return False
             if o.area_mm2 > 6000:
                 return True
             if self._figurine_like(o) and bool(self.tracker) and self.tracker.recognizable(o.sig, o.area_mm2,
                                                                                             strict=True):
                 return True
             # in another light the colours are not those registered: the network knows the figurines in every light
-            if small is None or not self._figures_ready() or self.registering or o.area_mm2 < 150 \
-                    or not self._new_blob(o):
-                return False
-            label, p = o.extra["figure"] = self._figures(small, [o.bbox])[0]
-            return bool(label) and label != NOTHING and p >= FIGURE_SCAN_P
+            return seen is not None and seen[1] >= FIGURE_SCAN_P
         if not births_open or not self._zone[y:y + h, x:x + w].any():
             return False
         # brought by the hand: it was not there before the hand came, and it is not the place a hand has just
