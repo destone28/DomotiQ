@@ -1573,3 +1573,16 @@ def test_the_continuous_collection_keeps_frames_within_its_space(engine, rendere
     assert not old.exists() and folders[0].exists()
     engine.set_collect(None, 50)
     assert engine.status()["collect"]["on"] is False
+
+
+def test_the_network_stops_what_was_born_before_it_looked(engine, renderer):
+    """Born with no word from the network (it touched the blob of a figurine already followed): before it is told to
+    the house the network looks at it, and what it sees as "niente" is never told."""
+    run(engine, renderer, [([], {})] * 40)
+    red = Thing(300, 100, "#d03030")
+    hand = {"hands": [Hand(red.x, red.y)]}
+    run(engine, renderer, [([], hand)] * 3 + [([red], hand)] * 2, t0=4.0)
+    run(engine, renderer, [([red], {})] * 3, t0=4.5)               # born: no network yet
+    engine.figures = _Figures("niente")
+    tracks = run(engine, renderer, [([red], {})] * 30, t0=4.8)
+    assert tracks == []

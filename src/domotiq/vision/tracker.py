@@ -202,6 +202,7 @@ class Tracker:
         self.figure_kept = 0             # frames a name was kept because the network still saw that character
         self.figure_named = 0            # newcomers named by the network instead of being asked about
         self.consent = False             # set by the engine: the network must see a figurine before it is told
+        self.veto, self.veto_p = False, 1.0   # set by the engine: what the network is this sure is "niente" is not told
         self.figure_waiting = 0          # presences not told to the house because the network did not see a figurine
         self._by_name: dict[str, str] = {}
         self.frame = 0
@@ -336,6 +337,10 @@ class Tracker:
             if not t.shown and self.consent and t.consent < CONSENT_ROW:
                 self.figure_waiting += 1
                 continue                   # the network has not seen a figurine there yet
+            f = t.figure
+            if not t.shown and self.veto and f is not None and now - f[2] <= FIGURE_FRESH_S \
+                    and f[0].strip().lower() == "niente" and f[1] >= self.veto_p:
+                continue                   # born, but the network has seen it is no figurine: never told
             t.shown = True
             tr = t.to_track(self.layout, self._rooms.get(t.id))
             tr.hidden = now - t.last_seen > HIDDEN_FLAG_S

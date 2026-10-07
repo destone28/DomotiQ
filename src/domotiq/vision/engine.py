@@ -424,16 +424,16 @@ class Engine:
 
     # ------------------------------------------------------------ the journal of the vision
     def _new_blob(self, o: Observation) -> bool:
-        """No track already has this blob: the figurines followed stand still, so their blob of the last frame covers
-        most of it."""
+        """No track already has this blob: the figurines followed stand still, so their blob of the last frame is
+        nearly the same box. A blob that only touches one (the corner of a wall next to a figurine lying down, born
+        fourteen times on casa1) is new, and shown to the network."""
         x, y, w, h = o.bbox
         for vt in self.tracker.tracks.values() if self.tracker else ():
             if vt.obs is None:
                 continue
             a, b, c, d = vt.obs.bbox
-            ix = max(0, min(x + w, a + c) - max(x, a))
-            iy = max(0, min(y + h, b + d) - max(y, b))
-            if ix * iy > 0.5 * min(w * h, c * d):
+            inter = max(0, min(x + w, a + c) - max(x, a)) * max(0, min(y + h, b + d) - max(y, b))
+            if inter > 0.6 * (w * h + c * d - inter):
                 return False
         return True
 
@@ -1097,6 +1097,8 @@ class Engine:
         self.observations = obs
         t_rules = time.perf_counter()
         self.tracker.consent = self._figures_ready() and self.figures_consent and not self.registering
+        self.tracker.veto = self._figures_ready() and not self.registering
+        self.tracker.veto_p = FIGURE_NOT_P
         self.tracks = self.tracker.update(obs, now, frozen=frozen, quiet_s=quiet, animated=self._animated,
                                           hand_mask=hands if active else None)
         if self._figures_ready():
