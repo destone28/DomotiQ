@@ -64,7 +64,8 @@ DEFAULTS: dict[str, Any] = {
     "network": {"ssid": "", "password": "", "channel": 1, "address": "", "hostname": ""},
     "camera": {"device": None,            # a /dev/v4l/by-id path, if the webcam is not found by itself
                "blur_bathroom": True,     # the bathroom blurred in the live view and the images that leave
-               "figures": True},          # the network that knows the figurines gives its second opinion
+               "figures": True,           # the network that knows the figurines gives its second opinion
+               "figures_consent": False},  # ...and nothing new is told before it sees a figurine there
     "clock": {"timezone": "Europe/Rome"},
 }
 
@@ -119,10 +120,11 @@ class Paths:
         self.calibration = root / "calibration"
         self.dataset = root / "dataset"
         self.recordings = root / "recordings"
+        self.journal = root / "journal"           # what the vision told and refused, with its crops (for review)
         self.db = root / "domotiq.db"
         self.models = Path(os.environ.get("DOMOTIQ_MODELS", REPO_DIR / "models"))
         self.data = REPO_DIR / "data"
-        for p in (self.config, self.photos, self.calibration, self.dataset, self.recordings):
+        for p in (self.config, self.photos, self.calibration, self.dataset, self.recordings, self.journal):
             p.mkdir(parents=True, exist_ok=True)
 
 

@@ -85,6 +85,10 @@ SIZE_ODD = 4.0              # a blob more than this many times bigger or smaller
 # block of the recording of 7 October left out of the training, 972 figurines were named at 0.95 or more, none wrongly
 # (Mister Blu and Viola, alike in colour, were mixed up only below that), and 97% were at least 0.8 their own name
 FIGURE_KEEP_P, FIGURE_NAME_P, FIGURE_FRESH_S = 0.8, 0.95, 3.0
+# With its consent required (a switch in the settings), nothing new is told to the house until the network has seen
+# a figurine there CONSENT_ROW times in a row, at least CONSENT_P sure: no false presence, while a new figurine (one
+# the network does not know) is born only while it is being registered
+CONSENT_P, CONSENT_ROW = 0.5, 2
 # The looks of each character, learned on the board: besides its registered colours, up to MAX_POSES poses (lying
 # down, on the bed, under another light), each with its colours, size and shape. A pose is added when a character
 # the house follows with confidence (or that somebody has just named) looks unlike all the poses it knows.
@@ -171,6 +175,7 @@ class VTrack:
                                                                                    # since the hand left it
     settled: bool = False                  # its place is fixed until a hand comes close again
     figure: tuple[str, float, float, int] | None = None   # what the network saw: (class, probability, when, in a row)
+    consent: int = 0                       # times in a row the network saw a figurine in it
 
     def to_track(self, layout, previous_room: str | None) -> Track:
         room = layout.locate(self.x, self.y, previous_room)
@@ -196,6 +201,8 @@ class Tracker:
         self.jittery = 0                 # false presences found by their jumps (for the diagnostics)
         self.figure_kept = 0             # frames a name was kept because the network still saw that character
         self.figure_named = 0            # newcomers named by the network instead of being asked about
+        self.consent = False             # set by the engine: the network must see a figurine before it is told
+        self.figure_waiting = 0          # presences not told to the house because the network did not see a figurine
         self._by_name: dict[str, str] = {}
         self.frame = 0
         self._quiet_s = float("inf")
@@ -326,6 +333,9 @@ class Tracker:
         for t in self.tracks.values():
             if not t.shown and not t.identity and not self._confirmed(t, now):
                 continue                   # not yet: it may be a reflection, or noise
+            if not t.shown and self.consent and t.consent < CONSENT_ROW:
+                self.figure_waiting += 1
+                continue                   # the network has not seen a figurine there yet
             t.shown = True
             tr = t.to_track(self.layout, self._rooms.get(t.id))
             tr.hidden = now - t.last_seen > HIDDEN_FLAG_S

@@ -11,14 +11,16 @@ tracks are left out: matched by the place on the map, which is fixed and seen fr
 (a piece of furniture taken for Mister Brown, Viola taken for "niente"). Figurines in the bathroom are blurred in the
 recordings and are left out too. Crops are square around the blob, with a margin, resized to SIZE.
 
-    python scripts/figures/build_crops.py <recordings dir> <identities.json> <out dir>
+    python scripts/figures/build_crops.py <recordings dir> <identities.json> <out dir> [--journal <journal dir>]
 
 The recordings and identities.json are copied from the board (var/recordings/rec-*, var/config/identities.json).
+With --journal (var/journal copied from the board), the crops people confirmed or corrected in the web app (Vision
+journal) are added with the label they gave: they count more than the house's own labels.
 """
 from __future__ import annotations
 
+import argparse
 import json
-import sys
 from collections import Counter
 from pathlib import Path
 
@@ -49,8 +51,28 @@ def crop(img: np.ndarray, bbox: list[int]) -> np.ndarray:
     return cv2.resize(img[y0:y1, x0:x1], (SIZE, SIZE), interpolation=cv2.INTER_AREA)
 
 
+def journal_crops(journal: Path, out: Path, index: list, counts: Counter) -> None:
+    """The crops of the journal of the vision that somebody labelled in the web app."""
+    labels = json.loads((journal / "labels.json").read_text(encoding="utf-8")) if (journal / "labels.json").exists() else {}
+    for k, (entry_id, lab) in enumerate(sorted(labels.items())):
+        src = journal / f"{entry_id}.jpg"
+        img = cv2.imread(str(src)) if src.exists() else None
+        if img is None:
+            continue
+        name = f"journal_{entry_id}.png"
+        cv2.imwrite(str(out / name), cv2.resize(img, (SIZE, SIZE), interpolation=cv2.INTER_AREA))
+        index.append({"file": name, "label": lab["label"], "rec": "journal", "frame": k, "area": None, "t": None})
+        counts[lab["label"]] += 1
+
+
 def main() -> None:
-    recs, ids_file, out = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("recordings", type=Path)
+    ap.add_argument("identities", type=Path)
+    ap.add_argument("out", type=Path)
+    ap.add_argument("--journal", type=Path, default=None)
+    args = ap.parse_args()
+    recs, ids_file, out = args.recordings, args.identities, args.out
     raw = json.loads(ids_file.read_text())
     items = raw if isinstance(raw, list) else raw.get("identities", raw)
     items = list(items.values()) if isinstance(items, dict) else items
@@ -113,6 +135,8 @@ def main() -> None:
                 index.append({"file": name, "label": label, "rec": rec.name, "frame": d["frame"],
                               "area": area, "t": d.get("t")})
                 counts[label] += 1
+    if args.journal is not None:
+        journal_crops(args.journal, out, index, counts)
     (out / "index.json").write_text(json.dumps(index))
     print(f"{len(index)} crops:", dict(counts.most_common()))
 

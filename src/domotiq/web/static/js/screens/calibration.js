@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // Camera calibration (4 corners, light and empty house) and dataset tools.
 
-import { api, pageHead, toast } from "../app.js";
+import { api, ask, pageHead, toast } from "../app.js";
 import { lang, t } from "../i18n.js";
 
 export function mount(root) {
@@ -84,13 +84,20 @@ export function mount(root) {
       marks();
     }
   };
-  // the light of the webcam and the empty house go together: right after the corners, and on request
-  const adjust = () => cmd("adjust");
+  // the light of the webcam and the empty house go together: right after the corners, and on request. With
+  // figurines still on the house the save is refused: saved anyway only if somebody says so
+  const save = async (name) => {
+    const r = await cmd(name);
+    if (r && !r.ok && r.error === "figurines" && await ask(t("cal.save_anyway", { names: (r.names || []).join(", ") }))) {
+      await cmd(name, { force: true });
+    }
+  };
+  const adjust = () => save("adjust");
   $("#use").onclick = async () => {
     const r = await cmd("corners", { points: corners.map(p => [p.u, p.v]) });
     if (r && r.ok) { corners.length = 0; marks(); await adjust(); }
   };
-  $("#empty").onclick = () => cmd("empty");
+  $("#empty").onclick = () => save("empty");
   $("#adjust").onclick = adjust;
   $("#cap").onclick = () => cmd("capture", { count: 1 });
   $("#burst").onclick = () => cmd("capture", { count: 10 });

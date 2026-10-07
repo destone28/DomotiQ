@@ -322,3 +322,10 @@ In ordine:
 
 ## 7 ottobre 2026 — La rete delle statuine
 - **La rete che conosce le statuine** (D-68). Dieci minuti di registrazione con tutte le statuine, luci, scenari e ombre. Da lì 7.635 ritagli etichettati, perché ogni registrazione ora salva il riquadro di ogni personaggio; poi una rete piccola addestrata sul PC. Sul blocco di tempo lasciato fuori ha il 97,4% di accuratezza, e quando è sicura non ha mai sbagliato. Nella casa è un secondo parere disattivabile: scarta le macchie che non sono statuine, tiene i nomi quando cambia la luce, dà il nome a un nuovo arrivato invece di chiederlo.
+- **Verso zero falsi positivi** (D-69).
+  - La rete fa da filtro anche sulle statuine prese in ritardo, e alla nascita guarda solo le macchie nuove.
+  - La casa vuota non si salva con statuine sopra.
+  - Un interruttore fa annunciare solo le presenze che la rete riconosce (spento finché non lo proviamo).
+  - Nella webapp c'è il registro della visione, dove si conferma o si corregge quello che la casa ha visto: le risposte diventano esempi per la rete.
+  - Un banco di prova rigioca le registrazioni.
+  - Nella guida dello staff c'è la lista di controllo per aprire lo stand.

@@ -100,7 +100,7 @@ The house keeps events for 7 days and positions for 24 hours.
 Every other page, in three groups, plus your nickname:
 
 - **The house**: **Events**, **Rules**, **What it learned**, **Simulation**;
-- **Setting up**: **Calibration**, **Diagnostics**, **Settings**;
+- **Setting up**: **Calibration**, **Diagnostics**, **Vision journal**, **Settings**;
 - **For the stand**: **Printable sign**, **About**;
 - **You**: **Your nickname**, shown in the change log.
 
@@ -140,7 +140,7 @@ Virtual characters dragged on the plan instead of real figurines, virtual sensor
 
 <img src="../images/screens/en/calibration.png" alt="Calibration" width="260">
 
-The four corners of the base (after **Use these corners** the house sets the light and saves the empty house by itself), the overlay check, **Set the light and save the empty house** and **Save the empty house only**. While the house works, a box with a spinner says what it is doing and the buttons stay locked, so an operation never starts twice; at the end the result appears (see [chapter 5](05-testing.md#9-camera-calibration)). Below are the dataset tools: **Capture**, **Burst (10)**, **Record a sequence (60 s)** and **Download the dataset** (see [chapter 7](07-recognition-and-identities.md#datasets-and-recordings)).
+The four corners of the base (after **Use these corners** the house sets the light and saves the empty house by itself), the overlay check, **Set the light and save the empty house** and **Save the empty house only**. The empty house is not saved if the hall is too dark, nor while the house still sees figurines: it names them and asks whether to save anyway (for something that is no figurine). While the house works, a box with a spinner says what it is doing and the buttons stay locked, so an operation never starts twice; at the end the result appears (see [chapter 5](05-testing.md#9-camera-calibration)). Below are the dataset tools: **Capture**, **Burst (10)**, **Record a sequence (60 s)** and **Download the dataset** (see [chapter 7](07-recognition-and-identities.md#datasets-and-recordings)).
 
 ### Diagnostics
 
@@ -149,6 +149,10 @@ Refreshed every few seconds:
 - **Board**: host name and version, uptime, CPU load and temperature, memory, free disk, number of Wi-Fi clients, clock and where its time came from, audio device, voice (speech recognition and language model), camera (device, frames per second, processing time of a picture and how it splits between segmentation, recognition and the rest, *not calibrated*, *moved, calibrate again*).
 - **Modulino**: the state of the link with the microcontroller, the firmware protocol version, and a green or red dot for each module.
 - Buttons: **I2C scan** (addresses answering on each Hub channel), **Audio test**, **Microphone test (3 s)**, **Download the logs** (shows the last 500 lines of the application log and saves them as a file).
+
+### Vision journal
+
+Every new presence announced, every name given and every blob refused by the network of the figurines, with its picture, the latest first (the last 600). For each one: **Right**, or **It was…** with the right character or "nothing (not a figurine)". The answers become verified examples for the next training of the network (see [chapter 7](07-recognition-and-identities.md#the-network-that-knows-the-figurines)). The pictures keep the blur of what is outside the house and, if on, of the bathroom.
 
 ### Settings
 

@@ -43,8 +43,8 @@ from .pipeline import Observation, Segmenter
 from .privacy import Privacy
 from .scene import StaticScene
 from .signature import SIG_LEN, distance, signature, to_hex
-from .figures import NOTHING
-from .tracker import ID_ACCEPT, Tracker
+from .figures import NOTHING, square_crop
+from .tracker import CONSENT_P, ID_ACCEPT, Tracker
 
 log = logging.getLogger(__name__)
 
@@ -140,6 +140,12 @@ DARK_LEVEL, DAZZLED_LEVEL = 25.0, 235.0
 FIGURE_NOT_P = 0.9
 FIGURE_EVERY_S = 0.5
 FIGURE_MAX = 4
+# The journal of the vision (var/journal): every presence told to the house, every name given, every blob the network
+# refused, with its crop, to be reviewed in the web app; what people confirm or correct teaches the network. The same
+# track with the same name, or a refused blob at the same place, is written once a minute at most; JOURNAL_MAX entries
+# are kept
+JOURNAL_MAX = 600
+JOURNAL_AGAIN_S = 60.0
 COCO_CLASSES = ["person", "dog", "cat", "animal", "car", "object"]
 
 
@@ -218,8 +224,13 @@ class Engine:
         self.adaptations = 0
         self.figures = None                        # the network that knows the figurines (set by the worker)
         self.figures_on = True
+        self.figures_consent = False               # nothing new is told before the network sees a figurine there
         self.registering = False                   # a new character is being registered: no birth is refused
         self.figure_blocked = 0                    # new blobs not born because the network saw "niente"
+        self.journal_dir: Path | None = None       # set by the worker
+        self._told: dict[str, tuple[str | None, float]] = {}   # track -> (name written, when)
+        self._refused: list[tuple[float, float, float]] = []   # (x, y, when) of the refused blobs written
+        self._journal_n = 0
         self._figure_ms = 0.0
         self._figure_failed = False
         self._hand_since: np.ndarray | None = None # since when each pixel has been part of a hand (0: not)
@@ -385,7 +396,8 @@ class Engine:
         network, at most every FIGURE_EVERY_S each, FIGURE_MAX at a time. What it says waits in the track."""
         tr = self.tracker
         want = [vt for vt in tr.tracks.values()
-                if vt.obs is not None and not vt.carried and vt.frame == tr.frame and (not vt.identity or vt.misses)
+                if vt.obs is not None and not vt.carried and vt.frame == tr.frame
+                and (not vt.identity or vt.misses or (tr.consent and not vt.shown))
                 and (vt.figure is None or now - vt.figure[2] >= FIGURE_EVERY_S)]
         want = sorted(want, key=lambda vt: vt.figure[2] if vt.figure else 0.0)[:FIGURE_MAX]
         if not want:
@@ -394,6 +406,81 @@ class Engine:
             prev = vt.figure
             row = prev[3] + 1 if prev and prev[0] == label and now - prev[2] <= 3.0 else 1
             vt.figure = (label, p, now, row)
+            vt.consent = vt.consent + 1 if label and label != NOTHING and p >= CONSENT_P else 0
+
+    # ------------------------------------------------------------ the journal of the vision
+    def _new_blob(self, o: Observation) -> bool:
+        """No track already has this blob: the figurines followed stand still, so their blob of the last frame covers
+        most of it."""
+        x, y, w, h = o.bbox
+        for vt in self.tracker.tracks.values() if self.tracker else ():
+            if vt.obs is None:
+                continue
+            a, b, c, d = vt.obs.bbox
+            ix = max(0, min(x + w, a + c) - max(x, a))
+            iy = max(0, min(y + h, b + d) - max(y, b))
+            if ix * iy > 0.5 * min(w * h, c * d):
+                return False
+        return True
+
+    def _journal_tracks(self, small: np.ndarray, now: float) -> None:
+        """A presence told to the house for the first time, or with a new name, is written with its crop."""
+        tr = self.tracker
+        names = {i.id: i.name for i in self.identities}
+        for vt in tr.tracks.values():
+            if not vt.shown or vt.obs is None or vt.carried or vt.frame != tr.frame:
+                continue
+            before = self._told.get(vt.id)
+            if before is not None and (before[0] == vt.identity or vt.identity is None
+                                       or now - before[1] < JOURNAL_AGAIN_S):
+                continue                       # nothing new (a name lost for a moment, names flipping: once a minute)
+            kind = "nuova" if before is None else "nome"
+            self._journal(small, kind, vt.obs.bbox, names.get(vt.identity or ""), vt.figure, vt.id, now)
+            self._told[vt.id] = (vt.identity, now)
+        for tid in [k for k in self._told if k not in tr.tracks]:
+            del self._told[tid]
+
+    def _journal_refused(self, small: np.ndarray, o: Observation, figure: tuple[str, float], now: float) -> None:
+        if self.journal_dir is None:
+            return
+        x, y = o.centroid_mm
+        self._refused = [r for r in self._refused if now - r[2] < JOURNAL_AGAIN_S]
+        if any(np.hypot(x - a, y - b) < 30.0 for a, b, _ in self._refused):
+            return
+        self._refused.append((x, y, now))
+        self._journal(small, "scartata", o.bbox, None, (figure[0], figure[1], now, 1), None, now)
+
+    def _journal(self, small: np.ndarray, kind: str, bbox, name: str | None, figure, track: str | None,
+                 now: float) -> None:
+        d = self.journal_dir
+        try:
+            img = (self.privacy or self._nominal_privacy).apply(small)   # never the outside, nor (if so set) the bathroom
+            stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(now)) + f"-{self._journal_n % 10000:04d}"
+            self._journal_n += 1
+            cv2.imwrite(str(d / f"{stamp}.jpg"), square_crop(img, bbox, 0.35, 96), [cv2.IMWRITE_JPEG_QUALITY, 90])
+            entry = {"id": stamp, "t": round(now, 2), "kind": kind, "name": name, "track": track,
+                     "figure": [figure[0], round(float(figure[1]), 3)] if figure else None,
+                     "bbox": [int(v) for v in bbox]}
+            with open(d / "journal.jsonl", "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            if self._journal_n % 50 == 0:
+                self._journal_trim()
+        except Exception:  # noqa: BLE001
+            log.exception("the journal of the vision could not be written")
+
+    def _journal_trim(self) -> None:
+        d = self.journal_dir
+        lines = (d / "journal.jsonl").read_text(encoding="utf-8").splitlines()
+        if len(lines) <= JOURNAL_MAX:
+            return
+        for line in lines[:-JOURNAL_MAX]:
+            try:
+                (d / f"{json.loads(line)['id']}.jpg").unlink(missing_ok=True)
+            except (ValueError, KeyError):
+                pass
+        tmp = d / "journal.part"
+        tmp.write_text("\n".join(lines[-JOURNAL_MAX:]) + "\n", encoding="utf-8")
+        tmp.replace(d / "journal.jsonl")
 
     def _footprints(self) -> np.ndarray:
         """Where the presences are in the picture, with a margin: there the empty house is not learned again."""
@@ -817,9 +904,15 @@ class Engine:
         return {"ok": True, "message": "Angoli salvati. Ora togli tutto e premi Casa vuota.",
                 "message_en": "Corners saved. Now clear the house and press Empty house."}
 
-    def take_empty(self, frames: list[np.ndarray] | None = None) -> dict[str, Any]:
+    def take_empty(self, frames: list[np.ndarray] | None = None, force: bool = False) -> dict[str, Any]:
         if not self.calibrated:
             return {"ok": False, "error": "calibrate the corners first"}
+        left = [] if force else self._in_sight()
+        if left:
+            # a figurine forgotten on the house would become part of the empty house, and never be seen there
+            return {"ok": False, "error": "figurines", "names": left,
+                    "message": "Sulla casa vedo ancora: " + ", ".join(left) + ". Toglile e riprova.",
+                    "message_en": "I still see on the house: " + ", ".join(left) + ". Take them away and try again."}
         if frames is None:
             if self.grab is None:
                 return {"ok": False, "error": "no camera"}
@@ -975,21 +1068,25 @@ class Engine:
         for o in obs:
             if not o.hand:
                 o.extra["birth"] = self._may_be_born(o, scan, births_open, now)
-        born = [o for o in obs if not o.hand and o.extra.get("birth")]
+        born = [o for o in obs if not o.hand and o.extra.get("birth") and self._new_blob(o)]
         if born and self._figures_ready() and not self.registering:
             for o, (label, p) in zip(born, self._figures(small, [o.bbox for o in born])):
                 o.extra["figure"] = (label, p)
                 if label == NOTHING and p >= FIGURE_NOT_P:
                     o.extra["birth"] = False      # the network is sure: a light, a shadow, a module
                     self.figure_blocked += 1
+                    self._journal_refused(small, o, (label, p), now)
         if self._zone is not None and quiet > SETTLE_S + BIRTH_S:
             self._zone = None
         self.observations = obs
         t_rules = time.perf_counter()
+        self.tracker.consent = self._figures_ready() and self.figures_consent and not self.registering
         self.tracks = self.tracker.update(obs, now, frozen=frozen, quiet_s=quiet, animated=self._animated,
                                           hand_mask=hands if active else None)
         if self._figures_ready():
             self._figure_tracks(small, now)
+        if self.journal_dir is not None:
+            self._journal_tracks(small, now)
         t_track = time.perf_counter()
         # figurines put down while the house waited are looked for, but not while the whole picture is changing
         # (a covered camera)
@@ -1122,6 +1219,12 @@ class Engine:
                     continue                  # it was there before the hand came
                 if self._fill_hole(o):
                     continue                  # the place of something a hand took away
+                if self._figures_ready() and not self.registering:
+                    label, p = self._figures(small, [o.bbox])[0]
+                    if label == NOTHING and p >= FIGURE_NOT_P:
+                        self.figure_blocked += 1
+                        self._journal_refused(small, o, (label, p), now)
+                        continue              # the network is sure: a light, a shadow, a module
                 self.tracker.adopt(o, now)
                 g[y:y + h, x:x + w][blob] = 0
         if frozen:
@@ -1132,6 +1235,18 @@ class Engine:
             seg.absorb(small, ripe)
             g[ripe] = 0
             self.absorbed += 1
+
+    def _in_sight(self) -> list[str]:
+        """The presences seen a moment ago (not hidden, not in a hand), by name."""
+        if self.tracker is None:
+            return []
+        names = {i.id: i.name for i in self.identities}
+        now = self.frame_at or time.time()
+        out = []
+        for t in self.tracker.tracks.values():
+            if t.shown and not t.carried and t.obs is not None and now - t.last_seen <= 2.0:
+                out.append(names.get(t.identity or "", "una presenza senza nome"))
+        return sorted(out)
 
     def _shift_of(self, small: np.ndarray) -> tuple[float, float]:
         """How far (pixels) the walls of this frame are from where the empty house has them, and how sure that is."""
@@ -1249,7 +1364,8 @@ class Engine:
             "retunes": self.retunes,
             "adapting": bool(self._adapt_since),     # the light of the hall is changing: the presences are kept
             "figures": {"loaded": self.figures is not None, "on": self.figures_on and not self._figure_failed,
-                        "blocked": self.figure_blocked, "ms": round(self._figure_ms, 1),
+                        "consent": self.figures_consent, "blocked": self.figure_blocked, "ms": round(self._figure_ms, 1),
+                        "waiting": self.tracker.figure_waiting if self.tracker else 0,
                         "kept": self.tracker.figure_kept if self.tracker else 0,
                         "named": self.tracker.figure_named if self.tracker else 0},
             "adaptations": self.adaptations,

@@ -26,6 +26,7 @@ export function mount(root) {
     <div class="card menu"><ul class="list">
       ${item("calibration", "🎯", t("more.calibration"), t("more.calibration_sub"))}
       ${item("diagnostics", "🩺", t("more.diagnostics"), t("more.diagnostics_sub"))}
+      ${item("journal", "🔎", t("more.journal"), t("more.journal_sub"))}
       ${item("settings", "⚙️", t("more.settings"), t("more.settings_sub"))}
     </ul></div>
     <h2>${t("more.stand")}</h2>

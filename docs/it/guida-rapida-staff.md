@@ -12,6 +12,16 @@ Password del Wi-Fi: ____________________
 - **Spegnimento a fine giornata**: webapp, **Altro → Impostazioni → Spegni la scheda**, poi stacca la spina.
 - **Dopo un'interruzione di corrente** la casa riparte da sola. La ventola del barbecue resta ferma.
 
+## Apertura dello stand (ogni mattina)
+
+1. **Luce**: accendi la luce della casa (la striscia sopra il diorama, se c'è) prima della scheda, e lasciala sempre accesa.
+2. **Accensione**: collega l'alimentatore della scheda e aspetta che le luci smettano di respirare.
+3. **Casa vuota**: solo la prima volta in un posto nuovo, o se hai spostato arredi o moduli. Togli tutte le statuine e fai **Altro → Calibrazione → Regola la luce e salva la casa vuota**. Se la casa vede ancora statuine, o se è troppo buio, non salva e dice perché.
+4. **Statuine**: posale **a mano, una alla volta**, togliendo la mano ogni volta. La casa le annuncia per nome. Se chiede "chi è?", rispondi.
+5. **Controllo**: in **Personaggi** ogni statuina ha il suo nome e la sua stanza. In **Diagnostica** non ci sono avvisi (webcam, luce, casa vuota salvata al buio).
+
+Durante la giornata: niente luci puntate sulla casa o sulla webcam, e niente oggetti appoggiati sulla base. Se cambia la luce del padiglione, la casa si adatta da sola in pochi secondi.
+
 ## I tre tasti (da sinistra a destra, come li vede il visitatore)
 
 - **Parla**: tienilo premuto, parla, rilascia. "Dov'è Marco?" · "Who's in the kitchen?" · "Fai festa!" · "Light the barbecue" · "Luce rossa in camera" · "Com'è la casa?"

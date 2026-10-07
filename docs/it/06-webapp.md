@@ -100,7 +100,7 @@ La casa conserva gli eventi per 7 giorni e le posizioni per 24 ore.
 Tutte le altre pagine, in tre gruppi, più il tuo soprannome:
 
 - **La casa**: **Eventi**, **Regole**, **Cosa ha imparato**, **Simulazione**;
-- **Messa a punto**: **Calibrazione**, **Diagnostica**, **Impostazioni**;
+- **Messa a punto**: **Calibrazione**, **Diagnostica**, **Registro della visione**, **Impostazioni**;
 - **Per lo stand**: **Cartello da stampare**, **Informazioni**;
 - **Tu**: **Il tuo soprannome**, che compare nel registro delle modifiche.
 
@@ -140,7 +140,7 @@ Personaggi virtuali da trascinare sulla piantina al posto delle statuine vere, s
 
 <img src="../images/screens/it/calibration.png" alt="Calibrazione" width="260">
 
-I quattro angoli della base (dopo **Usa questi angoli** la casa regola da sola la luce e salva la casa vuota), il controllo della sovrapposizione, **Regola la luce e salva la casa vuota** e **Salva solo la casa vuota**. Mentre la casa lavora, una finestra con una rotellina dice cosa sta facendo e i pulsanti restano bloccati, così un'operazione non parte due volte; alla fine compare il risultato (vedi il [capitolo 5](05-collaudo.md#9-calibrazione-della-webcam)). In fondo ci sono gli strumenti per i dataset: **Cattura**, **Raffica (10)**, **Registra una sequenza (60 s)** e **Scarica il dataset** (vedi il [capitolo 7](07-riconoscimento-e-identita.md#dataset-e-registrazioni)).
+I quattro angoli della base (dopo **Usa questi angoli** la casa regola da sola la luce e salva la casa vuota), il controllo della sovrapposizione, **Regola la luce e salva la casa vuota** e **Salva solo la casa vuota**. La casa vuota non si salva se la sala è troppo buia, né se la casa vede ancora delle statuine: le nomina e chiede se salvare comunque (per qualcosa che non è una statuina). Mentre la casa lavora, una finestra con una rotellina dice cosa sta facendo e i pulsanti restano bloccati, così un'operazione non parte due volte; alla fine compare il risultato (vedi il [capitolo 5](05-collaudo.md#9-calibrazione-della-webcam)). In fondo ci sono gli strumenti per i dataset: **Cattura**, **Raffica (10)**, **Registra una sequenza (60 s)** e **Scarica il dataset** (vedi il [capitolo 7](07-riconoscimento-e-identita.md#dataset-e-registrazioni)).
 
 ### Diagnostica
 
@@ -149,6 +149,10 @@ Si aggiorna ogni pochi secondi:
 - **Scheda**: nome host e versione, tempo di attività, carico e temperatura della CPU, memoria, disco libero, numero di client Wi-Fi, orologio e provenienza dell'ora, dispositivo audio, voce (riconoscimento vocale e modello linguistico), webcam (dispositivo, fotogrammi al secondo, tempo di elaborazione di un'immagine e come si divide tra segmentazione, riconoscimento e resto, *da calibrare*, *spostata, rifare la calibrazione*).
 - **Modulino**: lo stato del collegamento con il microcontrollore, la versione del protocollo del firmware, e un pallino verde o rosso per ogni modulo.
 - Pulsanti: **Scansione I2C** (gli indirizzi che rispondono su ogni canale dell'Hub), **Prova audio**, **Prova microfono (3 s)**, **Scarica i registri** (mostra le ultime 500 righe del log dell'applicazione e le salva in un file).
+
+### Registro della visione
+
+Ogni presenza nuova annunciata, ogni nome dato e ogni macchia scartata dalla rete delle statuine, con la sua immagine, dalla più recente (le ultime 600). Per ognuna: **Giusto**, oppure **Era…** con il personaggio giusto o "niente (non è una statuina)". Le risposte diventano esempi verificati per il prossimo addestramento della rete (vedi il [capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine)). Le immagini rispettano la sfocatura di quello che sta fuori dalla casa e, se attiva, del bagno.
 
 ### Impostazioni
 

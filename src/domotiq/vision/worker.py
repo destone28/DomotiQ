@@ -101,6 +101,10 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
         except Exception as e:  # noqa: BLE001
             logging.warning("figure classifier not available: %s", e)
     engine.figures_on = bool(cfg.get("figures", True))
+    engine.figures_consent = bool(cfg.get("figures_consent", False))
+    if cfg.get("journal"):
+        engine.journal_dir = Path(cfg["journal"])
+        engine.journal_dir.mkdir(parents=True, exist_ok=True)
     if cfg.get("device") != "synthetic":
         # nothing is recognized until the light of the webcam is set on the empty house
         try:
@@ -142,7 +146,7 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
         finally:
             conn.send(("tuning", False))
 
-    def adjust() -> dict[str, Any]:
+    def adjust(force: bool = False) -> dict[str, Any]:
         """Let the camera find exposure and white balance on the empty house, then freeze them."""
         c: Controls | None = camera.controls
         if c is None:
@@ -159,7 +163,7 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
             lock_file.write_text(json.dumps(values))
             camera.flush()
             engine.light_ok = True
-            result = engine.take_empty()
+            result = engine.take_empty(force=force)
             result["camera"] = values
             return result
         finally:
@@ -168,8 +172,9 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
     commands = {
         "corners": lambda p: engine.set_corners(p.get("points") or []),
         # an empty house is saved with the light of the webcam set: the first time, both are done
-        "empty": lambda p: (camera.flush(), engine.take_empty())[1] if engine.light_ok else adjust(),
-        "adjust": lambda p: adjust(),
+        "empty": lambda p: ((camera.flush(), engine.take_empty(force=bool(p.get("force"))))[1] if engine.light_ok
+                            else adjust(bool(p.get("force")))),
+        "adjust": lambda p: adjust(bool(p.get("force"))),
         "reset": lambda p: (lock_file.unlink(missing_ok=True), camera.controls and camera.controls.automatic(),
                             setattr(engine, "light_ok", cfg.get("device") == "synthetic"), engine.reset())[3],
         "capture": lambda p: engine.capture(int(p.get("count", 1))),
@@ -227,6 +232,8 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                     engine.set_privacy(bool(msg[1]))
                 elif kind == "figures":
                     engine.figures_on = bool(msg[1])
+                    if len(msg) > 2:
+                        engine.figures_consent = bool(msg[2])
                 elif kind == "registering":
                     engine.registering = bool(msg[1])
                 elif kind == "want":
@@ -308,10 +315,12 @@ class VisionProcess(VisionLink):
             "calibration": str(paths.calibration),
             "dataset": str(paths.dataset),
             "recordings": str(paths.recordings),
+            "journal": str(paths.journal),
             "device": device or settings.get("camera.device"),
             "blur_private": settings.get("camera.blur_bathroom", True),
             "models": str(paths.models),
             "figures": settings.get("camera.figures", True),
+            "figures_consent": settings.get("camera.figures_consent", False),
             "log_level": logging.getLogger().level or logging.INFO,
         }
         self._mp = mp.get_context("spawn")
@@ -505,9 +514,9 @@ class VisionProcess(VisionLink):
         self.cfg["blur_private"] = bool(blur_private)
         self._send("privacy", bool(blur_private))
 
-    def set_figures(self, on: bool) -> None:
-        self.cfg["figures"] = bool(on)
-        self._send("figures", bool(on))
+    def set_figures(self, on: bool, consent: bool = False) -> None:
+        self.cfg["figures"], self.cfg["figures_consent"] = bool(on), bool(consent)
+        self._send("figures", bool(on), bool(consent))
 
     def set_registering(self, on: bool) -> None:
         self._send("registering", bool(on))

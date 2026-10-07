@@ -12,6 +12,16 @@ Wi-Fi password: ____________________
 - **Off at the end of the day**: web app, **More → Settings → Power off the board**, then unplug.
 - **After a power cut** the house restarts by itself. The barbecue fan stays off.
 
+## Opening the stand (every morning)
+
+1. **Light**: turn on the light of the house (the strip over the diorama, if there is one) before the board, and leave it always on.
+2. **Power on**: plug in the board's power supply and wait for the lights to stop breathing.
+3. **Empty house**: only the first time in a new place, or after moving furniture or modules. Take away all the figurines and do **More → Calibration → Set the light and save the empty house**. If the house still sees figurines, or it is too dark, it does not save and says why.
+4. **Figurines**: put them down **by hand, one at a time**, taking your hand away each time. The house announces them by name. If it asks "who is it?", answer.
+5. **Check**: in **Characters** every figurine has its name and room. In **Diagnostics** there are no warnings (webcam, light, empty house saved in the dark).
+
+During the day: no lights pointed at the house or the webcam, and no objects lying on the base. If the hall light changes, the house adapts by itself in a few seconds.
+
 ## The three buttons (left to right, as the visitor sees them)
 
 - **Talk**: hold it down, speak, release. "Dov'è Marco?" · "Who's in the kitchen?" · "Fai festa!" · "Light the barbecue" · "Luce rossa in camera" · "Com'è la casa?"

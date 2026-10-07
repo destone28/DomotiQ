@@ -461,10 +461,10 @@ const SCREENS = {
   events: "./screens/events.js", more: "./screens/more.js", rules: "./screens/rules.js",
   identities: "./screens/identities.js", sim: "./screens/sim.js", calibration: "./screens/calibration.js",
   diagnostics: "./screens/diagnostics.js", settings: "./screens/settings.js", about: "./screens/about.js",
-  knowledge: "./screens/knowledge.js",
+  knowledge: "./screens/knowledge.js", journal: "./screens/journal.js",
 };
 const NAV_OF = { rules: "more", events: "more", sim: "more", calibration: "more", diagnostics: "more", settings: "more", about: "more",
-  knowledge: "more" };
+  knowledge: "more", journal: "more" };
 
 let current = null;
 

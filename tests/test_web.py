@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 
 import pytest
@@ -321,3 +322,18 @@ def test_what_the_house_learned_is_corrected_and_forgotten(web):
     assert [i["q"] for i in c.get("/api/knowledge").json()] == ["come si fa la pizza"]
     log = c.get("/api/audit").json()
     assert {e["action"] for e in log if e["entity"] == "knowledge"} == {"update", "delete"}
+
+
+def test_the_journal_of_the_vision_is_reviewed_in_the_web_app(web):
+    ctx, c = web
+    d = ctx.paths.journal
+    (d / "20261007-010000-0001.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+    (d / "journal.jsonl").write_text(json.dumps({"id": "20261007-010000-0001", "t": 1.0, "kind": "scartata",
+                                                 "name": None, "figure": ["niente", 0.93]}) + "\n")
+    r = c.get("/api/journal").json()
+    assert [e["id"] for e in r["entries"]] == ["20261007-010000-0001"] and r["entries"][0]["label"] is None
+    assert c.get("/api/journal/20261007-010000-0001.jpg").status_code == 200
+    assert c.get("/api/journal/../config.jpg").status_code == 404
+    assert c.post("/api/journal/20261007-010000-0001", json={"label": "Nessuno"}).status_code == 400
+    assert c.post("/api/journal/20261007-010000-0001", json={"label": "niente"}).json()["ok"]
+    assert c.get("/api/journal").json()["entries"][0]["label"]["label"] == "niente"

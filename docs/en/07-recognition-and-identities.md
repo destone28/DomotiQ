@@ -196,13 +196,17 @@ Besides the difference from the empty house and the colour signature, the house 
 - **A character that no longer looks like its colours** (another light) keeps its name while the network, at least 80% sure, still sees it.
 - **A newcomer** takes the name of a character nobody else holds, instead of being asked "who is it?", when the network is 95% sure of it twice in a row.
 
-It is switched off in **Settings → Figurines also recognized by the network (second opinion)**; *Diagnostics* shows how often it helped. Without the network file (`models/vision/figures.onnx` and `figures.json`) the house works as before.
+The network also looks at the figurines taken "late" (put down while the house waited). It is switched off in **Settings → Figurines also recognized by the network (second opinion)**; *Diagnostics* shows how often it helped. Without the network file (`models/vision/figures.onnx` and `figures.json`) the house works as before.
+
+**Only presences the network recognizes** (Settings, off by default): a new presence is announced only when the network has seen a figurine, twice in a row. It is the way to have no false presences. The price: a figurine the network does not know is announced only while it is being registered (**Characters → + Add**), and in low light a figurine may take a little longer. Switch it on after trying it under the light of the stand.
+
+**The vision journal** (More → Vision journal) keeps every new presence, every name given and every blob refused by the network, with its picture. Saying for each one whether it was right, or what it really was, gives examples verified by a person for the next training (`build_crops.py ... --journal <copy of var/journal>`).
 
 **Training it.** The network is trained on the PC with the programs in `scripts/figures/`, from the recordings of the house (**Calibration → Record**). Every recording saves, for every recognized character, the box of its blob: that is the crop with its name.
 1. With all the characters in the house and recognized, record a few minutes moving them to different rooms and positions, under different lights (the hall light, a lamp at the side, the scenes of the house) and with the shadows of people nearby.
 2. Copy `var/recordings/rec-*` and `var/config/identities.json` to the PC, then:
    ```
-   python scripts/figures/build_crops.py <recordings> identities.json crops
+   python scripts/figures/build_crops.py <recordings> identities.json crops [--journal journal]
    python scripts/figures/preview.py crops preview.png      # check the labels by eye
    python scripts/figures/train.py net crops --only 2        # test on a block of time left out
    python scripts/figures/train.py net2 crops --drop net/suspect.json

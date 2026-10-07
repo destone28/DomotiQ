@@ -690,3 +690,23 @@ I numeri sono misurati su un blocco di tempo della registrazione lasciato fuori 
   - nessuna delle 1.313 statuine vere supera 0,84 di "niente", mentre l'80% dei "niente" veri supera 0,9;
   - a 0,95 i nomi dati sarebbero stati 972, nessuno sbagliato;
   - il 97% delle statuine vede il proprio nome almeno a 0,8.
+
+### D-69 — Verso zero falsi positivi: controlli, consenso, registro della visione (7/10)
+**Scelta:**
+- **Il veto della rete anche in ritardo.** La rete guarda anche le statuine prese "in ritardo", cioè posate mentre la casa aspettava. Prima un falso positivo poteva entrare da lì.
+- **Solo le macchie nuove.** Alla nascita la rete guarda solo le macchie che non coprono già una statuina seguita: prima classificava e "scartava" a ogni fotogramma anche le macchie delle statuine già note.
+- **La casa vuota con statuine sopra.** "Salva la casa vuota" e "Regola la luce e salva la casa vuota" rifiutano se la casa vede ancora presenze: "Sulla casa vedo ancora: Viola. Toglile e riprova." La webapp chiede se salvare comunque, per qualcosa che non è una statuina.
+- **Il consenso della rete.** È un interruttore, spento di serie. Una presenza nuova viene annunciata solo quando la rete vi ha visto una statuina due volte di fila, almeno al 50%. Non vale mentre si registra un personaggio, né senza la rete.
+- **Il registro della visione (`var/journal`).**
+  - **Cosa tiene:** ogni presenza nuova annunciata, ogni nome dato e ogni macchia scartata dalla rete, con un ritaglio di 96 pixel. Le ultime 600 voci, con la sfocatura di quello che sta fuori dalla casa (e del bagno, se attiva). Lo stesso nome o la stessa macchia scartata si scrivono una volta al minuto al massimo.
+  - **La pagina:** Altro → Registro della visione permette di dire "giusto" o "era…" (un personaggio o "niente").
+  - **Le etichette:** finiscono in `var/journal/labels.json` e `build_crops.py --journal` le aggiunge all'addestramento.
+- **Il banco di prova (`scripts/vision_bench.py`).** Rigioca le registrazioni nella visione di oggi, con o senza rete e consenso, e confronta con quello che la casa aveva detto; con `--journal` salva i ritagli.
+- **L'apertura dello stand.** Una lista di controllo nella guida rapida dello staff: luce, accensione, casa vuota, statuine posate a mano una alla volta, controllo.
+
+**Perché:** richiesta di Emilio, che vuole un riconoscimento affidabile e senza falsi positivi.
+
+La replica della registrazione del 7/10 con la rete accesa:
+- **Le macchie scartate.** Sono 11 macchie distinte, tutte non-statuine: pareti, bordi di porte con il riflesso rosa dei LED, angoli di moduli, un pezzo di tappeto. Nessuna statuina vera è stata scartata.
+- **Il confronto con la serata dal vivo.** La replica, che parte da zero senza i nomi confermati a mano e le pose imparate quella sera, dà nomi diversi da quelli dal vivo anche senza rete (Rossana e Rossellina, Mister Blu e Viola). Il confronto misura quindi una versione contro l'altra, non la verità.
+- **Il consenso.** Resta spento finché non è stato provato con la luce dello stand.

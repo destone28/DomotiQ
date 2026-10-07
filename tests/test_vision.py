@@ -1452,9 +1452,10 @@ def test_a_blob_the_network_sees_as_nothing_is_not_born(engine, renderer):
     red = Thing(300, 100, "#d03030")
     assert _put_down(engine, renderer, [], red, 4.0) == []
     assert engine.status()["figures"]["blocked"] >= 1
-    engine.registering = True                                # a new character is being registered: always born
+    engine.registering = True                                # a new character is being registered: nothing refused
     green = Thing(150, 250, "#30a040")
-    assert len(_put_down(engine, renderer, [red], green, 7.0)) == 1
+    tracks = _put_down(engine, renderer, [red], green, 7.0)
+    assert any(np.hypot(t.x - 134, t.y - 258) < 12 for t in tracks)   # where the house sees (150, 250)
     engine.registering = False
     engine.figures_on = False                                # the switch in the settings: as before
     blue = Thing(480, 280, "#3050d0")
@@ -1492,3 +1493,56 @@ def test_the_network_names_a_newcomer_instead_of_asking(engine, renderer):
     tracks = _put_down(engine, renderer, [], Thing(300, 100, "#7030c0"), 4.0)
     assert [t.identity for t in tracks] == ["id-viola"] and asked == []
     assert engine.status()["figures"]["named"] == 1
+
+
+def test_the_network_also_stops_what_would_be_taken_late(engine, renderer):
+    """Put down while the house waited (a cable lying on the edge looked like a hand): taken late, once still. The
+    network is asked there too."""
+    settle(engine, renderer, [], 0)
+    engine.figures = _Figures("niente")
+    cable = Hand(300, 20)
+    red = Thing(300, 100, "#d03030")
+    run(engine, renderer, [([], {"hands": [cable]})] * 40, t0=5)
+    tracks = run(engine, renderer, [([red], {"hands": [cable]})] * 120, t0=9)
+    assert tracks == [] and engine.status()["figures"]["blocked"] >= 1
+
+
+def test_the_empty_house_is_not_saved_with_figurines_on_it(engine, renderer):
+    """A figurine forgotten on the house would become part of the empty house, and never be seen there again."""
+    red = Thing(300, 100, "#d03030")
+    tracks = bring(engine, renderer, [red])
+    engine.set_identities([Identity("id-red", "Rosso", category="person",
+                                    signature=engine.track_signature(tracks[0].id)[0])])
+    run(engine, renderer, [([red], {})] * 10, t0=10.0)
+    r = engine.take_empty([renderer.render([red]) for _ in range(5)])
+    assert not r["ok"] and r["error"] == "figurines" and r["names"] == ["Rosso"] and "Toglile" in r["message"]
+    assert engine.take_empty([renderer.render([red]) for _ in range(5)], force=True)["ok"]   # "save it anyway"
+
+
+def test_with_consent_nothing_is_told_before_the_network_sees_a_figurine(engine, renderer):
+    run(engine, renderer, [([], {})] * 40)
+    engine.figures = _Figures("niente", 0.6)               # not sure enough to refuse it, but no figurine either
+    engine.figures_consent = True
+    red = Thing(300, 100, "#d03030")
+    assert _put_down(engine, renderer, [], red, 4.0) == []
+    assert engine.status()["figures"]["waiting"] > 0
+    engine.figures.label, engine.figures.p = "Rosso", 0.9    # now it sees one: told to the house
+    tracks = run(engine, renderer, [([red], {})] * 20, t0=8.5)
+    assert len(tracks) == 1
+
+
+def test_the_journal_keeps_what_the_vision_told_and_refused(engine, renderer, tmp_path):
+    engine.journal_dir = tmp_path / "journal"
+    engine.journal_dir.mkdir()
+    red = Thing(300, 100, "#d03030")
+    bring(engine, renderer, [red])
+    engine.figures = _Figures("niente")
+    blue = Thing(480, 280, "#3050d0")
+    _put_down(engine, renderer, [red], blue, 10.0)          # refused by the network, written once
+    entries = [json.loads(line) for line in open(engine.journal_dir / "journal.jsonl")]
+    kinds = [e["kind"] for e in entries]
+    assert kinds.count("nuova") == 1 and kinds.count("scartata") == 1
+    for e in entries:
+        assert (engine.journal_dir / f"{e['id']}.jpg").exists()
+    refused = next(e for e in entries if e["kind"] == "scartata")
+    assert refused["figure"][0] == "niente"

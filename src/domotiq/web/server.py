@@ -16,6 +16,7 @@ import asyncio
 import hashlib
 import io
 import json
+import re
 import logging
 import time
 import urllib.parse
@@ -755,7 +756,7 @@ def create_app(ctx: "Context") -> FastAPI:
             ctx.audio.set_volume(ctx.settings.get("voice.volume", 70))
         ctx.bus.publish("volume", volume=ctx.settings.get("voice.volume"))
         ctx.vision.set_privacy(ctx.settings.get("camera.blur_bathroom", True))
-        ctx.vision.set_figures(ctx.settings.get("camera.figures", True))
+        ctx.vision.set_figures(ctx.settings.get("camera.figures", True), ctx.settings.get("camera.figures_consent", False))
         return ctx.settings.public()
 
     @app.post("/api/network")
@@ -836,6 +837,51 @@ def create_app(ctx: "Context") -> FastAPI:
             jpg = (await asyncio.get_running_loop().run_in_executor(
                 None, lambda: ctx.vision.command("raw_frame", overlay=bool(overlay)))).get("jpeg")
         return Response(jpg or _frame(ctx), media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+    # ============================================================ the journal of the vision
+    def journal_labels() -> dict[str, Any]:
+        f = ctx.paths.journal / "labels.json"
+        try:
+            return json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+        except (OSError, ValueError):
+            return {}
+
+    @app.get("/api/journal")
+    async def journal(limit: int = 150):
+        """What the vision told and refused, the latest first, with what people said of it."""
+        f = ctx.paths.journal / "journal.jsonl"
+        labels = journal_labels()
+        entries = []
+        if f.exists():
+            for line in f.read_text(encoding="utf-8").splitlines()[-min(max(limit, 1), 600):]:
+                try:
+                    e = json.loads(line)
+                except ValueError:
+                    continue
+                e["label"] = labels.get(e.get("id"))
+                entries.append(e)
+        return {"entries": entries[::-1], "names": sorted(i.name for i in ctx.identities.all())}
+
+    @app.get("/api/journal/{entry_id}.jpg")
+    async def journal_crop(entry_id: str):
+        f = ctx.paths.journal / f"{entry_id}.jpg"
+        if not re.fullmatch(r"[0-9-]+", entry_id) or not f.exists():
+            raise HTTPException(404, "no such crop")
+        return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
+
+    @app.post("/api/journal/{entry_id}")
+    async def journal_label(entry_id: str, body: dict, w: Who = Depends(who)):
+        """Somebody says what that crop really is: a character, or "niente". It teaches the network next time."""
+        label = str(body.get("label") or "").strip()
+        valid = {i.name for i in ctx.identities.all()} | {"niente"}
+        if not re.fullmatch(r"[0-9-]+", entry_id) or label not in valid:
+            raise HTTPException(400, "no such label")
+        labels = journal_labels()
+        labels[entry_id] = {"label": label, "by": w.nickname, "at": round(time.time())}
+        tmp = ctx.paths.journal / "labels.part"
+        tmp.write_text(json.dumps(labels, ensure_ascii=False, indent=1), encoding="utf-8")
+        tmp.replace(ctx.paths.journal / "labels.json")
+        return {"ok": True}
 
     @app.get("/api/dataset.zip")
     async def dataset_zip():

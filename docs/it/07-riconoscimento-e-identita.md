@@ -196,13 +196,17 @@ Oltre alla differenza dalla casa vuota e alla firma di colore, la casa può aver
 - **Un personaggio che non somiglia più ai suoi colori** (un'altra luce) tiene il nome finché la rete, almeno all'80%, lo vede ancora.
 - **Un nuovo arrivato** prende il nome di un personaggio che nessun altro ha, invece di sentirsi chiedere "chi è?", quando la rete ne è sicura al 95% due volte di fila.
 
-Si spegne da **Impostazioni → Statuine riconosciute anche dalla rete (secondo parere)**; *Diagnostica* mostra quante volte è servita. Senza il file della rete (`models/vision/figures.onnx` e `figures.json`) la casa funziona come prima.
+La rete guarda anche le statuine prese "in ritardo" (posate mentre la casa aspettava). Si spegne da **Impostazioni → Statuine riconosciute anche dalla rete (secondo parere)**; *Diagnostica* mostra quante volte è servita. Senza il file della rete (`models/vision/figures.onnx` e `figures.json`) la casa funziona come prima.
+
+**Solo presenze riconosciute dalla rete** (Impostazioni, spento di serie): una presenza nuova viene annunciata solo quando la rete ha visto una statuina, due volte di fila. È il modo per non avere falsi positivi. Il prezzo è che una statuina che la rete non conosce viene annunciata solo mentre la si registra (**Personaggi → + Aggiungi**), e che con poca luce una statuina può tardare un po'. Va acceso dopo averlo provato con la luce dello stand.
+
+**Il registro della visione** (Altro → Registro della visione) tiene ogni presenza nuova, ogni nome dato e ogni macchia scartata dalla rete, con l'immagine. Dire per ognuna se era giusto, o cosa era davvero, dà esempi verificati da una persona per l'addestramento successivo (`build_crops.py ... --journal <copia di var/journal>`).
 
 **Addestrarla.** La rete si addestra sul PC con i programmi di `scripts/figures/`, partendo dalle registrazioni della casa (**Calibrazione → Registra**). Ogni registrazione salva, per ogni personaggio riconosciuto, il riquadro della sua macchia: quello è il ritaglio con il suo nome.
 1. Con tutti i personaggi in casa e riconosciuti, registra qualche minuto spostandoli in stanze e posizioni diverse, con luci diverse (luce della sala, una lampada laterale, gli scenari della casa) e con le ombre di chi sta vicino.
 2. Copia sul PC `var/recordings/rec-*` e `var/config/identities.json`, poi:
    ```
-   python scripts/figures/build_crops.py <registrazioni> identities.json crops
+   python scripts/figures/build_crops.py <registrazioni> identities.json crops [--journal journal]
    python scripts/figures/preview.py crops anteprima.png      # controlla a occhio le etichette
    python scripts/figures/train.py rete crops --only 2         # prova su un blocco di tempo lasciato fuori
    python scripts/figures/train.py rete2 crops --drop rete/suspect.json
