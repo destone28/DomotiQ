@@ -134,9 +134,11 @@ DARK_LEVEL, DAZZLED_LEVEL = 25.0, 235.0
 # FIGURE_NOT_P sure is "niente" (a light, a shadow, a module) is not born. Measured on a block of the recording of
 # 7 October left out of the training: no real figurine of 1313 was more than 0.84 "niente" (a dark blue one in low
 # light came closest), while 80% of the real "niente" were at least 0.9; the network is never much more than 0.95
-# sure (it is trained not to be). Tracks with no name, or whose colours no longer match their name, are shown
-# to it at most every FIGURE_EVERY_S, FIGURE_MAX at a time (some 10 ms each on the board, one thread); the tracker weighs what
-# it says (tracker.FIGURE_*)
+# sure (it is trained not to be). Every network is sure in its own measure: the threshold measured with it on the
+# block left out (the highest "niente" of a real figurine, and a margin) comes in figures.json ("not_p"), FIGURE_NOT_P
+# without it. Tracks with no name, or whose colours no longer match their name, are shown to it at most every
+# FIGURE_EVERY_S, FIGURE_MAX at a time (some 10 ms each on the board, one thread); the tracker weighs what it says
+# (tracker.FIGURE_*)
 FIGURE_NOT_P = 0.9
 FIGURE_LIKELY_P = 0.5    # the empty house learned again around what the network takes for a figurine this sure
 FIGURE_SCAN_P = 0.8      # at a start, what the network sees as a character this sure is taken, whatever its colours
@@ -396,6 +398,10 @@ class Engine:
     def _figures_ready(self) -> bool:
         return self.figures is not None and self.figures_on and not self._figure_failed
 
+    def _not_p(self) -> float:
+        """How sure of "niente" this network must be to refuse a blob: measured with it, or FIGURE_NOT_P."""
+        return float(getattr(self.figures, "not_p", None) or FIGURE_NOT_P)
+
     def _figures(self, small: np.ndarray, bboxes: list) -> list[tuple[str, float]]:
         t0 = time.perf_counter()
         try:
@@ -413,7 +419,7 @@ class Engine:
         tr = self.tracker
         want = [vt for vt in tr.tracks.values()
                 if vt.obs is not None and not vt.carried and vt.frame == tr.frame
-                and (not vt.identity or vt.misses or ((tr.consent or tr.veto) and not vt.shown))
+                and (not vt.identity or vt.misses or vt.uncertain or ((tr.consent or tr.veto) and not vt.shown))
                 and (vt.figure is None or now - vt.figure[2] >= FIGURE_EVERY_S)]
         want = sorted(want, key=lambda vt: vt.figure[2] if vt.figure else 0.0)[:FIGURE_MAX]
         if not want:
@@ -549,7 +555,7 @@ class Engine:
                         label, p = seen[k]
                         if label != NOTHING and p >= FIGURE_LIKELY_P:
                             out = True
-                        elif label == NOTHING and p >= FIGURE_NOT_P:
+                        elif label == NOTHING and p >= self._not_p():
                             out = False
                     if out:
                         x, y, bw, bh = o.bbox
@@ -1121,7 +1127,7 @@ class Engine:
                 o.extra["figure"] = seen
             for o in born:
                 label, p = o.extra["figure"]
-                if label == NOTHING and p >= FIGURE_NOT_P:
+                if label == NOTHING and p >= self._not_p():
                     o.extra["birth"] = False      # the network is sure: a light, a shadow, a module
                     self.figure_blocked += 1
                     self._journal_refused(small, o, (label, p), now)
@@ -1131,7 +1137,7 @@ class Engine:
         t_rules = time.perf_counter()
         self.tracker.consent = self._figures_ready() and self.figures_consent and not self.registering
         self.tracker.veto = self._figures_ready() and not self.registering
-        self.tracker.veto_p = FIGURE_NOT_P
+        self.tracker.veto_p = self._not_p()
         self.tracks = self.tracker.update(obs, now, frozen=frozen, quiet_s=quiet, animated=self._animated,
                                           hand_mask=hands if active else None)
         if self._figures_ready():
@@ -1276,7 +1282,7 @@ class Engine:
                     continue                  # the place of something a hand took away
                 if self._figures_ready() and not self.registering:
                     label, p = self._figures(small, [o.bbox])[0]
-                    if label == NOTHING and p >= FIGURE_NOT_P:
+                    if label == NOTHING and p >= self._not_p():
                         self.figure_blocked += 1
                         self._journal_refused(small, o, (label, p), now)
                         continue              # the network is sure: a light, a shadow, a module

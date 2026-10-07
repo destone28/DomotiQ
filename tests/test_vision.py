@@ -1542,6 +1542,43 @@ def test_the_network_names_a_newcomer_instead_of_asking(engine, renderer):
     assert engine.status()["figures"]["named"] == 1
 
 
+class _ByPlace:
+    """A network that tells two figurines of the same colours apart: one name left of `split` px, another right."""
+
+    def __init__(self, left, right, split=320, p=0.97):
+        self.left, self.right, self.split, self.p = left, right, split, p
+
+    def classify(self, img, bboxes):
+        return [(self.left if x + w / 2 < self.split else self.right, self.p) for x, y, w, h in bboxes]
+
+
+def test_the_network_tells_apart_two_characters_of_alike_colours(engine, renderer):
+    """casa1, 7 October at 16:41: Rossellina put down by hand was named Rossana by her colours, the network sure it
+    was Rossellina (96%). Two characters of the same colours, both taken and put down: without the network each
+    could be either of them and the house asks; with it, each has its name."""
+    a, b = Thing(250, 100, "#e0c020"), Thing(560, 100, "#e0c020")
+    bring(engine, renderer, [a, b])
+    left = min(engine.tracks, key=lambda t: t.x)
+    right = max(engine.tracks, key=lambda t: t.x)
+    sig = engine.track_signature(left.id)[0]
+    engine.set_identities([Identity("id-leo", "Leo", signature=sig), Identity("id-ada", "Ada", signature=sig)])
+    engine.tracker.assign(left.id, "id-leo")
+    engine.tracker.assign(right.id, "id-ada")
+    asked = []
+    engine.on_question = lambda tr, cands: asked.append((tr.id, sorted(cands)))
+    run(engine, renderer, [([a, b], {})] * 8, t0=15)
+    engine.figures = _ByPlace("Ada", "Leo")                 # Ada is the one that will lie on the left
+    frames = [([a, b], {"hands": [Hand(250, 100), Hand(560, 100, side="top")]})] * 2 + \
+             [([], {"hands": [Hand(90, 60), Hand(560, 120, side="top")]})] * 3 + \
+             [([Thing(90, 60, "#e0c020"), Thing(560, 120, "#e0c020")],
+               {"hands": [Hand(90, 60), Hand(560, 120, side="top")]})] * 2 + \
+             [([Thing(90, 60, "#e0c020"), Thing(560, 120, "#e0c020")], {})] * 20
+    tracks = run(engine, renderer, frames, t0=20)
+    ids = {t.identity: t for t in tracks}
+    assert set(ids) == {"id-ada", "id-leo"} and ids["id-ada"].x < ids["id-leo"].x
+    assert not any(t.uncertain for t in tracks) and asked == []
+
+
 def test_the_network_also_stops_what_would_be_taken_late(engine, renderer):
     """Put down while the house waited (a cable lying on the edge looked like a hand): taken late, once still. The
     network is asked there too."""

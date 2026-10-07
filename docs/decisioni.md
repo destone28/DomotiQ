@@ -770,3 +770,14 @@ Sul blocco della notte la rete nuova dà "Mister Blu" a ritagli etichettati Viol
 - **Chi aveva ragione.** Alle 00:08 Emilio aveva chiamato "Rossellina" una statuina rosa sdraiata sul letto arancione. La casa prima la chiamava "Mister Blu", e le reti addestrate su quelle etichette la chiamavano ancora Mister Blu: avevano imparato l'errore della casa.
 - **Le altre correzioni.** Lo stesso vale per Viola sul prato. Le presenze eliminate nel pomeriggio erano fantasmi rimasti dove una statuina era stata spostata: il pezzo di vita in cui la statuina c'era davvero resta con il suo nome.
 - **Il periodo delle statuine inglobate.** Insieme alla revisione per gruppi di ritagli simili, tra le 15:10 e le 16:16 circa 4.000 ritagli di pavimento, pareti, prato e strisce luminose a cui la casa aveva dato un nome sono diventati "niente".
+
+### D-74 — Una soglia per ogni rete, e la rete distingue i personaggi dai colori simili (7/10)
+**Scelta:**
+- **Una soglia per ogni rete.** La soglia oltre cui la rete scarta una macchia come "niente" si misura a ogni addestramento: appena sopra (+0,04) la statuina vera più "niente" dei blocchi di tempo lasciati fuori. `train.py` la scrive in `figures.json` ("not_p"), la casa la legge da lì e senza usa il 90%. La stessa soglia vale per il veto alla nascita, per quello in ritardo, per quello prima dell'annuncio e per la casa vuota imparata di nuovo.
+- **I colori simili.** Quando i colori propongono un personaggio e la rete è sicura al 95%, due volte di fila, di un altro personaggio libero e possibile, vince la rete. Un dubbio tra personaggi uguali di colore si scioglie con la rete; la domanda "chi è?" aspetta 2 secondi il suo parere e parte solo se la rete non decide.
+- **La rete nuova (run5).** È addestrata su 18.554 ritagli: la notte, le correzioni della piantina (D-73) e i ritagli di oggi, rivisti per gruppi.
+
+**Perché:**
+- **La soglia del 90% non andava più bene.** La rete nuova è sicura in un'altra misura: sul blocco più recente nessuna statuina vera supera 0,71 di "niente". Al 90% avrebbe fermato solo il 19% dei "niente"; a 0,75 non scarta nessuna statuina e ne ferma l'86% (la rete di prima, al 90%, il 52%). Con la luce LED, dalle 16:24, ne ferma il 76% (la rete di prima il 74%).
+- **I nomi.** Sulle statuine con la luce LED la rete nuova dà il nome giusto a 913 su 995 (quella di prima a 901), e nessun nome sbagliato tra quelli dati al 95%.
+- **I colori simili.** Alle 16:41 la casa aveva chiamato Rossana la statuina rosa Rossellina, mentre la rete era sicura al 96% che fosse Rossellina.

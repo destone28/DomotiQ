@@ -194,9 +194,11 @@ In a very different light the walls and the edges of the furniture look another 
 ## The network that knows the figurines
 
 Besides the difference from the empty house and the colour signature, the house can have a second opinion: a small neural network trained on the figurines of this house, seen by its webcam under different lights and shadows. It looks at the crop of a blob and says which character it is, or "niente" (nothing: a light shining on a wall, a shadow, a module). On the board every crop costs about 10 ms, so the house uses it only when needed:
-- **A new blob** the network sees as "niente", at least 90% sure, does not become a presence. Not while a new character is being registered: the network does not know it yet.
+- **A new blob** the network sees as "niente", sure enough, does not become a presence. Not while a new character is being registered: the network does not know it yet.
+  - **The threshold.** Every network is sure in its own measure, so the threshold is measured when it is trained: just above the most "niente" real figurine of the blocks left out, written in the network's `figures.json` (0.75 for the one of 7 October evening). Without it, 90%.
 - **A character that no longer looks like its colours** (another light) keeps its name while the network, at least 80% sure, still sees it.
 - **A newcomer** takes the name of a character nobody else holds, instead of being asked "who is it?", when the network is 95% sure of it twice in a row.
+- **Two characters of alike colours** (Rossana and Rossellina, Mister Blu and Viola) are told apart by the network, when it is 95% sure twice in a row, instead of by their colours. Before asking "who is it?" about a doubt between two alike characters, the house waits 2 seconds for the network.
 
 The network also looks at the figurines taken "late" (put down while the house waited). It is switched off in **Settings → Figurines also recognized by the network (second opinion)**; *Diagnostics* shows how often it helped. Without the network file (`models/vision/figures.onnx` and `figures.json`) the house works as before.
 

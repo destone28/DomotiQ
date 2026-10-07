@@ -194,9 +194,11 @@ Con una luce molto diversa le pareti e i bordi dei mobili cambiano aspetto e pos
 ## La rete che conosce le statuine
 
 Oltre alla differenza dalla casa vuota e alla firma di colore, la casa può avere un secondo parere: una piccola rete neurale addestrata sulle statuine di questa casa, viste dalla sua webcam con luci e ombre diverse. Guarda il ritaglio di una macchia e dice quale personaggio è, oppure "niente" (il riflesso di una luce su una parete, un'ombra, un modulo). Sulla scheda ogni ritaglio costa circa 10 ms, quindi la casa la usa solo quando serve:
-- **Una macchia nuova** che la rete vede come "niente", con almeno il 90% di sicurezza, non diventa una presenza. Non vale mentre si registra un personaggio nuovo: la rete non lo conosce ancora.
+- **Una macchia nuova** che la rete vede come "niente", abbastanza sicura, non diventa una presenza. Non vale mentre si registra un personaggio nuovo: la rete non lo conosce ancora.
+  - **La soglia.** Ogni rete è sicura a modo suo, quindi la soglia si misura quando la si addestra: sta appena sopra la statuina vera più "niente" dei blocchi lasciati fuori, e arriva nel file `figures.json` della rete (0,75 per quella del 7 ottobre sera). Senza, è il 90%.
 - **Un personaggio che non somiglia più ai suoi colori** (un'altra luce) tiene il nome finché la rete, almeno all'80%, lo vede ancora.
 - **Un nuovo arrivato** prende il nome di un personaggio che nessun altro ha, invece di sentirsi chiedere "chi è?", quando la rete ne è sicura al 95% due volte di fila.
+- **Due personaggi dei colori simili** (Rossana e Rossellina, Mister Blu e Viola) li distingue la rete, quando è sicura al 95% due volte di fila, invece dei colori. Prima di chiedere "chi è?" per un dubbio tra due personaggi uguali, la casa aspetta 2 secondi il parere della rete.
 
 La rete guarda anche le statuine prese "in ritardo" (posate mentre la casa aspettava). Si spegne da **Impostazioni → Statuine riconosciute anche dalla rete (secondo parere)**; *Diagnostica* mostra quante volte è servita. Senza il file della rete (`models/vision/figures.onnx` e `figures.json`) la casa funziona come prima.
 

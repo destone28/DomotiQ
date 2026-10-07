@@ -85,6 +85,7 @@ SIZE_ODD = 4.0              # a blob more than this many times bigger or smaller
 # block of the recording of 7 October left out of the training, 972 figurines were named at 0.95 or more, none wrongly
 # (Mister Blu and Viola, alike in colour, were mixed up only below that), and 97% were at least 0.8 their own name
 FIGURE_KEEP_P, FIGURE_NAME_P, FIGURE_FRESH_S = 0.8, 0.95, 3.0
+FIGURE_WAIT_S = 2.0      # a doubt between two characters waits this long for the network before asking
 # With its consent required (a switch in the settings), nothing new is told to the house until the network has seen
 # a figurine there CONSENT_ROW times in a row, at least CONSENT_P sure: no false presence, while a new figurine (one
 # the network does not know) is born only while it is being registered
@@ -159,6 +160,7 @@ class VTrack:
     moving: bool = False
     history: list[tuple[float, float, float]] = field(default_factory=list)
     asked: float = float("-inf")          # when the house last asked about two look-alikes
+    doubted: float = float("-inf")        # when the doubt between look-alikes began
     asked_new: float = float("-inf")      # when it asked who this newcomer is
     raw: tuple[float, float] | None = None   # the middle of its blob in the last frame, before any smoothing
     jumps: list[float] = field(default_factory=list)   # when it jumped with no hand around
@@ -818,6 +820,8 @@ class Tracker:
 
     def _doubt(self, t: VTrack, now: float) -> None:
         t.locked = False
+        if not t.uncertain:
+            t.doubted = now
         t.uncertain = True
         me = self.identities.get(t.identity or "")
         alike = [o for o in self.identities.values()
@@ -851,6 +855,11 @@ class Tracker:
         asking (Rossellina is in the kitchen, so the newcomer in the living room is Rosaria). False if the doubt
         stays."""
         left = self._possible(t, t.candidates, now)
+        seen = self._figure_name(t, now)
+        if len(left) > 1 and seen in left and not any(
+                u is not t and u.identity == seen and not u.uncertain and not self._gone_from(u)
+                for u in self.tracks.values()):
+            left = [seen]                     # the network that knows the figurines, sure twice, tells them apart
         if len(left) > 1:
             t.candidates = left
             if t.identity not in left:
@@ -870,14 +879,17 @@ class Tracker:
 
     def _settle_doubts(self, now: float) -> None:
         for t in self.tracks.values():
-            if t.uncertain and t.candidates:
-                self._settle(t, now)
+            if t.uncertain and t.candidates and not self._settle(t, now) and t.asked < t.doubted:
+                self._ask(t, now)         # put off while the network looked, and it could not tell
 
     def _ask(self, t: VTrack, now: float) -> None:
         if not self.on_question or now - t.asked <= 30 or not t.candidates or self._car_out_of_place(t, now):
             return
         if self._settle(t, now):
             return                        # only one of them can be here: nothing to ask
+        f = t.figure
+        if self.veto and now - t.doubted < FIGURE_WAIT_S and (f is None or f[3] < 2 or now - f[2] > FIGURE_FRESH_S):
+            return                        # the network may tell them apart: asked only if it does not
         t.asked = now
         self.on_question(t, list(t.candidates))
 
@@ -1008,6 +1020,13 @@ class Tracker:
                 continue
             t.misses = 0
             ident = cands[j]
+            seen = self._figure_name(t, now)
+            if seen is not None and seen != ident.id:
+                k = next((k for k, c in enumerate(cands) if c.id == seen), None)
+                if k is not None and cost[i, k] < 1e6 and seen in ok:
+                    # colours alike (casa1, 7 October: Rossellina named Rossana by her colours): the network that
+                    # knows the figurines, sure twice, tells them apart better
+                    j, ident, d = k, cands[k], raw[i, k]
             close = [cands[k].id for k in np.argsort(raw[i]) if raw[i, k] < ID_ACCEPT and cands[k].id in ok]
             conf = max(0.0, min(1.0, (ID_ACCEPT - d) / ID_ACCEPT * 0.6 + min(margin, 0.3) / 0.3 * 0.4))
             t.votes[ident.id] = t.votes.get(ident.id, 0) + 1
@@ -1016,9 +1035,11 @@ class Tracker:
                     t.votes[k] = max(0, t.votes[k] - 1)
             if t.votes[ident.id] < (CONFIRM_LOOSE if loose else CONFIRM_FRAMES) and t.identity != ident.id:
                 continue
-            ambiguous = margin < ID_MARGIN and len(close) > 1
+            ambiguous = margin < ID_MARGIN and len(close) > 1 and seen != ident.id
             if ambiguous and t.identity != ident.id:
                 # two registered characters look the same: follow, but do not guess
+                if not t.uncertain:
+                    t.doubted = now
                 t.identity, t.uncertain, t.candidates, t.confidence = ident.id, True, close, conf
                 self._ask(t, now)
                 continue

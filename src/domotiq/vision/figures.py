@@ -50,6 +50,7 @@ class FigureClassifier:
         self.margin = float(meta.get("margin", 0.35))
         self.mean, self.std = float(meta.get("mean", 0.5)), float(meta.get("std", 0.25))
         self.rgb = bool(meta.get("rgb", True))
+        self.not_p = float(meta["not_p"]) if meta.get("not_p") else None   # measured with this network when trained
         opts = ort.SessionOptions()
         opts.intra_op_num_threads = threads      # the rest of the vision runs on the other cores
         self.session = ort.InferenceSession(str(folder / "figures.onnx"), opts, providers=["CPUExecutionProvider"])

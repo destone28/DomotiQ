@@ -34,6 +34,7 @@ import torch.nn.functional as F
 
 SIZE = 48               # the crops (made at 64) are seen at this size: enough for a figurine, half the work
 MIN_SAMPLES = 20
+NOT_MARGIN = 0.04      # above the most "niente" real figurine of the blocks left out
 
 
 # ------------------------------------------------------------------ data
@@ -212,7 +213,7 @@ def main() -> None:
     print("classes:", {c: counts[c] for c in classes}, "| left out:",
           {c: n for c, n in counts.items() if c not in classes})
     args.out.mkdir(parents=True, exist_ok=True)
-    results = []
+    results, fig_nothing = [], []
     for fold in (args.only if args.only is not None else range(args.folds)):
         tr, va = blocks(items, classes, args.folds, fold)
         t0 = time.time()
@@ -231,10 +232,17 @@ def main() -> None:
         print("   per class:", {c: (round(v, 2) if v is not None else None) for c, v in per.items()})
         (args.out / f"val_{fold}.json").write_text(json.dumps(
             [{"file": e["file"], "label": e["label"], "p": [round(float(v), 4) for v in pr]} for e, pr in zip(va, probs)]))
+        fig_nothing += [float(p[idx["niente"]]) for e, p in zip(va, probs) if e["label"] != "niente"]
         results.append({"fold": fold, "accuracy": acc, "per_class": per, "confusion": conf.tolist(),
                         "sure_share": float(sure.mean()), "right_when_sure": float((right & sure).sum() / max(sure.sum(), 1))})
     (args.out / "folds.json").write_text(json.dumps({"classes": classes, "folds": results}, indent=1))
     print("mean accuracy over the blocks:", round(float(np.mean([r["accuracy"] for r in results])), 3))
+    # how sure of "niente" the house must find it to refuse a blob: above every real figurine of the blocks left out,
+    # with a margin (each network is sure in its own measure: label smoothing, the data it saw)
+    not_p = None
+    if fig_nothing:
+        not_p = round(min(0.95, max(0.6, max(fig_nothing) + NOT_MARGIN)), 2)
+        print(f"threshold for 'niente': {not_p} (the highest real figurine of the blocks left out: {max(fig_nothing):.3f})")
     model = train(items, classes, args.epochs, seed=99, steps=args.steps)
     # the crops the final model is sure are something else than their label: most likely the house was wrong there
     probs = predict(model, items)
@@ -250,6 +258,8 @@ def main() -> None:
                       dynamic_axes={"crops": {0: "n"}, "logits": {0: "n"}}, opset_version=17, dynamo=False)
     meta = {"classes": classes, "size": SIZE, "margin": 0.35, "mean": 0.5, "std": 0.25, "rgb": True,
             "trained": time.strftime("%Y-%m-%d %H:%M"), "samples": {c: counts[c] for c in classes}}
+    if not_p is not None:
+        meta["not_p"] = not_p
     (args.out / "figures.json").write_text(json.dumps(meta, indent=1, ensure_ascii=False))
     print("exported:", onnx_path, onnx_path.stat().st_size, "bytes")
 
