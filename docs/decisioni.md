@@ -755,3 +755,18 @@ La replica della registrazione del 7/10 con la rete accesa:
 Sul blocco della notte la rete nuova dà "Mister Blu" a ritagli etichettati Viola o Rossellina: anche la rete della notte, che pure li aveva visti in addestramento, dice Mister Blu. Sono etichette sbagliate dalla casa quella notte. Mister Blu e Viola restano la coppia più debole. Sulla scheda la rete della notte resta come `figures-run2.*`.
 
 **Perché:** richiesta di Emilio: controllare tutto quello che è stato imparato e migliorare il riconoscimento dei personaggi.
+
+### D-73 — Le correzioni fatte sulla piantina diventano esempi per la rete (7/10)
+**Scelta:**
+- **Ritrovare le correzioni.** `scripts/figures/web_fixes.py` ritrova nel database della casa le correzioni fatte sulla piantina della webapp: presenze eliminate e presenze a cui è stato dato un nome. Le posizioni registrate una volta al secondo dicono di quale traccia si trattava e per quanto tempo è rimasta in quel punto.
+- **Applicarle ai ritagli.** `build_crops.py --fixes` le applica a tutti i ritagli di quella traccia in quel punto:
+  - una presenza eliminata è "niente";
+  - una presenza a cui è stato dato un nome è quel personaggio, anche nei momenti in cui la casa la chiamava in un altro modo o non la chiamava.
+- **Prima le correzioni a mano.** Un nome dato a mano non viene tolto dai controlli automatici delle etichette.
+- **La traccia negli eventi.** Gli eventi "elimina" e "nome" della webapp ora registrano anche la traccia, per ritrovarle senza ricostruirle. Ogni ritaglio porta la traccia e il riquadro da cui viene.
+
+**Perché:** richiesta di Emilio: riaddestrare tutto sulla base dei movimenti e delle correzioni fatte a mano sulla piantina.
+- **Le correzioni del 7/10.** Erano 32 (19 nomi e 13 presenze eliminate), quasi tutte ritrovate (28 tracce), comprese quelle fatte di notte durante la registrazione.
+- **Chi aveva ragione.** Alle 00:08 Emilio aveva chiamato "Rossellina" una statuina rosa sdraiata sul letto arancione. La casa prima la chiamava "Mister Blu", e le reti addestrate su quelle etichette la chiamavano ancora Mister Blu: avevano imparato l'errore della casa.
+- **Le altre correzioni.** Lo stesso vale per Viola sul prato. Le presenze eliminate nel pomeriggio erano fantasmi rimasti dove una statuina era stata spostata: il pezzo di vita in cui la statuina c'era davvero resta con il suo nome.
+- **Il periodo delle statuine inglobate.** Insieme alla revisione per gruppi di ritagli simili, tra le 15:10 e le 16:16 circa 4.000 ritagli di pavimento, pareti, prato e strisce luminose a cui la casa aveva dato un nome sono diventati "niente".

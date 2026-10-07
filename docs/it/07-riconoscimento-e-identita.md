@@ -210,14 +210,16 @@ Con la rete accesa una presenza nuova viene annunciata solo dopo che la rete l'h
 
 **Addestrarla.** La rete si addestra sul PC con i programmi di `scripts/figures/`, partendo dalle registrazioni della casa (**Calibrazione → Registra**). Ogni registrazione salva, per ogni personaggio riconosciuto, il riquadro della sua macchia: quello è il ritaglio con il suo nome.
 1. Con tutti i personaggi in casa e riconosciuti, registra qualche minuto spostandoli in stanze e posizioni diverse, con luci diverse (luce della sala, una lampada laterale, gli scenari della casa) e con le ombre di chi sta vicino.
-2. Copia sul PC `var/recordings/rec-*` e `var/config/identities.json`, poi:
+2. Copia sul PC `var/recordings/rec-*` (o `var/collect/rec-*`, la raccolta continua), `var/config/identities.json` e `var/domotiq.db`, poi:
    ```
-   python scripts/figures/build_crops.py <registrazioni> identities.json crops [--journal journal]
+   python scripts/figures/web_fixes.py domotiq.db identities.json correzioni.json --since "2026-10-07 00:00"
+   python scripts/figures/build_crops.py <registrazioni> identities.json crops [--journal journal] [--fixes correzioni.json]
    python scripts/figures/preview.py crops anteprima.png      # controlla a occhio le etichette
    python scripts/figures/train.py rete crops --only 2         # prova su un blocco di tempo lasciato fuori
    python scripts/figures/train.py rete2 crops --drop rete/suspect.json
    ```
-   Il secondo addestramento lascia fuori i ritagli su cui la rete è sicurissima di un'altra etichetta (lì aveva sbagliato la casa).
+   - **Le correzioni della piantina.** `web_fixes.py` ritrova nel database della casa quello che è stato corretto sulla piantina della webapp: una presenza eliminata era "niente" per tutto il tempo in cui è rimasta in quel punto; una presenza a cui è stato dato un nome era quel personaggio, anche mentre la casa la chiamava in un altro modo o non la chiamava. Con `--fixes` queste correzioni contano più delle etichette della casa.
+   - **Il secondo addestramento** lascia fuori i ritagli su cui la rete è sicurissima di un'altra etichetta (lì aveva sbagliato la casa). Non vale per un nome dato a mano: il 7 ottobre la rete chiamava "Mister Blu" Rossellina sdraiata sul letto, perché la casa l'aveva chiamata così prima della correzione.
 3. Copia `figures.onnx` e `figures.json` in `models/vision/` sulla scheda e riavvia la casa.
 
 Serve PyTorch sul PC (non sulla scheda). Le classi sono i nomi dei personaggi: dopo un personaggio nuovo, o per l'altra casa con statuine diverse, la rete va addestrata di nuovo.

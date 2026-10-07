@@ -210,14 +210,16 @@ With the network on, a new presence is announced only after the network has look
 
 **Training it.** The network is trained on the PC with the programs in `scripts/figures/`, from the recordings of the house (**Calibration → Record**). Every recording saves, for every recognized character, the box of its blob: that is the crop with its name.
 1. With all the characters in the house and recognized, record a few minutes moving them to different rooms and positions, under different lights (the hall light, a lamp at the side, the scenes of the house) and with the shadows of people nearby.
-2. Copy `var/recordings/rec-*` and `var/config/identities.json` to the PC, then:
+2. Copy `var/recordings/rec-*` (or `var/collect/rec-*`, the continuous collection), `var/config/identities.json` and `var/domotiq.db` to the PC, then:
    ```
-   python scripts/figures/build_crops.py <recordings> identities.json crops [--journal journal]
+   python scripts/figures/web_fixes.py domotiq.db identities.json fixes.json --since "2026-10-07 00:00"
+   python scripts/figures/build_crops.py <recordings> identities.json crops [--journal journal] [--fixes fixes.json]
    python scripts/figures/preview.py crops preview.png      # check the labels by eye
    python scripts/figures/train.py net crops --only 2        # test on a block of time left out
    python scripts/figures/train.py net2 crops --drop net/suspect.json
    ```
-   The second training leaves out the crops the network is very sure carry another label (the house was wrong there).
+   - **The corrections made on the plan.** `web_fixes.py` finds in the database of the house what was corrected on the plan of the web app: a presence dismissed was "niente" all the time it stood at that place; a presence given a name was that character, also while the house called it something else or nothing. With `--fixes` these corrections count more than the labels of the house.
+   - **The second training** leaves out the crops the network is very sure carry another label (the house was wrong there). Not for a name given by hand: on 7 October the network called Rossellina, lying on the bed, "Mister Blu", because the house had called her that before the correction.
 3. Copy `figures.onnx` and `figures.json` to `models/vision/` on the board and restart the house.
 
 PyTorch is needed on the PC (not on the board). The classes are the names of the characters: after a new character, or for the other house with different figurines, the network must be trained again.

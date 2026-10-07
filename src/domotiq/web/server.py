@@ -517,7 +517,7 @@ def create_app(ctx: "Context") -> FastAPI:
             ctx.vision.dismiss(track_id)
         ctx.house.drop_track(track_id)
         ctx.store.add_event("command", {"name": "dismiss", "body": {"name": ctx.identities.name_of(t.identity),
-                                                                    "room": t.room},
+                                                                    "room": t.room, "track": track_id},
                                         "device": w.device, "nickname": w.nickname})
         return {"ok": True}
 
@@ -535,7 +535,7 @@ def create_app(ctx: "Context") -> FastAPI:
             return JSONResponse({"ok": False, "error": "name_taken", "identity": e.existing.id}, status_code=409)
         except ValueError:
             raise HTTPException(400, "empty name")
-        ctx.store.add_event("command", {"name": "identity", "body": {"name": ident.name},
+        ctx.store.add_event("command", {"name": "identity", "body": {"name": ident.name, "track": track_id},
                                         "device": w.device, "nickname": w.nickname})
         return {"ok": True, "identity": ident.id, "name": ident.name}
 

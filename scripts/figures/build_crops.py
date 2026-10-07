@@ -16,6 +16,11 @@ recordings and are left out too. Crops are square around the blob, with a margin
 The recordings and identities.json are copied from the board (var/recordings/rec-*, var/config/identities.json).
 With --journal (var/journal copied from the board), the crops people confirmed or corrected in the web app (Vision
 journal) are added with the label they gave: they count more than the house's own labels.
+
+With --fixes, the corrections made on the plan of the web app are applied to the whole time a track stood where it
+was corrected: {"track id": [label, from, to]}, "niente" for a presence dismissed, the name for a presence named
+(also while the house had another name for it, or none). scripts/figures/web_fixes.py finds them in the database of
+the house (var/domotiq.db).
 """
 from __future__ import annotations
 
@@ -71,7 +76,9 @@ def main() -> None:
     ap.add_argument("identities", type=Path)
     ap.add_argument("out", type=Path)
     ap.add_argument("--journal", type=Path, default=None)
+    ap.add_argument("--fixes", type=Path, default=None, help="corrections made on the plan (web_fixes.py)")
     args = ap.parse_args()
+    fixes = json.loads(args.fixes.read_text()) if args.fixes else {}
     recs, ids_file, out = args.recordings, args.identities, args.out
     raw = json.loads(ids_file.read_text())
     items = raw if isinstance(raw, list) else raw.get("identities", raw)
@@ -103,6 +110,12 @@ def main() -> None:
             wanted = []
             boxes = [t["bbox"] for t in tracks if t.get("bbox")]
             for t in tracks:
+                fix = fixes.get(t["id"])
+                if fix and fix[1] <= d.get("t", 0.0) <= fix[2]:
+                    # somebody said on the plan what this was: it counts more than what the house said
+                    if t.get("bbox") and t.get("room") != "bathroom" and not t.get("hidden") and fix[0] != "drop":
+                        wanted.append((fix[0], t["id"], t["bbox"], None))
+                    continue
                 if t.get("bbox") and t.get("identity") in names and not t.get("uncertain") \
                         and t.get("room") != "bathroom" and not t.get("hidden"):
                     wanted.append((names[t["identity"]], t["id"], t["bbox"], None))
@@ -133,7 +146,8 @@ def main() -> None:
                 name = f"{rec.name}_{d['frame']:05d}_{len(index):06d}.png"
                 cv2.imwrite(str(out / name), crop(img, bbox))
                 index.append({"file": name, "label": label, "rec": rec.name, "frame": d["frame"],
-                              "area": area, "t": d.get("t")})
+                              "area": area, "t": d.get("t"), "track": key if key.startswith("t-") else None,
+                              "bbox": list(bbox)})
                 counts[label] += 1
     if args.journal is not None:
         journal_crops(args.journal, out, index, counts)
