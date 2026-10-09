@@ -5,13 +5,13 @@
 # DomotiQ - installs the house on an Arduino UNO Q.
 #
 #   git clone https://github.com/destone28/DomotiQ ~/domotiq
-#   cd ~/domotiq && bash scripts/install.sh --house 1
+#   cd ~/domotiq && bash scripts/install.sh
 #
 # Needs internet once. Every step skips what is already done, so the same
 # command also updates an installed house (after `git pull`).
 #
 # Options:
-#   --house N          house number, 1 or 2 (sets name, Wi-Fi, address)
+#   --house N          number of the house, 1 if not given (name casaN, Wi-Fi DomotiQ-CasaN, address 10.42.N.1)
 #   --hotspot MODE     now | boot | no   (default: boot = active from the next start)
 #   --no-llm           skip llama.cpp and the language model
 #   --skip-firmware    do not rebuild or reload the microcontroller firmware
@@ -77,9 +77,9 @@ NEED=400
 [ "$FREE" -gt "$NEED" ] || die "at least $NEED MB free are needed in $ROOT (free: ${FREE} MB)"
 curl -sfI https://deb.debian.org >/dev/null || die "no internet: the first installation downloads packages and models"
 if [ -z "$HOUSE" ]; then
-    HOUSE=$(python3 -c "import json;print(json.load(open('$VAR/config/settings.json'))['house']['number'])" 2>/dev/null || echo "")
+    HOUSE=$(python3 -c "import json;print(json.load(open('$VAR/config/settings.json'))['house']['number'])" 2>/dev/null || echo 1)
 fi
-[ "$HOUSE" = "1" ] || [ "$HOUSE" = "2" ] || die "which house is this? use --house 1 or --house 2"
+[[ "$HOUSE" =~ ^[0-9]+$ ]] && [ "$HOUSE" -ge 1 ] && [ "$HOUSE" -le 254 ] || die "the number of the house goes from 1 to 254 (--house N)"
 ok "house $HOUSE, ${FREE} MB free"
 
 # ---------------------------------------------------------------------------
@@ -211,7 +211,8 @@ WIFI_PASS=$(python3 -c "import json;print(json.load(open('$VAR/config/settings.j
 if [ -z "$WIFI_PASS" ]; then
     WIFI_PASS=$(python3 -c "import secrets;a='abcdefghjkmnpqrstuvwxyz23456789';print('-'.join(''.join(secrets.choice(a) for _ in range(4)) for _ in range(3)))")
 fi
-CHANNEL=$([ "$HOUSE" = 1 ] && echo 1 || echo 11)
+CHANNELS=(1 11 6)                       # the channels of 2.4 GHz that do not overlap: houses side by side differ
+CHANNEL=${CHANNELS[$(( (HOUSE - 1) % 3 ))]}
 PYTHONPATH=src ./venv/bin/python - "$HOUSE" "$WIFI_PASS" "$CHANNEL" <<'EOF'
 import sys
 from domotiq.settings import Paths, Settings
@@ -237,7 +238,7 @@ sudo install -m644 scripts/systemd/journald-domotiq.conf /etc/systemd/journald.c
 sudo systemctl daemon-reload
 sudo systemctl enable domotiq-tts domotiq >/dev/null
 if [ "$WITH_LLM" = 1 ]; then sudo systemctl enable domotiq-llm domotiq-chat >/dev/null; fi
-# nothing should update the system at a fair
+# nothing should update the system while the house is in use
 sudo systemctl disable --now apt-daily.timer apt-daily-upgrade.timer >/dev/null 2>&1 || true
 sudo apt-mark hold alsa-ucm-conf libasound2t64 "linux-image-$(uname -r)" >/dev/null 2>&1 || true
 ok "domotiq, domotiq-tts$([ "$WITH_LLM" = 1 ] && echo ", domotiq-llm, domotiq-chat")"
@@ -260,4 +261,3 @@ echo
 echo "${B}DomotiQ casa$HOUSE is installed.${N}"
 echo "  Wi-Fi:    DomotiQ-Casa$HOUSE   password: $WIFI_PASS"
 echo "  Address:  http://10.42.$HOUSE.1/   (on the hotspot)   http://casa$HOUSE.local/"
-echo "  Sign to print: http://10.42.$HOUSE.1/sign"

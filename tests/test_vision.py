@@ -338,7 +338,7 @@ def test_around_the_house_is_blurred_and_the_bathroom_optionally(layout, rendere
     rng = np.random.default_rng(0)
     noise = rng.integers(0, 255, img.shape, dtype=np.uint8)
     privacy = Privacy(layout, renderer.calib, private=False, outside=True)
-    around = privacy.mask > 0                                # the stand, the visitors, their phones
+    around = privacy.mask > 0                                # the table, the visitors, their phones
     assert around.any() and not around.all()
     img[around] = noise[around]
     plain = privacy.apply(img)

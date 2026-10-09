@@ -1,10 +1,8 @@
-# DomotiQ: quick guide for the stand staff
+# DomotiQ: quick guide
 
-House: casa1 / casa2 · Wi-Fi `DomotiQ-Casa1` / `DomotiQ-Casa2` · web app `http://10.42.1.1/` / `http://10.42.2.1/`
+House: `casa1` · Wi-Fi `DomotiQ-Casa1` · web app `http://10.42.1.1/`
 
-Wi-Fi password: ____________________
-
-(Write it by hand on the printed copy only.)
+The Wi-Fi password is in the summary of the installation and in the web app, under **More → Settings → Wi-Fi of the house**.
 
 ## Power
 
@@ -12,7 +10,7 @@ Wi-Fi password: ____________________
 - **Off at the end of the day**: web app, **More → Settings → Power off the board**, then unplug.
 - **After a power cut** the house restarts by itself. The barbecue fan stays off.
 
-## Opening the stand (every morning)
+## Before using the house
 
 1. **Light**: turn on the light of the house (the strip over the diorama, if there is one) before the board, and leave it always on.
 2. **Power on**: plug in the board's power supply and wait for the lights to stop breathing.
@@ -23,7 +21,7 @@ Wi-Fi password: ____________________
 
 During the day: no lights pointed at the house or the webcam, and no objects lying on the base. If the hall light changes, the house adapts by itself in a few seconds.
 
-## The three buttons (left to right, as the visitor sees them)
+## The three buttons (left to right, looking at the house from the driveway)
 
 - **Talk**: hold it down, speak, release. "Dov'è Marco?" · "Who's in the kitchen?" · "Fai festa!" · "Light the barbecue" · "Luce rossa in camera" · "Com'è la casa?"
 - **Intercom**: the doorbell rings, the house asks "Who is it?": say a name. A known character is let in (move it through the front door within a minute); a new name is registered.
@@ -31,9 +29,9 @@ During the day: no lights pointed at the house or the webcam, and no objects lyi
 
 All three button LEDs on: the house is listening, answer without pressing anything. LEDs breathing: the house is working out its answer.
 
-## Visitors' phones
+## Phones
 
-Scan QR 1 on the sign (Wi-Fi), then QR 2 (the house). If the phone asks: *Stay connected* / *Use without Internet*. Android: turn mobile data off for a moment. Everyone can do everything: commands, rules, characters, calibration and settings. Every change goes into the log and deleted things wait in the bin for 24 hours.
+On the phone choose the network `DomotiQ-Casa1`, type the Wi-Fi password and open `http://10.42.1.1/`. If the phone asks: *Stay connected* / *Use without Internet*. Android: turn mobile data off for a moment. Everyone can do everything: commands, rules, characters, calibration and settings. Every change goes into the log and deleted things wait in the bin for 24 hours.
 
 ## Register a figurine
 
@@ -55,14 +53,14 @@ Scan QR 1 on the sign (Wi-Fi), then QR 2 (the house). If the phone asks: *Stay c
 | "I don't know the time: what time is it now?" | Answer aloud, with no Talk: "It's half past three". Or open the web app on a phone. |
 | Lights breathe dimly and nothing reacts | The software is (re)starting: wait a minute. Then **Settings → Restart the app**, then **Reboot the board**. |
 | A red status dot at the top | **Diagnostics** shows which part. |
-| A visitor broke a rule or deleted a character | **Events → Changes** shows what happened; **Settings → Bin → Restore** (24 hours); **Settings → Default rules** resets all rules. |
+| Somebody broke a rule or deleted a character | **Events → Changes** shows what happened; **Settings → Bin → Restore** (24 hours); **Settings → Default rules** resets all rules. |
 | Party or barbecue refuses | It is resting: wait 30 seconds. |
 | During a party the plan does not follow the figurines | That is on purpose: with the coloured lights the house does not look. It starts again by itself when the party is over and the lights stand still. |
-| A phone cannot open the page | Mobile data off; type `http://10.42.N.1/`. |
+| A phone cannot open the page | Mobile data off; type `http://10.42.1.1/`. |
 
 ## Setting up (More)
 
-- **Calibration**: take figurines and car out → tap the 4 corners of the base (front left, front right, back right, back left; front = driveway) → **Use these corners**: the house sets the light and saves the empty house by itself (about 15 seconds, with a spinner; do not touch the house) → check that the drawn walls sit on the real ones. Calibrate before opening the house to visitors: until then the blur only guesses where the bathroom is.
+- **Calibration**: take figurines and car out → tap the 4 corners of the base (front left, front right, back right, back left; front = driveway) → **Use these corners**: the house sets the light and saves the empty house by itself (about 15 seconds, with a spinner; do not touch the house) → check that the drawn walls sit on the real ones. Calibrate before other people use the house: until then the blur only guesses where the bathroom is.
 - **Diagnostics**: modules, I2C scan, **Audio test**, **Microphone test (3 s)**, logs.
 - **Settings**: brightness and durations, Wi-Fi password, **Use this phone's time**, backup, bin, restart, reboot, power off.
 - **Controls → Make the house say**; **Controls → Ask a question** (the house asks a character something and keeps it); **Simulation** on and off.

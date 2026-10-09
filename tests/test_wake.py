@@ -17,7 +17,7 @@ PROMPTS = {it for it, _ in V.WAKE_PROMPT}
 
 
 def test_numbers_in_the_word_are_said_in_words():
-    assert spoken("Casa 2", "it") == spoken("casa2", "it") == spoken("casa due", "it") == "casa due"
+    assert spoken("Robot 3", "it") == spoken("robot3", "it") == spoken("robot tre", "it") == "robot tre"
     assert spoken("Casa 21", "it") == "casa ventuno" and spoken("Casa 28", "it") == "casa ventotto"
     assert spoken("House 21", "en") == "house twenty one" and spoken("R2D2", "en") == "r two d two"
     assert spoken("Ehi, Casa!", "it") == "ehi casa"

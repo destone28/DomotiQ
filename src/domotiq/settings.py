@@ -181,10 +181,9 @@ class Settings:
             self._mtime = self._disk_mtime()
 
     def public(self) -> dict[str, Any]:
-        """Everything, for the settings page (what an older version kept for the staff PIN is left out)."""
-        d = copy.deepcopy(self._data)
-        d.pop("staff", None)
-        return d
+        """Everything, for the settings page: only the sections this version knows (an older one may have left
+        others in the file)."""
+        return {k: copy.deepcopy(v) for k, v in self._data.items() if k in DEFAULTS}
 
     def save(self) -> None:
         with self._lock:

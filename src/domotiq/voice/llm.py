@@ -412,7 +412,7 @@ class LanguageModel:
 # ------------------------------------------------------------------ the free answers
 CHAT_URL = "http://127.0.0.1:8082"
 CHAT_TIMEOUT_S = 120.0
-CHAT_SYSTEM = ("You are DomotiQ, a talking model house at a fair. Answer the visitor in {lang}, in two or three short, "
+CHAT_SYSTEM = ("You are DomotiQ, a talking model house. Answer in {lang}, in two or three short, "
                "simple and correct sentences, like a friendly teacher talking to a child. You have no internet: for "
                "the weather, the news or what happens today, say that you cannot know. If you are not sure, say so "
                "briefly. No lists, no emoji.")

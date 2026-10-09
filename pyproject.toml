@@ -15,7 +15,6 @@ dependencies = [
     "numpy>=2.0",
     "opencv-python-headless>=4.10",
     "msgpack>=1.0",
-    "segno>=1.6",
 ]
 
 [project.optional-dependencies]

@@ -15,18 +15,24 @@ Log in as `arduino` (`ssh casa1`) and clone the repository into `/home/arduino/d
 
 ```bash
 git clone https://github.com/destone28/DomotiQ ~/domotiq
-cd ~/domotiq && bash scripts/install.sh --house 1
+cd ~/domotiq && bash scripts/install.sh
 ```
 
 If `git` is missing on the board, install it first with `sudo apt-get install -y git`.
 
-The script asks the `sudo` password once, only if `sudo` needs one, and keeps it alive until the end. Every step skips what is already done, so running it again is safe and is also the way to update an installed house.
+If the board cannot download the repository (for example because it is not public), copy it from the PC that has a copy. The board needs `rsync` (`sudo apt-get install -y rsync`); then, from the folder of the repository on the PC:
+
+```bash
+bash scripts/release.sh casa1 --install
+```
+
+The script asks the `sudo` password (`domotiq2026`, the one of [chapter 1](01-prepare-uno-q.md)) once, only if `sudo` needs one, and keeps it alive until the end. Every step skips what is already done, so running it again is safe and is also the way to update an installed house.
 
 ### Options
 
 | Option | Meaning |
 |---|---|
-| `--house N` | House number, `1` or `2`. Sets the name (`casaN`), the Wi-Fi network (`DomotiQ-CasaN`), the channel and the address (`10.42.N.1`). Needed the first time; later runs read it from the saved settings. |
+| `--house N` | Number of the house, 1 to 254; without it the house is number 1. Sets the name (`casaN`), the Wi-Fi network (`DomotiQ-CasaN`), the channel (1, 11 or 6) and the address (`10.42.N.1`). Later runs read it from the saved settings. |
 | `--hotspot MODE` | `now`, `boot` or `no`. Default `boot`: the hotspot is configured and starts at the next boot. See [The hotspot](#the-hotspot). |
 | `--no-llm` | Skip llama.cpp and the language model. The house then understands only the phrases of its built-in parser. |
 | `--skip-firmware` | Do not rebuild or reload the microcontroller firmware. |
@@ -43,20 +49,19 @@ The script prints numbered steps. The numbers shift when a step is skipped by an
 6. **llama.cpp.** Fetches llama.cpp at the commit tested on the UNO Q (`74a7c897`), applies the kernels written for its processor (`scripts/llama/arm-nodot.patch`, see [Accelerating the model](../accelerazione-modello.md), in Italian) and builds `llama-server` (about twenty minutes). Skipped when the same commit is already built with the same patch, or with `--no-llm`.
 7. **Microcontroller firmware.** Installs the core `arduino:zephyr` 1.0.0 and the library `Arduino_RouterBridge` 0.4.3, compiles `firmware/domotiq_mcu` in the "Immediate" start mode (`wait_linux_boot=no`) and loads it with the local `remoteocd`, which needs no password. It is reloaded only when the sketch, the core, the library or the board options change. Finally `arduino-app-cli properties set default none` makes sure no App Lab app replaces the firmware at boot. See `firmware/domotiq_mcu/README.md` to do the same by hand.
 8. **House settings.** Sets the host name `casaN` and the time zone Europe/Rome; creates the Wi-Fi password (if none exists yet); writes house number, names and network into `var/config/settings.json`.
-9. **Services.** Installs `domotiq`, `domotiq-tts` and `domotiq-llm` in `/etc/systemd/system`, a `sudoers` rule, and a journald limit (200 MB, 7 days of logs). It disables the automatic `apt` timers and holds `alsa-ucm-conf`, `libasound2t64` and the running kernel: nothing should update the system at a fair.
+9. **Services.** Installs `domotiq`, `domotiq-tts` and `domotiq-llm` in `/etc/systemd/system`, a `sudoers` rule, and a journald limit (200 MB, 7 days of logs). It disables the automatic `apt` timers and holds `alsa-ucm-conf`, `libasound2t64` and the running kernel: nothing should update the system while the house is in use.
 10. **Hotspot.** Creates or updates the hotspot profile, then applies `--hotspot` (`now`, `boot` or `no`).
 11. **Start.** Restarts the services and prints a summary.
 
-The summary looks like this (the password is chosen at random for each house):
+The summary looks like this (the password is chosen at random):
 
 ```
 DomotiQ casa1 is installed.
   Wi-Fi:    DomotiQ-Casa1   password: abcd-efgh-jkmn
   Address:  http://10.42.1.1/   (on the hotspot)   http://casa1.local/
-  Sign to print: http://10.42.1.1/sign
 ```
 
-The Wi-Fi password is three groups of four characters, from an alphabet without the easily confused `i`, `l`, `o`, `0` and `1`. Write the password on the printed [quick guide for the stand staff](quick-guide-staff.md).
+The Wi-Fi password is three groups of four characters, from an alphabet without the easily confused `i`, `l`, `o`, `0` and `1`. Write it down: every phone that joins the network of the house needs it. It is also in the web app, under **More → Settings → Wi-Fi of the house**. Never write it in the repository.
 
 ## Where things live
 
@@ -75,7 +80,7 @@ Everything is inside `/home/arduino/domotiq`:
 | `var/dataset/`, `var/recordings/` | captures and sequences recorded from the calibration page |
 | `var/firmware/` | the last firmware build |
 
-`var/` is what the house remembers. It is never copied between houses and is excluded from the repository.
+`var/` is what the house remembers. It belongs to that board and is excluded from the repository.
 
 ## The three services
 
@@ -99,17 +104,19 @@ The settings of the web app can also restart the application, reboot or power of
 
 ## The hotspot
 
-At the fair each house has its own Wi-Fi network, served by the board with NetworkManager in shared mode:
+The house has its own Wi-Fi network, served by the board with NetworkManager in shared mode:
 
-| | House 1 | House 2 |
-|---|---|---|
-| SSID | `DomotiQ-Casa1` | `DomotiQ-Casa2` |
-| Security | WPA2, random password chosen by the installer | same |
-| Band and channel | 2.4 GHz, channel 1 | 2.4 GHz, channel 11 |
-| Address of the house | `10.42.1.1` | `10.42.2.1` |
-| Names | `casa1.lan`, `casa1.local` | `casa2.lan`, `casa2.local` |
+| | |
+|---|---|
+| SSID | `DomotiQ-Casa1` |
+| Security | WPA2, random password chosen by the installer |
+| Band and channel | 2.4 GHz, channel 1 |
+| Address of the house | `10.42.1.1` |
+| Names | `casa1.lan`, `casa1.local` |
 
-The DNS of the hotspot answers for `casaN.lan` (and `domotiq.lan`), and it makes the iCloud Private Relay names fail at once, so iPhones do not wait for them. There is no captive portal on purpose: the captive-portal window of phones does not allow the camera, and on iPhone it closes when you switch app. Phones join by scanning the QR code of the sign and open the numeric address, which always works.
+With `--house N` they become `DomotiQ-CasaN`, `10.42.N.1` and `casaN`, and the channel goes through 1, 11 and 6.
+
+The DNS of the hotspot answers for `casaN.lan` (and `domotiq.lan`), and it makes the iCloud Private Relay names fail at once, so iPhones do not wait for them. There is no captive portal on purpose: the captive-portal window of phones does not allow the camera, and on iPhone it closes when you switch app. Phones join the network with the Wi-Fi password and open the numeric address, which always works.
 
 The board is either on the lab Wi-Fi or on its hotspot. Switching to the hotspot drops the lab connection, and your SSH session with it.
 
@@ -140,7 +147,7 @@ There are two ways to update an installed house.
 cd ~/domotiq && git pull && bash scripts/install.sh
 ```
 
-**From a PC, without internet on the board** (for example over the hotspot at the fair). From the folder of the repository on the PC:
+**From a PC, without internet on the board** (for example over the hotspot). From the folder of the repository on the PC:
 
 ```bash
 bash scripts/release.sh casa1              # copy code, web app and data, restart domotiq
@@ -149,7 +156,7 @@ bash scripts/release.sh casa1 --install    # then run install.sh on the board (n
 
 `release.sh` copies the working tree of the PC to `~/domotiq` on the board with `rsync` over SSH (the `casa1` alias from `add-pc.sh`), then restarts `domotiq`. It leaves out what git ignores and what belongs to the board: `.git`, `venv`, `piper-venv`, `models`, `var` and `llama.cpp`. The board does not need git for this. The copy mirrors the PC: a code file changed only on the board is overwritten or removed. The exception is `models/voice-cache/`, the fixed sentences of the voice prepared ahead of time: if the PC has it, it is copied too.
 
-**The sentences of the voice prepared ahead of time.** The fixed sentences (239 today) are synthesized once with `scripts/voice_cache.py` and given to every house, so the first start does not wait for Piper:
+**The sentences of the voice prepared ahead of time.** The fixed sentences (239 today) are synthesized once with `scripts/voice_cache.py` and copied to the house, so the first start does not wait for Piper:
 
 ```bash
 venv/bin/python scripts/voice_cache.py                   # on the board, with its own Piper (about 13 minutes)
@@ -165,18 +172,6 @@ cd ~/domotiq && sudo install -m644 scripts/systemd/domotiq-llm.service /etc/syst
   && sudo systemctl daemon-reload && sudo systemctl restart domotiq-llm
 ```
 
-## Installing the second house
-
-The second house is installed exactly like the first, with its own number:
-
-```bash
-cd ~/domotiq && bash scripts/install.sh --house 2
-```
-
-House 2 gets the host name `casa2`, the network `DomotiQ-Casa2` on channel 11 and the address `10.42.2.1`, so the two houses can stand next to each other.
-
-The two houses are independent. The camera calibration belongs to each house and is never copied (a backup does not even contain it), and characters are registered on each house. Rules and settings can be copied with a backup from the settings of house 1 (see [chapter 6](06-web-app.md#settings)); a backup never carries the network, the house name or the camera settings. A restore from the web app replaces rules, characters and settings together, so restore the backup on house 2 before registering its characters.
-
 ## Before the house leaves the lab
 
 1. From every PC that must keep access, run `bash scripts/add-pc.sh casaN` once (it copies a key to the board).
@@ -187,8 +182,10 @@ The two houses are independent. The camera calibration belongs to each house and
    ```
 
    It lists the keys that will still get in and refuses to run if there are none; `bash scripts/lockdown.sh --undo` allows passwords again. `sudo` keeps asking for the password of the user `arduino`, except for the few commands the web app needs (restart, reboot, power off, hotspot).
-3. Switch the hotspot on at every boot (`bash scripts/hotspot.sh boot`, then reboot) and print the sign from `/sign`.
-4. Write the Wi-Fi password on the stand's copy of the [quick guide](quick-guide-staff.md), never in the repository.
+3. Switch the hotspot on at every boot (`bash scripts/hotspot.sh boot`, then reboot).
+4. Write the Wi-Fi password down for whoever will use the house, never in the repository.
+
+If you kept the password `domotiq2026` of chapter 1, step 2 is a must: that password is written in this guide.
 
 The password can be changed at any time from **More → Settings** in the web app, or on the board:
 

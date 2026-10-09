@@ -1,10 +1,10 @@
 # 6. The web app
 
-Every house serves its own web app from the board. It needs no internet and nothing to install: any phone browser on the house's Wi-Fi opens it. It is plain HTML, CSS and JavaScript with no external libraries, in Italian and English, with a light and a dark theme that follow the phone. The state of the house arrives in real time over a WebSocket, so what you see changes as soon as something moves in the house.
+The house serves its own web app from the board. It needs no internet and nothing to install: any phone browser on the house's Wi-Fi opens it. It is plain HTML, CSS and JavaScript with no external libraries, in Italian and English, with a light and a dark theme that follow the phone. The state of the house arrives in real time over a WebSocket, so what you see changes as soon as something moves in the house.
 
 ## Opening it
 
-- **At the fair**: scan the two QR codes of the sign next to the house. The first joins the Wi-Fi `DomotiQ-CasaN`, the second opens `http://10.42.N.1/`. The names `http://casaN.lan/` and `http://casaN.local/` work too, but the numeric address always does.
+- **On the Wi-Fi of the house**: on the phone choose the network `DomotiQ-CasaN` and type the Wi-Fi password (it is in the summary of the installation and in **More → Settings → Wi-Fi of the house**), then open `http://10.42.N.1/`. If the phone warns that the network has no internet, choose *Stay connected* or *Use without Internet*; on Android, if the page does not open, turn mobile data off for a moment. The names `http://casaN.lan/` and `http://casaN.local/` work too, but the numeric address always does.
 - **In the lab**: `http://casaN.local/`, with the board on your Wi-Fi.
 - Phones can add the page to the home screen; it then opens like an app.
 - The first time a phone opens it, the house greets it aloud and a card asks for the name and invites the visitor to add a character (see [chapter 8](08-voice.md#talking-without-pressing-talk)).
@@ -97,11 +97,10 @@ The house keeps events for 7 days and positions for 24 hours.
 
 ## More
 
-Every other page, in three groups, plus your nickname:
+Every other page, in two groups, plus your nickname:
 
-- **The house**: **Events**, **Rules**, **What it learned**, **Simulation**;
+- **The house**: **Events**, **Rules**, **What it learned**, **Simulation**, **About**;
 - **Setting up**: **Calibration**, **Diagnostics**, **Vision journal**, **Settings**;
-- **For the stand**: **Printable sign**, **About**;
 - **You**: **Your nickname**, shown in the change log.
 
 ### Rules
@@ -160,22 +159,16 @@ Every new presence announced, every name given and every blob refused by the net
 
 - **House**: the name of the house in Italian and English; **Buttons mounted upside down**, for a totem assembled the other way round; **Bathroom blurred in the live view**, on by default.
 - **Lights · Party · Barbecue · Climate**: *Maximum brightness (%)*, *Pixels current limit (mA)*, *Brightness of the follow-me lights*, *Off after (s)*, *Colour of the follow-me lights*, **Light in the favourite colour of who comes in** (in the Normal scene the light of a room takes the favourite colour of whoever is in, if it told the house), party *Duration (s)* (10–60), *Fan duration (s)* (5–120), *Hot: rise over the baseline (°C)*, *Shower: humidity rise (%)*. Then **Save**. Brightness and current limit go to the microcontroller at once.
-- **Voice**: **Greet new phones**, **Questions to the characters (chatty mode)** and *One question every (s)* (see [chapter 8](08-voice.md#talking-without-pressing-talk)); **Wake up with a keyword** and *Keyword* (for example *Casa*): once the word is said, the house does what the Talk button does (see [chapter 8](08-voice.md#the-word-of-activation)). On saving, below appears how the house will hear the word (*Casa 2* becomes *casa due*; *Domotiq*, which the speech recognizer does not know, is heard as “domotica”). Any words the recognizer cannot hear in any way are listed too.
+- **Voice**: **Greet new phones**, **Questions to the characters (chatty mode)** and *One question every (s)* (see [chapter 8](08-voice.md#talking-without-pressing-talk)); **Wake up with a keyword** and *Keyword* (for example *Casa*): once the word is said, the house does what the Talk button does (see [chapter 8](08-voice.md#the-word-of-activation)). On saving, below appears how the house will hear the word (*Robot 3* becomes *robot tre*; *Domotiq*, which the speech recognizer does not know, is heard as “domotica”). Any words the recognizer cannot hear in any way are listed too.
 - **Time**: the time of the phone and **Use this phone's time**, which sets the clock of the house.
-- **Wi-Fi of the house**: the network name and *Wi-Fi password* (8 to 63 characters). **Save**, after *Are you sure?*, writes it into the hotspot; if the hotspot is on, it restarts after a couple of seconds and every phone, yours included, must join again with the new password. The printable sign updates by itself: print it again.
+- **Wi-Fi of the house**: the network name and *Wi-Fi password* (8 to 63 characters). **Save**, after *Are you sure?*, writes it into the hotspot; if the hotspot is on, it restarts after a couple of seconds and every phone, yours included, must join again with the new password. Write it down: every phone that joins the network needs it.
 - **Backup**: **Download the backup** (a zip with rules, characters with their photos, and settings; never the network, the house name or the camera calibration), **Restore from a backup** (replaces rules, characters and settings), **Default rules** (replaces all rules with the ones the house started with).
 - **Bin**: rules and characters deleted in the last 24 hours, each with **Restore**.
 - **System**: **Restart the app**, **Reboot the board**, **Power off the board**, each after *Are you sure?*.
 
-### Printable sign
+### Display board
 
-<img src="../images/screens/sign.png" alt="The printable sign" width="360">
-
-An A4 portrait page, ready to print, with the name of the house and two QR codes: **1 Join the Wi-Fi** (with SSID and password written below) and **2 Open the house** (with the address). A note in Italian and English explains what to do if the phone complains about the missing internet, and how to use the buttons of the totem. It opens at `/sign`.
-
-### Booth display
-
-It is not in the menu: open it by typing `/board` after the address of the house. It shows the plan, the live view, the last sentence said and the latest events, for a monitor or a tablet at the stand, and has no controls.
+It is not in the menu: open it by typing `/board` after the address of the house. It shows the plan, the live view, the last sentence said and the latest events, for a monitor or a tablet next to the house, and has no controls.
 
 ### About
 

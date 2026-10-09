@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
 // SPDX-License-Identifier: MIT
-// Everything else, in three groups: the house, setting it up, the stand. Open to everybody.
+// Everything else, in two groups: the house and setting it up. Open to everybody.
 
 import { esc, pageHead, setNickname, store } from "../app.js";
 import { t } from "../i18n.js";
@@ -8,9 +8,6 @@ import { t } from "../i18n.js";
 const item = (go, icon, label, sub) => `<li><button class="link" data-go="${go}">
   <span class="ico">${icon}</span><span class="grow"><span class="title">${label}</span>${sub ? `<span class="sub">${sub}</span>` : ""}</span>
   <span class="chev">›</span></button></li>`;
-const link = (href, icon, label, sub) => `<li><a class="link" href="${href}" target="_blank" rel="noopener">
-  <span class="ico">${icon}</span><span class="grow"><span class="title">${label}</span>${sub ? `<span class="sub">${sub}</span>` : ""}</span>
-  <span class="chev">↗</span></a></li>`;
 
 export function mount(root) {
   root.innerHTML = `
@@ -21,6 +18,7 @@ export function mount(root) {
       ${item("rules", "📏", t("more.rules"), t("more.rules_sub"))}
       ${item("knowledge", "🧠", t("more.knowledge"), t("more.knowledge_sub"))}
       ${item("sim", "🕹️", t("more.sim"), t("more.sim_sub"))}
+      ${item("about", "ℹ️", t("more.about"))}
     </ul></div>
     <h2>${t("more.setup")}</h2>
     <div class="card menu"><ul class="list">
@@ -28,11 +26,6 @@ export function mount(root) {
       ${item("diagnostics", "🩺", t("more.diagnostics"), t("more.diagnostics_sub"))}
       ${item("journal", "🔎", t("more.journal"), t("more.journal_sub"))}
       ${item("settings", "⚙️", t("more.settings"), t("more.settings_sub"))}
-    </ul></div>
-    <h2>${t("more.stand")}</h2>
-    <div class="card menu"><ul class="list">
-      ${link("/sign", "🪧", t("more.sign"), t("more.sign_sub"))}
-      ${item("about", "ℹ️", t("more.about"))}
     </ul></div>
     <h2>${t("more.you")}</h2>
     <div class="card">

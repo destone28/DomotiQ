@@ -45,7 +45,6 @@ I pacchetti principali dell'applicazione:
 | [NumPy](https://numpy.org) | BSD-3-Clause | calcolo, sintesi dei suoni |
 | [OpenCV](https://opencv.org) ([opencv-python-headless](https://github.com/opencv/opencv-python)) | Apache-2.0 | visione artificiale |
 | [msgpack](https://github.com/msgpack/msgpack-python) | Apache-2.0 | protocollo del router |
-| [segno](https://github.com/heuer/segno) | BSD-3-Clause | QR del cartello |
 | [Vosk](https://alphacephei.com/vosk/) | Apache-2.0 | riconoscimento vocale |
 | [ONNX Runtime](https://github.com/microsoft/onnxruntime) | MIT | categoria degli oggetti dalle foto |
 
@@ -93,7 +92,7 @@ Piper è GPL-3.0. DomotiQ lo esegue come programma esterno e gli parla via HTTP:
 
 | Carattere | Licenza | Uso |
 |---|---|---|
-| [Open Sans](https://github.com/googlefonts/opensans) | SIL Open Font License 1.1 | testo della webapp e del cartello |
+| [Open Sans](https://github.com/googlefonts/opensans) | SIL Open Font License 1.1 | testo della webapp |
 | [Roboto Mono](https://github.com/googlefonts/robotomono) | SIL Open Font License 1.1 | numeri e codice |
 
 I caratteri sono serviti dalla scheda come file woff2, con le loro licenze in `src/domotiq/web/static/fonts/`.

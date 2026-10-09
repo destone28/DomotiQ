@@ -1,6 +1,6 @@
 # 5. Collaudo e messa in servizio
 
-Segui questo capitolo su ogni casa dopo il montaggio e i collegamenti, e di nuovo prima di ogni fiera. Ogni passo dice cosa fare e cosa dovresti vedere. Quando qualcosa non torna, il capitolo sulla [risoluzione dei problemi](11-risoluzione-problemi.md) riporta le cause probabili.
+Segui questo capitolo dopo il montaggio e i collegamenti, e di nuovo ogni volta che la casa cambia posto. Ogni passo dice cosa fare e cosa dovresti vedere. Quando qualcosa non torna, il capitolo sulla [risoluzione dei problemi](11-risoluzione-problemi.md) riporta le cause probabili.
 
 Ti serve un telefono o un PC collegato alla stessa rete della scheda: il Wi-Fi del laboratorio (`http://casa1.local/`) o l'hotspot della casa (`http://10.42.1.1/`).
 
@@ -83,7 +83,7 @@ Apri **Altro → Calibrazione**.
 In seguito:
 
 - **Salva solo la casa vuota** prende un nuovo riferimento senza toccare le impostazioni della webcam, per esempio dopo aver spostato un arredo.
-- **Regola la luce e salva la casa vuota** serve quando la luce del padiglione cambia molto. I cambiamenti lenti vengono seguiti automaticamente sul pavimento libero.
+- **Regola la luce e salva la casa vuota** serve quando la luce della sala cambia molto. I cambiamenti lenti vengono seguiti automaticamente sul pavimento libero.
 - Se la webcam viene urtata, la webapp mostra *La webcam si è spostata: rifare la calibrazione*: ripeti tutta la procedura.
 
 Ora in **Diagnostica**, alla riga *Webcam*, compaiono i fotogrammi al secondo (da 7 a 10) e il tempo di elaborazione, senza *da calibrare* né *luce da regolare*.
@@ -114,13 +114,12 @@ Poi chiedi qualcosa che le frasi fisse non coprono, per esempio "Quanta gente c'
 ## 13. Hotspot e telefoni
 
 1. Passa la scheda al suo hotspot (`bash scripts/hotspot.sh on`, oppure riavvia se hai installato con il valore predefinito `--hotspot boot`).
-2. Stampa il cartello: **Altro → Cartello da stampare** (oppure `http://10.42.N.1/sign`), A4 verticale.
-3. Con un telefono Android e un iPhone: inquadra il QR 1 per entrare in `DomotiQ-CasaN`, poi il QR 2 per aprire la casa. Se il telefono lo chiede, scegli *Resta connesso* o *Usa senza Internet*. Su Android, se la pagina non si apre, spegni per un attimo i dati mobili.
-4. In **Diagnostica**, alla riga *Wi-Fi*, compare il numero di dispositivi collegati all'hotspot. Apri **Diretta** su più telefoni contemporaneamente per controllare che il flusso video regga.
+2. Con un telefono Android e un iPhone: entra nella rete `DomotiQ-CasaN` con la password del Wi-Fi (è nel riepilogo dell'installazione e in **Altro → Impostazioni → Wi-Fi della casa**), poi apri `http://10.42.N.1/`. Se il telefono lo chiede, scegli *Resta connesso* o *Usa senza Internet*. Su Android, se la pagina non si apre, spegni per un attimo i dati mobili.
+3. In **Diagnostica**, alla riga *Wi-Fi*, compare il numero di dispositivi collegati all'hotspot. Apri **Diretta** su più telefoni contemporaneamente per controllare che il flusso video regga.
 
 ## 14. Orologio
 
-La UNO Q non ha una batteria per l'orologio e in fiera non c'è internet. Dopo un riavvio, il primo telefono che apre la webapp imposta l'ora della casa (un messaggio dice *Ora della casa impostata da questo telefono*). In **Diagnostica**, alla riga *Orologio*, si vede da dove arriva l'ora. Per impostarla a voce vedi il [capitolo 8](08-voce.md#impostare-lora-a-voce).
+La UNO Q non ha una batteria per l'orologio e, senza internet, non può rimettere l'ora da sola. Dopo un riavvio, il primo telefono che apre la webapp imposta l'ora della casa (un messaggio dice *Ora della casa impostata da questo telefono*). In **Diagnostica**, alla riga *Orologio*, si vede da dove arriva l'ora. Per impostarla a voce vedi il [capitolo 8](08-voce.md#impostare-lora-a-voce).
 
 ## Provare senza statuine
 

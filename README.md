@@ -2,9 +2,9 @@
 
 ![The DomotiQ diorama with the webcam pole](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/render/01_casa_completa.png)
 
-DomotiQ is a 1:20 scale smart house built for Arduino fairs. A webcam on a pole looks down on the house and recognizes who is in which room: figurines, pets, a toy car and any object a visitor puts inside. The lights follow people from room to room, the house enforces its own rules (nobody in the utility room, one person at a time in the bathroom), reacts to a shower, a car coming home or a barbecue, plays a party with music it composes itself, and talks: visitors ask it questions in Italian or English, ring the intercom and introduce new characters with their voice.
+DomotiQ is a 1:20 scale smart house. A webcam on a pole looks down on the house and recognizes who is in which room: figurines, pets, a toy car and any object a visitor puts inside. The lights follow people from room to room, the house enforces its own rules (nobody in the utility room, one person at a time in the bathroom), reacts to a shower, a car coming home or a barbecue, plays a party with music it composes itself, and talks: visitors ask it questions in Italian or English, ring the intercom and introduce new characters with their voice.
 
-Everything runs on one Arduino UNO Q 4GB, fully offline. Visitors join the house's own Wi-Fi with a QR code and use their phone as the remote control, the live camera view and the rule editor.
+Everything runs on one Arduino UNO Q 4GB, fully offline. Phones join the house's own Wi-Fi and become the remote control, the live camera view and the rule editor.
 
 Created by Emilio Destratis (destratis.it) in collaboration with Arduino.
 
@@ -35,7 +35,7 @@ On Linux a Python application (FastAPI, asyncio) holds the state of the house, r
 Recognition is classical computer vision, with no training needed: a new character is registered in a few seconds.
 
 - Four taps on the corners of the base in the web app give the geometry between image and floor; the position of the camera, known from the CAD model, corrects the parallax of tall figurines.
-- Each frame is compared with a picture of the empty house in the Lab colour space, after correcting the light room by room and channel by channel, so the coloured lights of the house and the lights of the fair hall do not create ghosts. Shadows are ignored.
+- Each frame is compared with a picture of the empty house in the Lab colour space, after correcting the light room by room and channel by channel, so the coloured lights of the house and the lights of the room around it do not create ghosts. Shadows are ignored.
 - Every figurine gets a colour signature. Tracks are followed frame to frame with the Hungarian method; identities are matched by colour, and two figurines of the same colour are told apart by following them. When a visitor's hand picks one up, the house keeps track of it and asks when it cannot be sure.
 - When a character is registered with a photo from the phone, a YOLOX-Nano detector (machine learning, trained on the COCO dataset) runs on the board to propose the category: person, dog, cat, other animal, car or object.
 
@@ -45,7 +45,7 @@ The totem has three buttons: talk (hold it down and speak), intercom and languag
 
 # The web app
 
-Phones join the hotspot of the house (DomotiQ-Casa1 or DomotiQ-Casa2) from the QR code on the A4 sign and open the house page. Everyone can do everything, with no PIN: see the house, watch the live view, give commands, read events, edit rules, register characters, switch the alarm on and off, calibrate the camera, read the diagnostics and change the settings. Every change stays in the log and deleted things in the bin for 24 hours.
+Phones join the hotspot of the house (DomotiQ-Casa1) with its password and open the house page. Everyone can do everything, with no PIN: see the house, watch the live view, give commands, read events, edit rules, register characters, switch the alarm on and off, calibrate the camera, read the diagnostics and change the settings. Every change stays in the log and deleted things in the bin for 24 hours.
 
 ![Home, live view, characters and rules on a phone](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/screens/en/home.png)
 
@@ -72,13 +72,13 @@ Phones join the hotspot of the house (DomotiQ-Casa1 or DomotiQ-Casa2) from the Q
 - Rules: [docs/en/09-rules.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/09-rules.md)
 - Attributions: [docs/en/10-attributions.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/10-attributions.md)
 - Troubleshooting: [docs/en/11-troubleshooting.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/11-troubleshooting.md)
-- Quick guide for the stand staff: [docs/en/quick-guide-staff.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/quick-guide-staff.md)
+- Quick guide: [docs/en/quick-guide.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/quick-guide.md)
 
 The whole installation is one command on the board, once the board has internet:
 
 ```
 git clone https://github.com/destone28/DomotiQ ~/domotiq
-cd ~/domotiq && bash scripts/install.sh --house 1
+cd ~/domotiq && bash scripts/install.sh
 ```
 
 No hardware at hand? The house runs in simulation on any PC, with virtual figurines you drag on the plan:

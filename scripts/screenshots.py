@@ -53,7 +53,7 @@ def call(base: str, method: str, path: str, body=None, headers=None):
 
 
 def populate(base: str) -> None:
-    """A few characters in the house, one of them registered by the tests of the stand."""
+    """A few characters in the house, one of them registered."""
     people = [("Marco", "person", "#d03030", 300, 110), ("Sofia", "person", "#3050d0", 90, 150),
               ("Fido", "dog", "#b07a3a", 110, 300), ("Auto", "car", "#e8e8e8", 540, 300)]
     for name, cat, color, x, y in people:
@@ -117,14 +117,6 @@ async def shoot(base: str, out: Path, debug_port: int) -> None:
                 shot = await tab.send("Page.captureScreenshot", format="png")
                 (out / lang / f"{name}.png").write_bytes(base64.b64decode(shot["data"]))
                 print(f"{lang}/{name}.png")
-        # the A4 sign, once (it is bilingual)
-        await tab.send("Emulation.setDeviceMetricsOverride", width=794, height=1123, deviceScaleFactor=1.5,
-                       mobile=False)
-        await tab.send("Page.navigate", url=base + "/sign")
-        await asyncio.sleep(2.0)
-        shot = await tab.send("Page.captureScreenshot", format="png")
-        (out / "sign.png").write_bytes(base64.b64decode(shot["data"]))
-        print("sign.png")
 
 
 def main() -> None:

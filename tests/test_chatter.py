@@ -484,7 +484,7 @@ def test_the_web_app_reports_new_phones_once(tmp_path):
         assert ws.receive_json()["type"] == "hello"
     with client.websocket_connect("/ws?device=p-web") as ws:
         ws.receive_json()
-    with client.websocket_connect("/ws") as ws:               # the booth display: not a phone
+    with client.websocket_connect("/ws") as ws:               # the display page: not a phone
         ws.receive_json()
     with client.websocket_connect("/ws?device=p-other&nick={x}") as ws:   # same address: the same phone
         ws.receive_json()

@@ -33,7 +33,6 @@ def settle(ctx):
 def test_pages_and_state(web):
     ctx, c = web
     assert c.get("/").status_code == 200
-    assert "text/html" in c.get("/sign").headers["content-type"]
     st = c.get("/api/state").json()
     for key in ("tracks", "lights", "rules", "identities", "layout"):
         assert key in st, key
@@ -95,13 +94,13 @@ def test_two_candidates_are_offered(web):
 
 def test_settings_and_tools_are_open_to_everybody(web):
     ctx, c = web
+    ctx.settings._data["old"] = {"pin": "0000"}       # a section an older version left in the file
     settings = c.get("/api/settings").json()
-    assert "voice" in settings and "staff" not in settings
+    assert "voice" in settings and "old" not in settings
     assert c.put("/api/settings", json={"voice": {"question_every_s": 90}}).status_code == 200
     assert ctx.settings.get("voice.question_every_s") == 90
     assert "mcu" in c.get("/api/diagnostics").json()
     assert c.get("/api/backup.zip").content[:2] == b"PK"
-    assert c.post("/api/staff/login", json={"pin": "0000"}).status_code in (404, 405)   # no PIN any more
 
 
 def test_commands_and_confirmations(web):

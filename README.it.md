@@ -2,9 +2,9 @@
 
 ![Il diorama DomotiQ con il palo della webcam](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/render/01_casa_completa.png)
 
-DomotiQ è una casa intelligente in scala 1:20 costruita per le fiere Arduino. Una webcam su un palo guarda la casa dall'alto e riconosce chi c'è e in quale stanza: personaggi, animali, un'auto giocattolo e qualsiasi oggetto un visitatore ci metta dentro. Le luci seguono le persone di stanza in stanza, la casa fa rispettare le sue regole (nessuno nel locale tecnico, in bagno uno alla volta), reagisce alla doccia, all'auto che torna a casa o al barbecue, fa partire una festa con musica composta da sé, e parla: i visitatori le fanno domande in italiano o in inglese, suonano il citofono e presentano personaggi nuovi a voce.
+DomotiQ è una casa intelligente in scala 1:20. Una webcam su un palo guarda la casa dall'alto e riconosce chi c'è e in quale stanza: personaggi, animali, un'auto giocattolo e qualsiasi oggetto un visitatore ci metta dentro. Le luci seguono le persone di stanza in stanza, la casa fa rispettare le sue regole (nessuno nel locale tecnico, in bagno uno alla volta), reagisce alla doccia, all'auto che torna a casa o al barbecue, fa partire una festa con musica composta da sé, e parla: i visitatori le fanno domande in italiano o in inglese, suonano il citofono e presentano personaggi nuovi a voce.
 
-Tutto gira su una Arduino UNO Q 4GB, senza internet. I visitatori entrano nel Wi-Fi della casa con un QR e usano il telefono come telecomando, come finestra sulla webcam e per scrivere le regole.
+Tutto gira su una Arduino UNO Q 4GB, senza internet. I telefoni entrano nel Wi-Fi della casa e diventano telecomando, finestra sulla webcam e strumento per scrivere le regole.
 
 Realizzato da Emilio Destratis (destratis.it) in collaborazione con Arduino.
 
@@ -45,7 +45,7 @@ Il totem ha tre tasti: parla (si tiene premuto mentre si parla), citofono e ling
 
 # La webapp
 
-I telefoni entrano nell'hotspot della casa (DomotiQ-Casa1 o DomotiQ-Casa2) dal QR sul cartello A4 e aprono la pagina della casa. Tutti possono fare tutto, senza PIN: vedere la casa, guardare la diretta, dare comandi, leggere gli eventi, modificare le regole, registrare personaggi, inserire e disinserire l'allarme, calibrare la webcam, leggere la diagnostica e cambiare le impostazioni. Ogni modifica resta nel registro e le cose eliminate nel cestino per 24 ore.
+I telefoni entrano nell'hotspot della casa (DomotiQ-Casa1) con la sua password e aprono la pagina della casa. Tutti possono fare tutto, senza PIN: vedere la casa, guardare la diretta, dare comandi, leggere gli eventi, modificare le regole, registrare personaggi, inserire e disinserire l'allarme, calibrare la webcam, leggere la diagnostica e cambiare le impostazioni. Ogni modifica resta nel registro e le cose eliminate nel cestino per 24 ore.
 
 ![Casa, diretta, personaggi e regole sul telefono](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/screens/it/home.png)
 
@@ -72,13 +72,13 @@ I telefoni entrano nell'hotspot della casa (DomotiQ-Casa1 o DomotiQ-Casa2) dal Q
 - Regole: [docs/it/09-regole.md](https://github.com/destone28/DomotiQ/blob/main/docs/it/09-regole.md)
 - Attribuzioni: [docs/it/10-attribuzioni.md](https://github.com/destone28/DomotiQ/blob/main/docs/it/10-attribuzioni.md)
 - Risoluzione dei problemi: [docs/it/11-risoluzione-problemi.md](https://github.com/destone28/DomotiQ/blob/main/docs/it/11-risoluzione-problemi.md)
-- Guida rapida per lo staff dello stand: [docs/it/guida-rapida-staff.md](https://github.com/destone28/DomotiQ/blob/main/docs/it/guida-rapida-staff.md)
+- Guida rapida: [docs/it/guida-rapida.md](https://github.com/destone28/DomotiQ/blob/main/docs/it/guida-rapida.md)
 
 L'installazione completa è un solo comando sulla scheda, quando la scheda ha internet:
 
 ```
 git clone https://github.com/destone28/DomotiQ ~/domotiq
-cd ~/domotiq && bash scripts/install.sh --house 1
+cd ~/domotiq && bash scripts/install.sh
 ```
 
 Niente hardware a portata di mano? La casa gira in simulazione su qualsiasi PC, con personaggi virtuali da trascinare sulla piantina:

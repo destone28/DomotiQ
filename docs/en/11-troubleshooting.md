@@ -48,7 +48,7 @@ arduino-app-cli system update
 - *run this as the user arduino*: log in as `arduino`, not root.
 - *at least N MB free are needed*: free space in `/home/arduino` (see `df -h /home/arduino`).
 - *no internet*: the first installation downloads packages and models; connect the board to a network with internet.
-- *which house is this? use --house 1 or --house 2*: the first run needs `--house`.
+- *the number of the house goes from 1 to 254*: `--house` takes a number from 1 to 254; without it the house is number 1.
 
 ### *checksum mismatch* for a model
 **Cause.** A download was interrupted or altered.
@@ -66,7 +66,7 @@ arduino-app-cli system update
 **Fix.** Use `bash scripts/release.sh casaN --install` (the board needs internet), or run `install.sh` on the board.
 
 ### Audio broke after a manual system update
-**Cause.** The installer holds `alsa-ucm-conf`, `libasound2t64` and the running kernel and disables the automatic updates, so that nothing changes before a fair.
+**Cause.** The installer holds `alsa-ucm-conf`, `libasound2t64` and the running kernel and disables the automatic updates, so that nothing changes while the house is in use.
 
 **Fix.** Do not update the system of a house that works. If you did, repeat the ALSA fix above and reboot.
 
@@ -168,7 +168,7 @@ The installer (which needs internet) reloads the firmware when needed; without i
 - **Frequent steps, or many turns in the last hour:** a light of the hall that flickers or keeps changing.
 - **Waiting for "rooms covered":** hands, characters or objects cover most of the rooms; it goes on by itself when they are taken away.
 - **At the limit in the dark:** switch a light on. If the full setting was already made in the dark, the house does not make it again: it would give the same values, with 10 seconds without pictures.
-- **After changing the lighting of the stand altogether:** do **Calibration → Set the light and save the empty house** again.
+- **After changing the lighting of the hall altogether:** do **Calibration → Set the light and save the empty house** again.
 - **To go back to the old behaviour:** `camera.follow_light: false` in `var/config/settings.json`.
 
 ### Banner *The webcam sees almost nothing*
@@ -234,7 +234,7 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### The blurred area does not match the bathroom
 **Cause.** The camera is not calibrated yet: until then the house blurs a wide area where the bathroom should be if the camera is mounted as designed. If the pole or the camera cradle is turned, that area is in the wrong place.
 
-**Fix.** Calibrate before the house is open to visitors: from then on the blur follows the real bathroom.
+**Fix.** Calibrate before other people use the house: from then on the blur follows the real bathroom.
 
 ## Audio and voice
 
@@ -283,7 +283,7 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ## Clock
 
 ### The house asks "I don't know the time: what time is it now?"
-**Cause.** The board has no battery for its clock and no internet at the fair, and no phone has opened the web app since the start.
+**Cause.** The board has no battery for its clock and, without internet, cannot set the time by itself; no phone has opened the web app since the start.
 
 **Fix.** Answer at once aloud, with no button ("it's half past three"), open the web app from a phone (it sets the time), or use **Settings → Use this phone's time** ([chapter 8](08-voice.md#setting-the-clock-by-voice)). **Diagnostics → Clock** shows where the time came from. Rules with *it is a given time* need a known time.
 

@@ -1,11 +1,11 @@
 # 6. La webapp
 
-Ogni casa serve la propria webapp direttamente dalla scheda. Non ha bisogno di internet né di installare niente: la apre qualsiasi browser di un telefono collegato al Wi-Fi della casa. È fatta di semplice HTML, CSS e JavaScript senza librerie esterne, è in italiano e in inglese, e ha un tema chiaro e uno scuro che seguono le impostazioni del telefono. Lo stato della casa arriva in tempo reale attraverso un WebSocket, quindi quello che vedi cambia non appena qualcosa si muove nella casa.
+La casa serve la propria webapp direttamente dalla scheda. Non ha bisogno di internet né di installare niente: la apre qualsiasi browser di un telefono collegato al Wi-Fi della casa. È fatta di semplice HTML, CSS e JavaScript senza librerie esterne, è in italiano e in inglese, e ha un tema chiaro e uno scuro che seguono le impostazioni del telefono. Lo stato della casa arriva in tempo reale attraverso un WebSocket, quindi quello che vedi cambia non appena qualcosa si muove nella casa.
 
 ## Aprirla
 
-- **In fiera**: inquadra i due QR del cartello accanto alla casa. Il primo fa entrare nel Wi-Fi `DomotiQ-CasaN`, il secondo apre `http://10.42.N.1/`. Funzionano anche i nomi `http://casaN.lan/` e `http://casaN.local/`, ma l'indirizzo numerico funziona sempre.
-- **In laboratorio**: `http://casaN.local/`, con la scheda sul tuo Wi-Fi.
+- **Sul Wi-Fi della casa**: sul telefono scegli la rete `DomotiQ-CasaN` e scrivi la password del Wi-Fi (è nel riepilogo dell'installazione e in **Altro → Impostazioni → Wi-Fi della casa**), poi apri `http://10.42.N.1/`. Se il telefono avvisa che la rete non ha internet, scegli *Resta connesso* o *Usa senza Internet*; su Android, se la pagina non si apre, spegni per un attimo i dati mobili. Funzionano anche i nomi `http://casaN.lan/` e `http://casaN.local/`, ma l'indirizzo numerico funziona sempre.
+- **Sulla tua rete**: `http://casaN.local/`, con la scheda sul tuo Wi-Fi.
 - Sui telefoni la pagina si può aggiungere alla schermata Home; da lì si apre come un'app.
 - La prima volta che un telefono la apre, la casa lo saluta a voce e compare una scheda che chiede il nome e invita ad aggiungere un personaggio (vedi il [capitolo 8](08-voce.md#parlare-senza-premere-parla)).
 - La webapp usa il semplice `http://`. Non ci sono notifiche di sistema (richiederebbero HTTPS); le foto si scattano con la fotocamera del telefono attraverso il normale selettore dei file, che funziona anche senza HTTPS.
@@ -97,11 +97,10 @@ La casa conserva gli eventi per 7 giorni e le posizioni per 24 ore.
 
 ## Altro
 
-Tutte le altre pagine, in tre gruppi, più il tuo soprannome:
+Tutte le altre pagine, in due gruppi, più il tuo soprannome:
 
-- **La casa**: **Eventi**, **Regole**, **Cosa ha imparato**, **Simulazione**;
+- **La casa**: **Eventi**, **Regole**, **Cosa ha imparato**, **Simulazione**, **Informazioni**;
 - **Messa a punto**: **Calibrazione**, **Diagnostica**, **Registro della visione**, **Impostazioni**;
-- **Per lo stand**: **Cartello da stampare**, **Informazioni**;
 - **Tu**: **Il tuo soprannome**, che compare nel registro delle modifiche.
 
 ### Regole
@@ -160,22 +159,16 @@ Ogni presenza nuova annunciata, ogni nome dato e ogni macchia scartata dalla ret
 
 - **Casa**: il nome della casa in italiano e in inglese; **Tasti montati al contrario**, per un totem montato al rovescio; **Bagno sfocato nella diretta**, acceso di serie.
 - **Luci · Festa · Barbecue · Clima**: *Luminosità massima (%)*, *Limite di corrente dei Pixels (mA)*, *Luminosità delle luci che seguono*, *Spegnimento dopo (s)*, *Colore delle luci che seguono*, **Luce del colore preferito di chi entra** (nello scenario Normale la luce di una stanza prende il colore preferito di chi c'è, se l'ha detto alla casa), la *Durata (s)* della festa (10–60), *Durata della ventola (s)* (5–120), *Caldo: aumento sul riferimento (°C)*, *Doccia: aumento di umidità (%)*. Poi **Salva**. Luminosità e limite di corrente arrivano subito al microcontrollore.
-- **Voce**: **Saluta i telefoni nuovi**, **Domande ai personaggi (modalità chiacchierona)** e *Una domanda ogni (s)* (vedi il [capitolo 8](08-voce.md#parlare-senza-premere-parla)); **Attivazione con la parola chiave** e *Parola di attivazione* (per esempio *Casa*): detta la parola, la casa fa quello che fa il tasto Parla (vedi il [capitolo 8](08-voce.md#la-parola-di-attivazione)). Salvando, sotto compare come la casa sentirà la parola (*Casa 2* diventa *casa due*; *Domotiq*, che il riconoscimento vocale non conosce, si sente come «domotica»). Se ci sono parole che il riconoscimento non riesce a sentire in nessun modo, compaiono anche quelle.
+- **Voce**: **Saluta i telefoni nuovi**, **Domande ai personaggi (modalità chiacchierona)** e *Una domanda ogni (s)* (vedi il [capitolo 8](08-voce.md#parlare-senza-premere-parla)); **Attivazione con la parola chiave** e *Parola di attivazione* (per esempio *Casa*): detta la parola, la casa fa quello che fa il tasto Parla (vedi il [capitolo 8](08-voce.md#la-parola-di-attivazione)). Salvando, sotto compare come la casa sentirà la parola (*Robot 3* diventa *robot tre*; *Domotiq*, che il riconoscimento vocale non conosce, si sente come «domotica»). Se ci sono parole che il riconoscimento non riesce a sentire in nessun modo, compaiono anche quelle.
 - **Ora**: l'ora del telefono e **Usa l'ora di questo telefono**, che imposta l'orologio della casa.
-- **Wi-Fi della casa**: il nome della rete e la *Password del Wi-Fi* (da 8 a 63 caratteri). **Salva**, dopo *Sei sicuro?*, la scrive nell'hotspot; se l'hotspot è acceso riparte dopo un paio di secondi e tutti i telefoni, compreso il tuo, vanno ricollegati con la password nuova. Il cartello da stampare si aggiorna da solo: ristampalo.
+- **Wi-Fi della casa**: il nome della rete e la *Password del Wi-Fi* (da 8 a 63 caratteri). **Salva**, dopo *Sei sicuro?*, la scrive nell'hotspot; se l'hotspot è acceso riparte dopo un paio di secondi e tutti i telefoni, compreso il tuo, vanno ricollegati con la password nuova. Annotala: serve a ogni telefono che entra nella rete.
 - **Backup**: **Scarica il backup** (uno zip con regole, personaggi con le loro foto e impostazioni; mai la rete, il nome della casa o la calibrazione della webcam), **Ripristina da un backup** (sostituisce regole, personaggi e impostazioni), **Regole di partenza** (sostituisce tutte le regole con quelle con cui la casa è partita).
 - **Cestino**: regole e personaggi eliminati nelle ultime 24 ore, ognuno con **Ripristina**.
 - **Sistema**: **Riavvia l'app**, **Riavvia la scheda**, **Spegni la scheda**, ognuno dopo *Sei sicuro?*.
 
-### Cartello da stampare
+### Tabellone
 
-<img src="../images/screens/sign.png" alt="Il cartello da stampare" width="360">
-
-Una pagina A4 verticale, pronta da stampare, con il nome della casa e due QR: **1 Collegati alla rete** (con SSID e password scritti sotto) e **2 Apri la casa** (con l'indirizzo). Una nota in italiano e in inglese spiega cosa fare se il telefono si lamenta perché manca internet, e come usare i tasti del totem. Si apre su `/sign`.
-
-### Tabellone per lo stand
-
-Non è nel menu: si apre scrivendo `/board` dopo l'indirizzo della casa. Mostra la piantina, la diretta, l'ultima frase detta e gli ultimi eventi, per un monitor o un tablet allo stand, e non ha comandi.
+Non è nel menu: si apre scrivendo `/board` dopo l'indirizzo della casa. Mostra la piantina, la diretta, l'ultima frase detta e gli ultimi eventi, per un monitor o un tablet accanto alla casa, e non ha comandi.
 
 ### Informazioni
 

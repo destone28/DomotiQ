@@ -33,7 +33,6 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna qu
 | NumPy | BSD-3-Clause | calcolo, sintesi audio |
 | OpenCV (headless) | Apache-2.0 | visione |
 | msgpack | Apache-2.0 | protocollo del router |
-| segno | BSD-3-Clause | QR del cartello |
 | Vosk | Apache-2.0 | riconoscimento vocale |
 | ONNX Runtime | MIT | categoria degli oggetti |
 | (nessun SciPy) | — | l'assegnamento ungherese del tracciamento è scritto nel progetto |

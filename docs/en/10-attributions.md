@@ -45,7 +45,6 @@ The main packages of the application:
 | [NumPy](https://numpy.org) | BSD-3-Clause | computation, sound synthesis |
 | [OpenCV](https://opencv.org) ([opencv-python-headless](https://github.com/opencv/opencv-python)) | Apache-2.0 | computer vision |
 | [msgpack](https://github.com/msgpack/msgpack-python) | Apache-2.0 | protocol of the router |
-| [segno](https://github.com/heuer/segno) | BSD-3-Clause | QR codes of the sign |
 | [Vosk](https://alphacephei.com/vosk/) | Apache-2.0 | speech recognition |
 | [ONNX Runtime](https://github.com/microsoft/onnxruntime) | MIT | object category from photos |
 
@@ -93,7 +92,7 @@ Piper is GPL-3.0. DomotiQ runs it as an external program and talks to it over HT
 
 | Font | Licence | Use |
 |---|---|---|
-| [Open Sans](https://github.com/googlefonts/opensans) | SIL Open Font License 1.1 | text of the web app and of the sign |
+| [Open Sans](https://github.com/googlefonts/opensans) | SIL Open Font License 1.1 | text of the web app |
 | [Roboto Mono](https://github.com/googlefonts/robotomono) | SIL Open Font License 1.1 | numbers and code |
 
 The fonts are served by the board as woff2 files, with their licences in `src/domotiq/web/static/fonts/`.

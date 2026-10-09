@@ -1,6 +1,8 @@
 # 1. Prepare the UNO Q
 
-A factory-new Arduino UNO Q needs a few steps before DomotiQ can be installed: a password for the `arduino` user, a name, a network connection, working SSH, a system update and key-based access from your PC. This chapter follows the way the first house (`casa1`) was prepared, with notes on the surprises found along the way.
+A factory-new Arduino UNO Q needs a few steps before DomotiQ can be installed: a password for the `arduino` user, a name, a network connection, working SSH, a system update and key-based access from your PC. This chapter goes through them in order, with notes on the surprises you may meet.
+
+Throughout this guide the board is called `casa1` and the password of the `arduino` user is `domotiq2026`. If you choose others, use yours instead.
 
 You can do the first setup with Arduino App Lab (it sets name, password and Wi-Fi, and it also prepares SSH and the `.local` name) or by hand from a shell. The steps below are the manual way; if you used App Lab, skip to [SSH key access from a PC](#7-ssh-key-access-from-a-pc) and check the SSH and avahi sections if something does not work.
 
@@ -25,26 +27,26 @@ adb shell
 
 ## 2. Set the password of the `arduino` user
 
-On the factory image the `arduino` user has no password. Set one with the first-configuration script of the image:
+On the factory image the `arduino` user has no password: the first `sudo` command asks for one. Run:
 
 ```bash
-/usr/local/bin/arduino-passwd
+sudo -v
 ```
 
-This password is the one `sudo`, SSH and `scripts/add-pc.sh` will ask for.
+When the board asks for the new password, type `domotiq2026`. This password is the one `sudo`, SSH and `scripts/add-pc.sh` will ask for.
 
 ## 3. Name and time zone
 
-Give the board the name of its house (`casa1` or `casa2`) and the Italian time zone. The installer sets both again later, but the name is needed now for `casa1.local` to work.
+Give the board the name `casa1` and the time zone. The installer sets both again later, but the name is needed now for `casa1.local` to work.
 
 ```bash
-arduino-app-cli system set-name casa1      # or: sudo hostnamectl set-hostname casa1
+sudo hostnamectl set-hostname casa1
 sudo timedatectl set-timezone Europe/Rome
 ```
 
-## 4. Connect to the Wi-Fi of the lab
+## 4. Connect to the Wi-Fi
 
-During development the board sits on your normal Wi-Fi network. With NetworkManager:
+While you prepare it, the board sits on your normal Wi-Fi network, the same as the PC. With NetworkManager:
 
 ```bash
 sudo nmcli device wifi connect "YOUR-NETWORK" password "YOUR-PASSWORD"
@@ -71,23 +73,34 @@ From the PC, `ping casa1.local` should now answer. The installer also enables av
 
 ## 7. SSH key access from a PC
 
-On the PC, from the folder of the repository:
+With the board on the same network as the PC, from the folder of the repository on the PC:
 
 ```bash
-bash scripts/add-pc.sh casa1              # the board is on the lab network (casa1.local)
-bash scripts/add-pc.sh casa1 10.42.1.1    # the board is on its own hotspot
+bash scripts/add-pc.sh casa1
+```
+
+If the board is already on its own hotspot (after the installation) and the PC is on the `DomotiQ-Casa1` network, add the address of the house:
+
+```bash
+bash scripts/add-pc.sh casa1 10.42.1.1
 ```
 
 The script:
 
 1. creates the key `~/.ssh/id_ed25519_domotiq` if this PC does not have it yet;
-2. copies it to the board with `ssh-copy-id` (it asks the password of `arduino` once);
+2. copies it to the board with `ssh-copy-id`, which asks the password of `arduino` (`domotiq2026`) once and, the first time, whether to trust the board: answer `yes`;
 3. adds a `Host casa1` entry to `~/.ssh/config` (user `arduino`, that key, and the address you gave, or `casa1.local`);
 4. connects once and prints `connected to casa1`.
 
-From now on `ssh casa1` logs in without a password. The entry is added only if `~/.ssh/config` does not already contain `Host casa1`: to point an existing alias to another address, edit that file.
+From now on `ssh casa1` logs in without a password. The entry is added only if `~/.ssh/config` does not already contain `Host casa1`: if it has one with another address the script says so, and you change it by editing that file.
 
-Run the same script on every other PC that needs to reach the house. App Lab in network mode is an alternative way in.
+**A new board with a name already used.** Every board has its own identity, made at its first start, and the PC remembers the one of every name. If the PC already knew a `casa1` (a reinstalled board, or another one), the script says so and asks whether to forget the old identity: answer `y`. Without the script, `ssh` refuses with *REMOTE HOST IDENTIFICATION HAS CHANGED*; the fix is the same:
+
+```bash
+ssh-keygen -R casa1.local
+```
+
+If the board does not answer, the script prints the network error and reminds you which form to use. Run the same script on every other PC that needs to reach the house. App Lab in network mode is an alternative way in.
 
 ## 8. Update the system
 
@@ -101,7 +114,7 @@ arduino-app-cli system update
 
 Run it from an SSH session. Inside an `adb shell` the update stops if the adb session closes; if you have no other choice, start it detached with `systemd-run --uid=arduino`.
 
-On `casa1` the update brought `arduino-app-cli` 0.13.0, `arduino-cli` 1.5.1, the Linux kernel 7.0 and the microcontroller core `arduino:zephyr` 1.0.0, which is the version DomotiQ uses. Reboot when it is done, so the new kernel is in use:
+While this project was prepared, the update brought `arduino-app-cli` 0.13.0, `arduino-cli` 1.5.1, the Linux kernel 7.0 and the microcontroller core `arduino:zephyr` 1.0.0, which is the version DomotiQ uses. Reboot when it is done, so the new kernel is in use:
 
 ```bash
 sudo reboot
@@ -126,7 +139,7 @@ arduino-app-cli system update
 
 ## 9. Check the free space
 
-On `casa1` the system partition had about 2 GB free out of 9.8 GB, while `/home/arduino` is a separate partition with about 15 GB free. DomotiQ lives in `/home/arduino/domotiq`, so the home partition is the one that matters:
+On the board used for the project the system partition had about 2 GB free out of 9.8 GB, while `/home/arduino` is a separate partition with about 15 GB free. DomotiQ lives in `/home/arduino/domotiq`, so the home partition is the one that matters:
 
 ```bash
 df -h /home/arduino
@@ -134,12 +147,12 @@ df -h /home/arduino
 
 A first installation needs about 2.3 GB there; the installer checks it before starting.
 
-## Before the house goes to a fair
+## Before others use the house
 
-When development is over:
+The password `domotiq2026` is written in this guide, so whoever reads it knows it. Before other people can join the network of the house:
 
-- allow SSH login with a key only (for example `PasswordAuthentication no` in a file under `/etc/ssh/sshd_config.d/`, then `sudo systemctl restart ssh`), and make sure your key works first;
-- if you gave the `arduino` user password-less `sudo` during development, give `sudo` its password back (the small rule installed by DomotiQ, which only allows restarting its services, rebooting or powering off the board and changing the hotspot, can stay);
-- write the Wi-Fi password on the printed [quick guide for the stand staff](quick-guide-staff.md), never in the repository.
+- allow SSH with a key only: `bash scripts/lockdown.sh` on the board, after making sure your key works (see [Before the house leaves the lab](02-install.md#before-the-house-leaves-the-lab));
+- if you like, choose another password for `arduino` with `passwd`;
+- if you gave the `arduino` user password-less `sudo` during development, give `sudo` its password back (the small rule installed by DomotiQ, which only allows restarting its services, rebooting or powering off the board and changing the hotspot, can stay).
 
 Next: [install the software](02-install.md).

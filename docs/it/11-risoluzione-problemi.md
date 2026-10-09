@@ -48,7 +48,7 @@ arduino-app-cli system update
 - *run this as the user arduino*: entra come `arduino`, non come root.
 - *at least N MB free are needed*: libera spazio in `/home/arduino` (vedi `df -h /home/arduino`).
 - *no internet*: la prima installazione scarica pacchetti e modelli; collega la scheda a una rete con internet.
-- *which house is this? use --house 1 or --house 2*: la prima esecuzione ha bisogno di `--house`.
+- *the number of the house goes from 1 to 254*: `--house` vuole un numero da 1 a 254; senza, la casa è la 1.
 
 ### *checksum mismatch* per un modello
 **Causa.** Un download si è interrotto o è stato alterato.
@@ -66,7 +66,7 @@ arduino-app-cli system update
 **Soluzione.** Usa `bash scripts/release.sh casaN --install` (la scheda ha bisogno di internet), oppure lancia `install.sh` sulla scheda.
 
 ### L'audio ha smesso di funzionare dopo un aggiornamento manuale del sistema
-**Causa.** L'installer blocca `alsa-ucm-conf`, `libasound2t64` e il kernel in uso e disattiva gli aggiornamenti automatici, perché niente cambi prima di una fiera.
+**Causa.** L'installer blocca `alsa-ucm-conf`, `libasound2t64` e il kernel in uso e disattiva gli aggiornamenti automatici, perché niente cambi mentre la casa è in uso.
 
 **Soluzione.** Non aggiornare il sistema di una casa che funziona. Se l'hai fatto, ripeti la correzione ALSA qui sopra e riavvia.
 
@@ -168,7 +168,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 - **Ritocchi frequenti, o tanti cambi di verso nell'ultima ora:** una luce della sala che sfarfalla o che cambia di continuo.
 - **In pausa per "stanze coperte":** mani, personaggi o oggetti coprono gran parte delle stanze; quando si tolgono riprende da sola.
 - **Al limite al buio:** accendi una luce. Se la regolazione completa è già stata fatta al buio, la casa non la rifà: darebbe gli stessi valori, con 10 secondi senza immagini.
-- **Dopo aver cambiato del tutto l'illuminazione dello stand:** rifai **Calibrazione → Regola la luce e salva la casa vuota**.
+- **Dopo aver cambiato del tutto l'illuminazione della sala:** rifai **Calibrazione → Regola la luce e salva la casa vuota**.
 - **Per tornare al comportamento di prima:** `camera.follow_light: false` in `var/config/settings.json`.
 
 ### Avviso *La webcam vede quasi buio*
@@ -181,8 +181,8 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 
 **Soluzione.** Controlla la webcam e la sua inquadratura; poi, con la casa vuota, **Altro → Calibrazione → Regola la luce e salva la casa vuota** (oppure **Salva solo la casa vuota**, se la luce non è cambiata). L'avviso sparisce da solo quando l'immagine torna normale.
 
-### Compaiono oggetti fantasma, o quelli veri non vengono visti, dopo che la luce del padiglione è cambiata
-**Causa.** L'esposizione bloccata e il riferimento della casa vuota non corrispondono più alla luce del padiglione.
+### Compaiono oggetti fantasma, o quelli veri non vengono visti, dopo che la luce della sala è cambiata
+**Causa.** L'esposizione bloccata e il riferimento della casa vuota non corrispondono più alla luce della sala.
 
 **Soluzione.** Di solito la casa si arrangia. Si accorge del cambio di luce e tiene i personaggi come erano un attimo prima. Se serve riregola subito la webcam, senza perdere la calibrazione. Poi reimpara la casa vuota con la luce nuova, tranne intorno ai personaggi. In *Diagnostica* il contatore degli adattamenti sale di uno. Se non basta, svuota la casa e tocca **Regola la luce e salva la casa vuota**.
 
@@ -283,7 +283,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ## Orologio
 
 ### La casa chiede "Non so che ore sono: che ore sono adesso?"
-**Causa.** La scheda non ha una batteria per l'orologio né internet in fiera, e dall'avvio nessun telefono ha aperto la webapp.
+**Causa.** La scheda non ha una batteria per l'orologio e, senza internet, non può rimettere l'ora da sola; dall'avvio nessun telefono ha aperto la webapp.
 
 **Soluzione.** Rispondi subito a voce, senza premere niente ("sono le tre e mezza"), apri la webapp da un telefono (imposta l'ora), oppure usa **Impostazioni → Usa l'ora di questo telefono** ([capitolo 8](08-voce.md#impostare-lora-a-voce)). In **Diagnostica**, alla riga *Orologio*, si vede da dove arriva l'ora. Le regole con *è un certo orario* hanno bisogno di un'ora nota.
 

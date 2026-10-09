@@ -6,7 +6,7 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
 
 ## 28 settembre 2026 — Analisi e verifiche
 
-**Punto di partenza.** Il diorama v3 è definito nel CAD (`build_v3.py`, 90 pezzi numerati, report di montaggio). Il repository contiene solo la licenza. Scadenza: 7 ottobre, due case.
+**Punto di partenza.** Il diorama v3 è definito nel CAD (`build_v3.py`, 90 pezzi numerati, report di montaggio). Il repository contiene solo la licenza. Scadenza: 7 ottobre.
 
 **Verifiche sulla piattaforma**, prima di scegliere l'architettura:
 
@@ -19,7 +19,7 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
 - Un Pixels a bianco pieno assorbe fino a 264 mA dal 3,3 V del Qwiic: cinque moduli superano il limite del connettore. Serve un limite di corrente nel firmware.
 - La C270 ha fuoco fisso. Il CAD usa i 55° in diagonale del costruttore sul 16:9; una calibrazione pubblicata indica che il 720p è un ritaglio del sensore 4:3. Da misurare sulla camera vera: in 4:3 la base intera ci sta con margine.
 - Il Wi-Fi (WCN3980) funziona da access point con NetworkManager, quasi certamente solo a 2,4 GHz.
-- Su un telefono Android che non accetta "resta connesso", il traffico verso l'indirizzo locale passa sui dati mobili e non arriva. La finestra di accesso dei captive portal non permette la fotocamera: niente captive portal, si entra da QR.
+- Su un telefono Android che non accetta "resta connesso", il traffico verso l'indirizzo locale passa sui dati mobili e non arriva. La finestra di accesso dei captive portal non permette la fotocamera: niente captive portal: si entra nella rete e si apre l'indirizzo numerico.
 - Senza HTTPS non ci sono service worker né notifiche di sistema, ma `<input type="file" capture>` apre la fotocamera del telefono: basta per fotografare i personaggi.
 
 **Riconoscimento.** Una rete di rilevamento addestrata vedrebbe la base di un personaggio (25 mm) come una decina di pixel e richiederebbe centinaia di immagini etichettate. Il metodo scelto è classico: differenza dalla casa vuota, colore, tracciamento, con la correzione della parallasse per i personaggi alti. Nessun addestramento: un personaggio nuovo si registra in pochi secondi.
@@ -37,7 +37,7 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
 - **avahi-daemon è spento di fabbrica** (lo accende la modalità di rete di App Lab): senza, `casa1.local` non si risolve.
 - Accesso dal PC con una chiave dedicata (`~/.ssh/id_ed25519_domotiq`, alias `casa1` in `~/.ssh/config`).
 - **`arduino-app-cli system update` va lanciato come utente `arduino`**, non con `sudo`: rifiuta di girare come root e chiama `sudo apt-get` da sé. Lanciato dentro una sessione `adb shell`, si interrompe se la sessione si chiude: meglio `systemd-run --uid=arduino`.
-- **L'aggiornamento si fermava** con "alsa-ucm-conf : Depends: libasound2t64 (>= 1.2.15)". L'immagine preferisce da trixie-backports (priorità 900) i profili audio, il kernel, i firmware e mesa, ma non la libreria ALSA. La nuova versione dei profili richiede la libreria di backports. Rimedio: installare da backports anche `libasound2t64`, `libasound2-data`, `libatopology2t64`, poi ripetere l'aggiornamento. Da fare anche sulla casa 2, e lo script d'installazione lo gestisce.
+- **L'aggiornamento si fermava** con "alsa-ucm-conf : Depends: libasound2t64 (>= 1.2.15)". L'immagine preferisce da trixie-backports (priorità 900) i profili audio, il kernel, i firmware e mesa, ma non la libreria ALSA. La nuova versione dei profili richiede la libreria di backports. Rimedio: installare da backports anche `libasound2t64`, `libasound2-data`, `libatopology2t64`, poi ripetere l'aggiornamento. Lo script d'installazione lo gestisce da solo sulle schede nuove.
 
 **Firmware della MCU (29/9, notte).**
 - L'aggiornamento di sistema ha portato arduino-app-cli 0.13.0, arduino-cli 1.5.1, il kernel 7.0 e il core `arduino:zephyr` **1.0.0** (non più 0.52.0 come in Amelie). Invece di tornare indietro si usa la 1.0.0: è ciò che il sistema reinstallerebbe comunque a ogni aggiornamento.
@@ -71,7 +71,7 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
 **Installazione su casa1.** Il primo tentativo di compilare llama.cpp non era partito: l'immagine non ha né compilatore né cmake. Li installa `install.sh` (pacchetti `build-essential` e `cmake`).
 
 **Webapp e funzioni in più (29/9, notte).**
-- Test delle API web con il client di prova di FastAPI su una casa simulata: pagine, stato, regole con registro delle modifiche, registrazione di un personaggio virtuale (uno o due candidati), PIN dello staff con blocco dopo cinque errori, comandi, conferme, WebSocket.
+- Test delle API web con il client di prova di FastAPI su una casa simulata: pagine, stato, regole con registro delle modifiche, registrazione di un personaggio virtuale (uno o due candidati), PIN con blocco dopo cinque errori, comandi, conferme, WebSocket.
 - Uno script apre la casa in simulazione con qualche personaggio e fotografa ogni schermata con Chrome senza finestra, a misura di telefono, in italiano e in inglese: servono alle guide. La lingua si legge al caricamento della pagina, quindi dopo averla impostata la pagina va ricaricata.
 - Dal riepilogo delle regole mancava quale regola spegne le luci di un'altra ("Termostato: normale" spegne quelle di "caldo" e "freddo"): ora lo dice, e l'editor permette di sceglierla.
 - Dalle funzioni "se avanza tempo": buongiorno e buonanotte a voce (con scenario e saluto), allarme intruso quando la casa è in modalità Via (una regola di partenza, con la nuova stanza speciale "tutte le stanze della casa"), luce di cortesia nello scenario Notte (le luci seguono le persone, arancioni e al 12 %).
@@ -89,14 +89,14 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
 
 **Hotspot e riavvio (29/9, notte).**
 - Prova dell'hotspot senza perdere la scheda: comandi via USB (adb), mentre la seconda scheda Wi-Fi del PC si collega all'hotspot e la prima resta sulla rete del laboratorio. `DomotiQ-Casa1` compare sul canale 1; collegamento e indirizzo (10.42.1.250) in pochi secondi; la webapp risponde in 0,18 s; il DNS della casa risponde per `casa1.lan` e `domotiq.lan` con 10.42.1.1 e fa fallire subito i nomi di iCloud Private Relay.
-- Dieci dirette insieme dallo stesso PC: 4,8 immagini al secondo per ciascuna, processore della scheda libero all'86 %. Con la webcam vera le immagini saranno di circa 24 KB: una decina di Mbit/s in tutto, da verificare con i telefoni in fiera.
-- `hotspot.sh off` chiede la password: le regole sudo della casa permettono solo di accendere l'hotspot, non di spegnerlo. In fiera non serve.
+- Dieci dirette insieme dallo stesso PC: 4,8 immagini al secondo per ciascuna, processore della scheda libero all'86 %. Con la webcam vera le immagini saranno di circa 24 KB: una decina di Mbit/s in tutto, da verificare con molti telefoni collegati.
+- `hotspot.sh off` chiede la password: le regole sudo della casa permettono solo di accendere l'hotspot, non di spegnerlo. Con la casa in uso non serve.
 - Riavvio completo di casa1: webapp raggiungibile dopo 40 s, voce pronta dopo 48 s; il modello linguistico finisce di leggere i suoi esempi un paio di minuti dopo, in sottofondo.
 - Senza scheda audio USB all'avvio la casa restava muta fino al riavvio: ora la cerca ogni 5 secondi, e il microfono la segue.
 
 **Microcontrollore muto dopo un riavvio (29/9, notte).** Dopo il riavvio di prova la casa non parlava più con lo sketch: il router rispondeva `method version not available`. Il servizio di sistema del router, quando si ferma, resetta il microcontrollore (GPIO 38); con la modalità Immediate lo sketch riparte subito, chiama il router che non c'è ancora, i byte vanno persi e `Bridge.begin()` resta ad aspettare una risposta che non arriverà (la libreria non ha timeout). Un reset dato a mano con il router già attivo rimette tutto a posto. La casa ora lo fa da sé: dopo il riavvio lo sketch risponde in circa 70 secondi, senza intervento. Nuovo `scripts/bench_mcu.py` per il collaudo dei moduli al banco (scansione, luci stanza per stanza, LED, relè a richiesta, tasti e sensori), e un test del client con un router finto.
 
-**Visione sulla scheda, a vuoto (29/9, notte).** Prova del processo di visione vero sulla UNO Q con la webcam sintetica al posto della C270: calibrazione e casa vuota dalle API dello staff, poi due personaggi seguiti di stanza in stanza con i colori giusti fino alla webapp. Il generatore di immagini sintetiche è pesante (gira nello stesso processo) e limita la prova a 2 immagini al secondo: le prestazioni vere si misurano con la webcam. La calibrazione sintetica è stata cancellata dalla scheda.
+**Visione sulla scheda, a vuoto (29/9, notte).** Prova del processo di visione vero sulla UNO Q con la webcam sintetica al posto della C270: calibrazione e casa vuota dalle API, poi due personaggi seguiti di stanza in stanza con i colori giusti fino alla webapp. Il generatore di immagini sintetiche è pesante (gira nello stesso processo) e limita la prova a 2 immagini al secondo: le prestazioni vere si misurano con la webcam. La calibrazione sintetica è stata cancellata dalla scheda.
 
 **Indirizzo del Latch Relay (29/9).** Il datasheet del Modulino Latch Relay (ABX00138), aggiornato il 28/9/2026, dà come indirizzo 0x2A nella forma a 8 bit, cioè 0x15; la libreria Modulino ufficiale cerca invece 0x04, cioè 0x02, il valore usato finora dal firmware. Probabilmente dipende dal lotto: il firmware ora prova 0x02, 0x15 e 0x10 (l'indirizzo dopo un cambio con AddressChanger). Dallo stesso datasheet: il relè (HFE60, bistabile) commuta solo carichi in continua fino a 30 V, con un morsetto a vite a due poli.
 
@@ -126,10 +126,10 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
 - Prove sulla scheda: telefono simulato salutato, scheda del nome, ascolto e riconoscimento di un nome detto dalle casse ("lo chiamo luca" → Luca); **Parla** premuto durante il saluto lo interrompe e la casa risponde al tasto; domanda a un personaggio virtuale in cucina ("Marco, ti piace questa casa?") arrivata da sola dopo mezzo minuto. In quella prova la casa ha "sentito" un "mai" con confidenza 1,00 senza che nessuno parlasse: con una lista chiusa di parole il riconoscitore adatta qualunque rumore alla parola più vicina. Ora una parola della lista vale solo se la conferma anche il riconoscimento libero dello stesso audio.
 - Il volume basso della sera era la manopola delle casse al minimo: la casa ora mette l'uscita della scheda a 0 dB, quindi la manopola va al massimo e il volume si regola dalla webapp.
 
-**Storie, ricordi e personaggi (30/9, pomeriggio e sera).** Richiesta di Emilio dopo un giro di idee per la fiera. La casa racconta storie sempre diverse sui personaggi, con personalità coerenti fino al riavvio: se Marco è un medico, alla storia dopo non diventa un calciatore. Le informazioni sui personaggi si danno a voce o dalla webapp. La casa risponde a domande libere su personaggi, stanze, feste passate ("ti ricordi la festa di compleanno di Giulia del 1998?") e faccende di casa ("Luca ha pagato le bollette?"), e ogni tanto le fa anche in modalità chiacchierona. Racconta inoltre la giornata vera dei personaggi ("cosa ha fatto Marco oggi?"), ricavata dalle posizioni viste dalla webcam, in `voice/memory.py`. Tutto in italiano e in inglese.
+**Storie, ricordi e personaggi (30/9, pomeriggio e sera).** Richiesta di Emilio dopo un giro di idee. La casa racconta storie sempre diverse sui personaggi, con personalità coerenti fino al riavvio: se Marco è un medico, alla storia dopo non diventa un calciatore. Le informazioni sui personaggi si danno a voce o dalla webapp. La casa risponde a domande libere su personaggi, stanze, feste passate ("ti ricordi la festa di compleanno di Giulia del 1998?") e faccende di casa ("Luca ha pagato le bollette?"), e ogni tanto le fa anche in modalità chiacchierona. Racconta inoltre la giornata vera dei personaggi ("cosa ha fatto Marco oggi?"), ricavata dalle posizioni viste dalla webcam, in `voice/memory.py`. Tutto in italiano e in inglese.
 - Prima versione: un secondo modello linguistico, Qwen3.5-0.8B, in un servizio suo (`domotiq-story`), con le storie e le frasi della modalità chiacchierona scritte in anticipo mentre nessuno chiede niente. Emilio ha segnalato una frase inglese letta con la voce italiana: ora ogni frase si legge con la voce della sua lingua, e una storia si ferma se la casa cambia lingua.
 - Le misure sulla scheda (tabella in D-19): lo 0.8B è abbastanza veloce ma scrive un italiano povero; il 2B scrive meglio, ma a 1,3 token al secondo e con minuti di attesa.
-- Seconda versione, quella attuale (D-19): `data/stories.json` con i pezzi in italiano e in inglese, e un motore in `voice/stories.py` che li combina. Le personalità vengono dal database e le informazioni dello staff vengono prima: un lavoro detto a voce sostituisce quello del database, e in inglese diventa il lavoro corrispondente. Per ogni personaggio la casa evita le tracce e i pezzi già usati. La vita della casa si inventa una volta e poi resta, anche dopo la risposta di un visitatore in modalità chiacchierona.
+- Seconda versione, quella attuale (D-19): `data/stories.json` con i pezzi in italiano e in inglese, e un motore in `voice/stories.py` che li combina. Le personalità vengono dal database e le informazioni scritte nella webapp vengono prima: un lavoro detto a voce sostituisce quello del database, e in inglese diventa il lavoro corrispondente. Per ogni personaggio la casa evita le tracce e i pezzi già usati. La vita della casa si inventa una volta e poi resta, anche dopo la risposta di un visitatore in modalità chiacchierona.
 - Controlli sui pezzi:
   - scoperte e finali legati agli eventi che spiegano;
   - giorno e notte, estate e inverno che non si incontrano;
@@ -143,7 +143,7 @@ Note tecniche in ordine cronologico: cosa è stato fatto, perché, quali problem
   - "ricorda che marco fa il medico" è entrato in "Cosa sai di Marco?" e nelle storie in inglese ("works at the hospital");
   - bollette, compleanno e festa del 1998 hanno avuto le stesse risposte in italiano e in inglese.
 - Problema trovato nella prova: "Marco ha pagato le bollette?" finiva al modello dei comandi, che la prendeva per "dov'è Marco"; "hai dato da mangiare al cane?" riceveva una barzelletta. Ora le domande sulla vita di casa vanno direttamente al database.
-- Il riconoscimento della lingua di una frase contava "a" e "in" come inglesi, e ha fatto leggere con la voce inglese una frase italiana. Le frasi generate ora hanno la loro lingua senza doverla indovinare. Per le frasi scritte dallo staff quelle due parole non contano più.
+- Il riconoscimento della lingua di una frase contava "a" e "in" come inglesi, e ha fatto leggere con la voce inglese una frase italiana. Le frasi generate ora hanno la loro lingua senza doverla indovinare. Per le frasi scritte nella webapp quelle due parole non contano più.
 - Il servizio `domotiq-story` è fermo e disabilitato sulla scheda, e `install.sh` non scarica più il secondo modello. La sintesi vocale torna a usare tutti e quattro i core.
 
 **Luci confermate e cavi ricontrollati (30/9, sera).** Emilio ha confermato a occhio i colori di ogni stanza e l'ordine dei LED dei tasti: il collaudo visivo al banco è superato. Dal repository è uscita la placca del secondo modulo Buttons (`33_Placca_Totem_Tasti2`), che nel totem con un solo modulo non serve più. Ho ricontrollato i cavi Qwiic sui percorsi del CAD:
@@ -155,7 +155,7 @@ Le lunghezze vere si misurano sulla casa montata e poi entrano nel capitolo dei 
 
 ## 4 ottobre 2026 — Casa montata, webcam e hotspot
 
-**Hotspot all'avvio (4/10, notte).** Con l'hardware montato nella scocca, Pixels, Buttons, Thermo e relè rispondono tutti. L'hotspot però non c'era: il 30/9 l'avevo acceso a mano, senza la modalità di avvio, e dopo il riavvio la scheda era tornata sulla Wi-Fi del laboratorio. Ora parte da solo a ogni avvio (`scripts/hotspot.sh boot`), come in fiera.
+**Hotspot all'avvio (4/10, notte).** Con l'hardware montato nella scocca, Pixels, Buttons, Thermo e relè rispondono tutti. L'hotspot però non c'era: il 30/9 l'avevo acceso a mano, senza la modalità di avvio, e dopo il riavvio la scheda era tornata sulla Wi-Fi del laboratorio. Ora parte da solo a ogni avvio (`scripts/hotspot.sh boot`).
 
 **Immagine nera dopo "Regola di nuovo la luce" (4/10, notte).** Dopo la calibrazione la diretta era quasi nera e la casa vuota non si era salvata. La C270, quando esposizione e bilanciamento del bianco sono in automatico, non dice i valori che sta usando: restituisce gli ultimi impostati a mano (il bilanciamento addirittura 0), e la casa bloccava quelli, cioè esposizione 36 invece di qualche centinaio e bilanciamento al minimo. Ora la casa misura le immagini:
 - lascia regolare la webcam in automatico e misura luminosità e colori;
@@ -213,7 +213,7 @@ Nella prima prova la casa ha chiesto dell'auto e ha capito "Honda Civic", ma non
 - capire "tutti e due";
 - niente falsi allarmi e niente personaggi che si muovono da soli;
 - un allarme disinseribile;
-- niente staff e niente PIN;
+- niente PIN, tutto aperto a chi usa la webapp;
 - una webapp più pulita.
 
 In ordine:
@@ -223,7 +223,7 @@ In ordine:
 - **Personaggi che si muovono da soli**: era il nome che passava da una macchia a un'altra lontana. Ora i nomi si muovono solo con le mani.
 - **Un errore subito corretto.** Il nuovo segno "presenza certa" usciva come booleano di numpy, e per qualche minuto `/api/state` ha risposto 500: la webapp sulla scheda non si caricava.
 - **Avvio.** Dopo i riavvii delle 20:36 e delle 20:37, a casa vuota, l'alone delle lampade e il modulo dei tasti erano diventati Mister Brown, Mister Green e una persona sul vialetto. Ora l'avvio aspetta che le luci stiano ferme e prende solo personaggi certi; dopo il riavvio successivo la casa vuota è rimasta vuota.
-- **Tutti e due**, **allarme disinseribile**, **niente staff né PIN** e **webapp uniforme**: vedi D-25, D-26 e D-27. Le schermate della guida sono rifatte con la casa simulata.
+- **Tutti e due**, **allarme disinseribile**, **niente PIN** e **webapp uniforme**: vedi D-25, D-26 e D-27. Le schermate della guida sono rifatte con la casa simulata.
 
 **Sera, quarta parte (4/10).** Altre richieste di Emilio, lavorate in parallelo:
 - **Proposte che diventano comandi** (D-28). Tre cause: "sì" con l'accento non entrava in nessuna grammatica, le risposte naturali venivano tagliate o scartate, le proposte per chi è in tanti non si ascoltavano affatto. Ora un sì esegue la proposta e un altro comando detto nella risposta esegue quello. `llama-server` passa a tre slot: va reinstallato il suo servizio.
@@ -328,7 +328,7 @@ In ordine:
   - Un interruttore fa annunciare solo le presenze che la rete riconosce (spento finché non lo proviamo).
   - Nella webapp c'è il registro della visione, dove si conferma o si corregge quello che la casa ha visto: le risposte diventano esempi per la rete.
   - Un banco di prova rigioca le registrazioni.
-  - Nella guida dello staff c'è la lista di controllo per aprire lo stand.
+  - Nella guida rapida c'è la lista di controllo per preparare la casa.
 - **La raccolta continua** (D-70). Su richiesta di Emilio la casa tiene quello che vede la webcam, entro 500 MB, per addestrare meglio la rete: un'immagine ogni 5 secondi, due al secondo quando succede qualcosa. Il registro della visione è stato rivisto voce per voce, e alla nascita la rete guarda anche le macchie che toccano una statuina.
 - **Le statuine dentro la casa vuota** (D-71). Confrontando i riferimenti della raccolta si è visto che a ogni riavvio, partita con un'altra luce, la casa non trovava nessuno e pochi secondi dopo reimparava la casa vuota con tutte le statuine dentro: da lì non le vedeva più e, spostate, lasciavano fantasmi. Ora all'avvio la rete riconosce i personaggi anche quando i colori non tornano, e una casa che non conosce nessuno non impara come casa vuota quello che spicca.
 - **La rete addestrata di nuovo** (D-72). I ritagli di oggi sono stati rivisti uno per uno dove casa e rete non erano d'accordo: il prato e il letto vuoti presi per statuine sono diventati "niente", le statuine inglobate nella casa vuota hanno preso il loro nome. La rete nuova riconosce con sicurezza l'80% delle macchie che non sono statuine, la vecchia il 42%, senza scartare statuine vere.
@@ -341,3 +341,8 @@ In ordine:
 - **La prova sulla casa vera** (D-77). Installato alle 17:37, il regolatore seguiva la luce, ma con quattro difetti. La casa imparava la casa vuota a metà dei suoi passi. Con la luce al minimo la cima dei muri sembrava "mani" e lo teneva fermo. Al buio la webcam è stata regolata da capo sei volte in mezz'ora, sempre con gli stessi valori. Soprattutto, il vialetto non risponde alle luci della sala come la casa. Ora la luce si misura sulle stanze, la casa vuota si impara dopo i passi, e al buio la regolazione completa non si ripete per niente.
 - **La vista dal vivo.** Dalle 17:37 la web app riceveva un'immagine ogni 5 minuti: il blocco che le manda era finito, con D-76, dentro il salvataggio dei valori della webcam. Sistemato, con un test che fa girare tutto il processo della visione.
 - **L'orologio della scheda** segna un giorno indietro (l'8/10): senza internet e senza batteria dell'orologio non ha modo di rimettersi. Le ore dei log sono giuste, la data no.
+
+## 10 ottobre 2026 — Una guida per chiunque
+- **Preparare una scheda nuova.** Sull'immagine di fabbrica la password dell'utente `arduino` si imposta al primo `sudo`: il comando indicato prima non funzionava. La guida usa la password `domotiq2026`.
+- **L'accesso con chiave.** Il passo ha un comando per caso. `add-pc.sh` riconosce una scheda nuova con un nome già usato: prima `ssh` si rifiutava con *REMOTE HOST IDENTIFICATION HAS CHANGED*, ora lo script chiede se dimenticare l'identità vecchia.
+- **Una guida per chiunque** (D-78). La documentazione descrive una casa sola, la guida rapida è per chi usa la casa, e `--house` è facoltativo. Il cartello da stampare è tolto: le informazioni per collegare un telefono sono nella guida.

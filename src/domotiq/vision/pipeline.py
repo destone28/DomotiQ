@@ -7,7 +7,7 @@ in place), so whatever differs from it is a figurine, the car, an object or
 a visitor's hand. The comparison is done in Lab, after a correction of the
 light:
 
-- the lights of the house and of the fair hall change brightness and tint.
+- the lights of the house and of the room around it change brightness and tint.
   Each pixel is corrected with the gains of the light of its own room (a
   gain per colour channel, estimated on the free floor of the room: the most
   common ratio to the reference, so a figurine or the car does not bias it,

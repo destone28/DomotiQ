@@ -3,8 +3,8 @@
 """The time of the house.
 
 The UNO Q has no battery for its clock: after a power cut it wakes up with
-whatever time it had when it was switched off. At a fair there is no NTP
-either. So the clock takes the time from the first phone that opens the web
+whatever time it had when it was switched off. Without internet there is no
+NTP either. So the clock takes the time from the first phone that opens the web
 app, from a sentence ("it's half past three"), or from the settings page.
 Once set, it holds until the board stops: when only the application starts
 again (an update, the watchdog), the house does not ask the time again.

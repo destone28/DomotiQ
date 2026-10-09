@@ -4,7 +4,7 @@
 
 Every image that goes out (live view, snapshots, dataset exports) passes
 through here:
-- everything around the house (the stand, the visitors, their phones) is
+- everything around the house (the table, the visitors, their phones) is
   blurred, once the house knows where the base is;
 - the bathroom is blurred too, unless it is turned off in the settings:
   the footprint of each private room seen at floor level and at the top of

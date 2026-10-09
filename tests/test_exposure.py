@@ -84,7 +84,7 @@ def test_a_slow_evening_is_followed_with_few_steps():
 
 
 def test_too_bright_at_the_lowest_gain_one_real_step_of_the_exposure():
-    """A hall much brighter than casa1 (a sunny fair): the gain reaches its floor, then the exposure goes one real
+    """A room much brighter than casa1 (in the sun): the gain reaches its floor, then the exposure goes one real
     step down and the gain makes up for it; the step says its factor is a guess."""
     seen, reg = follow(scene(8.0, 1.0), looks=60)
     assert reg.exposure < EXPOSURES[0]

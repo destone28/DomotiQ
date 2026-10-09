@@ -10,7 +10,7 @@
 #   bash scripts/hotspot.sh boot      the hotspot starts by itself at every boot
 #   bash scripts/hotspot.sh status
 #
-# No captive portal: phones join with the QR on the sign and open the address
+# No captive portal: phones join with the Wi-Fi password and open the address
 # of the house. The DNS of the hotspot answers for casaN.lan and makes the
 # iCloud Private Relay names fail fast, so iPhones do not wait for it.
 

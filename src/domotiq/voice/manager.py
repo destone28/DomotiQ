@@ -429,7 +429,7 @@ class Voice:
 
     # ================================================================ word of activation
     def wake_phrase(self) -> str:
-        """The word of activation as the speech recognizer writes it ("Casa 2" is "casa due"); "" when it is off."""
+        """The word of activation as the speech recognizer writes it ("Robot 3" is "robot tre"); "" when it is off."""
         s = self.ctx.settings
         if not s.get("voice.wake_enabled", False):
             return ""

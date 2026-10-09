@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """The virtual climate: a thermostat you warm with a finger, a shower you breathe on.
 
-The fair hall has no fixed temperature, so thresholds are relative to a
+The room around the house has no fixed temperature, so thresholds are relative to a
 moving baseline: the average of the last few minutes. A finger on the
 sensor raises it slowly (the board has thermal mass), a breath raises the
 humidity in a second or two; either one counts.

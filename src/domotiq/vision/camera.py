@@ -9,7 +9,7 @@ the pipeline never works on an old one.
 Automatic exposure and white balance would follow the figurines and the
 coloured lights of the house and change the colours the recognition relies
 on: after the calibration they are locked, together with the gain, the
-anti-flicker at 50 Hz (the lights of an Italian fair hall) and the backlight
+anti-flicker at 50 Hz (the lights on the European mains) and the backlight
 compensation off. They are put back after every reconnection, since a camera
 that is unplugged forgets them, and read back every minute by the vision
 process. While the house looks, the gain follows the light of the hall in small

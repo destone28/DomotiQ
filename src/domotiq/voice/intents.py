@@ -92,8 +92,8 @@ def number_words(n: int, lang: str) -> str:
 
 
 def spoken(text: str, lang: str) -> str:
-    """A phrase as the speech recognizer would write it: normalized, numbers in words ("Casa 2" and "casa2" are
-    "casa due", "R2D2" is "r due d due")."""
+    """A phrase as the speech recognizer would write it: normalized, numbers in words ("Robot 3" and "robot3"
+    are "robot tre", "R2D2" is "r due d due")."""
     t = normalize(re.sub(r"(?<=[a-zA-Z])(?=\d)|(?<=\d)(?=[a-zA-Z])", " ", text or ""))
     return " ".join(number_words(int(w), lang) if w.isdigit() and int(w) < 1000 else w for w in t.split())
 

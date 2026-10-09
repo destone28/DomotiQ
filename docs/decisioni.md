@@ -41,7 +41,7 @@ Ogni decisione ha la data, il contesto, la scelta e il motivo. Quando una decisi
 **Perché:** con un solo Buttons non serve cambiare indirizzi, la catena del canale 6 si accorcia e il totem si semplifica.
 
 ### D-10 — Rete senza captive portal (28/9)
-**Scelta:** hotspot WPA2 a 2,4 GHz per casa, sottoreti diverse (10.42.1.0/24 e 10.42.2.0/24), nomi `casaN.lan` e `casaN.local`, QR su cartello A4.
+**Scelta:** hotspot WPA2 a 2,4 GHz della casa, sottorete 10.42.N.0/24 (N è il numero della casa, di serie 1), nomi `casaN.lan` e `casaN.local`.
 **Perché:** la finestra di accesso dei captive portal non permette la fotocamera e su iPhone si chiude cambiando app; l'indirizzo numerico funziona sempre.
 
 ### D-11 — Core della MCU (29/9)
@@ -74,10 +74,10 @@ Ogni decisione ha la data, il contesto, la scelta e il motivo. Quando una decisi
 
 ### D-18 — Benvenuto ai telefoni e domande in modalità chiacchierona (30/9)
 **Scelta:** la casa saluta a voce ogni telefono che apre la webapp per la prima volta, ne chiede il nome e invita a entrare con un personaggio; in modalità chiacchierona fa di tanto in tanto una domanda a un personaggio con un nome, adatta alla stanza in cui si trova. In tutti e due i casi ascolta la risposta da sola, senza il tasto Parla. Le risposte si confrontano con poche parole attese e le reazioni sono frasi scritte, non generate dal modello linguistico; le proposte (festa, barbecue, cinema, luce) si eseguono solo dopo un sì chiaro.
-**Perché:** richiesta di Emilio per rendere la casa più viva con i visitatori. Il modello linguistico della scheda sceglie solo tra comandi e scrive a 6 parole al secondo: una reazione generata sarebbe lenta e imprevedibile. Una risposta in chiacchierata passata al riconoscimento dei comandi farebbe danni ("mi piace la musica" farebbe partire la festa). In fiera arrivano gruppi con decine di telefoni: un saluto a voce ogni 45 secondi al massimo, i nomi scritti ringraziati insieme, e i telefoni dimenticati dopo 7 giorni come gli eventi. Due revisioni hanno portato altre regole: **Parla** e il citofono interrompono il saluto o la domanda (prima venivano ignorati, e la casa prendeva il comando del visitatore per un nome o una risposta); i nomi scritti sui telefoni non vengono mai letti ad alta voce (una casella per il nome permetterebbe di far dire alla casa qualunque cosa); le domande si fanno solo se ci sono segni di visitatori negli ultimi 5 minuti e si fermano dopo due senza risposta; una risposta sentita mentre la casa parlava si scarta; di quello che il microfono sente senza Parla si registra solo l'esito, e il testo riconosciuto non va più ai telefoni. La prima revisione aveva anche trovato che i nomi scritti dai visitatori finivano dentro le frasi da formattare (con `str.format` un nome come `{name:>999999999}` avrebbe costruito una frase di un gigabyte, anche con i nomi dei personaggi già esistenti): ora le frasi sostituiscono solo i segnaposto esatti e i nomi non possono contenere parentesi graffe.
+**Perché:** richiesta di Emilio per rendere la casa più viva con i visitatori. Il modello linguistico della scheda sceglie solo tra comandi e scrive a 6 parole al secondo: una reazione generata sarebbe lenta e imprevedibile. Una risposta in chiacchierata passata al riconoscimento dei comandi farebbe danni ("mi piace la musica" farebbe partire la festa). Possono arrivare gruppi con decine di telefoni: un saluto a voce ogni 45 secondi al massimo, i nomi scritti ringraziati insieme, e i telefoni dimenticati dopo 7 giorni come gli eventi. Due revisioni hanno portato altre regole: **Parla** e il citofono interrompono il saluto o la domanda (prima venivano ignorati, e la casa prendeva il comando del visitatore per un nome o una risposta); i nomi scritti sui telefoni non vengono mai letti ad alta voce (una casella per il nome permetterebbe di far dire alla casa qualunque cosa); le domande si fanno solo se ci sono segni di visitatori negli ultimi 5 minuti e si fermano dopo due senza risposta; una risposta sentita mentre la casa parlava si scarta; di quello che il microfono sente senza Parla si registra solo l'esito, e il testo riconosciuto non va più ai telefoni. La prima revisione aveva anche trovato che i nomi scritti dai visitatori finivano dentro le frasi da formattare (con `str.format` un nome come `{name:>999999999}` avrebbe costruito una frase di un gigabyte, anche con i nomi dei personaggi già esistenti): ora le frasi sostituiscono solo i segnaposto esatti e i nomi non possono contenere parentesi graffe.
 
 ### D-19 — Storie generate da un database di pezzi, non da un modello linguistico (30/9)
-**Scelta:** storie, ricordi, risposte sulla vita di casa e frasi generate della modalità chiacchierona si compongono combinando i pezzi di `data/stories.json`, scritti a mano in italiano e in inglese e compatibili con qualunque nome (generazione procedurale). Anche le personalità vengono dal database e restano fino al riavvio; le informazioni date dallo staff vengono prima. Il secondo modello linguistico e il suo servizio `domotiq-story` sono stati tolti; il modello dei comandi resta com'era.
+**Scelta:** storie, ricordi, risposte sulla vita di casa e frasi generate della modalità chiacchierona si compongono combinando i pezzi di `data/stories.json`, scritti a mano in italiano e in inglese e compatibili con qualunque nome (generazione procedurale). Anche le personalità vengono dal database e restano fino al riavvio; le informazioni scritte nella webapp vengono prima. Il secondo modello linguistico e il suo servizio `domotiq-story` sono stati tolti; il modello dei comandi resta com'era.
 **Perché:** la prima versione faceva scrivere storie e risposte a un secondo modello sulla scheda. Le misure sulla UNO Q (quattro Cortex-A53 senza le istruzioni per il prodotto scalare, llama.cpp, quantizzazione a 4 bit):
 
 | Modello | Italiano | Lettura (token/s) | Scrittura (token/s) |
@@ -90,11 +90,11 @@ Con il 2B una storia di cinque frasi richiede minuti, più 3-4 minuti la prima v
 
 ### D-20 — Niente si muove da solo; domande a voce senza tasto e racconto degli eventi (4/10)
 **Scelta:** la visione accetta una presenza nuova solo dove una mano ha appena lavorato, quando la mano è uscita da 0,6 secondi e la cosa è stabile da un secondo. Una differenza dalla casa vuota senza mano intorno entra nella casa vuota dopo circa 3 secondi; fa eccezione una cosa ben visibile comparsa entro 20 secondi da una mano. Una "mano" ferma per 8 secondi è un oggetto sul bordo. Ogni domanda della casa si ascolta senza il tasto Parla e intanto compare sui telefoni: vale la prima risposta. Per ogni cosa nuova la casa chiede subito chi è, accettando anche un nome nuovo. Un narratore dice chi entra, esce o cambia stanza.
-**Perché:** con la casa montata la visione vedeva presenze che non c'erano: il braccio diventava molte persone e animali, i riflessi delle luci diventavano oggetti, i moduli sciolti sul vialetto diventavano animali. In un plastico però ogni cambiamento lo fa una mano, e la regola elimina tutti questi casi senza abbassare la sensibilità; anzi, ha permesso di renderla più alta, quanto serve per vedere una statuina marrone scuro sul pavimento grigio con la luce del laboratorio. Il prezzo è un'attesa di circa 1,5 secondi tra la mano che si toglie e la presenza annunciata. C'è anche un rischio: una cosa cambiata senza che la casa veda la mano finisce nella casa vuota. Lo limitano la "mano ferma" di 8 secondi e la regola dei 20 secondi. Le domande senza tasto e il racconto sono richieste di Emilio: alla fiera nessuno sa che per rispondere va tenuto premuto Parla.
+**Perché:** con la casa montata la visione vedeva presenze che non c'erano: il braccio diventava molte persone e animali, i riflessi delle luci diventavano oggetti, i moduli sciolti sul vialetto diventavano animali. In un plastico però ogni cambiamento lo fa una mano, e la regola elimina tutti questi casi senza abbassare la sensibilità; anzi, ha permesso di renderla più alta, quanto serve per vedere una statuina marrone scuro sul pavimento grigio con la luce del laboratorio. Il prezzo è un'attesa di circa 1,5 secondi tra la mano che si toglie e la presenza annunciata. C'è anche un rischio: una cosa cambiata senza che la casa veda la mano finisce nella casa vuota. Lo limitano la "mano ferma" di 8 secondi e la regola dei 20 secondi. Le domande senza tasto e il racconto sono richieste di Emilio: chi prova la casa per la prima volta non sa che per rispondere va tenuto premuto Parla.
 
 ### D-21 — "Chi è?" capisce qualsiasi risposta: regole, poi il modello linguistico locale (4/10)
 **Scelta:** la domanda su un nuovo arrivato dice che cosa sembra alla casa ("vedo una persona nuova, giusto?"). A una persona chiede il nome; per animali, auto e oggetti propone solo i registrati dello stesso tipo. La risposta può essere qualsiasi frase, e la casa la capisce in due passi. Prima delle regole riconoscono all'istante le risposte brevi e comuni: un nome, il tipo, sì e no, "non c'è nessuno", "non lo so", un comando della casa. Il resto va a Qwen2.5-0.5B, lo stesso modello dei comandi, che ha solo il compito di dire che tipo di risposta è, con l'uscita vincolata da una grammatica. Il tipo e i nomi registrati la casa li legge nella frase, e un nome proposto dal modello conta solo se è nella frase. Le istruzioni di questo compito stanno in un secondo slot di llama-server (`-np 2`, contesto 4096). Un nome già presente e visibile in un'altra stanza vuol dire che il nuovo arrivato non c'era.
-**Perché:** Emilio vuole che alla fiera si possa rispondere come viene, anche "non c'è nessuno in giardino", e che la casa risponda di conseguenza. Il modello piccolo da solo sbagliava circa un terzo delle frasi difficili ("macché persona, è il mio cane Fido" → persona). Con le regole davanti e il controllo sulla frase, su 113 risposte di prova (79 scritte per tararle, 34 nuove) la casa le capisce tutte, e solo circa una su dodici arriva al modello. Sulla scheda il modello impiega da 3 a 6 secondi, per questo resta l'ultima risorsa. Con un solo slot le istruzioni dei comandi e quelle delle risposte si sarebbero scacciate a vicenda dalla cache, e rileggerle costa minuti.
+**Perché:** Emilio vuole che si possa rispondere come viene, anche "non c'è nessuno in giardino", e che la casa risponda di conseguenza. Il modello piccolo da solo sbagliava circa un terzo delle frasi difficili ("macché persona, è il mio cane Fido" → persona). Con le regole davanti e il controllo sulla frase, su 113 risposte di prova (79 scritte per tararle, 34 nuove) la casa le capisce tutte, e solo circa una su dodici arriva al modello. Sulla scheda il modello impiega da 3 a 6 secondi, per questo resta l'ultima risorsa. Con un solo slot le istruzioni dei comandi e quelle delle risposte si sarebbero scacciate a vicenda dalla cache, e rileggerle costa minuti.
 
 ### D-22 — Presenza sicura prima di chiedere; la luce della sala seguita senza perdere niente (4/10)
 **Scelta:** oltre a D-20:
@@ -143,14 +143,14 @@ Nella registrazione delle 15:31, poi, due tracce si scambiavano di posto senza n
 
 **Perché:** dopo le prove della sera Emilio vedeva personaggi muoversi da soli sulla mappa e falsi allarmi nel locale tecnico e in bagno. Sulla scheda, con 8 presenze, un'immagine costava 445 ms (2,3 al secondo): a quel ritmo funzionano male anche le regole che contano le immagini. Il nome di Viola era sulla scheda UNO Q, e Viola aveva imparato come pose un grigio, un nero e il marrone di Mister Braun. All'avvio, a casa vuota, l'alone delle lampade e il modulo dei tasti diventavano personaggi. Dopo le correzioni: tra 100 e 120 ms per immagine, con il riconoscimento sotto i 3 ms; a casa vuota, dopo un riavvio, nessuna presenza. La registrazione delle 15:31 dà ancora zero domande, con i quattro personaggi seguiti.
 
-### D-26 — Niente staff e niente PIN (4/10)
-**Scelta:** tutte le pagine e tutte le API sono aperte a chiunque usi la webapp: calibrazione, dataset, diagnostica, impostazioni (Wi-Fi compreso), backup, cestino, riavvio e spegnimento. Restano il registro delle modifiche, il cestino di 24 ore e la conferma prima delle azioni che non si annullano. Niente PIN all'installazione, niente `--pin` e niente `admin pin`. Le API dello staff (`/api/staff/...`) diventano `/api/...`.
+### D-26 — Niente PIN: tutto aperto a chi usa la webapp (4/10)
+**Scelta:** tutte le pagine e tutte le API sono aperte a chiunque usi la webapp: calibrazione, dataset, diagnostica, impostazioni (Wi-Fi compreso), backup, cestino, riavvio e spegnimento. Restano il registro delle modifiche, il cestino di 24 ore e la conferma prima delle azioni che non si annullano. Niente PIN all'installazione, niente `--pin` e niente `admin pin`. Le API che chiedevano il PIN diventano aperte come le altre.
 **Perché:** lo ha chiesto Emilio. Il prezzo: un visitatore collegato al Wi-Fi della casa può anche ricalibrare la webcam, cambiare la password del Wi-Fi o spegnere la scheda. Per questo quelle azioni chiedono conferma.
 
 ### D-27 — Allarme inseribile come un antifurto; webapp uniforme (4/10)
 **Scelta:**
 - **Allarme.** Si inserisce e si disinserisce dalla pagina della casa o dalla notifica rossa (`/api/commands/alarm`). Disinserito, le regole d'allarme non scattano e quelle in corso si spengono con le loro luci; reinserito, chi è già in un posto sorvegliato viene notato di nuovo. Lo stato resta dopo un riavvio.
-- **Webapp.** Ogni pagina comincia con titolo, una riga e l'azione principale; il menu Altro ha tre gruppi (la casa, messa a punto, stand). Le notifiche hanno un colore per tipo: rosso allarme, ambra avviso, grigio connessione, scheda bianca per le domande. Sulla piantina la stanza è rossa per un allarme e ambra per un avviso.
+- **Webapp.** Ogni pagina comincia con titolo, una riga e l'azione principale; il menu Altro è diviso in gruppi (la casa, messa a punto). Le notifiche hanno un colore per tipo: rosso allarme, ambra avviso, grigio connessione, scheda bianca per le domande. Sulla piantina la stanza è rossa per un allarme e ambra per un avviso.
 
 **Perché:** richieste di Emilio, per poter spegnere l'allarme come si fa con un antifurto e per una webapp più pulita, in cui allarmi, avvisi e domande si distinguono a colpo d'occhio.
 
@@ -262,7 +262,7 @@ Viola e Mister Blu si confondono perché i loro colori medi distano 5,6 punti, m
 ### D-39 — Parola di attivazione; LED dei tasti (5/10)
 **Scelta:**
 - Da **Impostazioni → Voce** si accende e si sceglie una parola. Detta mentre la casa è libera, fa quello che fa il tasto Parla: "Dimmi, di cosa hai bisogno?", poi ascolta; se la richiesta segue la parola nella stessa frase ("Casa, che ore sono?") la casa risponde subito.
-- La parola si confronta in parole: i numeri diventano parole nelle due lingue ("Casa 2" = "casa due", "House 21" = "house twenty one"); la webapp dice come verrà sentita e quali parole il riconoscimento non conosce.
+- La parola si confronta in parole: i numeri diventano parole nelle due lingue ("Robot 3" = "robot tre", "House 21" = "house twenty one"); la webapp dice come verrà sentita e quali parole il riconoscimento non conosce.
 - L'ascolto della parola cede il microfono a tutto il resto, e non parte mentre la casa parla, per 1,2 secondi dopo, durante conversazioni e domande, né in modalità silenziosa.
 - I LED dei tasti lampeggiano mentre la casa ascolta, restano fissi mentre parla e respirano mentre pensa; mentre aspetta la parola restano come sempre.
 
@@ -492,7 +492,7 @@ Il risultato conta quante volte la casa capisce la stessa cosa che capirebbe dal
 | Inglese, voce pulita / stanza / lontano | 86,1 / 75,0 / 49,3% | 88,9 / 84,0 / 60,4% |
 | Inglese, frasi che non sono comandi prese per un comando | 8,3% | 4,2% |
 
-Con la voce pulita gli errori in italiano scendono da 17,7% a 9,2%. Le voci sintetiche e la stanza simulata non sono il pubblico di una fiera: i valori assoluti dal vivo saranno diversi, il confronto tra prima e ora vale.
+Con la voce pulita gli errori in italiano scendono da 17,7% a 9,2%. Le voci sintetiche e la stanza simulata non sono persone vere che parlano intorno alla casa: i valori assoluti dal vivo saranno diversi, il confronto tra prima e ora vale.
 
 **Scartati, dopo le stesse misure:**
 - **Un secondo riconoscimento con il solo vocabolario della casa**, usato quando la frase non vuol dire niente. Capiva qualche comando in più, ma prendeva per comandi il 28% delle frasi che non lo sono.
@@ -702,14 +702,14 @@ I numeri sono misurati su un blocco di tempo della registrazione lasciato fuori 
   - **La pagina:** Altro → Registro della visione permette di dire "giusto" o "era…" (un personaggio o "niente").
   - **Le etichette:** finiscono in `var/journal/labels.json` e `build_crops.py --journal` le aggiunge all'addestramento.
 - **Il banco di prova (`scripts/vision_bench.py`).** Rigioca le registrazioni nella visione di oggi, con o senza rete e consenso, e confronta con quello che la casa aveva detto; con `--journal` salva i ritagli.
-- **L'apertura dello stand.** Una lista di controllo nella guida rapida dello staff: luce, accensione, casa vuota, statuine posate a mano una alla volta, controllo.
+- **Prima di usare la casa.** Una lista di controllo nella guida rapida: luce, accensione, casa vuota, statuine posate a mano una alla volta, controllo.
 
 **Perché:** richiesta di Emilio, che vuole un riconoscimento affidabile e senza falsi positivi.
 
 La replica della registrazione del 7/10 con la rete accesa:
 - **Le macchie scartate.** Sono 11 macchie distinte, tutte non-statuine: pareti, bordi di porte con il riflesso rosa dei LED, angoli di moduli, un pezzo di tappeto. Nessuna statuina vera è stata scartata.
 - **Il confronto con la serata dal vivo.** La replica, che parte da zero senza i nomi confermati a mano e le pose imparate quella sera, dà nomi diversi da quelli dal vivo anche senza rete (Rossana e Rossellina, Mister Blu e Viola). Il confronto misura quindi una versione contro l'altra, non la verità.
-- **Il consenso.** Resta spento finché non è stato provato con la luce dello stand.
+- **Il consenso.** Resta spento finché non è stato provato con la luce del posto dove sta la casa.
 
 ### D-70 — Raccolta continua delle immagini e revisione del registro (7/10)
 **Scelta:**
@@ -893,3 +893,16 @@ Sulla casa sintetica:
 - **La fascia intorno alla casa che scende a un terzo, le stanze ferme:** nessun passo.
 - **Due luci della casa accese per 30 secondi, oltre i 15 del bagliore:** nessun passo.
 - **Al limite scuro:** con la taratura completa già fatta al buio non la chiede mai; fatta con più luce, la chiede.
+
+### D-78 — Una guida che può seguire chiunque (10/10)
+**Scelta:**
+- **Una casa sola.** La documentazione descrive una casa, `casa1`, con l'utente `arduino` e la password `domotiq2026`. Il numero della casa (`--house N`, da 1 a 254) è facoltativo e di serie vale 1: nome, rete, canale (1, 11 o 6) e indirizzo seguono il numero. Una casa già installata lo legge dalle sue impostazioni.
+- **La guida rapida** è per chi usa la casa ogni giorno.
+- **Niente cartello da stampare.** È tolto dalla webapp, insieme alla libreria dei QR. Per collegare un telefono bastano la rete, la password del Wi-Fi (nel riepilogo dell'installazione e nelle impostazioni) e l'indirizzo, scritti nella guida con quello che il cartello spiegava: cosa rispondere se il telefono avvisa che la rete non ha internet.
+- **Preparare la scheda.**
+  - La password dell'utente `arduino` si imposta al primo `sudo`.
+  - `add-pc.sh` riconosce una scheda nuova con un nome che il PC conosce già e chiede se dimenticare l'identità vecchia. Se la scheda non risponde, dice quale forma del comando usare.
+  - Nella guida ogni caso ha il suo comando.
+- **La password della guida è pubblica.** Prima di lasciare la casa ad altri si permette SSH solo con la chiave (`lockdown.sh`).
+
+**Perché:** richiesta di Emilio: la guida deve poterla seguire chiunque costruisca la casa. Il 10/10, su una scheda nuova, il comando per la password indicato prima non funzionava. Inoltre due comandi alternativi stavano nello stesso riquadro e sono stati incollati insieme.

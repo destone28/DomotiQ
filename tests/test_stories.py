@@ -137,7 +137,7 @@ def test_a_character_keeps_its_personality_until_the_restart(ctx):
     assert st.personas == {}
 
 
-def test_the_facts_of_the_staff_come_first(ctx):
+def test_the_facts_written_in_the_web_app_come_first(ctx):
     st = ctx.voice.stories
     marco = place(ctx, "Marco", KITCHEN)
     ctx.identities.update(marco.id, facts=["fa il medico", "ama il jazz", "is afraid of spiders"])
@@ -161,7 +161,7 @@ def test_what_a_fact_is():
     assert fact_lang("ama il jazz") == "it" and fact_lang("loves jazz") == "en" and fact_lang("Juventus") is None
 
 
-def test_the_language_of_a_sentence_typed_by_the_staff():
+def test_the_language_of_a_sentence_typed_in_the_web_app():
     assert sentence_lang("Proprio in quel momento dal soffitto cominciò a cadere qualche goccia d'acqua.", "it") == "it"
     assert sentence_lang("Marco entrò in cucina con una torta.", "en") == "it"
     assert sentence_lang("Then he saw that the cake was gone and the kitchen was empty.", "it") == "en"
@@ -181,7 +181,7 @@ def test_facts_by_voice_and_what_the_house_knows(ctx):
         assert ctx.said[-4] == "Mi hai detto che Marco fa il medico."
         assert ctx.said[-2] == "Marco loves jazz."
         assert ctx.said[-1].startswith("E poi so che Marco " + p["trait"]["it"])
-        assert p["job"]["it"] not in ctx.said[-1]                          # the job the staff gave, not another
+        assert p["job"]["it"] not in ctx.said[-1]                          # the job written in the web app, not another
         assert ("Marco loves jazz.", "en") in ctx.voices                   # read by the English voice
         assert ctx.said[-3] == "Me l'hai detto anche in inglese:"
         en = ctx.voice.stories.about("Marco", "en")

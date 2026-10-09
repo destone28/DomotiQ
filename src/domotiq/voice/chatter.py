@@ -20,7 +20,7 @@
   living room: shall we party?"). The answer is understood by offers.py: a
   yes runs what was offered, another command of the house runs that one.
 
-Rules that keep it from misbehaving at a fair:
+Rules that keep it from getting in the way:
 - Talk and the intercom come first: pressing them stops the small talk.
 - Answers to chat questions are matched against short lists of words and are
   never run as free commands (in a chat, "mi piace la musica" must not start

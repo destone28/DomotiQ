@@ -1,6 +1,6 @@
 # 5. Testing and commissioning
 
-Go through this chapter on every house after assembly and wiring, and again before each fair. Each step says what to do and what you should see. When something does not match, the [troubleshooting](11-troubleshooting.md) chapter has the likely causes.
+Go through this chapter after assembly and wiring, and again every time the house moves to another place. Each step says what to do and what you should see. When something does not match, the [troubleshooting](11-troubleshooting.md) chapter has the likely causes.
 
 You need a phone or PC connected to the same network as the board: the lab Wi-Fi (`http://casa1.local/`) or the hotspot of the house (`http://10.42.1.1/`).
 
@@ -71,7 +71,7 @@ In **Diagnostics**:
 
 ## 9. Camera calibration
 
-The calibration tells the house where the base is in the image. Until it is done the house sees nothing, and the blur of the bathroom in the live view is only approximate (see [chapter 7](07-recognition-and-identities.md#privacy)): calibrate before the house is open to visitors.
+The calibration tells the house where the base is in the image. Until it is done the house sees nothing, and the blur of the bathroom in the live view is only approximate (see [chapter 7](07-recognition-and-identities.md#privacy)): calibrate before other people use the house.
 
 Open **More → Calibration**.
 
@@ -114,13 +114,12 @@ Then ask something the fixed phrases do not cover, such as "Quanta gente c'è in
 ## 13. Hotspot and phones
 
 1. Switch the board to its hotspot (`bash scripts/hotspot.sh on`, or reboot if you installed with the default `--hotspot boot`).
-2. Print the sign: **More → Printable sign** (or `http://10.42.N.1/sign`), A4 portrait.
-3. With an Android phone and an iPhone: scan QR code 1 to join `DomotiQ-CasaN`, then QR code 2 to open the house. If the phone asks, choose *Stay connected* or *Use without Internet*. On Android, if the page does not open, turn mobile data off for a moment.
-4. **Diagnostics → Wi-Fi** shows how many devices are connected to the hotspot. Open **Live** on several phones at the same time to check that the stream keeps up.
+2. With an Android phone and an iPhone: join `DomotiQ-CasaN` with the Wi-Fi password (it is in the summary of the installation and in **More → Settings → Wi-Fi of the house**), then open `http://10.42.N.1/`. If the phone asks, choose *Stay connected* or *Use without Internet*. On Android, if the page does not open, turn mobile data off for a moment.
+3. **Diagnostics → Wi-Fi** shows how many devices are connected to the hotspot. Open **Live** on several phones at the same time to check that the stream keeps up.
 
 ## 14. Clock
 
-The UNO Q has no battery for its clock and there is no internet at a fair. After a restart, the first phone that opens the web app sets the time of the house (a message says *House time set from this phone*). **Diagnostics → Clock** shows where the time came from. See [chapter 8](08-voice.md#setting-the-clock-by-voice) for setting it by voice.
+The UNO Q has no battery for its clock and, without internet, cannot set the time by itself. After a restart, the first phone that opens the web app sets the time of the house (a message says *House time set from this phone*). **Diagnostics → Clock** shows where the time came from. See [chapter 8](08-voice.md#setting-the-clock-by-voice) for setting it by voice.
 
 ## Testing without figurines
 

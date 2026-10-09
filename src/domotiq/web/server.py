@@ -33,7 +33,7 @@ from ..model import CATEGORIES, CATEGORY_NAMES, new_id
 from ..rules import RuleError
 from ..scenes import ORDER as SCENE_ORDER
 from ..scenes import SCENES
-from . import placeholder, sign
+from . import placeholder
 
 if TYPE_CHECKING:
     from ..app import Context
@@ -217,10 +217,6 @@ def create_app(ctx: "Context") -> FastAPI:
     async def index():
         return page("index.html")
 
-    @app.get("/sign", include_in_schema=False)
-    async def sign_page():
-        return page("sign.html")
-
     @app.get("/board", include_in_schema=False)
     async def board_page():
         return page("board.html")
@@ -275,7 +271,7 @@ def create_app(ctx: "Context") -> FastAPI:
     @app.websocket("/ws")
     async def ws(socket: WebSocket):
         # a browser cannot add headers to a websocket: the phone says who it is in the address
-        # (the booth display connects without an id, and is not a phone)
+        # (the display page connects without an id, and is not a phone)
         device = (socket.query_params.get("device") or "")[:40]
         nick = clean_name(socket.query_params.get("nick") or "", 30)
         await socket.accept()
@@ -730,11 +726,6 @@ def create_app(ctx: "Context") -> FastAPI:
         ctx.house.on_button(index, bool(body.get("pressed", True)))
         return {"ok": True}
 
-    # ============================================================ network sign
-    @app.get("/api/sign")
-    async def sign_data():
-        return sign.sign_data(ctx)
-
     # ============================================================ settings
     @app.get("/api/settings")
     async def settings_get():
@@ -771,7 +762,7 @@ def create_app(ctx: "Context") -> FastAPI:
             if exists:
                 await net.set_hotspot_password(password)
         except net.HotspotError as e:
-            raise HTTPException(503, str(e)) from e      # nothing saved: hotspot and sign stay as they were
+            raise HTTPException(503, str(e)) from e      # nothing saved: the hotspot stays as it was
         ctx.settings.set("network.password", password)
         audit(w, "settings", "network", "update")
         if exists and active:

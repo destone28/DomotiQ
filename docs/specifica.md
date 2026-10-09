@@ -1,7 +1,6 @@
 # DomotiQ – Specifica v1.0
 
 Casa intelligente in scala 1:20 che gira tutta su una Arduino UNO Q 4GB, senza internet.
-Due unità identiche, consegna il 7 ottobre 2026.
 
 Questo documento raccoglie le decisioni prese nei due giri di domande del 28 e 29 settembre e le trasforma in un progetto eseguibile. Quando nel testo compare "(Dn)", n è il numero della domanda del primo giro; "(Rn)" è un punto del secondo giro.
 
@@ -43,7 +42,7 @@ Aggiornamenti dopo il 7 ottobre (D3), giornata accelerata (D80), riconoscimento 
 | Tasti | Un solo Modulino Buttons: "parla", "citofono", "lingua" (R1) |
 | Riconoscimento | Metodo classico senza addestramento: differenza dalla casa vuota, colore, tracciamento (D47) |
 | Voce | Vosk per nomi e sì/no, motore libero per le frasi, Qwen2.5-0.5B per capire le frasi libere, Piper per parlare |
-| Rete | Hotspot a 2,4 GHz, niente captive portal, QR su cartello A4 |
+| Rete | Hotspot a 2,4 GHz, niente captive portal |
 | Permessi | Chiunque, tutto: casa, diretta, comandi, regole, personaggi, allarme, calibrazione, dataset, diagnostica, impostazioni, ora (D-26) |
 
 ---
@@ -315,7 +314,7 @@ Chiunque può rinominare o cancellare. Le cancellazioni vanno in un cestino per 
 
 ### 10.2 Ascolto
 - Tasto **parla**: ascolta finché è premuto, senza limite di tempo (D57). Tutti e tre i LED dei tasti lampeggiano mentre la casa ascolta, respirano mentre elabora la risposta e restano accesi fissi mentre parla (D-39).
-- **Parola di attivazione (D-39, D-44)**: da **Impostazioni → Voce** si accende e si sceglie una parola (per esempio "Casa"); detta quando la casa è libera, fa quello che fa il tasto Parla. Il microfono resta aperto a lungo e il riconoscimento, ristretto alla parola, la segnala dal risultato parziale, mentre è ancora detta: in quel momento i LED lampeggiano e il riconoscimento libero parte dagli ultimi 2 s di audio e continua fino a una pausa di 0,9 s, quindi la richiesta detta insieme ("Casa, accendi la luce in cucina") è pronta quando finisce. Se dopo la parola, entro 0,45 s, non segue niente di forte quanto la parola stessa, la casa risponde subito "Dimmi!" (D-56), senza aspettare il riconoscimento libero se quello della parola era sicuro, poi ascolta. Se il riconoscimento libero non ritrova la parola in una frase, la casa non risponde. I numeri si confrontano in parole ("Casa 2" = "casa due"); la webapp segnala le parole che il riconoscimento non conosce.
+- **Parola di attivazione (D-39, D-44)**: da **Impostazioni → Voce** si accende e si sceglie una parola (per esempio "Casa"); detta quando la casa è libera, fa quello che fa il tasto Parla. Il microfono resta aperto a lungo e il riconoscimento, ristretto alla parola, la segnala dal risultato parziale, mentre è ancora detta: in quel momento i LED lampeggiano e il riconoscimento libero parte dagli ultimi 2 s di audio e continua fino a una pausa di 0,9 s, quindi la richiesta detta insieme ("Casa, accendi la luce in cucina") è pronta quando finisce. Se dopo la parola, entro 0,45 s, non segue niente di forte quanto la parola stessa, la casa risponde subito "Dimmi!" (D-56), senza aspettare il riconoscimento libero se quello della parola era sicuro, poi ascolta. Se il riconoscimento libero non ritrova la parola in una frase, la casa non risponde. I numeri si confrontano in parole ("Robot 3" = "robot tre"); la webapp segnala le parole che il riconoscimento non conosce.
 - Dopo ogni domanda della casa (citofono, conferme, "chi è?", dubbi, domande ai personaggi, saluto ai telefoni): ascolto automatico di circa 6 s, senza tasto, ripetuto una volta se la risposta non è chiara. Il microfono si apre mentre la casa finisce la domanda e la sua voce si scarta fino a 0,35 s dopo l'ultima parola. La stessa domanda è sui telefoni: vale la prima risposta, e una risposta dal telefono ferma l'ascolto.
 - **Domande sulla vita di casa (D-48)**: a una domanda della modalità chiacchierona si può rispondere con una domanda che continua il discorso ("Quando?" dopo il compleanno, "Dove?" dopo le vacanze), con un comando o una domanda per la casa; il resto riceve una reazione.
 - **Racconto (D-20, D-42)**: in modalità normale e chiacchierona una frase breve per chi entra, esce o cambia stanza e per l'auto parcheggiata, detta quando il movimento si è fermato, unendo gli eventi contemporanei e mai sopra una domanda. La stessa cosa sullo stesso personaggio (la stessa stanza, lo stesso mobile) non si ripete per 10 minuti; su un mobile si sale dopo 5 immagini concordi e si scende dopo 15.
@@ -489,7 +488,7 @@ Se dopo 2 minuti dall'avvio l'ora è ancora sconosciuta, la casa lo chiede una v
 - **Chiunque** può fare tutto (D-26): casa virtuale, diretta, comandi, eventi, regole, identità, simulazione, allarme, calibrazione, dataset, diagnostica, impostazioni (ora compresa), ripristino dal cestino. Le azioni che non si annullano chiedono conferma; ogni modifica va nel registro.
 
 ### 15.3 Schermate
-Barra in basso: **Casa**, **Diretta**, **Comandi**, **Personaggi**, **Altro**. Ogni pagina comincia con titolo, una riga che dice a cosa serve e l'azione principale a destra del titolo. **Altro** è diviso in tre gruppi: *La casa* (Eventi, Regole, Simulazione), *Messa a punto* (Calibrazione, Diagnostica, Impostazioni), *Per lo stand* (Cartello, Informazioni), più il soprannome. Il Tabellone non è nel menu: si apre scrivendo `/board`.
+Barra in basso: **Casa**, **Diretta**, **Comandi**, **Personaggi**, **Altro**. Ogni pagina comincia con titolo, una riga che dice a cosa serve e l'azione principale a destra del titolo. **Altro** è diviso in due gruppi: *La casa* (Eventi, Regole, Simulazione, Informazioni) e *Messa a punto* (Calibrazione, Diagnostica, Impostazioni), più il soprannome. Il Tabellone non è nel menu: si apre scrivendo `/board`.
 
 Notifiche in cima, un colore per tipo: rosso un allarme (con **Disinserisci**), ambra un avviso, grigio la connessione persa, scheda bianca con bordo verde acqua una domanda della casa (con **Tutti e due** quando i nomi proposti sono più di uno).
 
@@ -514,8 +513,7 @@ Notifiche in cima, un colore per tipo: rosso un allarme (con **Disinserisci**), 
 
 Pagine in più:
 - **Informazioni**: cos'è il progetto, crediti, licenze delle voci e dei modelli.
-- **Cartello**: A4 verticale stampabile con i due QR (rete e indirizzo) e le istruzioni in italiano e inglese.
-- **Tabellone**: piantina, eventi e diretta per un monitor o tablet allo stand, senza comandi.
+- **Tabellone**: piantina, eventi e diretta per un monitor o tablet accanto alla casa, senza comandi.
 
 ### 15.4 API (sintesi)
 | Metodo e percorso | Uso |
@@ -537,16 +535,18 @@ Pagine in più:
 
 ## 16. Rete
 
-| | Casa 1 | Casa 2 |
-|---|---|---|
-| SSID | DomotiQ-Casa1 | DomotiQ-Casa2 |
-| Sicurezza | WPA2, password generata dall'installatore e stampata sul cartello | idem |
-| Canale | 1 | 11 |
-| Indirizzo | 10.42.1.1 | 10.42.2.1 |
-| Nomi | casa1.lan, casa1.local | casa2.lan, casa2.local |
+| | |
+|---|---|
+| SSID | DomotiQ-Casa1 |
+| Sicurezza | WPA2, password generata dall'installatore |
+| Canale | 1 |
+| Indirizzo | 10.42.1.1 |
+| Nomi | casa1.lan, casa1.local |
+
+Con `--house N`: `DomotiQ-CasaN`, canale 1, 11 o 6, `10.42.N.1`, `casaN`.
 
 - NetworkManager in modalità condivisa; dnsmasq risponde per `casaN.lan` e fa fallire subito i nomi di iCloud Private Relay; avahi annuncia `casaN.local`.
-- Niente captive portal. Il cartello dice: "Se il telefono lo chiede, scegli Resta connesso / Usa senza Internet. Android: se la pagina non si apre, spegni i dati mobili."
+- Niente captive portal. Se il telefono lo chiede, si sceglie Resta connesso / Usa senza Internet; su Android, se la pagina non si apre, si spengono i dati mobili.
 - Guardia del Wi-Fi: se l'access point cade, lo si riattiva e lo si segnala.
 - Durante lo sviluppo la scheda sta sulla rete di casa; in M3 si prova l'hotspot, e se la scheda regge rete di casa e hotspot insieme si tengono entrambi fino alla consegna.
 
@@ -567,7 +567,7 @@ Sulla scheda, in `/home/arduino/domotiq`:
 | `var/domotiq.db` | SQLite: eventi (7 giorni), posizioni (24 ore), registro delle modifiche |
 | `var/dataset/`, `var/recordings/` | catture e sequenze dalla pagina di calibrazione |
 
-Backup e ripristino: un file zip dalle impostazioni, con scelta di cosa copiare; la calibrazione non si copia mai fra case (D110). Le due case sono indipendenti anche nei personaggi (D109).
+Backup e ripristino: un file zip dalle impostazioni, con scelta di cosa copiare; la calibrazione della webcam non entra mai nel backup (D110).
 
 ---
 
@@ -603,7 +603,7 @@ Confinamento come Amelie (`ProtectSystem`, `NoNewPrivileges`, `PrivateTmp`).
 
 ### 18.5 Prima della consegna
 - sudo di nuovo con password; SSH solo con chiave;
-- password del Wi-Fi annotata nella guida rapida per lo stand, non nel repository.
+- password del Wi-Fi annotata per chi usa la casa, non nel repository.
 
 ---
 
@@ -636,7 +636,7 @@ CPU: la visione occupa circa un core; riconoscimento e modello linguistico lavor
   - `scripts/bench_mcu.py`: scansione, luci, tasti, sensori, relè;
   - prova audio, prova della camera, prova dell'hotspot con Android e iPhone;
   - misura di tempi e memoria.
-- **Collaudo finale**, elenco in `docs/it/05-collaudo.md`, su entrambe le case.
+- **Collaudo finale**, elenco in `docs/it/05-collaudo.md`.
 
 ---
 
@@ -674,7 +674,7 @@ Commit in inglese, piccoli e frequenti, direttamente su `main`; tag `v0.1`…`v1
 ## 22. Documentazione
 - `README.md` in inglese e `README.it.md` in italiano, scritti per l'editor di Project Hub: un livello di titoli, niente tabelle, niente elenchi numerati o annidati, link assoluti.
 - Guide in `docs/en` e `docs/it`: preparare la UNO Q, installazione, stampa e montaggio (con i numeri incisi), cablaggio, collaudo, uso della webapp, riconoscimento e identità, voce, regole, risoluzione dei problemi, attribuzioni.
-- Guida rapida per lo stand, una pagina stampabile in italiano e inglese.
+- Guida rapida di una pagina, in italiano e inglese.
 - Le funzioni si descrivono con i termini tecnici veri: visione artificiale, machine learning, modello linguistico (LLM), riconoscimento e sintesi vocale (R10).
 - Credito: "Created by Emilio Destratis (destratis.it) in collaboration with Arduino."
 - I modelli dei personaggi e dell'auto non sono nel repository: la guida li cita con i link che fornirai (D15).
@@ -694,7 +694,6 @@ Commit in inglese, piccoli e frequenti, direttamente su `main`; tag `v0.1`…`v1
 | llama.cpp; Qwen2.5-0.5B-Instruct | MIT; Apache-2.0 | frasi libere |
 | Piper (piper1-gpl) | GPL-3.0, programma separato | sintesi vocale |
 | Voci serena (IT), ljspeech (EN) | CC BY 4.0; pubblico dominio | sintesi vocale |
-| segno | BSD-3 | QR del cartello |
 | Open Sans; Roboto Mono | OFL-1.1 | caratteri |
 | arduino:zephyr; Arduino_RouterBridge | Apache-2.0; MPL-2.0 | firmware |
 
@@ -709,7 +708,7 @@ L'elenco definitivo, con le versioni, sta in `docs/strumenti-e-licenze.md` e nel
 | Specifica | mar 29/9 | questo documento | approvazione |
 | M1 | mer 30/9 – gio 1/10 | repository, licenze, `house.json`, simulatore, motore di regole e vincoli, webapp (casa, simulazione, regole, eventi, comandi, identità), firmware e client della MCU provati su casa1, audio e suoni, musica del party | `v0.1` |
 | M2 | gio 1/10 – sab 3/10 | visione sulla casa 1 montata: camera, calibrazione, casa vuota, tracciamento, trasporto a mano, identità, diretta col bagno sfocato; citofono, voce libera, modello linguistico; clima, party, grigliata, garage | `v0.2` |
-| M3 | dom 4/10 – lun 5/10 | hotspot, avvio automatico, guardie, diagnostica, impostazioni, cartello; installazione da zero su casa 2 (montata lunedì 5); prestazioni; collaudo | `v0.9` |
+| M3 | dom 4/10 – lun 5/10 | hotspot, avvio automatico, guardie, diagnostica, impostazioni; installazione da zero su una scheda nuova; prestazioni; collaudo | `v0.9` |
 | M4 | mar 6/10 | guida IT/EN, schermate, schema dei collegamenti, attribuzioni, release | `v1.0` |
 | Consegna | mer 7/10 | | |
 
@@ -719,7 +718,7 @@ Diario, decisioni e licenze si aggiornano a ogni passo.
 - Link ai modelli dei personaggi e dell'auto (D15, D126): prima della guida, M4.
 - Nomi esatti dei prodotti per la distinta (D126): M4.
 - Modello della ventola (D14), lunghezza dei cavi Qwiic-dupont (D18): M2.
-- Foto delle case finite (D123): dopo il collaudo, M4.
+- Foto della casa finita (D123): dopo il collaudo, M4.
 
 ---
 
