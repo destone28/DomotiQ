@@ -21,7 +21,7 @@ function dur(s) {
 function webcam(cam) {
   const w = cam.webcam;
   const parts = [t("diag.webcam_values", { gain: w.gain, exposure: w.exposure })];
-  if (w.ratio != null) parts.push(t("diag.webcam_probe", { ratio: w.ratio.toFixed(2) }));
+  if (w.ratio != null) parts.push(t("diag.webcam_rooms", { ratio: w.ratio.toFixed(2) }));
   parts.push(t("diag.webcam_steps", { n: w.steps_hour, back: w.reversals_hour }));
   if (!w.on) parts.push(t("diag.webcam_off"));
   else if (w.paused) parts.push(t("diag.webcam_paused", { why: t("diag.webcam_why." + w.paused) }));

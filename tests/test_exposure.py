@@ -9,12 +9,12 @@ import random
 
 import pytest
 
-from domotiq.vision.exposure import (BAND, CAP, EXPOSURES, GAIN_FLOOR, GAIN_MAX, GainRegulator, gain_light,
+from domotiq.vision.exposure import (BAND, CAP, CAP_ADAPT, EXPOSURES, GAIN_FLOOR, GAIN_MAX, GainRegulator, gain_light,
                                      MEASURE_S)
 
 
 def scene(c: float, k: float):
-    """A probe whose light is c times the empty house at gain 32, answering the gain as light ∝ gain^k around the
+    """Rooms whose light is c times the empty house at gain 32, answering the gain as light ∝ gain^k around the
     measured curve (k bends it: 1 is the curve of casa1)."""
     def light(gain: int, exposure: int) -> float:
         g = gain_light(gain) ** k
@@ -104,6 +104,90 @@ def test_one_look_every_half_second_of_time_however_many_frames():
     assert step is not None and not reg.due(0.2) and not reg.due(5.0)    # waiting for the step to show
     reg.done(step, 0.2)
     assert not reg.due(0.5) and reg.due(0.71)
+
+
+def test_a_step_that_landed_in_the_band_is_no_reason_to_hold_later():
+    """casa1, 9 October: a step down, then the evening took the light 7% below the empty house, the other way. That is
+    no seesaw: the step had landed in the band. It was held for minutes, as if one unit of gain were too much."""
+    reg = GainRegulator(154)
+    step = reg.consider(1.12, 0.0)
+    assert step is not None and step.gain < 154
+    reg.done(step, 0.2)
+    assert reg.consider(1.01, 1.0) is None                  # in the band
+    before = reg.gain
+    step = reg.consider(0.93, 2.0)                          # the evening, the other way
+    assert step is not None and step.gain > before and not reg.settled
+
+
+def test_a_step_across_the_band_is_still_held_where_one_unit_is_too_much():
+    reg = GainRegulator(13)
+    step = reg.consider(1.07, 0.0)                          # one unit down at the bottom of the gain: -12%
+    assert step is not None and step.gain == 12
+    reg.done(step, 0.2)
+    assert reg.consider(0.94, 1.0) is None and reg.settled  # back up would cross the band again
+
+
+def test_another_empty_house_forgets_the_last_look():
+    """The empty house compared with changed: what was seen before says nothing of the response of the gain, and a
+    step the other way is no seesaw."""
+    reg = GainRegulator(13)
+    reg.done(reg.consider(1.07, 0.0), 0.2)
+    reg.target_changed()
+    assert reg.consider(0.90, 1.0) is not None
+
+
+def test_while_the_house_follows_a_change_of_the_hall_the_steps_are_larger():
+    reg = GainRegulator(32)
+    small = reg.consider(0.5, 0.0)
+    reg = GainRegulator(32)
+    large = reg.consider(0.5, 0.0, CAP_ADAPT)
+    assert small.factor <= 1 + CAP + 1e-6 and 1 + CAP < large.factor <= 1 + CAP_ADAPT + 1e-6, (small, large)
+
+
+def test_below_the_floor_of_the_gain_the_steps_come_from_the_table():
+    """In a very bright hall the full setting chooses gain 0: from there one unit does nothing, the first step up is
+    gain 12 (x2.2 measured), taken only if it lands closer to the empty house; down, only the exposure."""
+    reg = GainRegulator(0, 625)
+    step = reg.consider(0.4, 0.0)
+    assert step is not None and step.gain == GAIN_FLOOR and step.uncertain and 2.0 < step.factor < 2.5
+    reg = GainRegulator(0, 625)
+    assert reg.consider(0.8, 0.0) is None and reg.settled   # x2.2 would be farther from the empty house
+    reg = GainRegulator(0, 625)
+    step = reg.consider(1.6, 0.0)
+    assert step is not None and step.exposure == EXPOSURES[1] and step.factor < 1.0
+
+
+def test_an_exposure_the_full_setting_chose_outside_the_steps_is_left_to_it():
+    reg = GainRegulator(GAIN_FLOOR, 39)
+    assert reg.consider(1.5, 0.0) is None and reg.at_limit
+
+
+@pytest.mark.parametrize("exposure", [39, 78, 156, 312, 625])
+def test_no_values_of_the_webcam_break_the_regulator(exposure):
+    """Whatever the full setting left (gain 0 in a bright hall, an exposure outside the steps): no error, and every
+    step is expected to bring the light of the rooms closer to the empty house."""
+    for gain in (0, 4, 8, 11, 12, 13, 32, 100, 254, 255):
+        for ratio in (0.2, 0.5, 0.9, 1.0, 1.2, 2.0, 5.0):
+            for cap in (CAP, CAP_ADAPT):
+                reg = GainRegulator(gain, exposure)
+                step = reg.consider(ratio, 0.0, cap)
+                if step is not None:
+                    assert abs(math.log(ratio * step.factor)) < abs(math.log(ratio)), (gain, exposure, ratio, step)
+                    assert (step.factor > 1) == (ratio < 1), (gain, exposure, ratio, step)
+
+
+def test_busy_until_the_light_is_back_or_nothing_more_can_be_done():
+    reg = GainRegulator(32)
+    assert not reg.busy
+    step = reg.consider(0.7, 0.0)
+    assert reg.busy                                          # waiting for the step to show
+    reg.done(step, 0.2)
+    assert reg.busy                                          # 0.7 was seen: more is coming
+    reg.consider(1.0, 1.0)
+    assert not reg.busy
+    reg = GainRegulator(GAIN_MAX, 625)
+    reg.consider(0.5, 0.0)
+    assert reg.at_limit and reg.at_dark_end and not reg.busy
 
 
 def test_a_reconnection_puts_back_the_values_reached_not_those_of_the_calibration():

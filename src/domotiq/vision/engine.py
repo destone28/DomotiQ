@@ -43,7 +43,7 @@ from .pipeline import Observation, Segmenter
 from .privacy import Privacy
 from .scene import StaticScene
 from .signature import SIG_LEN, distance, signature, to_hex
-from .exposure import EXPOSURES, NOISE_EXP, CameraStep, GainRegulator
+from .exposure import CAP, CAP_ADAPT, EXPOSURES, GAIN_MAX, NOISE_EXP, CameraStep, GainRegulator
 from .figures import NOTHING, square_crop
 from .tracker import CONSENT_P, ID_ACCEPT, Tracker
 
@@ -145,14 +145,21 @@ FIGURE_LIKELY_P = 0.5    # the empty house learned again around what the network
 FIGURE_SCAN_P = 0.8      # at a start, what the network sees as a character this sure is taken, whatever its colours
 FIGURE_EVERY_S = 0.5
 FIGURE_MAX = 4
-# The light of the webcam followed in small steps of the gain (exposure.py): the probe is the driveway and the strip
-# around the house, where the lights of the house do not reach (on casa1 at most 1% when they all go on, the rooms
-# up to 35%); compared, away from the presences, with the same place in the empty house in use. Not with hands over
-# the house, while the house looks for its characters at a start, in the dark, during a party. Its steps are taken
-# out of the brightness the house watches for a change of the hall (D-66), and the full setting of the webcam is
-# asked only when it cannot follow
-PROBE_REGIONS = ("driveway", "outside")
-PROBE_FREE = 0.3         # share of the probe that must be in sight, free of presences and hands
+# The light of the webcam followed in small steps of the gain (exposure.py). What it brings back to the empty house in
+# use, as it was photographed, is the light of the rooms: in every region the median of how much brighter each point
+# of its free floor is (away from the presences and the hands), then the median over the regions. A light of the
+# house changes its own room (casa1, the stored empty houses: 4-40% there, 0% on the median), all of them together 8%,
+# the Cinema scene 10%; a room whose light the house has just changed or animates is left out while it settles. The
+# driveway and the strip around the house were used first, where the lights of the house do not reach: but the lights
+# of the hall do not light them as they light the house. In the empty houses of 7 October at 17:52 and 21:10 they are
+# 0.29-0.38 of those of 18:35, the rooms 0.84-1.49: bringing the strip back does not bring the house back. The empty
+# house is the photograph, not the copy the house compares with, which every new light changes. No step with hands
+# over the house (hands that never leave are the walls, lit another way), while the house looks for its characters at
+# a start, in the dark, during a party. Its steps are taken out of the brightness the house watches for a change of
+# the hall (D-66); while it follows one, the steps may be larger and the empty house is learned again only after them.
+# The full setting of the webcam is asked only at a limit, and not at the dark end if it was made in the dark already
+FOLLOW_MIN_REGIONS = 3   # fewer regions to measure on: no step
+FOLLOW_FREE = 0.3        # share of the measuring points that must be in sight, free of presences and hands
 # Empty houses in more lights (var/calibration/empties): with the house empty, its own lights are shown one after
 # the other and the empty house is photographed in each; so is the light of the hall that somebody switches on
 # (Calibration). When the light changes, or at a start, the stored empty house most like the picture, once the light
@@ -216,7 +223,10 @@ class Engine:
         self.camera_request: CameraStep | None = None   # a step for the vision process to give the webcam
         self._camera_pending: tuple[int | None, CameraStep] | None = None   # given: from which frame it shows
         self._camera_factor = 1.0                  # how much brighter the steps of the webcam made the pictures
-        self._probe: np.ndarray | None = None      # the driveway and the strip around the house, in the picture
+        # the empty house in use as it was photographed, where the light of the rooms is measured: per region, the
+        # points of its free floor and their brightness there
+        self._target_px: list[tuple[str, np.ndarray, np.ndarray]] | None = None
+        self._lock_dark = False                    # the full setting of the webcam was made in the dark (its darkest)
         self.empty_in_use = ""                     # the label of the stored empty house compared with now
         self._flooded_since = 0.0
         self.light_ok = True                       # the worker clears it while the webcam light is not set
@@ -302,8 +312,10 @@ class Engine:
         # an empty house saved in the dark is no light to set the webcam for: the house asks to save it again
         if self._empty_level < DARK_LEVEL:
             return False
-        # the light of the webcam followed step by step: the full setting only when that is at its limit
-        if self._following() and not self.regulator.at_limit:
+        # the light of the webcam followed step by step: the full setting only when that is at its limit, and never
+        # for more light when it was already made in the dark (it would find the same values, 9-10 s without
+        # pictures each time: on casa1 the full setting and the steps both end at gain 255, exposure 625)
+        if self._following() and (not self.regulator.at_limit or self._darkest()):
             return False
         # while the house follows a change of the hall light it asks at once, hands or not: they are the light
         adapting = bool(self._adapt_since) and not RETUNE_DARK <= self._ratio <= RETUNE_BRIGHT
@@ -316,7 +328,7 @@ class Engine:
         moment. The empty house, the presences and who they are do not change."""
         self.retunes += 1
         if values:
-            self.set_camera(values.get("gain", 0), values.get("exposure", EXPOSURES[0]))
+            self.set_camera(values.get("gain", 0), values.get("exposure", EXPOSURES[0]), values)
         self._camera_factor = 1.0
         self._levels.clear()
         self._retuned_at = now
@@ -337,16 +349,29 @@ class Engine:
             (self.dir / NOISE_FILE).unlink(missing_ok=True)
 
     # ------------------------------------------------------------ the light of the webcam, step by step
-    def set_camera(self, gain: int, exposure: int) -> None:
-        """The webcam has these values (a start, a reconnection, a full setting)."""
+    def set_camera(self, gain: int, exposure: int, lock: dict | None = None) -> None:
+        """The webcam has these values (a start, a reconnection, a full setting); `lock`: the values of the full
+        setting they came from."""
         if self.regulator is None:
             self.regulator = GainRegulator(gain, exposure)
         else:
             self.regulator.set(gain, exposure)
+        if lock is not None:
+            self._lock_dark = int(lock.get("gain") or 0) >= GAIN_MAX and int(lock.get("exposure") or 0) >= EXPOSURES[0]
         self.camera_request, self._camera_pending = None, None
 
     def _following(self) -> bool:
         return self.regulator is not None and self.follow_light
+
+    def _darkest(self) -> bool:
+        """The webcam gives all the light it can, and the full setting was made in the dark already: setting it again
+        would not give more."""
+        return self._following() and self.regulator.at_dark_end and self._lock_dark
+
+    def _camera_moving(self) -> bool:
+        """A step of the webcam is asked or on its way, or the light of the rooms is still being brought back."""
+        return self._following() and (self.camera_request is not None or self._camera_pending is not None
+                                      or self.regulator.busy)
 
     def camera_applied(self, step: CameraStep, from_seq: int | None) -> None:
         """The vision process gave the webcam this step: it shows from frame `from_seq` on (None: the next one)."""
@@ -371,42 +396,79 @@ class Engine:
             self.regulator.done(step, now)
 
     def _follow_light(self, small: np.ndarray, now: float) -> None:
-        """Every MEASURE_S: how bright the probe is against the empty house in use, and a step if it is outside the
+        """Every MEASURE_S: how bright the rooms are against the empty house in use, and a step if it is outside the
         band; the step goes to the vision process, which gives it to the webcam."""
         reg = self.regulator
         if reg is None or not self.follow_light or not reg.due(now) or self._camera_pending is not None \
                 or self.camera_request is not None:
             return
-        why = ""
+        why, ratio = "", None
         if self.paused:
             why = "party"
         elif self._scan_pending or now < self._scan_until:
             why = "start"
         elif not DARK_LEVEL <= self._level <= DAZZLED_LEVEL:
             why = "dark" if self._level < DARK_LEVEL else "dazzled"
-        elif now - self._hand_at < SETTLE_S:
+        elif now - self._hand_at < SETTLE_S and not self._stuck:
             why = "hands"
-        seg = self.segmenter
-        if not why:
-            free = self._probe & ~self._footprints()
-            if free.sum() < PROBE_FREE * max(int(self._probe.sum()), 1):
-                why = "covered"
+        else:
+            ratio, why = self._room_light(small, now)
         if why:
             reg.pause(why)
             return
-        mask = free.view(np.uint8)
-        live = sum(cv2.mean(small, mask=mask)[:3])
-        empty = sum(cv2.mean(seg.reference_bgr, mask=mask)[:3])
-        if empty < 3.0:
-            reg.pause("dark")
-            return
-        step = reg.consider(live / empty, now)
+        step = reg.consider(ratio, now, CAP_ADAPT if self._adapt_since else CAP)
         if step is not None:
             self.camera_request = step
             before = reg.last_step or {}
-            log.info("webcam gain %s -> %d, exposure %s -> %d (probe %.2f of the empty house)",
+            log.info("webcam gain %s -> %d, exposure %s -> %d (rooms %.2f of the empty house)",
                      (before.get("gain") or ["?"])[0], step.gain, (before.get("exposure") or ["?"])[0], step.exposure,
                      step.ratio)
+
+    def _set_target(self, picture: np.ndarray) -> None:
+        """The empty house the light of the webcam is brought back to: the one in use, as it was photographed (the
+        copy the house compares with learns every new light, brought back to that of the picture, and drifts). Kept
+        are the points of the free floor of every region where the picture is neither too dark nor saturated."""
+        seg = self.segmenter
+        flat = np.asarray(picture, np.float32).reshape(-1, 3)
+        px = []
+        for name, idx in zip(seg.region_names, seg.samples):
+            r = flat[idx]
+            ok = (r.min(axis=1) > 12) & (r.max(axis=1) < 250)
+            px.append((name, idx[ok], r[ok].sum(axis=1) + 3.0))
+        self._target_px = px
+        if self.regulator is not None:
+            self.regulator.target_changed()
+
+    def _room_light(self, small: np.ndarray, now: float) -> tuple[float | None, str]:
+        """How bright the rooms are against the empty house in use: in every region the median over its free floor,
+        away from the presences and the hands, then the median over the regions, leaving out those whose light the
+        house has just changed or animates. With too little in sight, the reason for no step instead."""
+        if not self._target_px:
+            return None, "start"
+        seg = self.segmenter
+        busy = self._footprints()
+        if seg.hand_mask is not None and seg.hand_mask.shape == busy.shape:
+            busy |= seg.hand_mask
+        busy = busy.ravel()
+        flat = small.reshape(-1, 3)
+        glowing = {room for room, t in self._light_at.items() if now - t < LIGHT_GLOW_S} | self._animated
+        ratios, seen, total = [], 0, 0
+        for name, idx, ref in self._target_px:
+            if name in glowing or not len(idx):
+                continue
+            total += len(idx)
+            free = ~busy[idx]
+            cur = flat[idx[free]].astype(np.float32)
+            ok = cur.max(axis=1) < 250
+            if int(ok.sum()) < 50:
+                continue
+            seen += int(ok.sum())
+            ratios.append(float(np.median((cur[ok].sum(axis=1) + 3.0) / ref[free][ok])))
+        if total and seen < FOLLOW_FREE * total:
+            return None, "covered"
+        if len(ratios) < FOLLOW_MIN_REGIONS:
+            return None, "lights"
+        return float(np.median(ratios)), ""
 
     # ------------------------------------------------------------ a change of the light of the hall
     def _hall_light(self, ratio: float, now: float) -> str | None:
@@ -489,8 +551,13 @@ class Engine:
         still = len(levels) >= 3 and now - levels[0][0] >= 0.8 * ADAPT_STILL_S and hi <= (1.0 + ADAPT_STILL) * lo
         waited = now - self._adapt_since
         retune = not RETUNE_DARK <= ratio <= RETUNE_BRIGHT and now - self._retuned_at >= self._retune_every \
-            and self._empty_level >= DARK_LEVEL and waited < ADAPT_RETUNE_S
-        if (still and waited >= ADAPT_MIN_S and not retune) or (waited >= ADAPT_MAX_S and len(levels) >= 3):
+            and self._empty_level >= DARK_LEVEL and waited < ADAPT_RETUNE_S and not self._darkest() \
+            and not (self._following() and not self.regulator.at_limit)
+        # the light of the webcam brought back first: the empty house learned while the gain still moves would be
+        # neither the old light nor the new one (casa1, 9 October: learned again between two steps, three times)
+        moving = self._camera_moving()
+        if (still and waited >= ADAPT_MIN_S and not retune and not moving) \
+                or (waited >= ADAPT_MAX_S and len(levels) >= 3):
             shift, response = self._shift_of(small)
             if shift > 3.0 and response > 0.05:
                 # the walls are not where they were: the webcam was knocked, not the light. Nothing is learned (the
@@ -884,6 +951,7 @@ class Engine:
         seg = self.segmenter
         self._empty0 = seg.reference_bgr.copy()
         self._empty_level = sum(cv2.mean(self._empty0, mask=seg.mask)[:3]) / 3.0
+        self._set_target(self._empty0)
 
     def _absorb_stuck(self, small: np.ndarray, hands: np.ndarray) -> None:
         seg = self.segmenter
@@ -1012,11 +1080,7 @@ class Engine:
         self.calib = calib
         self._adapt_since, self._light_level = 0.0, 1.0
         self.segmenter = Segmenter(self.layout, calib)
-        probe = np.zeros(self.segmenter.mask.shape, bool)
-        for i, name in enumerate(self.segmenter.region_names):
-            if name in PROBE_REGIONS:
-                probe |= self.segmenter.label == i
-        self._probe = probe & (self.segmenter.mask > 0)
+        self._target_px = None
         tracker = Tracker(self.layout, calib)
         tracker.set_identities(self.identities)
         tracker.on_question = self._question
@@ -1231,6 +1295,7 @@ class Engine:
             seg._reference_changed()
             seg._prev_gains, seg._g, seg.gains = None, None, {}
             self.empty_in_use = e["label"]
+            self._set_target(e["picture"])
             self._backgrounds()                     # floor, walls and lawns in this light
             log.info("the empty house of \"%s\" taken for this light (%.1f, 90%% within %.1f; the one before %.1f)",
                      e["label"], best, p90, now_fit)
@@ -1306,9 +1371,9 @@ class Engine:
         active = bool(hands.any())
         self._hands_since = (self._hands_since or now) if active else 0.0
         self._stuck = active and now - self._hands_since >= HAND_STUCK_S
-        if self._stuck and RETUNE_DARK <= self._light_ratio(small) <= RETUNE_BRIGHT:
-            # "hands" that never leave, in a light the webcam need not be set again for: the walls lit another way
-            # than in the empty house. They join it as they look now (what stands there is kept)
+        if self._stuck and (RETUNE_DARK <= self._light_ratio(small) <= RETUNE_BRIGHT or self._darkest()):
+            # "hands" that never leave, in a light the webcam need not (or cannot) be set again for: the walls lit
+            # another way than in the empty house. They join it as they look now (what stands there is kept)
             self._absorb_stuck(small, hands)
             hands = seg.hand_mask = np.zeros(fg.shape, bool)
             active, self._stuck, self._hands_since = False, False, 0.0

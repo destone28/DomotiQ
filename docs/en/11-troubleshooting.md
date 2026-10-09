@@ -162,11 +162,12 @@ The installer (which needs internet) reloads the firmware when needed; without i
 **Fix.** Take the figurines away and, with the light on, do **Calibration → Set the light and save the empty house**; then put them back by hand.
 
 ### The light of the webcam changes by itself, or stays *at the limit*
-**Cause.** While the house looks, the gain of the webcam follows the light of the hall in small steps, looking at the driveway and the strip around the house. In *Diagnostics → Light of the webcam*, "at the limit of the webcam" means the gain is already at its highest (hall too dark) or at its lowest with the shortest exposure (a very bright hall).
+**Cause.** While the house looks, the gain of the webcam follows the light of the hall in small steps, measuring the light of the rooms against the empty house in use. In *Diagnostics → Light of the webcam*, "at the limit of the webcam" means the gain is already at its highest (hall too dark) or at its lowest with the shortest exposure (a very bright hall).
 
 **Solution.**
-- **Frequent steps, or many turns in the last hour:** a light of the hall that flickers or keeps changing. Check that there are no cables, hands or objects lying on the driveway.
-- **At the limit in the dark:** switch a light on.
+- **Frequent steps, or many turns in the last hour:** a light of the hall that flickers or keeps changing.
+- **Waiting for "rooms covered":** hands, characters or objects cover most of the rooms; it goes on by itself when they are taken away.
+- **At the limit in the dark:** switch a light on. If the full setting was already made in the dark, the house does not make it again: it would give the same values, with 10 seconds without pictures.
 - **After changing the lighting of the stand altogether:** do **Calibration → Set the light and save the empty house** again.
 - **To go back to the old behaviour:** `camera.follow_light: false` in `var/config/settings.json`.
 

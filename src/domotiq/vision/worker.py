@@ -69,7 +69,7 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
     # the gain and exposure the light of the webcam was followed to (exposure.py): what a reconnection, a start and
     # the check every minute put back, not those of the calibration, which would undo that work
     now_file = calib_dir / "camera-now.json"
-    connected: list[tuple[int, int]] = []     # values given to the webcam at a (re)connection, for the engine
+    connected: list[tuple[int, int, dict]] = []   # values given to the webcam at a (re)connection, and their lock
 
     def read_json(path: Path) -> dict | None:
         try:
@@ -88,7 +88,7 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
             values = current_values(stored, read_json(now_file))
             cam.controls.lock(values)
             cam.set_balance(stored.get("balance"))
-            connected.append((int(values.get("gain", 0)), int(values.get("exposure", 625))))
+            connected.append((int(values.get("gain", 0)), int(values.get("exposure", 625)), stored))
         else:
             cam.controls.automatic()
             cam.set_balance(None)
@@ -194,7 +194,7 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
             camera.set_balance(values["balance"])
             lock_file.write_text(json.dumps(values))
             now_file.unlink(missing_ok=True)
-            engine.set_camera(int(values.get("gain", 0)), int(values.get("exposure", 625)))
+            engine.set_camera(int(values.get("gain", 0)), int(values.get("exposure", 625)), values)
             camera.flush()
             engine.light_ok = True
             result = engine.take_empty(force=force)
@@ -331,6 +331,13 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                     engine.camera_failed()
             if camera.controls is not None and engine.retune_wanted(now):
                 retune()
+            if now - last_jpeg >= 0.2:                # the live view asks 5 pictures a second
+                for overlay in (False, True):
+                    if now - want[overlay] < 3.0:
+                        jpg = engine.jpeg(overlay=overlay)
+                        if jpg:
+                            conn.send(("jpeg", overlay, jpg))
+                            last_jpeg = now
         elif camera.controls is not None and now - last_frame_at > CAMERA_SILENT_S and engine.regulator is not None:
             # no frames for a while: back to the values of the calibration (on casa1 no value ever stopped the C270,
             # but a camera that stops with a long exposure is not woken by opening it again with the same one)
@@ -356,13 +363,6 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
             if saved_values != (reg.gain, reg.exposure):
                 saved_values = (reg.gain, reg.exposure)
                 save_current()
-            if now - last_jpeg >= 0.2:                # the live view asks 5 pictures a second
-                for overlay in (False, True):
-                    if now - want[overlay] < 3.0:
-                        jpg = engine.jpeg(overlay=overlay)
-                        if jpg:
-                            conn.send(("jpeg", overlay, jpg))
-                            last_jpeg = now
         if now - last_status > 1.0:
             last_status = now
             st = engine.status()

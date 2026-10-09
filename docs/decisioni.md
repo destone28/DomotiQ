@@ -795,14 +795,14 @@ Sul blocco della notte la rete nuova dà "Mister Blu" a ritagli etichettati Viol
 
 **Perché:** proposta accettata da Emilio. Imparare la casa vuota da quello che si vede si adatta a tutto, ma può inglobare una statuina che la casa non sta seguendo: è successo a ogni riavvio con un'altra luce (D-71). Scegliere tra foto scattate a casa vuota non sbaglia mai così, e la casa sa quali delle sue luci sono accese. Le foto da angolazioni diverse invece non servono alla casa vuota: il confronto è pixel per pixel con la webcam, che è fissa.
 
-### D-76 — La luce della webcam seguita a piccoli passi del guadagno (8/10)
+### D-76 — La luce della webcam seguita a piccoli passi del guadagno (9/10)
 **Scelta:**
 - **Cosa si regola.** Mentre la casa guarda, un regolatore continuo segue la luce della sala muovendo **il guadagno** della webcam.
   - L'esposizione resta alla posa più lunga vera (625).
   - Scende di uno scalino vero (312) solo se, con il guadagno al minimo utile (12), l'immagine è ancora troppo chiara.
   - Il bilanciamento del bianco non si tocca.
   - La taratura completa ("Regola di nuovo", 9-10 secondi senza immagini) resta per la calibrazione, e in automatico parte solo quando il regolatore è al limite.
-- **Dove si misura.** Sul vialetto e sulla fascia intorno alla casa, dove le luci della casa non arrivano, sul pavimento libero lontano dalle presenze. Il confronto si fa con lo stesso punto della casa vuota in uso (D-75); il bersaglio è 1,0 con una banda morta del ±5%.
+- **Dove si misura.** Sul vialetto e sulla fascia intorno alla casa, dove le luci della casa non arrivano, sul pavimento libero lontano dalle presenze. Il confronto si fa con lo stesso punto della casa vuota in uso (D-75); il bersaglio è 1,0 con una banda morta del ±5%. Dopo la verifica sul campo si misura sulle stanze (D-77).
 - **Il passo.** Si segue il metodo della camera di Amelie, con i numeri rimisurati sulla C270:
   - uno sguardo ogni 0,5 secondi di tempo, non di fotogrammi;
   - la risposta "luce ∝ guadagno^k" si stima dagli ultimi due punti, fra 0,25 e 2,5, partendo dalla curva misurata;
@@ -827,7 +827,7 @@ Sul blocco della notte la rete nuova dà "Mister Blu" a ritagli etichettati Viol
 
 **Perché:** richiesta di Emilio, sul modello della camera di Amelie 2.0 (posa manuale ritoccata in background a piccoli passi smorzati), per non avere più buchi di immagini quando la luce della sala cambia. Prima la luminosità derivava finché non scattava una taratura completa, che il motore trattava come un cambio di luce: presenze congelate e rumore reimparato.
 
-Le misure sulla C270 di casa1, l'8/10, a casa ferma, con la luce della sala a metà, al massimo e al minimo:
+Le misure sulla C270 di casa1, il 9/10, a casa ferma, con la luce della sala a metà, al massimo e al minimo:
 
 | Cosa | Misura |
 |---|---|
@@ -851,3 +851,45 @@ Sulla casa sintetica:
 - **Luci della casa accese e spente:** nessun passo.
 
 **Per il secondo esemplare.** I numeri vengono dalla webcam C270, non dai mobili di casa1. Il vialetto e la fascia intorno alla casa ci sono uguali, il bersaglio è la casa vuota di quella casa, e la risposta al guadagno si misura sul posto. Con una webcam diversa le misure vanno rifatte (`exposure.py` elenca quali).
+
+### D-77 — La luce della webcam misurata sulle stanze, e la casa vuota imparata dopo i passi (9/10)
+**Scelta:**
+- **Dove si misura.** Sulle stanze, non più sul vialetto e sulla fascia intorno alla casa.
+  - In ogni regione (le sei stanze, il giardino, il vialetto, la fascia) si prende la mediana di quanto è più chiaro ogni punto del pavimento libero, lontano dalle presenze e dalle mani. Poi si prende la mediana fra le regioni.
+  - Il confronto è con la casa vuota in uso così come è stata fotografata: quella salvata, o quella scelta fra le luci di D-75. Non è con la copia che la casa confronta con l'immagine, che cambia a ogni luce nuova.
+  - Restano fuori le stanze di cui la casa ha appena cambiato la luce (per 15 secondi) e quelle con una luce animata. Con meno di tre regioni da misurare il regolatore aspetta.
+- **Prima i passi, poi la casa vuota.** Mentre la casa segue un cambio di luce della sala e tiene ferme le presenze (D-66), il regolatore fa passi fino al 25% di luce invece dell'8%. La casa vuota si impara di nuovo solo quando il regolatore ha finito: luce nella banda, il più vicino possibile, al limite, oppure in pausa. Resta il limite di 30 secondi.
+- **Il cambio di verso.** Un passo che arriva dentro la banda chiude la storia: un cambio successivo nell'altro verso è un'altra luce, non un'altalena. Il regolatore dimentica l'ultimo sguardo anche quando cambia la casa vuota in uso.
+- **Le "mani" che non se ne vanno.** Le mani viste senza interruzione per 30 secondi sono i muri illuminati in un altro modo (D-66), e non fermano il regolatore. Le mani restano comunque fuori dai punti misurati.
+- **Al limite scuro.** Guadagno 255 e posa 625 sono il massimo della webcam, e anche della taratura completa.
+  - Se la taratura completa è già stata fatta al buio, non si rifà: troverebbe gli stessi valori, con 9-10 secondi senza immagini.
+  - In quel caso le "mani" ferme entrano nella casa vuota, come succede con una luce normale.
+  - Se era stata fatta con più luce, si rifà una volta.
+- **Guadagno 0.** In una sala molto chiara la taratura completa sceglie guadagno 0, che il regolatore non sapeva gestire: avrebbe dato un errore a ogni immagine.
+  - Da 0 il primo passo in su è 12 (×2,2, dalla tabella), e si fa solo se porta più vicino al bersaglio.
+  - In giù si muove solo l'esposizione.
+  - Con una posa fuori dagli scalini del regolatore decide la taratura completa.
+- **La vista dal vivo.** Con D-76 le immagini per la vista dal vivo della web app erano finite dentro il salvataggio dei valori della webcam: ne partiva una ogni 5 minuti. Ora partono dopo ogni immagine, e un test fa girare tutto il processo della visione sulla webcam sintetica.
+- **Diagnostica e log.**
+  - La diagnostica scrive "stanze 0,95 della casa vuota". Tra i motivi di pausa ci sono "stanze coperte" e "luci della casa che cambiano".
+  - Il log scrive `webcam gain 154 -> 158, exposure 625 -> 625 (rooms 0.95 of the empty house)`.
+
+**Perché:** è la verifica sul campo di D-76 su casa1, il 9/10 dalle 17:37. L'orologio della scheda segnava l'8/10: senza internet e senza batteria era rimasto indietro di un giorno.
+- **17:37, l'avvio.** La webcam ripartiva a guadagno 255, perché l'ultima taratura era stata fatta con la luce al minimo. Il vialetto era 1,75 volte la casa vuota.
+  - In 4 secondi il regolatore ha fatto quattro passi, da 255 a 154.
+  - Alle 17:37:30 la casa ha imparato di nuovo la casa vuota tra un passo e l'altro.
+  - Dopo, il regolatore non ha più fatto passi: alle 17:45 misurava 0,93 e lo teneva, perché l'ultimo passo era andato nell'altro verso.
+- **17:46, la luce sotto la metà.** A passi dell'8% il guadagno ha impiegato 70 secondi a salire da 154 a 249, e nel frattempo la casa vuota è stata imparata di nuovo due volte.
+- **17:47-17:51, le mani.** Arrivato a 249-255 il regolatore restava in pausa per le "mani": con la luce minima la cima dei muri era "mani" in ogni immagine (da 6 a 14, per tutti i 20 secondi controllati). Il regolatore non arrivava al limite, e così non poteva partire nemmeno la taratura completa.
+- **17:52-18:23, le tarature inutili.** Quando le mani lo hanno lasciato arrivare al limite, sono partite sei tarature complete (17:52, 17:53, 17:55, 18:00, 18:08, 18:23). Hanno trovato tutte guadagno 255 e posa 625, e ognuna è costata 9-10 secondi senza immagini.
+- **Il vialetto non è la casa.** Le foto della casa vuota del 7/10 delle 17:52 e delle 21:10 hanno il vialetto e la fascia a 0,29-0,38 di quelle delle 18:35, e le stanze a 0,84-1,49.
+  - Le luci della sala non illuminano la fascia come illuminano la casa: riportare la fascia non riporta la casa.
+  - Verso le 18 del 9/10, rispetto alla casa vuota salvata, le stanze andavano da 0,26 (garage) a 1,10 (giardino), con mediana 0,46.
+- **Le luci della casa sulla mediana delle stanze.** Una luce da sola cambia la sua stanza del 4-40% e la mediana di zero. Tutte insieme spostano la mediana dell'8%, lo scenario Cinema del 10%, Relax e Notte dell'1%.
+
+Sulla casa sintetica:
+- **Luce della sala dimezzata di colpo:** 5 passi in 2,8 secondi (guadagno da 32 a 70; con D-76 erano 10 passi in 6 secondi), la casa vuota imparata di nuovo 1,2 secondi dopo l'ultimo passo, con la luce già nella banda (0,98). Nessuna presenza persa, nessuna taratura completa, nessun cambio di verso.
+- **Sera che cala del 45% in un minuto e mezzo:** 20 passi (guadagno da 32 a 62), nessun adattamento di D-66, nessuna taratura completa, nessun cambio di verso.
+- **La fascia intorno alla casa che scende a un terzo, le stanze ferme:** nessun passo.
+- **Due luci della casa accese per 30 secondi, oltre i 15 del bagliore:** nessun passo.
+- **Al limite scuro:** con la taratura completa già fatta al buio non la chiede mai; fatta con più luce, la chiede.

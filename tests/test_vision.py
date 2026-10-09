@@ -1236,6 +1236,40 @@ def test_the_presences_stay_while_the_webcam_is_set_again():
     assert [t.id for t in vp.tracks()] == ["t-1"]
 
 
+def test_the_vision_process_sends_the_live_view_while_somebody_watches(tmp_path, monkeypatch):
+    """The whole loop of the vision process on the synthetic webcam: asked for the live view, it sends pictures
+    every few frames. On casa1 (9 October) they had ended up inside the saving of the webcam values: one every 5
+    minutes."""
+    import os
+    import signal
+    import threading
+    import time
+    from multiprocessing import Pipe
+    from domotiq.layout import DEFAULT_LAYOUT
+    from domotiq.vision import worker
+    monkeypatch.setattr(signal, "signal", lambda *a: None)    # only the main thread may set it
+    monkeypatch.setattr(os, "nice", lambda n: 0)
+    cfg = {"layout": str(DEFAULT_LAYOUT), "calibration": str(tmp_path / "cal"), "dataset": str(tmp_path / "ds"),
+           "recordings": str(tmp_path / "rec"), "device": "synthetic"}
+    (tmp_path / "cal").mkdir()
+    house, child = Pipe()
+    t = threading.Thread(target=worker.child_main, args=(child, cfg), daemon=True)
+    t.start()
+    kinds: list[str] = []
+    try:
+        end = time.time() + 6.0
+        while time.time() < end and kinds.count("jpeg") < 3:
+            house.send(("want", False))
+            if house.poll(0.3):
+                kinds.append(house.recv()[0])
+    finally:
+        house.send(("stop",))
+        t.join(5.0)
+    assert kinds.count("jpeg") >= 3, kinds
+    assert "tracks" in kinds and "status" in kinds
+    assert not t.is_alive()
+
+
 def test_a_retune_that_does_not_help_waits_longer_and_longer(engine):
     from domotiq.vision import engine as E
     engine.light_retuned(100.0)
@@ -1468,19 +1502,25 @@ class _Webcam:
     """The synthetic house seen by a webcam whose gain the house moves (exposure.py): a step shows two frames later,
     as on the C270, and the picture is as much brighter as the measured curve of the gain says."""
 
-    def __init__(self, engine, renderer, gain=32):
+    def __init__(self, engine, renderer, gain=32, lock=None):
         from domotiq.vision.exposure import gain_light
         self.engine, self.renderer, self.gain, self.seq = engine, renderer, gain, 0
         self.light = gain_light
         self.pending, self.steps = None, []
-        engine.set_camera(gain, 625)
+        engine.set_camera(gain, 625, lock)
 
-    def feed(self, things, now, hall=1.0, **kw):
+    def feed(self, things, now, hall=1.0, strip=1.0, **kw):
+        """`strip`: how much of its light the driveway and the strip around the house keep (the window)."""
         self.seq += 1
         if self.pending and self.seq >= self.pending[0]:
             self.gain, self.pending = self.pending[1], None
         bright = hall * self.light(self.gain) / self.light(32)
-        tracks = self.engine.feed(self.renderer.render(things, brightness=bright, **kw), now, self.seq)
+        frame = self.renderer.render(things, brightness=bright, **kw)
+        if strip != 1.0:
+            seg = self.engine.segmenter
+            where = np.isin(seg.label, [seg.region_names.index(n) for n in ("driveway", "outside")]) & (seg.mask > 0)
+            frame[where] = np.clip(frame[where].astype(np.float32) * strip, 0, 255).astype(np.uint8)
+        tracks = self.engine.feed(frame, now, self.seq)
         step = self.engine.camera_request
         if step is not None:
             self.engine.camera_request = None
@@ -1524,17 +1564,92 @@ def test_a_sudden_change_of_the_hall_is_followed_with_presences_still(engine, re
 
 
 def test_the_lights_of_the_house_do_not_move_the_webcam(engine, renderer):
-    """The probe is where the lights of the house do not reach: they go on and off, the gain stays."""
+    """A room whose light the house changes is left out while its glow settles, and then it is one region out of
+    nine: the median of the rooms does not move. Two lights on for longer than the glow, then off: the gain stays."""
     things = [Thing(300, 100, "#d03030")]
     _named(engine, renderer, things)
     cam = _Webcam(engine, renderer)
-    for i in range(200):
+    for i in range(500):
         now = 20.0 + i * 0.1
-        lit = {"kitchen": ("#ffffff", 1.0), "living": ("#ffaa5a", 0.8)} if 50 <= i < 150 else None
-        if i in (50, 150):
+        lit = {"kitchen": ("#ffffff", 1.0), "living": ("#ffaa5a", 0.8)} if 50 <= i < 350 else None
+        if i in (50, 350):
             engine.lights_changed(["kitchen", "living"], now)
         cam.feed(things, now, lights=lit)
     assert cam.steps == [], cam.steps
+
+
+def test_the_strip_around_the_house_alone_does_not_move_the_webcam(engine, renderer):
+    """The lights of the hall do not light the driveway and the strip around the house as they light the rooms (the
+    empty houses of casa1 on 7 October: the strip at 0.29-0.38 from one light to another, the rooms at 0.84-1.49). A
+    light that leaves the strip at a third and the rooms as they were must not move the gain."""
+    things = [Thing(300, 100, "#d03030")]
+    before = _named(engine, renderer, things)
+    cam = _Webcam(engine, renderer)
+    for i in range(400):
+        now = 20.0 + i * 0.1
+        tracks = cam.feed(things, now, strip=1.0 - 0.65 * min(1.0, i / 300))
+        assert _same(tracks, before), (i, [(x.identity, round(x.x), round(x.y)) for x in tracks])
+    assert cam.steps == [], cam.steps
+
+
+def test_the_empty_house_is_learned_again_after_the_steps_of_the_webcam(engine, renderer, monkeypatch):
+    """casa1, 9 October: the light of the hall changed and the empty house was learned again between two steps of the
+    gain, in neither the old light nor the new one. Now the house holds the presences while the gain brings the light
+    back, in larger steps, and learns the empty house after them."""
+    from domotiq.vision.exposure import BAND
+    things = [Thing(300, 100, "#d03030"), Thing(480, 280, "#30a040")]
+    before = _named(engine, renderer, things)
+    cam = _Webcam(engine, renderer)
+    learned, learn = [], engine._learn_light
+
+    def learning(now):
+        learned.append((now, engine._camera_moving(), engine.regulator.ratio))
+        learn(now)
+
+    monkeypatch.setattr(engine, "_learn_light", learning)
+    for i in range(200):
+        now = 20.0 + i * 0.1
+        tracks = cam.feed(things, now, hall=1.0 if i < 20 else 0.5)
+        assert _same(tracks, before), (i, [(x.identity, round(x.x), round(x.y)) for x in tracks])
+    assert learned and cam.steps, (learned, cam.steps)
+    when, moving, ratio = learned[0]
+    assert not moving and abs(np.log(ratio)) <= np.log(1 + BAND) + 1e-6, (learned, cam.steps)
+    assert all(t < when for t, _, _ in cam.steps) and len(cam.steps) <= 6, (learned, cam.steps)
+
+
+def test_hands_that_never_leave_do_not_stop_the_light_of_the_webcam(engine, renderer):
+    """casa1, 9 October in the evening: the tops of the walls, lit another way than in the empty house, were "hands"
+    for minutes. The gain waited for them to leave, never reached its limit, and so the full setting never came
+    either. Hands seen without a break for HAND_STUCK_S are no hands, for the gain too."""
+    red = Thing(300, 100, "#d03030")
+    _named(engine, renderer, [red])
+    engine.set_camera(32, 625)
+    dark = renderer.render([red], brightness=0.7)
+    engine._light_ratio(dark)
+    engine._hand_at, engine._stuck = 100.0, False
+    engine._follow_light(dark, 100.0)
+    assert engine.regulator.paused == "hands" and engine.camera_request is None
+    engine._stuck = True
+    engine._follow_light(dark, 101.0)
+    assert engine.camera_request is not None and engine.camera_request.gain > 32
+
+
+@pytest.mark.parametrize("lock, again", [({"gain": 255, "exposure": 625, "wb": 4000}, False),
+                                         ({"gain": 64, "exposure": 625, "wb": 6250}, True)])
+def test_at_the_dark_end_the_webcam_is_set_again_only_if_that_gives_more(engine, renderer, lock, again):
+    """The full setting ends where the steps of the gain end (gain 255, exposure 625). Made once in the dark, in a hall
+    as dark it would find the same values again, 9-10 s without pictures each time; made in a brighter light, it is
+    made once more."""
+    red = Thing(300, 100, "#d03030")
+    _named(engine, renderer, [red])
+    cam = _Webcam(engine, renderer, gain=255, lock=lock)
+    asked = False
+    for i in range(150):
+        now = 20.0 + i * 0.1
+        cam.feed([red], now, hall=0.12)
+        asked = asked or engine.retune_wanted(now)
+    assert engine.regulator.at_limit and engine.regulator.at_dark_end
+    assert asked == again
 
 
 def test_a_dark_picture_is_never_saved_as_the_empty_house(engine, renderer):
