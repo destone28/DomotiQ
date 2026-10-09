@@ -10,8 +10,10 @@ Automatic exposure and white balance would follow the figurines and the
 coloured lights of the house and change the colours the recognition relies
 on: after the calibration they are locked, together with the gain, the
 anti-flicker at 50 Hz (the lights of an Italian fair hall) and the backlight
-compensation off. The settings are re-applied every 60 s and after every
-reconnection, since a camera that is unplugged forgets them.
+compensation off. They are put back after every reconnection, since a camera
+that is unplugged forgets them, and read back every minute by the vision
+process. While the house looks, the gain follows the light of the hall in small
+steps (exposure.py): what is put back is the gain reached, not the calibrated one.
 """
 
 from __future__ import annotations
@@ -156,6 +158,27 @@ BALANCE_MIN, BALANCE_MAX = 0.4, 2.5
 def valid_lock(stored: dict | None) -> bool:
     """Only a lock measured on the pictures: an older one could hold the white balance at 0."""
     return bool(stored and stored.get("exposure") and stored.get("balance"))
+
+
+def lock_key(stored: dict) -> list:
+    return [stored.get("exposure"), stored.get("gain"), stored.get("wb")]
+
+
+def current_values(stored: dict, now_values: dict | None) -> dict:
+    """What to give the webcam at a (re)connection: the calibration, with the gain and exposure the light of the hall
+    was followed to since (exposure.py), if they come from this very calibration; otherwise every minute and every
+    reconnection would undo that work."""
+    values = dict(stored)
+    if now_values and now_values.get("lock") == lock_key(stored):
+        values.update({k: int(now_values[k]) for k in ("exposure", "gain") if k in now_values})
+    return values
+
+
+def back_to_calibration(stored: dict | None, gain: int, exposure: int) -> dict | None:
+    """The webcam gives no frames: the values of the calibration to put back, if the webcam has others."""
+    if not valid_lock(stored) or (gain, exposure) == (stored.get("gain"), stored.get("exposure")):
+        return None
+    return {"gain": int(stored.get("gain", 0)), "exposure": int(stored["exposure"])}
 
 
 def picture_stats(frame: np.ndarray) -> tuple[float, tuple[float, float, float]]:

@@ -161,6 +161,15 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 
 **Soluzione.** Togli le statuine e, con la luce accesa, fai **Calibrazione → Regola la luce e salva la casa vuota**; poi rimettile a mano.
 
+### La luce della webcam cambia da sola, o resta *al limite*
+**Causa.** Mentre la casa guarda, il guadagno della webcam segue la luce della sala a piccoli passi, guardando il vialetto e la fascia intorno alla casa. In *Diagnostica → Luce della webcam*, "al limite della webcam" vuol dire che il guadagno è già al massimo (sala troppo buia) o al minimo con l'esposizione più corta (sala molto illuminata).
+
+**Soluzione.**
+- **Ritocchi frequenti, o tanti cambi di verso nell'ultima ora:** una luce della sala che sfarfalla o che cambia di continuo. Controlla che sul vialetto non ci siano cavi, mani o oggetti fermi.
+- **Al limite al buio:** accendi una luce.
+- **Dopo aver cambiato del tutto l'illuminazione dello stand:** rifai **Calibrazione → Regola la luce e salva la casa vuota**.
+- **Per tornare al comportamento di prima:** `camera.follow_light: false` in `var/config/settings.json`.
+
 ### Avviso *La webcam vede quasi buio*
 **Causa.** Da più di cinque secondi l'immagine è troppo scura (grigio medio sotto 25 su 255): la sala è troppo buia (su casa1 di sera, con la luce della stanza spenta, la webcam arrivava a 9-17 su 50 anche al guadagno massimo) oppure qualcosa copre la webcam.
 

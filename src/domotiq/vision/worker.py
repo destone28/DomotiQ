@@ -33,6 +33,9 @@ VISION_NICE = 5     # the vision gives way to the voice of the same service: a f
 log = logging.getLogger(__name__)
 
 TARGET_FPS = 10.0
+CAMERA_CHECK_S = 60.0    # the values of the webcam read back this often, and put back if it lost them
+CAMERA_SAVE_S = 300.0    # the values the light of the webcam was followed to are kept this often (and at the end)
+CAMERA_SILENT_S = 3.0    # no frames for this long: back to the values of the calibration
 
 
 # ==================================================================== child
@@ -50,7 +53,8 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
     import cv2  # noqa: F401  (imported here: the parent does not need it)
 
     from ..layout import Layout
-    from .camera import Camera, Controls, average_stats, tune, valid_lock
+    from .camera import (Camera, Controls, average_stats, back_to_calibration, current_values, lock_key, tune,
+                         valid_lock)
     from .engine import Engine
 
     cv2.setNumThreads(2)
@@ -62,6 +66,16 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
     else:
         camera = Camera(cfg.get("device"), fps=15)
     lock_file = calib_dir / "camera.json"
+    # the gain and exposure the light of the webcam was followed to (exposure.py): what a reconnection, a start and
+    # the check every minute put back, not those of the calibration, which would undo that work
+    now_file = calib_dir / "camera-now.json"
+    connected: list[tuple[int, int]] = []     # values given to the webcam at a (re)connection, for the engine
+
+    def read_json(path: Path) -> dict | None:
+        try:
+            return json.loads(path.read_text())
+        except (OSError, ValueError):
+            return None
 
     def apply_controls(cam: Camera) -> None:
         if cam.controls is None:
@@ -71,11 +85,26 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
         except (OSError, ValueError):
             stored = None
         if valid_lock(stored):
-            cam.controls.lock(stored)
+            values = current_values(stored, read_json(now_file))
+            cam.controls.lock(values)
             cam.set_balance(stored.get("balance"))
+            connected.append((int(values.get("gain", 0)), int(values.get("exposure", 625))))
         else:
             cam.controls.automatic()
             cam.set_balance(None)
+
+    def save_current() -> None:
+        """The values the webcam has now, with the calibration they started from (a new one makes them void)."""
+        reg = engine.regulator
+        try:
+            stored = json.loads(lock_file.read_text())
+        except (OSError, ValueError):
+            return
+        if reg is None or not valid_lock(stored):
+            return
+        tmp = now_file.with_suffix(".part")
+        tmp.write_text(json.dumps({"exposure": reg.exposure, "gain": reg.gain, "lock": lock_key(stored)}))
+        tmp.replace(now_file)
 
     camera.on_connect = apply_controls
 
@@ -143,8 +172,9 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                 return
             camera.set_balance(values["balance"])
             lock_file.write_text(json.dumps(values))
+            now_file.unlink(missing_ok=True)
             camera.flush()
-            engine.light_retuned(time.time())
+            engine.light_retuned(time.time(), values)
         finally:
             conn.send(("tuning", False))
 
@@ -163,6 +193,8 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                 return {"ok": False, "error": str(e)}
             camera.set_balance(values["balance"])
             lock_file.write_text(json.dumps(values))
+            now_file.unlink(missing_ok=True)
+            engine.set_camera(int(values.get("gain", 0)), int(values.get("exposure", 625)))
             camera.flush()
             engine.light_ok = True
             result = engine.take_empty(force=force)
@@ -193,9 +225,11 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
         "status": lambda p: {"ok": True, **engine.status()},
     }
 
+    engine.follow_light = bool(cfg.get("follow_light", True))
     camera.start()
     want = {False: 0.0, True: 0.0}
     last_seq, last_status, last_learn, last_jpeg = -1, 0.0, time.time(), 0.0
+    last_saved, last_check, last_frame_at, saved_values = time.time(), time.time(), time.time(), None
     running = True
     while running:
         # ---- messages from the house
@@ -271,18 +305,57 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
             break
         # ---- one frame
         start = time.time()
+        while connected:
+            engine.set_camera(*connected.pop(0))
         seq, frame = camera.latest(last_seq, 0.5)
         now = time.time()
         if seq > last_seq and frame is not None:
-            last_seq = seq
+            last_seq, last_frame_at = seq, now
             try:
-                tracks = engine.feed(frame, now)
+                tracks = engine.feed(frame, now, seq)
             except Exception:  # noqa: BLE001
                 logging.exception("frame failed")
                 tracks = []
             conn.send(("tracks", [t.to_dict() for t in tracks], {"camera": camera.connected, "fps": engine.fps}))
+            step = engine.camera_request
+            if step is not None:
+                engine.camera_request = None
+                values = {"gain": step.gain}
+                if step.exposure != (camera.controls.get("exposure") if camera.controls else None):
+                    values["exposure"] = step.exposure
+                # a new gain shows in the next frame, a new exposure two frames later (measured on the C270)
+                after = camera.latest(-1, 0.0)[0] + (3 if "exposure" in values else 2)
+                if camera.controls is not None and camera.controls.set(values):
+                    engine.camera_applied(step, after)
+                else:
+                    engine.camera_failed()
             if camera.controls is not None and engine.retune_wanted(now):
                 retune()
+        elif camera.controls is not None and now - last_frame_at > CAMERA_SILENT_S and engine.regulator is not None:
+            # no frames for a while: back to the values of the calibration (on casa1 no value ever stopped the C270,
+            # but a camera that stops with a long exposure is not woken by opening it again with the same one)
+            back = back_to_calibration(read_json(lock_file), engine.regulator.gain, engine.regulator.exposure)
+            if back is not None:
+                logging.warning("no frames from the webcam for %.0f s: back to gain %s, exposure %s",
+                                now - last_frame_at, back["gain"], back["exposure"])
+                camera.controls.set(back)
+                engine.set_camera(back["gain"], back["exposure"])
+            last_frame_at = now
+        # ---- the values of the webcam: checked every minute, kept every few
+        reg = engine.regulator
+        if reg is not None and camera.controls is not None and now - last_check > CAMERA_CHECK_S:
+            last_check = now
+            camera.controls.refresh()
+            got = (camera.controls.get("gain"), camera.controls.get("exposure"))
+            if None not in got and got != (reg.gain, reg.exposure) and not reg.waiting:
+                logging.warning("the webcam had gain %s and exposure %s instead of %s and %s: set again",
+                                got[0], got[1], reg.gain, reg.exposure)
+                camera.controls.set({"gain": reg.gain, "exposure": reg.exposure})
+        if reg is not None and now - last_saved > CAMERA_SAVE_S:
+            last_saved = now
+            if saved_values != (reg.gain, reg.exposure):
+                saved_values = (reg.gain, reg.exposure)
+                save_current()
             if now - last_jpeg >= 0.2:                # the live view asks 5 pictures a second
                 for overlay in (False, True):
                     if now - want[overlay] < 3.0:
@@ -307,6 +380,7 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
         spare = 1.0 / TARGET_FPS - (time.time() - start)
         if spare > 0:
             time.sleep(spare)
+    save_current()
     camera.stop()
 
 
@@ -328,6 +402,7 @@ class VisionProcess(VisionLink):
             "collect_dir": str(paths.collect),
             "collect": settings.get("camera.collect", False),
             "collect_mb": settings.get("camera.collect_mb", 500),
+            "follow_light": settings.get("camera.follow_light", True),
             "device": device or settings.get("camera.device"),
             "blur_private": settings.get("camera.blur_bathroom", True),
             "models": str(paths.models),

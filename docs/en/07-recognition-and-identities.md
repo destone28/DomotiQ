@@ -165,6 +165,8 @@ When the party is over the house measures the light of every room again, waits f
 
 The camera has its exposure and colours locked on the light in which the empty house was saved.
 
+**The gain follows the light.** While the house looks, every half second it compares the driveway and the strip around the house (where its lights do not reach) with the empty house in use. If they differ by more than 5%, it moves the gain of the webcam one step, at most 8% of light at a time. So the evening coming or a lamp switched on are followed with no gap in the pictures: the full setting of the webcam, about 10 seconds without pictures, starts by itself only when the gain is already at its limit. *Diagnostics → Light of the webcam* shows the gain, the steps of the last hour and any pause (hands over the house, start, dark, party). It is switched off with `camera.follow_light: false` in the settings.
+
 **How it notices.** The house notices by itself when the light of the hall changes:
 - the brightness of the picture changes by more than 12% within 2 seconds (a light switched on or off);
 - the brightness stays more than 15% away from the one the empty house was last learned in for 3 seconds (the evening coming slowly);

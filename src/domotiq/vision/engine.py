@@ -43,6 +43,7 @@ from .pipeline import Observation, Segmenter
 from .privacy import Privacy
 from .scene import StaticScene
 from .signature import SIG_LEN, distance, signature, to_hex
+from .exposure import EXPOSURES, NOISE_EXP, CameraStep, GainRegulator
 from .figures import NOTHING, square_crop
 from .tracker import CONSENT_P, ID_ACCEPT, Tracker
 
@@ -144,6 +145,14 @@ FIGURE_LIKELY_P = 0.5    # the empty house learned again around what the network
 FIGURE_SCAN_P = 0.8      # at a start, what the network sees as a character this sure is taken, whatever its colours
 FIGURE_EVERY_S = 0.5
 FIGURE_MAX = 4
+# The light of the webcam followed in small steps of the gain (exposure.py): the probe is the driveway and the strip
+# around the house, where the lights of the house do not reach (on casa1 at most 1% when they all go on, the rooms
+# up to 35%); compared, away from the presences, with the same place in the empty house in use. Not with hands over
+# the house, while the house looks for its characters at a start, in the dark, during a party. Its steps are taken
+# out of the brightness the house watches for a change of the hall (D-66), and the full setting of the webcam is
+# asked only when it cannot follow
+PROBE_REGIONS = ("driveway", "outside")
+PROBE_FREE = 0.3         # share of the probe that must be in sight, free of presences and hands
 # Empty houses in more lights (var/calibration/empties): with the house empty, its own lights are shown one after
 # the other and the empty house is photographed in each; so is the light of the hall that somebody switches on
 # (Calibration). When the light changes, or at a start, the stored empty house most like the picture, once the light
@@ -202,6 +211,12 @@ class Engine:
         self._moved = {"checked": 0.0, "shift": 0.0, "count": 0}
         self._background: dict[str, np.ndarray] = {}
         self._empties: list[dict[str, Any]] = []   # the empty house in more lights: label, file, when, level, picture
+        self.regulator: GainRegulator | None = None  # the light of the webcam followed (set by the vision process)
+        self.follow_light = True                   # the switch in the settings
+        self.camera_request: CameraStep | None = None   # a step for the vision process to give the webcam
+        self._camera_pending: tuple[int | None, CameraStep] | None = None   # given: from which frame it shows
+        self._camera_factor = 1.0                  # how much brighter the steps of the webcam made the pictures
+        self._probe: np.ndarray | None = None      # the driveway and the strip around the house, in the picture
         self.empty_in_use = ""                     # the label of the stored empty house compared with now
         self._flooded_since = 0.0
         self.light_ok = True                       # the worker clears it while the webcam light is not set
@@ -287,16 +302,23 @@ class Engine:
         # an empty house saved in the dark is no light to set the webcam for: the house asks to save it again
         if self._empty_level < DARK_LEVEL:
             return False
+        # the light of the webcam followed step by step: the full setting only when that is at its limit
+        if self._following() and not self.regulator.at_limit:
+            return False
         # while the house follows a change of the hall light it asks at once, hands or not: they are the light
         adapting = bool(self._adapt_since) and not RETUNE_DARK <= self._ratio <= RETUNE_BRIGHT
         return (self.ready and self.light_ok and (adapting or bool(self._off_since) and now - self._off_since >= RETUNE_S
                 and (now - self._hand_at >= RETUNE_S or self._stuck)) and now - self._retuned_at >= self._retune_every
                 and not self._animated and all(now - t >= LIGHT_GLOW_S for t in self._light_at.values()))
 
-    def light_retuned(self, now: float) -> None:
+    def light_retuned(self, now: float, values: dict | None = None) -> None:
         """The webcam has been set again: the light of every room is measured afresh, and the house waits a
         moment. The empty house, the presences and who they are do not change."""
         self.retunes += 1
+        if values:
+            self.set_camera(values.get("gain", 0), values.get("exposure", EXPOSURES[0]))
+        self._camera_factor = 1.0
+        self._levels.clear()
         self._retuned_at = now
         self._retune_every = RETUNE_EVERY_S if self._back_since_retune else min(2 * self._retune_every, RETUNE_MAX_S)
         self._back_since_retune = False
@@ -314,6 +336,78 @@ class Engine:
             self.segmenter.set_noise(None)
             (self.dir / NOISE_FILE).unlink(missing_ok=True)
 
+    # ------------------------------------------------------------ the light of the webcam, step by step
+    def set_camera(self, gain: int, exposure: int) -> None:
+        """The webcam has these values (a start, a reconnection, a full setting)."""
+        if self.regulator is None:
+            self.regulator = GainRegulator(gain, exposure)
+        else:
+            self.regulator.set(gain, exposure)
+        self.camera_request, self._camera_pending = None, None
+
+    def _following(self) -> bool:
+        return self.regulator is not None and self.follow_light
+
+    def camera_applied(self, step: CameraStep, from_seq: int | None) -> None:
+        """The vision process gave the webcam this step: it shows from frame `from_seq` on (None: the next one)."""
+        self._camera_pending = (from_seq, step)
+
+    def camera_failed(self) -> None:
+        if self.regulator is not None:
+            self.regulator.failed()
+
+    def _camera_shows(self, seq: int | None, now: float) -> None:
+        """A step of the webcam shows from this frame: the light of the rooms and the noise follow it at once, so
+        that it looks neither like a change of the hall nor like something new on the floor."""
+        pending = self._camera_pending
+        if pending is None or (seq is not None and pending[0] is not None and seq < pending[0]):
+            return
+        self._camera_pending = None
+        step = pending[1]
+        if self.segmenter is not None:
+            self.segmenter.camera_step(step.factor, now, NOISE_EXP, measure_again=step.uncertain)
+        self._camera_factor *= step.factor
+        if self.regulator is not None:
+            self.regulator.done(step, now)
+
+    def _follow_light(self, small: np.ndarray, now: float) -> None:
+        """Every MEASURE_S: how bright the probe is against the empty house in use, and a step if it is outside the
+        band; the step goes to the vision process, which gives it to the webcam."""
+        reg = self.regulator
+        if reg is None or not self.follow_light or not reg.due(now) or self._camera_pending is not None \
+                or self.camera_request is not None:
+            return
+        why = ""
+        if self.paused:
+            why = "party"
+        elif self._scan_pending or now < self._scan_until:
+            why = "start"
+        elif not DARK_LEVEL <= self._level <= DAZZLED_LEVEL:
+            why = "dark" if self._level < DARK_LEVEL else "dazzled"
+        elif now - self._hand_at < SETTLE_S:
+            why = "hands"
+        seg = self.segmenter
+        if not why:
+            free = self._probe & ~self._footprints()
+            if free.sum() < PROBE_FREE * max(int(self._probe.sum()), 1):
+                why = "covered"
+        if why:
+            reg.pause(why)
+            return
+        mask = free.view(np.uint8)
+        live = sum(cv2.mean(small, mask=mask)[:3])
+        empty = sum(cv2.mean(seg.reference_bgr, mask=mask)[:3])
+        if empty < 3.0:
+            reg.pause("dark")
+            return
+        step = reg.consider(live / empty, now)
+        if step is not None:
+            self.camera_request = step
+            before = reg.last_step or {}
+            log.info("webcam gain %s -> %d, exposure %s -> %d (probe %.2f of the empty house)",
+                     (before.get("gain") or ["?"])[0], step.gain, (before.get("exposure") or ["?"])[0], step.exposure,
+                     step.ratio)
+
     # ------------------------------------------------------------ a change of the light of the hall
     def _hall_light(self, ratio: float, now: float) -> str | None:
         """Has the light of the hall changed by itself? The brightness of the picture changed by more than ADAPT_JUMP
@@ -321,7 +415,7 @@ class Engine:
         or it stays ADAPT_DRIFT away from the light the empty house was learned in. Not while a light of the house
         has just changed: its glow is measured room by room."""
         levels = self._levels
-        levels.append((now, ratio))
+        levels.append((now, ratio / self._camera_factor))   # the steps of the webcam are no change of the hall
         while len(levels) > 2 and now - levels[1][0] > ADAPT_WINDOW_S:
             levels.popleft()
         if any(now - t < LIGHT_BLOCK_S for t in self._light_at.values()) or now < self._scan_until:
@@ -918,6 +1012,11 @@ class Engine:
         self.calib = calib
         self._adapt_since, self._light_level = 0.0, 1.0
         self.segmenter = Segmenter(self.layout, calib)
+        probe = np.zeros(self.segmenter.mask.shape, bool)
+        for i, name in enumerate(self.segmenter.region_names):
+            if name in PROBE_REGIONS:
+                probe |= self.segmenter.label == i
+        self._probe = probe & (self.segmenter.mask > 0)
         tracker = Tracker(self.layout, calib)
         tracker.set_identities(self.identities)
         tracker.on_question = self._question
@@ -1152,7 +1251,8 @@ class Engine:
             return cv2.resize(frame, ANALYSIS, interpolation=cv2.INTER_AREA)
         return frame
 
-    def feed(self, frame: np.ndarray, now: float | None = None) -> list[Track]:
+    def feed(self, frame: np.ndarray, now: float | None = None, seq: int | None = None) -> list[Track]:
+        """One frame of the webcam (`seq`: its number, to know from which frame a step of the webcam shows)."""
         now = time.time() if now is None else now
         t0 = time.perf_counter()
         small = self._fit(frame)
@@ -1160,9 +1260,11 @@ class Engine:
             dt = max(now - self.frame_at, 1e-3)
             self.fps = 0.9 * self.fps + 0.1 * (1.0 / dt) if self.fps else 1.0 / dt
         self.frame, self.frame_at = small, now
+        self._camera_shows(seq, now)
         if not self.ready:
             self.tracks, self.observations = [], []
             return []
+        self._follow_light(small, now)        # at rest too: the evening comes while nothing moves
         if self.paused:
             return self.tracks                # the party: the presences as they were, the picture for the live view
         if self._resting(small, now):
@@ -1549,6 +1651,8 @@ class Engine:
             "calibrated": self.calibrated,
             "empties": len(self._empties),
             "empty_in_use": self.empty_in_use,
+            "webcam": dict(self.regulator.status(self.frame_at or None), on=self.follow_light)
+            if self.regulator is not None else None,
             "reference": bool(self.ready),
             "fps": round(self.fps, 1),
             "proc_ms": round(self.proc_ms, 1),

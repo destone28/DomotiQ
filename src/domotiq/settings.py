@@ -67,7 +67,8 @@ DEFAULTS: dict[str, Any] = {
                "figures": True,           # the network that knows the figurines gives its second opinion
                "figures_consent": False,  # ...and nothing new is told before it sees a figurine there
                "collect": False,          # what the webcam sees is kept to teach the network (var/collect)
-               "collect_mb": 500},        # ...at most this much, the oldest goes
+               "collect_mb": 500,         # ...at most this much, the oldest goes
+               "follow_light": True},     # the gain of the webcam follows the light of the hall step by step
     "clock": {"timezone": "Europe/Rome"},
 }
 

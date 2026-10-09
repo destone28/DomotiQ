@@ -794,3 +794,60 @@ Sul blocco della notte la rete nuova dà "Mister Blu" a ritagli etichettati Viol
   - Le foto si cancellano quando si rifanno gli angoli. Dopo aver spostato un arredo vanno cancellate a mano (*Cancella*) e rifatte.
 
 **Perché:** proposta accettata da Emilio. Imparare la casa vuota da quello che si vede si adatta a tutto, ma può inglobare una statuina che la casa non sta seguendo: è successo a ogni riavvio con un'altra luce (D-71). Scegliere tra foto scattate a casa vuota non sbaglia mai così, e la casa sa quali delle sue luci sono accese. Le foto da angolazioni diverse invece non servono alla casa vuota: il confronto è pixel per pixel con la webcam, che è fissa.
+
+### D-76 — La luce della webcam seguita a piccoli passi del guadagno (8/10)
+**Scelta:**
+- **Cosa si regola.** Mentre la casa guarda, un regolatore continuo segue la luce della sala muovendo **il guadagno** della webcam.
+  - L'esposizione resta alla posa più lunga vera (625).
+  - Scende di uno scalino vero (312) solo se, con il guadagno al minimo utile (12), l'immagine è ancora troppo chiara.
+  - Il bilanciamento del bianco non si tocca.
+  - La taratura completa ("Regola di nuovo", 9-10 secondi senza immagini) resta per la calibrazione, e in automatico parte solo quando il regolatore è al limite.
+- **Dove si misura.** Sul vialetto e sulla fascia intorno alla casa, dove le luci della casa non arrivano, sul pavimento libero lontano dalle presenze. Il confronto si fa con lo stesso punto della casa vuota in uso (D-75); il bersaglio è 1,0 con una banda morta del ±5%.
+- **Il passo.** Si segue il metodo della camera di Amelie, con i numeri rimisurati sulla C270:
+  - uno sguardo ogni 0,5 secondi di tempo, non di fotogrammi;
+  - la risposta "luce ∝ guadagno^k" si stima dagli ultimi due punti, fra 0,25 e 2,5, partendo dalla curva misurata;
+  - si fa l'80% della strada, con un tetto dell'8% di luce per passo;
+  - nessun passo che porterebbe più lontano dal bersaglio, e nessun ritorno indietro subito dopo aver attraversato la banda: a guadagno basso una unità vale già l'8-14% di luce, più della banda.
+- **Il motore lo sa.** Il passo vale dal secondo fotogramma dopo (il guadagno arriva al primo, l'esposizione al secondo). Da lì il motore:
+  - moltiplica la luce delle stanze del segmentatore per il fattore previsto;
+  - moltiplica il rumore per fattore^(0,6-1): il rumore è misurato sulle immagini riportate alla luce della casa vuota, e cresce come la luminosità^0,6;
+  - toglie i passi della webcam dalla luminosità che guarda per accorgersi di un cambio di luce della sala (D-66).
+
+  Un passo della webcam non è quindi né un cambio di luce né qualcosa di nuovo sul pavimento. Un cambio di scalino dell'esposizione è una stima, e fa rimisurare la luce delle stanze.
+- **Quando sta fermo:** con le mani sulla casa, durante la ricerca dei personaggi all'avvio, al buio o abbagliato (D-67), durante la festa, con il vialetto coperto. Non si ferma per le luci della casa, perché sul vialetto non arrivano.
+- **I valori raggiunti.**
+  - Si salvano in `var/calibration/camera-now.json` ogni 5 minuti e allo spegnimento, insieme alla calibrazione da cui partono: una calibrazione nuova li annulla.
+  - Riconnessione e avvio rimettono quelli.
+  - Ogni minuto si rileggono dalla webcam e, se li ha persi, si rimettono, scrivendolo nel log.
+  - Senza fotogrammi per 3 secondi si torna ai valori della calibrazione.
+- **Diagnostica e log.**
+  - La diagnostica mostra guadagno, esposizione, vialetto rispetto alla casa vuota, ritocchi e cambi di verso nell'ultima ora, la pausa e il suo motivo, il limite e le regolazioni complete.
+  - Il log ha una riga per passo: `webcam gain 32 -> 35, exposure 625 -> 625 (probe 0.91 of the empty house)`.
+- **L'interruttore.** `camera.follow_light` nelle impostazioni, acceso di serie.
+
+**Perché:** richiesta di Emilio, sul modello della camera di Amelie 2.0 (posa manuale ritoccata in background a piccoli passi smorzati), per non avere più buchi di immagini quando la luce della sala cambia. Prima la luminosità derivava finché non scattava una taratura completa, che il motore trattava come un cambio di luce: presenze congelate e rumore reimparato.
+
+Le misure sulla C270 di casa1, l'8/10, a casa ferma, con la luce della sala a metà, al massimo e al minimo:
+
+| Cosa | Misura |
+|---|---|
+| Esposizione | a scalini: con guadagno 0 fino a 165 nero, 175-330 → 3,4, 350-675 → 8,3. Oltre i 67 ms la luminosità diventa ×2, ×3, ×4, ×4,8 esatti a 15 immagini al secondo: è amplificazione, non posa |
+| Luce massima, guadagno 0 | 625 dà 16 su 255: le pose corte non servono mai in questa sala |
+| Guadagno | da 0 a 8 nessun effetto; a 12 ×2,2; da 12 a 255 liscio. Sul vialetto una unità vale +8-14% sotto 24, +3% fra 24 e 48, +1% fra 48 e 96, +0,2-0,4% sopra 128; k fra 0,25 e 1,8 |
+| Guadagno per la casa a circa 50 | luce massima 20-24, a metà 32-36. Luce minima: impossibile, a 255 si arriva a 17-25, con rumore 5,6 e la media che balla di ±9% (buio, D-67) |
+| Ritardo | guadagno: il fotogramma dopo; esposizione: due fotogrammi dopo |
+| Fotogrammi al secondo | 14,7-15 a ogni esposizione, nessun blocco fino a 10000 |
+| Rumore | cresce come la luminosità^0,6, da 0,43 a 2,49 livelli |
+| Sfarfallio | a guadagno 255 con pose corte la media varia dello 0,5-1,6% fra fotogrammi |
+| Luce ferma per un minuto | sul vialetto dallo 0,2% (luce artificiale) allo 0,7% (giorno), al massimo 0,9-2,9% |
+| Comando `v4l2-ctl` | 12,6-13 ms |
+| Log di casa1 | in tutte le regolazioni registrate l'esposizione era 625; cambiava solo il guadagno (16-255) |
+
+Sulle 11 foto della casa vuota del 7/10, quando si accendono le luci della casa il vialetto e la fascia intorno cambiano al massimo dell'1%. La casa intera cambia del 9%, il bagno fino al 35%.
+
+Sulla casa sintetica:
+- **Sera che cala del 45% in un minuto e mezzo:** 20 passi (guadagno da 32 a 62), nessun adattamento di D-66, nessuna taratura completa, nessun cambio di verso, presenze immobili.
+- **Luce dimezzata di colpo:** 10 passi in 6 secondi, un adattamento (la luce è cambiata davvero), nessuna presenza persa.
+- **Luci della casa accese e spente:** nessun passo.
+
+**Per il secondo esemplare.** I numeri vengono dalla webcam C270, non dai mobili di casa1. Il vialetto e la fascia intorno alla casa ci sono uguali, il bersaglio è la casa vuota di quella casa, e la risposta al guadagno si misura sul posto. Con una webcam diversa le misure vanno rifatte (`exposure.py` elenca quali).

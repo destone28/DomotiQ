@@ -17,6 +17,19 @@ function dur(s) {
   return `${h} h ${m} min`;
 }
 
+// the light of the webcam followed step by step: where it is, how often it moved, why it waits
+function webcam(cam) {
+  const w = cam.webcam;
+  const parts = [t("diag.webcam_values", { gain: w.gain, exposure: w.exposure })];
+  if (w.ratio != null) parts.push(t("diag.webcam_probe", { ratio: w.ratio.toFixed(2) }));
+  parts.push(t("diag.webcam_steps", { n: w.steps_hour, back: w.reversals_hour }));
+  if (!w.on) parts.push(t("diag.webcam_off"));
+  else if (w.paused) parts.push(t("diag.webcam_paused", { why: t("diag.webcam_why." + w.paused) }));
+  if (w.at_limit) parts.push("⚠️ " + t("diag.webcam_limit"));
+  if (cam.retunes) parts.push(t("diag.webcam_retunes", { n: cam.retunes }));
+  return parts.join(" · ");
+}
+
 export function mount(root) {
   root.innerHTML = `${pageHead(t("diag.title"), t("diag.lead"))}<div id="body"><p class="muted">${t("common.loading")}</p></div>
     <div class="grid2" style="margin-top:10px">
@@ -50,6 +63,7 @@ export function mount(root) {
           <dt>Audio</dt><dd>${d.audio.ok ? "🟢" : "🔴"} ${esc(d.audio.device || "")}</dd>
           <dt>${t("diag.voice")}</dt><dd>${d.voice.ok ? "🟢" : "🔴"} ${esc(d.voice.stt || "")} ${d.voice.llm ? "· LLM 🟢" : ""} ${d.voice.stories ? "· " + t("diag.stories") + " 🟢" : ""}</dd>
           <dt>${t("diag.camera")}</dt><dd>${cam.available ? "🟢" : "🔴"} ${esc(cam.device || "")} ${cam.fps ? cam.fps.toFixed(1) + " fps" : ""} ${cam.proc_ms ? "· " + Math.round(cam.proc_ms) + " ms" : ""}${cam.stage_ms ? ` (${t("diag.stages")}: ${Math.round(cam.stage_ms.segment)} / ${Math.round(cam.stage_ms.tracker)} / ${Math.round(cam.stage_ms.rest)} ms)` : ""} ${cam.rested ? "· " + t("diag.rested").replace("{share}", Math.round(cam.rested * 100)) : ""} ${cam.paused ? "· " + t("diag.paused") : ""} ${cam.adapting ? "· " + t("diag.adapting") : ""} ${cam.collect && cam.collect.on ? "· " + t("diag.collect", { mb: cam.collect.mb, budget: cam.collect.budget }) : ""} ${cam.adaptations ? "· " + t("diag.adaptations").replace("{n}", cam.adaptations) : ""} ${cam.calibrated === false ? "· " + t("diag.not_calibrated") : ""} ${cam.calibrated && cam.light_ok === false ? "· ⚠️ " + t("diag.light") : ""} ${cam.moved ? "· ⚠️ " + t("diag.moved") : ""}</dd>
+          ${cam.webcam ? `<dt>${t("diag.webcam")}</dt><dd>${webcam(cam)}</dd>` : ""}
         </dl></div>
         <div class="card"><h3 class="card-title">${t("diag.modules")} ${d.mcu.ok ? "🟢" : "🔴"} ${d.mcu.version != null ? "v" + d.mcu.version : ""}</h3>${bus}<ul class="list">${mods}</ul></div>`;
     } catch (e) { $("#body").innerHTML = `<p class="muted">${t("common.error")}</p>`; }

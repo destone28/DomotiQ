@@ -414,6 +414,27 @@ class Segmenter:
     # ------------------------------------------------------------ light correction
     FRESH_EVERY_S = 0.3
 
+    def camera_step(self, factor: float, now: float, noise_exp: float = 0.6, measure_again: bool = False) -> None:
+        """The webcam made its pictures `factor` times as bright (its gain changed): the light of every room follows
+        at once, instead of looking like a change of the light. The noise is learned on the pictures brought back to
+        the light of the empty house: there a pixel's noise grows as its brightness^noise_exp while its brightness
+        stays, so it changes by factor^(noise_exp - 1) and is not learned again. A step that is a guess (the exposure
+        changed) has the light of the rooms measured again."""
+        if self._prev_gains is not None:
+            self._prev_gains = self._prev_gains * np.float32(factor)
+        if self._g is not None:
+            self._g = self._g * np.float32(factor)
+        self.gains = {name: tuple(round(v * factor, 3) for v in g) for name, g in self.gains.items()}
+        self._ref_sat = None
+        if self._noise_w is not None:
+            f = np.float32(factor ** (noise_exp - 1.0))
+            self._noise_l = self._noise_l * f
+            self._noise_c = self._noise_c * f
+            self._limits = None
+        self._seen = []                  # two frames on either side of the step say nothing of the noise
+        if measure_again:
+            self.light_changed(self.region_names, now, 1.0)
+
     def light_changed(self, rooms: list[str], now: float, seconds: float = 1.5) -> None:
         """The house changed the light of these rooms: their gain is measured afresh."""
         for room in rooms:

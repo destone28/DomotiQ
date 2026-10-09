@@ -165,6 +165,8 @@ A festa finita la casa misura di nuovo la luce di ogni stanza, aspetta che le lu
 
 La webcam ha esposizione e colori bloccati sulla luce in cui è stata salvata la casa vuota.
 
+**Il guadagno segue la luce.** Mentre la casa guarda, ogni mezzo secondo confronta il vialetto e la fascia intorno alla casa (dove le sue luci non arrivano) con la casa vuota in uso. Se la differenza supera il 5%, ritocca il guadagno della webcam di un passo, al massimo l'8% di luce alla volta. Così la sera che cala o una lampada accesa si seguono senza buchi di immagini: la regolazione completa della webcam, circa 10 secondi senza immagini, parte da sola solo quando il guadagno è già al limite. *Diagnostica → Luce della webcam* mostra guadagno, ritocchi dell'ultima ora ed eventuale pausa (mani sulla casa, avvio, buio, festa). Si spegne con `camera.follow_light: false` nelle impostazioni.
+
 **Come se ne accorge.** La casa si accorge da sola quando cambia la luce della sala:
 - la luminosità dell'immagine cambia di oltre il 12% in 2 secondi (una luce accesa o spenta);
 - la luminosità resta per 3 secondi oltre il 15% lontana da quella in cui ha imparato la casa vuota l'ultima volta (la sera che arriva piano);

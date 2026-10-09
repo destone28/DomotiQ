@@ -1464,6 +1464,79 @@ def test_an_empty_house_photographed_in_each_light_is_taken_when_the_light_chang
     assert engine.clear_empties()["ok"] and engine.empties() == []
 
 
+class _Webcam:
+    """The synthetic house seen by a webcam whose gain the house moves (exposure.py): a step shows two frames later,
+    as on the C270, and the picture is as much brighter as the measured curve of the gain says."""
+
+    def __init__(self, engine, renderer, gain=32):
+        from domotiq.vision.exposure import gain_light
+        self.engine, self.renderer, self.gain, self.seq = engine, renderer, gain, 0
+        self.light = gain_light
+        self.pending, self.steps = None, []
+        engine.set_camera(gain, 625)
+
+    def feed(self, things, now, hall=1.0, **kw):
+        self.seq += 1
+        if self.pending and self.seq >= self.pending[0]:
+            self.gain, self.pending = self.pending[1], None
+        bright = hall * self.light(self.gain) / self.light(32)
+        tracks = self.engine.feed(self.renderer.render(things, brightness=bright, **kw), now, self.seq)
+        step = self.engine.camera_request
+        if step is not None:
+            self.engine.camera_request = None
+            self.pending = (self.seq + 2, step.gain)
+            self.steps.append((now, self.gain, step.gain))
+            self.engine.camera_applied(step, self.seq + 2)
+        return tracks
+
+
+def test_the_webcam_follows_the_evening_and_nobody_moves(engine, renderer):
+    """The light of the hall goes down by 45% in a minute and a half: the gain follows it in small steps, the
+    presences stay as they are, and the webcam is never set again from scratch (9-10 s without pictures)."""
+    things = [Thing(150, 250, "#3050d0"), Thing(300, 100, "#d03030")]
+    before = _named(engine, renderer, things)
+    cam = _Webcam(engine, renderer)
+    t0 = 20.0
+    for i in range(900):
+        now = t0 + i * 0.1
+        tracks = cam.feed(things, now, hall=1.0 - 0.45 * i / 900)
+        assert _same(tracks, before), (i, [(x.identity, round(x.x), round(x.y)) for x in tracks])
+        assert not engine.retune_wanted(now)
+    st = engine.status()["webcam"]
+    assert cam.steps and cam.gain > 32 and st["reversals_hour"] == 0, (cam.steps, st)
+    assert abs(st["ratio"] - 1.0) <= 0.1, st
+    assert len(engine.tracker.tracks) == 2
+
+
+def test_a_sudden_change_of_the_hall_is_followed_with_presences_still(engine, renderer):
+    """The light of the hall halves at once: the house holds the presences while the gain brings the picture back
+    in a few seconds; nobody comes, nobody goes, and no full setting of the webcam."""
+    things = [Thing(300, 100, "#d03030"), Thing(480, 280, "#30a040")]
+    before = _named(engine, renderer, things)
+    cam = _Webcam(engine, renderer)
+    for i in range(300):
+        now = 20.0 + i * 0.1
+        tracks = cam.feed(things, now, hall=1.0 if i < 30 else 0.5)
+        assert _same(tracks, before), (i, [(x.identity, round(x.x), round(x.y)) for x in tracks])
+        assert not engine.retune_wanted(now)
+    st = engine.status()["webcam"]
+    assert abs(st["ratio"] - 1.0) <= 0.1 and st["reversals_hour"] <= 1, (cam.steps, st)
+
+
+def test_the_lights_of_the_house_do_not_move_the_webcam(engine, renderer):
+    """The probe is where the lights of the house do not reach: they go on and off, the gain stays."""
+    things = [Thing(300, 100, "#d03030")]
+    _named(engine, renderer, things)
+    cam = _Webcam(engine, renderer)
+    for i in range(200):
+        now = 20.0 + i * 0.1
+        lit = {"kitchen": ("#ffffff", 1.0), "living": ("#ffaa5a", 0.8)} if 50 <= i < 150 else None
+        if i in (50, 150):
+            engine.lights_changed(["kitchen", "living"], now)
+        cam.feed(things, now, lights=lit)
+    assert cam.steps == [], cam.steps
+
+
 def test_a_dark_picture_is_never_saved_as_the_empty_house(engine, renderer):
     """casa1, 6 October at 21:00: "Set the light and save the empty house" with the room in the dark."""
     reference = engine.segmenter.reference_bgr.copy()
