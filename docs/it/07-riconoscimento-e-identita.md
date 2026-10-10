@@ -91,7 +91,7 @@ Tieni premuto **Parla** e di' "Aggiungi un personaggio" / "Add a character". La 
 - **I nomi sono unici** in tutta la casa, senza distinzione tra maiuscole e minuscole, e vengono confrontati anche con le pronunce inglesi. Un nome già in uso viene rifiutato: *Il nome Marco è già usato: aggiungi un cognome o un soprannome.* Se le si chiede a voce di aggiungere un nome che ha già, la casa risponde "Conosco già Marco."
 - **Non c'è limite** al numero di personaggi o di oggetti.
 - **Dire i nomi a voce.** Per riconoscere un nome a voce, la casa ascolta solo i nomi registrati, con il vocabolario del suo modello di riconoscimento vocale. Un nome fatto di parole che il modello non conosce non si può riconoscere a voce: alla registrazione la casa lo controlla e lo segnala al passo di conferma (*Il riconoscimento vocale italiano non conosce «Zorbax»: a voce potrei non capirlo.*). Il riconoscimento inglese potrebbe non capire un nome italiano: nella scheda del personaggio compila **Pronuncia inglese (facoltativa)** con una grafia che riesca a riconoscere; la casa accetta entrambe le forme.
-- Chiunque può rinominare o eliminare un personaggio dalla sua scheda. Un personaggio eliminato resta nel cestino per 24 ore e si può ripristinare da **Altro → Impostazioni → Cestino**; se nel frattempo il suo nome è stato preso, torna con " 2" dopo il nome.
+- Chiunque può rinominare o eliminare un personaggio dalla sua scheda. Un personaggio eliminato lascia subito la presenza che lo portava, le domande aperte che lo proponevano e le etichette del registro della visione (non insegna più alla rete un personaggio che non c'è). Resta nel cestino per 24 ore e si può ripristinare da **Altro → Impostazioni → Cestino**; se nel frattempo il suo nome è stato preso, torna con " 2" dopo il nome.
 
 ## Avvisi
 
@@ -161,6 +161,8 @@ A festa finita la casa misura di nuovo la luce di ogni stanza, aspetta che le lu
 - **Chi è.** Sulla scheda di una presenza (pagina **Casa**), **Chi è?** o **È un altro: cambia** apre l'elenco di tutti i personaggi e gli oggetti che la casa conosce, con un nome nuovo in fondo. Scegliendo un personaggio già noto, il nome passa a quella presenza e lascia quella che lo aveva per errore; la casa impara quell'aspetto come una delle sue pose anche se è diverso dal solito (una luce diversa, un personaggio sdraiato), fino a una distanza di colore di 0,6 invece di 0,45, e lo ricorda dopo un riavvio. Una risposta a voce, che potrebbe riguardare la macchia sbagliata, resta più prudente.
 - **Elemento non riconosciuto.** Una statuina che la casa non ha visto posare, o che ha preso per la casa vuota, non viene seguita. **Elemento non riconosciuto**, sulla pagina **Casa** (toccando il punto sulla piantina) o in **Diretta** (toccandolo nell'immagine), dice alla casa dov'è: intorno a quel punto, per circa 3 cm, la casa riprende la casa vuota com'era stata salvata, così quello che c'è torna diverso da lei, ne fa una presenza seguita da subito e chiede chi è. Lì si annullano anche i "non c'è niente" detti poco prima. Se lì non vede niente di diverso dalla casa vuota (l'elemento c'era già quando è stata salvata), basta spostarlo un poco e riprovare.
 
+- **Impara di nuovo l'aspetto.** Nella scheda di un personaggio (**Personaggi**) fa dimenticare alla casa i suoi colori, le pose e la misura. Il nome, le cose da sapere e le regole restano. La prima volta che qualcuno dice chi è (toccando la statuina sulla piantina, rispondendo a una domanda della casa o a voce) la casa impara l'aspetto che vede in quel momento. Serve quando la statuina è un'altra: un personaggio ridipinto, o una casa resa uguale a un'altra con il backup ma con statuine sue, dove la casa cercherebbe i colori delle statuine dell'altra casa, sotto un'altra luce, e non riconoscerebbe le sue o le scambierebbe.
+
 ## La luce della sala
 
 La webcam ha esposizione e colori bloccati sulla luce in cui è stata salvata la casa vuota.
@@ -203,6 +205,8 @@ Con una luce molto diversa le pareti e i bordi dei mobili cambiano aspetto e pos
 
 Oltre alla differenza dalla casa vuota e alla firma di colore, la casa può avere un secondo parere: una piccola rete neurale addestrata sulle statuine di questa casa, viste dalla sua webcam con luci e ombre diverse. Guarda il ritaglio di una macchia e dice quale personaggio è, oppure "niente" (il riflesso di una luce su una parete, un'ombra, un modulo). Sulla scheda ogni ritaglio costa circa 10 ms, quindi la casa la usa solo quando serve:
 - **Una macchia nuova** che la rete vede come "niente", abbastanza sicura, non diventa una presenza. Non vale mentre si registra un personaggio nuovo: la rete non lo conosce ancora.
+  - **"Niente" per prima risposta.** Anche quando la rete non è sicura, una presenza nuova viene annunciata solo quando la sua risposta più recente non è "niente": la presenza aspetta, e la rete la riguarda ogni mezzo secondo. Nei registri della visione dal 7 al 10 ottobre, rivisti a occhio uno per uno, nessuna delle 46 statuine vere annunciate aveva "niente" come prima risposta, mentre ce l'avevano 144 delle 227 presenze false (mobili, griglie e prati sotto un'altra luce). Un personaggio registrato dopo l'addestramento della rete non viene giudicato da lei.
+  - **Il tipo.** Una presenza senza nome prende il tipo del personaggio che la rete vede, se ne è sicura almeno all'80%: le statuine piccole e tonde, prese per animali dalla loro forma, venivano chieste come "un animale nuovo".
   - **La soglia.** Ogni rete è sicura a modo suo, quindi la soglia si misura quando la si addestra: sta appena sopra la statuina vera più "niente" dei blocchi lasciati fuori, e arriva nel file `figures.json` della rete (0,75 per quella del 7 ottobre sera). Senza, è il 90%.
 - **Un personaggio che non somiglia più ai suoi colori** (un'altra luce) tiene il nome finché la rete, almeno all'80%, lo vede ancora.
 - **Un nuovo arrivato** prende il nome di un personaggio che nessun altro ha, invece di sentirsi chiedere "chi è?", quando la rete ne è sicura al 95% due volte di fila.
@@ -220,15 +224,18 @@ Con la rete accesa una presenza nuova viene annunciata solo dopo che la rete l'h
 
 **Addestrarla.** La rete si addestra sul PC con i programmi di `scripts/figures/`, partendo dalle registrazioni della casa (**Calibrazione → Registra**). Ogni registrazione salva, per ogni personaggio riconosciuto, il riquadro della sua macchia: quello è il ritaglio con il suo nome.
 1. Con tutti i personaggi in casa e riconosciuti, registra qualche minuto spostandoli in stanze e posizioni diverse, con luci diverse (luce della sala, una lampada laterale, gli scenari della casa) e con le ombre di chi sta vicino.
-2. Copia sul PC `var/recordings/rec-*` (o `var/collect/rec-*`, la raccolta continua), `var/config/identities.json` e `var/domotiq.db`, poi:
+2. Copia sul PC `var/recordings/rec-*` (o `var/collect/rec-*`, la raccolta continua), `var/config/identities.json`, `var/domotiq.db` e `var/calibration`, poi:
    ```
    python scripts/figures/web_fixes.py domotiq.db identities.json correzioni.json --since "2026-10-07 00:00"
    python scripts/figures/build_crops.py <registrazioni> identities.json crops [--journal journal] [--fixes correzioni.json]
+   python scripts/figures/empty_crops.py calibration vuota     # la casa vuota sotto ogni luce: tutto "niente"
    python scripts/figures/preview.py crops anteprima.png      # controlla a occhio le etichette
-   python scripts/figures/train.py rete crops --only 2         # prova su un blocco di tempo lasciato fuori
-   python scripts/figures/train.py rete2 crops --drop rete/suspect.json
+   python scripts/figures/train.py rete crops vuota --only 2 --niente-weight 2   # prova su un blocco lasciato fuori
+   python scripts/figures/train.py rete2 crops vuota --drop rete/suspect.json --niente-weight 2
    ```
    - **Le correzioni della piantina.** `web_fixes.py` ritrova nel database della casa quello che è stato corretto sulla piantina della webapp: una presenza eliminata era "niente" per tutto il tempo in cui è rimasta in quel punto; una presenza a cui è stato dato un nome era quel personaggio, anche mentre la casa la chiamava in un altro modo o non la chiamava. Con `--fixes` queste correzioni contano più delle etichette della casa.
+   - **La casa vuota.** `empty_crops.py` fa ritagli "niente" dalle foto della casa vuota (quella salvata e quelle con le luci), alle misure delle macchie vere. Insegnano alla rete i mobili della casa anche prima che ci siano errori da correggere: su una casa con un divano arancione la rete del 7 ottobre vedeva statuine nel 25% dei ritagli della casa vuota, quella addestrata anche con queste foto nell'8%.
+   - **Il peso di "niente".** Ogni classe si vede circa lo stesso numero di volte; in più un errore su una statuina pesa di più, perché "niente" ha molti più esempi. Con `--niente-weight 2` un errore su "niente" pesa il doppio: sull'ultimo blocco di tempo lasciato fuori le statuine vere con "niente" come prima risposta sono scese dallo 0,8% allo 0,4%, e i ritagli "niente" presi per statuine dal 4% all'1,7%. Con 4 le presenze false calano ancora, ma Mister Green sdraiato sul prato diventa "niente" in un ritaglio su otto.
    - **Il secondo addestramento** lascia fuori i ritagli su cui la rete è sicurissima di un'altra etichetta (lì aveva sbagliato la casa). Non vale per un nome dato a mano: il 7 ottobre la rete chiamava "Mister Blu" Rossellina sdraiata sul letto, perché la casa l'aveva chiamata così prima della correzione.
 3. Copia `figures.onnx` e `figures.json` in `models/vision/` sulla scheda e riavvia la casa.
 

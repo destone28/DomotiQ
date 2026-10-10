@@ -127,7 +127,7 @@ Every change goes into the change log.
 
 <img src="../images/screens/en/identities.png" alt="Characters and objects" width="260">
 
-The list of registered characters, pets, cars and objects, with photo or silhouette, kind, and where they are now (*Now: Kitchen*, or *Not in sight*). **+ Add** starts the guided registration; tapping one opens its card, where you can change **Name**, **Kind**, **English pronunciation (optional)** and **Who they are (for the stories)** (one thing per line, as it would follow the name: *is a doctor*, *loves jazz*, *is afraid of spiders*; the house uses them in stories and answers, see [chapter 8](08-voice.md#stories-memories-and-free-questions)), or **Delete** it (it stays in the bin for 24 hours). See [chapter 7](07-recognition-and-identities.md).
+The list of registered characters, pets, cars and objects, with photo or silhouette, kind, and where they are now (*Now: Kitchen*, or *Not in sight*). **+ Add** starts the guided registration; tapping one opens its card, where you can change **Name**, **Kind**, **English pronunciation (optional)** and **Who they are (for the stories)** (one thing per line, as it would follow the name: *is a doctor*, *loves jazz*, *is afraid of spiders*; the house uses them in stories and answers, see [chapter 8](08-voice.md#stories-memories-and-free-questions)), or **Delete** it (it stays in the bin for 24 hours). A deleted character also leaves at once the presences in the house, the open questions and the labels of the vision journal; a rule that named it stays, marked ⚠️ *deleted character*. **Learn the look again** makes the house forget the colours, poses and size of the character, which it learns again the first time somebody says who it is: useful when the figurine is another one, for example in a house made like another one but with its own figurines. See [chapter 7](07-recognition-and-identities.md).
 
 ### Simulation
 
@@ -151,7 +151,7 @@ Refreshed every few seconds:
 
 ### Vision journal
 
-Every new presence announced, every name given and every blob refused by the network of the figurines, with its picture, the latest first (the last 600). For each one: **Right**, or **It was…** with the right character or "nothing (not a figurine)". The answers become verified examples for the next training of the network (see [chapter 7](07-recognition-and-identities.md#the-network-that-knows-the-figurines)). The pictures keep the blur of what is outside the house and, if on, of the bathroom.
+Every new presence announced, every name given and every blob refused by the network of the figurines, with its picture, the latest first (the last 600). For each one: **Right**, or **It was…** with the right character or "nothing (not a figurine)". The name of a character deleted since stays in the entry, marked *(deleted)*, but has no **Right** any more: it can only be corrected. The answers become verified examples for the next training of the network (see [chapter 7](07-recognition-and-identities.md#the-network-that-knows-the-figurines)). The pictures keep the blur of what is outside the house and, if on, of the bathroom.
 
 ### Settings
 

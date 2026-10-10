@@ -127,7 +127,7 @@ Ogni modifica va nel registro delle modifiche.
 
 <img src="../images/screens/it/identities.png" alt="Personaggi e oggetti" width="260">
 
-L'elenco dei personaggi, degli animali, delle auto e degli oggetti registrati, con foto o sagoma, tipo, e dove si trovano adesso (*Ora: Cucina*, oppure *Non lo vedo*). **+ Aggiungi** avvia la registrazione guidata; toccandone uno si apre la sua scheda, dove puoi cambiare **Nome**, **Tipo**, **Pronuncia inglese (facoltativa)** e **Chi è (per le storie)** (una cosa per riga, come la si direbbe dopo il nome: *fa il medico*, *ama il jazz*, *ha paura dei ragni*; la casa le usa nelle storie e nelle risposte, vedi il [capitolo 8](08-voce.md#storie-ricordi-e-domande-libere)), oppure eliminarlo con **Elimina** (resta nel cestino per 24 ore). Vedi il [capitolo 7](07-riconoscimento-e-identita.md).
+L'elenco dei personaggi, degli animali, delle auto e degli oggetti registrati, con foto o sagoma, tipo, e dove si trovano adesso (*Ora: Cucina*, oppure *Non lo vedo*). **+ Aggiungi** avvia la registrazione guidata; toccandone uno si apre la sua scheda, dove puoi cambiare **Nome**, **Tipo**, **Pronuncia inglese (facoltativa)** e **Chi è (per le storie)** (una cosa per riga, come la si direbbe dopo il nome: *fa il medico*, *ama il jazz*, *ha paura dei ragni*; la casa le usa nelle storie e nelle risposte, vedi il [capitolo 8](08-voce.md#storie-ricordi-e-domande-libere)), oppure eliminarlo con **Elimina** (resta nel cestino per 24 ore). Un personaggio eliminato sparisce subito anche dalle presenze in casa, dalle domande aperte e dalle etichette del registro della visione; una regola che lo nominava resta, segnata con ⚠️ *personaggio eliminato*. **Impara di nuovo l'aspetto** fa dimenticare alla casa colori, pose e misura del personaggio, che li impara di nuovo la prima volta che qualcuno dice chi è: serve quando la statuina è un'altra, per esempio in una casa uguale a un'altra ma con statuine sue. Vedi il [capitolo 7](07-riconoscimento-e-identita.md).
 
 ### Simulazione
 
@@ -151,7 +151,7 @@ Si aggiorna ogni pochi secondi:
 
 ### Registro della visione
 
-Ogni presenza nuova annunciata, ogni nome dato e ogni macchia scartata dalla rete delle statuine, con la sua immagine, dalla più recente (le ultime 600). Per ognuna: **Giusto**, oppure **Era…** con il personaggio giusto o "niente (non è una statuina)". Le risposte diventano esempi verificati per il prossimo addestramento della rete (vedi il [capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine)). Le immagini rispettano la sfocatura di quello che sta fuori dalla casa e, se attiva, del bagno.
+Ogni presenza nuova annunciata, ogni nome dato e ogni macchia scartata dalla rete delle statuine, con la sua immagine, dalla più recente (le ultime 600). Per ognuna: **Giusto**, oppure **Era…** con il personaggio giusto o "niente (non è una statuina)". Un nome di un personaggio poi eliminato resta nella voce, segnato *(eliminato)*, ma non ha più **Giusto**: si può solo correggere. Le risposte diventano esempi verificati per il prossimo addestramento della rete (vedi il [capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine)). Le immagini rispettano la sfocatura di quello che sta fuori dalla casa e, se attiva, del bagno.
 
 ### Impostazioni
 

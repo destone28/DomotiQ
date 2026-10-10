@@ -77,7 +77,23 @@ function summary(rule) {
   if (w.seconds !== undefined) s += ` · ${w.seconds} s`;
   if (w.state) s += " · " + t("st." + w.state);
   if (w.at) s += " · " + w.at;
-  return s + " → " + (rule.then || []).map(a => action(rule, a)).join(", ");
+  s += " → " + (rule.then || []).map(a => action(rule, a)).join(", ");
+  return gone(rule).length ? s + " · ⚠️ " + t("rules.gone_who") : s;
+}
+
+// the characters a rule names that are no longer in the house: deleted, the rule waits for them in vain
+function gone(rule) {
+  const known = new Set((store.state.identities || []).map(i => i.id));
+  const named = [];
+  const look = (o) => {
+    for (const [k, v] of Object.entries(o || {})) {
+      if (k === "identity" && typeof v === "string" && v) named.push(v);
+      else if (v && typeof v === "object") look(v);
+    }
+  };
+  look(rule.when);
+  (rule.if || []).forEach(look);
+  return named.filter(id => !known.has(id));
 }
 
 function action(rule, a) {
@@ -102,7 +118,7 @@ export function mount(root, params) {
     root.innerHTML = `
       ${pageHead(t("rules.title"), t("rules.lead"), `<button class="btn primary small" id="new">+ ${t("rules.new")}</button>`)}
       <div class="card"><ul class="list">${rules.map(r => `
-        <li><span class="switch"><input type="checkbox" data-toggle="${r.id}" ${r.enabled ? "checked" : ""}><span></span></span>
+        <li><label class="switch"><input type="checkbox" data-toggle="${r.id}" ${r.enabled ? "checked" : ""}><span></span></label>
         <button class="link grow" data-edit="${r.id}"><span class="grow"><span class="title">${r.alert ? "⚠️ " : ""}${esc(tr(r.name))}</span>
         <span class="sub">${esc(summary(r))}</span></span></button></li>`).join("")}</ul></div>`;
     root.querySelector("#new").onclick = () => edit(null);
@@ -141,6 +157,8 @@ function field(key, kind, value) {
   const s = store.state;
   const lbl = t("f." + ({ repeat_s: "repeat", grace_s: "grace", duration_s: "duration", at: "at" }[key] || key));
   const opt = (v, label, sel) => `<option value="${esc(v)}" ${sel ? "selected" : ""}>${esc(label)}</option>`;
+  // a character deleted since: shown as such, so that saving the rule does not turn it into "everyone"
+  const goneOpt = (id) => id && !s.identities.some(i => i.id === id) ? opt(id, "⚠️ " + t("rules.gone_who"), true) : "";
   let input;
   if (kind === "room" || kind === "rooms" || kind === "room+") {
     const rooms = s.layout.rooms.map(r => opt(r.id, tr(r.name), value === r.id));
@@ -151,9 +169,9 @@ function field(key, kind, value) {
     const w = value || {};
     const cats = ["any", "person", "animal", "dog", "cat", "car", "object"];
     input = `<div class="grid2"><select data-k="${key}.category">${cats.map(c => opt(c, t("cat." + c), (w.category || "any") === c)).join("")}</select>
-      <select data-k="${key}.identity">${opt("", t("common.everyone"), !w.identity)}${s.identities.map(i => opt(i.id, i.name, w.identity === i.id)).join("")}</select></div>`;
+      <select data-k="${key}.identity">${opt("", t("common.everyone"), !w.identity)}${s.identities.map(i => opt(i.id, i.name, w.identity === i.id)).join("")}${goneOpt(w.identity)}</select></div>`;
   } else if (kind === "identity") {
-    input = `<select data-k="${key}">${s.identities.map(i => opt(i.id, i.name, value === i.id)).join("")}</select>`;
+    input = `<select data-k="${key}">${s.identities.map(i => opt(i.id, i.name, value === i.id)).join("")}${goneOpt(value)}</select>`;
   } else if (kind === "num") {
     input = `<input type="number" data-k="${key}" value="${value ?? ""}" step="any">`;
   } else if (kind === "time") {

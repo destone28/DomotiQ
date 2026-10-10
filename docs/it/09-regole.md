@@ -38,7 +38,7 @@ Le regole sono semplice JSON, salvato sulla scheda in `var/config/rules.json`. Q
 
 ### Chi
 
-Molti eventi e condizioni hanno un campo **Chi** con due scelte: il tipo (*chiunque*, *persona*, *animale*, *cane*, *gatto*, *auto*, *oggetto*) e il personaggio (*chiunque* oppure uno dei personaggi registrati). *animale* comprende cani, gatti e ogni altro animale domestico. Il formato delle regole accetta anche un elenco di personaggi da escludere, `"who": {"category": "person", "except": ["<character id>"]}`, che l'editor non mostra.
+Molti eventi e condizioni hanno un campo **Chi** con due scelte: il tipo (*chiunque*, *persona*, *animale*, *cane*, *gatto*, *auto*, *oggetto*) e il personaggio (*chiunque* oppure uno dei personaggi registrati). *animale* comprende cani, gatti e ogni altro animale domestico. Il formato delle regole accetta anche un elenco di personaggi da escludere, `"who": {"category": "person", "except": ["<character id>"]}`, che l'editor non mostra. Se il personaggio scelto viene eliminato, la regola resta com'era e non scatta più per lui: nell'elenco delle regole e nell'editor compare ⚠️ *personaggio eliminato*, così salvandola non diventa una regola per chiunque senza volerlo. Ripristinando il personaggio dal cestino la regola torna a funzionare.
 
 ## Quando: gli eventi
 

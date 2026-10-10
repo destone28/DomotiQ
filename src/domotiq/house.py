@@ -181,6 +181,24 @@ class House:
         self._named[track.id] = (identity, (self._now or time.time()) + NAMED_S)
         return before
 
+    def forget_identity(self, identity: str) -> None:
+        """A character deleted: its name leaves the presences at once (without waiting for the vision), and the
+        questions that proposed it are withdrawn (the vision asks again about whoever is still in doubt)."""
+        self._named = {k: v for k, v in self._named.items() if v[0] != identity}
+        changed = False
+        for t in self.tracks.values():
+            if t.identity == identity:
+                t.identity, t.uncertain, t.candidates = None, False, []
+                changed = True
+            elif identity in t.candidates:
+                t.candidates = [c for c in t.candidates if c != identity]
+                changed = True
+        for cid, c in list(self.confirmations.items()):
+            if any(o.get("value") == identity for o in c["options"]):
+                self.withdraw(cid)
+        if changed:
+            self._pub("tracks_changed", tracks=[t.to_dict() for t in self.tracks.values()])
+
     def drop_track(self, track_id: str, now: float | None = None) -> None:
         """A presence somebody said is not real leaves the house now (rooms, counts, lights, questions), and is
         left out for a few seconds, until the vision has forgotten it too."""

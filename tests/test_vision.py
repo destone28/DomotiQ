@@ -1858,6 +1858,39 @@ def test_with_consent_nothing_is_told_before_the_network_sees_a_figurine(engine,
     assert len(tracks) == 1
 
 
+def test_a_newcomer_waits_while_the_network_says_niente_even_unsure(engine, renderer):
+    """Both houses, 7-10 October: two false presences in three were "niente" first for the network, however unsure,
+    and no real figurine was. Told once the network sees a figurine there; nameless, it is what the character the
+    network is sure of is (the small round figurines of a house were asked about as "a new animal")."""
+    run(engine, renderer, [([], {})] * 40)
+    engine.set_identities([Identity("id-fido", "Fido", category="dog")])     # no colours learned yet
+    engine.figures = _Figures("niente", 0.4)
+    yellow = Thing(300, 100, "#e0c020")
+    assert _put_down(engine, renderer, [], yellow, 4.0) == []
+    assert engine.status()["figures"]["held"] > 0 and engine.status()["figures"]["blocked"] == 0
+    engine.figures.label, engine.figures.p = "Fido", 0.9     # a figurine, not sure enough to name it
+    tracks = run(engine, renderer, [([yellow], {})] * 20, t0=8.5)
+    assert len(tracks) == 1 and tracks[0].identity is None and tracks[0].category == "dog"
+
+
+def test_a_character_the_network_does_not_know_is_not_held_by_its_niente(engine, renderer):
+    """Registered after the network was trained (a cat): what the network says of it says nothing."""
+    from domotiq.vision.tracker import VTrack
+    run(engine, renderer, [([], {})] * 5)
+    tr = engine.tracker
+    tr.set_identities([Identity("id-micia", "Micia", category="cat"), Identity("id-rosso", "Rosso")])
+    tr.veto, tr.known = True, {"rosso"}
+    t = VTrack("t-1", 10.0, 10.0, None, np.zeros(1, np.float32), "cat")
+    t.figure = ("niente", 0.5, 100.0, 1)
+    assert tr._held(t, 100.5)                                 # nameless: it waits
+    t.identity = "id-rosso"
+    assert tr._held(t, 100.5)                                 # one the network knows: it waits too
+    t.identity = "id-micia"
+    assert not tr._held(t, 100.5)                             # one it does not know: not judged by it
+    t.identity, t.figure = None, ("niente", 0.5, 90.0, 1)
+    assert not tr._held(t, 100.5)                             # an old answer counts no more
+
+
 def test_the_journal_keeps_what_the_vision_told_and_refused(engine, renderer, tmp_path):
     engine.journal_dir = tmp_path / "journal"
     engine.journal_dir.mkdir()

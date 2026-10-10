@@ -206,6 +206,24 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 
 **Soluzione.** Monta il totem e fissa i cavi lungo le pareti, poi a casa vuota **Altro → Calibrazione → Salva solo la casa vuota**.
 
+### La casa vede personaggi che non ci sono, anche a casa vuota
+**Causa.** Quando cambia la luce (il sole nella stanza, le luci colorate della casa che seguono i personaggi) mobili, griglie e prati non somigliano più alla casa vuota, e la rete delle statuine, addestrata con altre luci o su un'altra casa, non è sicura che siano "niente". I colori poi danno loro il nome del personaggio più simile.
+
+**Soluzione.** Una presenza nuova a cui la rete risponde "niente" per prima aspetta finché non vede una statuina, anche se la rete non è sicura: quasi tutte queste presenze non vengono più annunciate. Se succede ancora:
+- a casa vuota, con la luce di tutti i giorni, **Altro → Calibrazione → Aggiungi la luce di adesso**, una volta per ogni luce della stanza (mattina, sera, lampada accesa);
+- accendi **Raccolta continua di immagini per la rete**, nel **Registro della visione** segna "niente" le presenze false, e addestra di nuovo la rete con queste immagini e con le foto della casa vuota ([capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine));
+- per non avere nessun annuncio dubbio, **Solo presenze riconosciute dalla rete**.
+
+### Una casa resa uguale a un'altra non riconosce le sue statuine, o le scambia
+**Causa.** Il backup porta i colori delle statuine dell'altra casa, viste sotto la sua luce. Se la casa ha statuine sue, anche dello stesso modello, li cerca invano: le sue diventano nuovi arrivati, prendono il nome sbagliato, o restano ammucchiate dove una mano le ha prese.
+
+**Soluzione.** Nella scheda di ogni personaggio tocca **Impara di nuovo l'aspetto**, poi di' alla casa chi è ogni statuina: toccandola sulla piantina, rispondendo alle sue domande o a voce. Basta una volta per statuina.
+
+### Un personaggio eliminato compare ancora
+**Causa.** Il nome resta dove racconta qualcosa che è successo: gli eventi passati e le voci del registro della visione, segnate *(eliminato)*. La rete delle statuine continua a conoscerlo finché non viene addestrata di nuovo, e il registro mostra ancora quello che dice.
+
+**Soluzione.** Non serve fare niente: dalle presenze in casa, dalle domande aperte e dalle etichette per la rete sparisce subito. Una regola che lo nominava resta, segnata con ⚠️ *personaggio eliminato*: modificala o eliminala.
+
 ### La casa chiede di qualcuno che non c'è
 **Causa.** Qualcosa che la mano ha spostato o lasciato (un'ombra, un riflesso, un cavo) ha superato il doppio controllo della casa.
 

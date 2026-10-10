@@ -206,6 +206,24 @@ The installer (which needs internet) reloads the firmware when needed; without i
 
 **Fix.** Mount the totem and run the cables along the walls, then with the house empty **More → Calibration → Save the empty house only**.
 
+### The house sees characters that are not there, even with the house empty
+**Cause.** When the light changes (the sun in the room, the coloured lights of the house following the characters) furniture, grilles and lawns no longer look like the empty house, and the network of the figurines, trained under other lights or on another house, is not sure they are "niente". The colours then give them the name of the most alike character.
+
+**Solution.** A new presence the network answers "niente" first for waits until it sees a figurine, even when the network is not sure: almost all these presences are no longer announced. If it still happens:
+- with the house empty, in the everyday light, **More → Calibration → Add the light of now**, once for every light of the room (morning, evening, lamp on);
+- switch on **Continuous collection of pictures for the network**, mark the false presences "nothing" in the **Vision journal**, and train the network again with these pictures and the photos of the empty house ([chapter 7](07-recognition-and-identities.md#the-network-that-knows-the-figurines));
+- to have no doubtful announcement at all, **Only presences the network recognizes**.
+
+### A house made like another one does not recognize its figurines, or mixes them up
+**Cause.** The backup brings the colours of the figurines of the other house, seen under its light. If the house has its own figurines, even of the same model, it looks for those colours in vain: its own become newcomers, take the wrong name, or stay piled up where a hand took them.
+
+**Solution.** On the card of every character tap **Learn the look again**, then tell the house who every figurine is: by tapping it on the plan, answering its questions, or aloud. Once per figurine is enough.
+
+### A deleted character still shows up
+**Cause.** The name stays where it tells something that happened: the past events and the entries of the vision journal, marked *(deleted)*. The network of the figurines keeps knowing it until it is trained again, and the journal still shows what it says.
+
+**Solution.** Nothing to do: it leaves at once the presences in the house, the open questions and the labels for the network. A rule that named it stays, marked ⚠️ *deleted character*: change it or delete it.
+
 ### The house asks about somebody who is not there
 **Cause.** Something a hand moved or left behind (a shadow, a reflection, a cable) passed the double check of the house.
 

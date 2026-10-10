@@ -91,7 +91,7 @@ Hold **Talk** and say "Aggiungi un personaggio" / "Add a character". The house a
 - **Names are unique** in the whole house, without distinction between upper and lower case, and they are also checked against the English pronunciations. A name already in use is refused: *The name Marco is already used: add a surname or a nickname.* Asked by voice to add a name it already has, the house answers "I already know Marco."
 - There is **no limit** to the number of characters or objects.
 - **Speaking names.** To recognize a name by voice, the house listens for the registered names only, with the vocabulary of its speech recognition model. A name made of words the model does not know cannot be heard by voice: at registration the house checks it and warns on the confirmation step (*The Italian speech recognizer does not know "Zorbax": I may not understand it by voice.*). The English recognizer may not hear an Italian name: in the character's card, fill in **English pronunciation (optional)** with a spelling it can hear; the house accepts either form.
-- Anyone can rename or delete a character from its card. A deleted character stays in the bin for 24 hours and can be restored from **More → Settings → Bin**; if its name was taken in the meantime, it comes back with " 2" after the name.
+- Anyone can rename or delete a character from its card. A deleted character leaves at once the presence that carried it, the open questions that proposed it and the labels of the vision journal (it no longer teaches the network a character that is not there). It stays in the bin for 24 hours and can be restored from **More → Settings → Bin**; if its name was taken in the meantime, it comes back with " 2" after the name.
 
 ## Warnings
 
@@ -161,6 +161,8 @@ When the party is over the house measures the light of every room again, waits f
 - **Who it is.** On the card of a presence (**House** page), **Who is it?** or **Someone else: change** opens the list of every character and object the house knows, with a new name at the bottom. Choosing a character already known moves the name to that presence and away from the one that had it by mistake; the house learns that look as one of its poses even if it is unusual (another light, a character lying down), up to a colour distance of 0.6 instead of 0.45, and remembers it after a restart. An answer by voice, which may be about the wrong blob, stays more careful.
 - **Unrecognized item.** A figurine the house did not see being put down, or took for the empty house, is not followed. **Unrecognized item**, on the **House** page (tapping the spot on the plan) or in **Live** (tapping it in the picture), tells the house where it is: around that spot, for about 3 cm, the house takes back the empty house as it was saved, so what stands there differs from it again, makes it a presence followed at once and asks who it is. Any "nothing there" said there a moment before is cancelled too. If it sees nothing different from the empty house there (the item was already there when it was saved), move it a little and try again.
 
+- **Learn the look again.** On the card of a character (**Characters**) it makes the house forget its colours, poses and size. Name, facts and rules stay. The first time somebody says who it is (tapping the figurine on the plan, answering a question of the house, or aloud) the house learns the look it sees then. Useful when the figurine is another one: a character painted again, or a house made like another one with the backup but with its own figurines, where the house would look for the colours of the figurines of the other house, under another light, and would not recognize its own or would mix them up.
+
 ## The light of the hall
 
 The camera has its exposure and colours locked on the light in which the empty house was saved.
@@ -203,6 +205,8 @@ In a very different light the walls and the edges of the furniture look another 
 
 Besides the difference from the empty house and the colour signature, the house can have a second opinion: a small neural network trained on the figurines of this house, seen by its webcam under different lights and shadows. It looks at the crop of a blob and says which character it is, or "niente" (nothing: a light shining on a wall, a shadow, a module). On the board every crop costs about 10 ms, so the house uses it only when needed:
 - **A new blob** the network sees as "niente", sure enough, does not become a presence. Not while a new character is being registered: the network does not know it yet.
+  - **"Niente" as the first answer.** Even when the network is not sure, a new presence is announced only when its latest answer is not "niente": the presence waits, and the network looks at it again every half second. In the vision journals of 7-10 October, looked at one by one, none of the 46 real figurines announced had "niente" as the first answer, while 144 of the 227 false presences had it (furniture, grilles and lawns under another light). A character registered after the network was trained is not judged by it.
+  - **The kind.** A nameless presence takes the kind of the character the network sees, when it is at least 80% sure: the small round figurines, taken for animals by their shape, were asked about as "a new animal".
   - **The threshold.** Every network is sure in its own measure, so the threshold is measured when it is trained: just above the most "niente" real figurine of the blocks left out, written in the network's `figures.json` (0.75 for the one of 7 October evening). Without it, 90%.
 - **A character that no longer looks like its colours** (another light) keeps its name while the network, at least 80% sure, still sees it.
 - **A newcomer** takes the name of a character nobody else holds, instead of being asked "who is it?", when the network is 95% sure of it twice in a row.
@@ -220,15 +224,18 @@ With the network on, a new presence is announced only after the network has look
 
 **Training it.** The network is trained on the PC with the programs in `scripts/figures/`, from the recordings of the house (**Calibration → Record**). Every recording saves, for every recognized character, the box of its blob: that is the crop with its name.
 1. With all the characters in the house and recognized, record a few minutes moving them to different rooms and positions, under different lights (the hall light, a lamp at the side, the scenes of the house) and with the shadows of people nearby.
-2. Copy `var/recordings/rec-*` (or `var/collect/rec-*`, the continuous collection), `var/config/identities.json` and `var/domotiq.db` to the PC, then:
+2. Copy `var/recordings/rec-*` (or `var/collect/rec-*`, the continuous collection), `var/config/identities.json`, `var/domotiq.db` and `var/calibration` to the PC, then:
    ```
    python scripts/figures/web_fixes.py domotiq.db identities.json fixes.json --since "2026-10-07 00:00"
    python scripts/figures/build_crops.py <recordings> identities.json crops [--journal journal] [--fixes fixes.json]
+   python scripts/figures/empty_crops.py calibration empty   # the empty house under every light: all "niente"
    python scripts/figures/preview.py crops preview.png      # check the labels by eye
-   python scripts/figures/train.py net crops --only 2        # test on a block of time left out
-   python scripts/figures/train.py net2 crops --drop net/suspect.json
+   python scripts/figures/train.py net crops empty --only 2 --niente-weight 2   # test on a block left out
+   python scripts/figures/train.py net2 crops empty --drop net/suspect.json --niente-weight 2
    ```
    - **The corrections made on the plan.** `web_fixes.py` finds in the database of the house what was corrected on the plan of the web app: a presence dismissed was "niente" all the time it stood at that place; a presence given a name was that character, also while the house called it something else or nothing. With `--fixes` these corrections count more than the labels of the house.
+   - **The empty house.** `empty_crops.py` makes "niente" crops from the photos of the empty house (the saved one and those with the lights), at the sizes of real blobs. They teach the network the furniture of the house even before there are mistakes to correct: on a house with an orange sofa the network of 7 October saw figurines in 25% of the crops of the empty house, the one trained with these photos too in 8%.
+   - **The weight of "niente".** Every class is seen about as often; on top of that a mistake on a figurine weighs more, because "niente" has many more examples. With `--niente-weight 2` a mistake on "niente" weighs twice: on the last block of time left out, the real figurines with "niente" as the first answer went from 0.8% to 0.4%, and the "niente" crops taken for figurines from 4% to 1.7%. With 4 the false presences drop further, but Mister Green lying on the lawn becomes "niente" in one crop out of eight.
    - **The second training** leaves out the crops the network is very sure carry another label (the house was wrong there). Not for a name given by hand: on 7 October the network called Rossellina, lying on the bed, "Mister Blu", because the house had called her that before the correction.
 3. Copy `figures.onnx` and `figures.json` to `models/vision/` on the board and restart the house.
 

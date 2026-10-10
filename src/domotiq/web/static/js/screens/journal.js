@@ -12,9 +12,9 @@ function when(ts) {
   return new Date(ts * 1000).toLocaleString([], { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-function title(e) {
+function title(e, names) {
   if (e.kind === "scartata") return t("jr.refused");
-  const name = e.name || t("jr.nameless");
+  const name = e.name ? e.name + (names.includes(e.name) ? "" : ` (${t("jr.gone")})`) : t("jr.nameless");
   return e.kind === "nome" ? t("jr.named", { name }) : t("jr.new", { name });
 }
 
@@ -28,17 +28,19 @@ export function mount(root) {
   const list = root.querySelector("#list");
   let entries = [], names = [];
 
+  // "right" only for a name still in the house: a deleted character cannot be what a crop is
+  const right = (e) => said(e) && (said(e) === NOTHING || names.includes(said(e)));
   const choice = (e) => [...names, NOTHING].map(n =>
     `<option value="${esc(n)}" ${e.label && e.label.label === n ? "selected" : ""}>${esc(n === NOTHING ? t("jr.nothing") : n)}</option>`).join("");
 
   function render() {
     list.innerHTML = entries.length ? entries.map((e, i) => `<li>
       <img src="/api/journal/${encodeURIComponent(e.id)}.jpg" alt="" width="64" height="64" style="border-radius:8px;flex:none" loading="lazy">
-      <span class="grow"><span class="title">${esc(title(e))}</span>
+      <span class="grow"><span class="title">${esc(title(e, names))}</span>
         <span class="sub">${when(e.t)}${e.figure ? " · " + t("jr.network", { label: esc(e.figure[0] === NOTHING ? t("jr.nothing") : e.figure[0]), p: Math.round(e.figure[1] * 100) }) : ""}</span>
         <span class="sub">${e.label ? "✓ " + esc(e.label.label === NOTHING ? t("jr.nothing") : e.label.label) : ""}</span>
         <span class="row" style="margin-top:6px">
-          ${said(e) ? `<button class="btn small" data-ok="${i}">${t("jr.right")}</button>` : ""}
+          ${right(e) ? `<button class="btn small" data-ok="${i}">${t("jr.right")}</button>` : ""}
           <select data-fix="${i}" aria-label="${t("jr.is")}"><option value="">${t("jr.is")}</option>${choice(e)}</select>
         </span></span></li>`).join("")
       : `<li class="empty">${t("jr.empty")}</li>`;

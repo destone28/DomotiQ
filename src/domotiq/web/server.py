@@ -419,15 +419,32 @@ def create_app(ctx: "Context") -> FastAPI:
         except ValueError as e:
             raise HTTPException(400, str(e)) from e
 
+    @app.post("/api/identities/{identity_id}/forget-look")
+    async def identity_forget_look(identity_id: str, w: Who = Depends(who)):
+        """The house forgets the colours, poses and size of a character (another figurine with that name, a house
+        built again with its own figurines) and learns them the next time somebody says who it is."""
+        if not ctx.identities.get(identity_id):
+            raise HTTPException(404, "no such identity")
+        ident = ctx.identities.update(identity_id, signature=[], poses=[], size=0.0)
+        ctx.store.add_audit("identity", identity_id, "forget_look", {"name": ident.name}, None, w.device, w.nickname)
+        return ident.to_dict() | {"signature": None, "poses": None}
+
     @app.delete("/api/identities/{identity_id}")
     async def identity_delete(identity_id: str, w: Who = Depends(who)):
         if not ctx.identities.get(identity_id):
             raise HTTPException(404, "no such identity")
-        ctx.identities.delete(identity_id, device=w.device, nickname=w.nickname)
+        ident = ctx.identities.delete(identity_id, device=w.device, nickname=w.nickname)
         ctx.vision.forget_identity(identity_id)
+        ctx.house.forget_identity(identity_id)
         for obj in ctx.sim.objects.values():
             if obj.identity == identity_id:
                 obj.identity, obj.name = None, ""
+        # what people said crops of the journal were: a name that no longer exists would teach the network a
+        # character that is not in the house
+        labels = journal_labels()
+        kept = {k: v for k, v in labels.items() if v.get("label") != ident.name}
+        if len(kept) != len(labels):
+            write_journal_labels(kept)
         return {"ok": True}
 
     @app.post("/api/photos")
@@ -875,6 +892,11 @@ def create_app(ctx: "Context") -> FastAPI:
         except (OSError, ValueError):
             return {}
 
+    def write_journal_labels(labels: dict[str, Any]) -> None:
+        tmp = ctx.paths.journal / "labels.part"
+        tmp.write_text(json.dumps(labels, ensure_ascii=False, indent=1), encoding="utf-8")
+        tmp.replace(ctx.paths.journal / "labels.json")
+
     @app.get("/api/journal")
     async def journal(limit: int = 150):
         """What the vision told and refused, the latest first, with what people said of it."""
@@ -907,9 +929,7 @@ def create_app(ctx: "Context") -> FastAPI:
             raise HTTPException(400, "no such label")
         labels = journal_labels()
         labels[entry_id] = {"label": label, "by": w.nickname, "at": round(time.time())}
-        tmp = ctx.paths.journal / "labels.part"
-        tmp.write_text(json.dumps(labels, ensure_ascii=False, indent=1), encoding="utf-8")
-        tmp.replace(ctx.paths.journal / "labels.json")
+        write_journal_labels(labels)
         return {"ok": True}
 
     @app.get("/api/dataset.zip")

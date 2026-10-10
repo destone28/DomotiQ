@@ -90,6 +90,11 @@ FIGURE_WAIT_S = 2.0      # a doubt between two characters waits this long for th
 # a figurine there CONSENT_ROW times in a row, at least CONSENT_P sure: no false presence, while a new figurine (one
 # the network does not know) is born only while it is being registered
 CONSENT_P, CONSENT_ROW = 0.5, 2
+# Without it, something new whose latest answer of the network is "niente", however unsure, waits for an answer that
+# is a figurine. In the journals of both houses (7-10 October, 275 presences told, looked at one by one) none of the
+# 46 real figurines was told with "niente" as the first answer of the network, while 144 of the 227 false ones were
+# (the light of the hall or of a room on furniture, grilles, lawns): only "niente" sure at least veto_p stopped them,
+# 5 of them. A character registered after the network was trained is not judged by it (`known`).
 # The looks of each character, learned on the board: besides its registered colours, up to MAX_POSES poses (lying
 # down, on the bed, under another light), each with its colours, size and shape. A pose is added when a character
 # the house follows with confidence (or that somebody has just named) looks unlike all the poses it knows.
@@ -206,7 +211,9 @@ class Tracker:
         self.consent = False             # set by the engine: the network must see a figurine before it is told
         self.veto, self.veto_p = False, 1.0   # set by the engine: what the network is this sure is "niente" is not told
         self.confused: set[frozenset] = set()  # set by the engine: names the network mixes up even when sure
+        self.known: set[str] = set()     # set by the engine: the names the network knows (lower case)
         self.figure_waiting = 0          # presences not told to the house because the network did not see a figurine
+        self.figure_held = 0             # ...because the latest answer of the network was "niente"
         self._by_name: dict[str, str] = {}
         self.frame = 0
         self._quiet_s = float("inf")
@@ -345,6 +352,15 @@ class Tracker:
                 continue                   # the network has not looked at it yet: in a moment
             if not t.shown and self._refused(t, now):
                 continue                   # born, but the network has seen it is no figurine: never told
+            if not t.shown and self._held(t, now):
+                self.figure_held += 1
+                continue                   # "niente" first, even unsure: told only once it sees a figurine there
+            if not t.identity:
+                # nameless: what it is, from the character the network is sure of (the small round figurines of a
+                # house were taken for animals by their shape, and asked about as "a new animal")
+                seen = self._figure_character(t, now, FIGURE_KEEP_P)
+                if seen is not None:
+                    t.category = seen.category
             t.shown = True
             tr = t.to_track(self.layout, self._rooms.get(t.id))
             tr.hidden = now - t.last_seen > HIDDEN_FLAG_S
@@ -1079,6 +1095,21 @@ class Tracker:
         f = t.figure
         return self.veto and f is not None and now - f[2] <= FIGURE_FRESH_S \
             and f[0].strip().lower() == "niente" and f[1] >= self.veto_p
+
+    def _held(self, t: VTrack, now: float) -> bool:
+        """Something new the network has just taken for "niente" before anything else, however unsure: not told yet.
+        A character the network does not know (registered after it was trained) is not judged by it."""
+        f = t.figure
+        if not self.veto or f is None or now - f[2] > FIGURE_FRESH_S or f[0].strip().lower() != "niente":
+            return False
+        return not (t.identity and self.known and self._name_of(t.identity) not in self.known)
+
+    def _figure_character(self, t: VTrack, now: float, at_least: float) -> Identity | None:
+        """The character the network saw in the track a moment ago, at least this sure."""
+        f = t.figure
+        if f is None or now - f[2] > FIGURE_FRESH_S or f[1] < at_least:
+            return None
+        return self.identities.get(self._by_name.get(f[0].strip().lower(), ""))
 
     def _mixed_up(self, a: str, b: str) -> bool:
         """Two characters the network mixes up even when sure (measured when it was trained): it does not choose."""

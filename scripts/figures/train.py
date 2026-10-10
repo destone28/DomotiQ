@@ -126,13 +126,14 @@ class FigureNet(nn.Module):
 
 
 # ------------------------------------------------------------------ training
-def train(train_items, classes, epochs, seed, log_every=5, steps=60):
+def train(train_items, classes, epochs, seed, log_every=5, steps=60, niente_weight=1.0):
     torch.manual_seed(seed)
     idx = {c: i for i, c in enumerate(classes)}
     imgs = [cv2.imread(e["path"]) for e in train_items]
     ys = np.array([idx[e["label"]] for e in train_items])
     counts = Counter(ys.tolist())
     weights = torch.tensor([1.0 / math.sqrt(counts.get(i, 1)) for i in range(len(classes))], dtype=torch.float32)
+    weights[idx["niente"]] *= niente_weight
     weights *= len(classes) / weights.sum()
     # every class seen about as often in each epoch
     per_sample = np.array([1.0 / counts[y] for y in ys])
@@ -222,6 +223,8 @@ def main() -> None:
     ap.add_argument("--device", default="auto", help="cpu, cuda, or auto (cuda when there is an NVIDIA card)")
     ap.add_argument("--steps", type=int, default=60, help="batches of 128 per epoch")
     ap.add_argument("--drop", type=Path, default=None, help="json list of crop files to leave out (labels found wrong)")
+    ap.add_argument("--niente-weight", type=float, default=1.0,
+                    help="weight of a mistake on \"niente\" against one on a figurine (1: the one of its count)")
     args = ap.parse_args()
     torch.set_num_threads(args.threads)
     global DEVICE
@@ -243,7 +246,8 @@ def main() -> None:
     for fold in (args.only if args.only is not None else range(args.folds)):
         tr, va = blocks(items, classes, args.folds, fold)
         t0 = time.time()
-        model = train(tr, classes, args.epochs, seed=fold, log_every=args.epochs, steps=args.steps)
+        model = train(tr, classes, args.epochs, seed=fold, log_every=args.epochs, steps=args.steps,
+                      niente_weight=args.niente_weight)
         probs = predict(model, va)
         acc, per, conf = report(probs, va, classes)
         # how sure it is when it is right and when it is wrong: the threshold for a "second opinion"
@@ -275,7 +279,7 @@ def main() -> None:
     confused = [list(pair) for pair, n in sure_wrong.items() if n >= CONFUSED_MIN]
     if confused:
         print("characters it mixes up even when sure:", {f"{a} / {b}": n for (a, b), n in sure_wrong.items()})
-    model = train(items, classes, args.epochs, seed=99, steps=args.steps)
+    model = train(items, classes, args.epochs, seed=99, steps=args.steps, niente_weight=args.niente_weight)
     # the crops the final model is sure are something else than their label: most likely the house was wrong there
     probs = predict(model, items)
     idx = {c: i for i, c in enumerate(classes)}

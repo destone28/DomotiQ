@@ -38,7 +38,7 @@ Rules are plain JSON, stored on the board in `var/config/rules.json`. This is th
 
 ### Who
 
-Many events and conditions have a **Who** field with two choices: the kind (*anyone*, *person*, *animal*, *dog*, *cat*, *car*, *object*) and the character (*anyone* or one registered character). *animal* covers dogs, cats and every other pet. The rule format also accepts a list of characters to leave out, `"who": {"category": "person", "except": ["<character id>"]}`, which the editor does not show.
+Many events and conditions have a **Who** field with two choices: the kind (*anyone*, *person*, *animal*, *dog*, *cat*, *car*, *object*) and the character (*anyone* or one registered character). *animal* covers dogs, cats and every other pet. The rule format also accepts a list of characters to leave out, `"who": {"category": "person", "except": ["<character id>"]}`, which the editor does not show. If the chosen character is deleted, the rule stays as it was and no longer fires for it: the list of rules and the editor show ⚠️ *deleted character*, so that saving it does not turn it into a rule for anyone by mistake. Restoring the character from the bin makes the rule work again.
 
 ## When: the events
 

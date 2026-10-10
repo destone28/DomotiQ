@@ -213,6 +213,7 @@ function editIdentity(id) {
       <p class="muted small">${t("id.facts_hint")}</p>
       ${i.category === "person" || ["dog", "cat", "animal"].includes(i.category) ?
         `<button class="btn block" id="askq" style="margin-bottom:12px">❓ ${t("askq.to", { name: i.name })}</button>` : ""}
+      <button class="btn block" id="relook" style="margin-bottom:12px">🎨 ${t("id.forget_look")}</button>
       <div class="row" style="justify-content:space-between">
         <button class="btn danger" id="del">${t("common.delete")}</button>
         <div class="row"><button class="btn" id="close">${t("common.close")}</button><button class="btn primary" id="save">${t("common.save")}</button></div>
@@ -232,6 +233,15 @@ function editIdentity(id) {
         await api("PUT", `/api/identities/${id}`, body);
         close();
       } catch (e) { toast(e.status === 409 ? t("id.taken", { name: card.querySelector("#name").value }) : e.message, "warning"); }
+    };
+    // another figurine with this name (a house built again with its own figurines): its colours are learned anew
+    card.querySelector("#relook").onclick = async () => {
+      if (!(await ask(t("id.forget_look_q", { name: i.name })))) return;
+      try {
+        await api("POST", `/api/identities/${id}/forget-look`);
+        close();
+        toast(t("id.forget_look_done", { name: i.name }), "success");
+      } catch (e) { toast(e.message, "alarm"); }
     };
     card.querySelector("#del").onclick = async () => {
       if (!(await ask(t("id.delete_q", { name: i.name })))) return;

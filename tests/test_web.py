@@ -63,6 +63,17 @@ def test_rules_crud_with_audit(web):
     assert c.post("/api/rules", json=bad).status_code == 400
 
 
+def test_the_rules_off_at_the_start_are_switched_on_from_the_list(web):
+    """The switch of the list was a box of no size outside a label: a tap never reached it, and the rules that start
+    off (the party, the grill in company) could not be switched on."""
+    ctx, c = web
+    for rid in ("r-crowded-party", "r-crowded-garden"):
+        assert c.post(f"/api/rules/{rid}/enabled", json={"enabled": True}).json()["enabled"] is True
+        assert next(r for r in c.get("/api/rules").json() if r["id"] == rid)["enabled"] is True
+    box = c.get("/static/css/app.css").text.split(".switch input {")[1].split("}")[0]
+    assert "inset: 0" in box and "width: 0" not in box                 # the box covers the switch, in a label or not
+
+
 def test_registration_with_a_virtual_figurine(web):
     ctx, c = web
     obj = c.post("/api/sim/objects", json={"x": 300, "y": 100, "category": "person", "color": "#20a0e0"}).json()
@@ -321,6 +332,51 @@ def test_what_the_house_learned_is_corrected_and_forgotten(web):
     assert [i["q"] for i in c.get("/api/knowledge").json()] == ["come si fa la pizza"]
     log = c.get("/api/audit").json()
     assert {e["action"] for e in log if e["entity"] == "knowledge"} == {"update", "delete"}
+
+
+def test_a_deleted_character_leaves_the_presences_the_questions_and_the_journal(web):
+    """Deleted from the list of characters, it stayed elsewhere: proposed by an open question, on a presence for a
+    moment, and among what the journal teaches the network."""
+    ctx, c = web
+    from domotiq.app import _wire
+    _wire(ctx)
+    ctx.sim.enabled = True
+    a = c.post("/api/sim/objects", json={"x": 300, "y": 100, "category": "person", "color": "#d03030"}).json()
+    b = c.post("/api/sim/objects", json={"x": 80, "y": 100, "category": "person", "color": "#20a0e0"}).json()
+    settle(ctx)
+    assert c.post(f"/api/tracks/{a['id']}/identity", json={"name": "Rosaria", "category": "person"}).json()["ok"]
+    rosaria, viola = ctx.identities.by_name("Rosaria"), ctx.identities.add("Viola", "person")
+    ctx.bus.publish("vision_question", track=dict(ctx.house.tracks[b["id"]].to_dict(), identity=viola.id),
+                    candidates=[rosaria.id, viola.id])
+    assert [o["value"] for o in c.get("/api/state").json()["confirmations"][0]["options"]] == [rosaria.id, viola.id]
+    d = ctx.paths.journal
+    (d / "journal.jsonl").write_text("".join(json.dumps({"id": f"20261010-10000{k}-000{k}", "t": 1.0, "kind": "nome",
+                                                         "name": n, "figure": [n, 0.9]}) + "\n"
+                                             for k, n in enumerate(["Rosaria", "Viola"])))
+    assert c.post("/api/journal/20261010-100000-0000", json={"label": "Rosaria"}).json()["ok"]
+    assert c.post("/api/journal/20261010-100001-0001", json={"label": "Viola"}).json()["ok"]
+    assert c.delete(f"/api/identities/{rosaria.id}").status_code == 200
+    state = c.get("/api/state").json()
+    assert state["confirmations"] == []                                  # the question that proposed her is gone
+    assert all(t["identity"] != rosaria.id for t in state["tracks"])     # at once, not at the next picture
+    labels = {e["id"]: e["label"] for e in c.get("/api/journal").json()["entries"]}
+    assert labels["20261010-100000-0000"] is None and labels["20261010-100001-0001"]["label"] == "Viola"
+    assert "Rosaria" not in c.get("/api/journal").json()["names"]
+
+
+def test_a_character_learns_its_look_again(web):
+    """The characters of a house copied onto another one built with its own figurines: their colours were those of
+    the first house, and the second recognized nobody or the wrong one."""
+    ctx, c = web
+    viola = ctx.identities.add("Viola", "person", signature=[0.5] * 12, nickname="Tester")
+    ctx.identities.update(viola.id, poses=[{"sig": [0.4] * 12, "area": 300.0}], size=310.0)
+    ctx.identities.update(viola.id, facts=["ama il jazz"])
+    r = c.post(f"/api/identities/{viola.id}/forget-look")
+    assert r.status_code == 200 and r.json()["name"] == "Viola"
+    v = ctx.identities.get(viola.id)
+    assert v.signature == [] and v.poses == [] and not v.size and v.facts == ["ama il jazz"]
+    assert any(e["action"] == "forget_look" and e["before"]["name"] == "Viola" for e in c.get("/api/audit").json())
+    assert c.post("/api/identities/nobody/forget-look").status_code == 404
 
 
 def test_the_journal_of_the_vision_is_reviewed_in_the_web_app(web):

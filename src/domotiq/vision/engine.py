@@ -1447,6 +1447,7 @@ class Engine:
         self.tracker.veto_p = self._not_p()
         self.tracker.confused = {frozenset(n.strip().lower() for n in pair)
                                  for pair in getattr(self.figures, "confused", None) or ()}
+        self.tracker.known = {c.strip().lower() for c in getattr(self.figures, "classes", None) or ()} - {NOTHING}
         self.tracks = self.tracker.update(obs, now, frozen=frozen, quiet_s=quiet, animated=self._animated,
                                           hand_mask=hands if active else None)
         if self._figures_ready():
@@ -1743,6 +1744,7 @@ class Engine:
             "figures": {"loaded": self.figures is not None, "on": self.figures_on and not self._figure_failed,
                         "consent": self.figures_consent, "blocked": self.figure_blocked, "ms": round(self._figure_ms, 1),
                         "waiting": self.tracker.figure_waiting if self.tracker else 0,
+                        "held": self.tracker.figure_held if self.tracker else 0,
                         "kept": self.tracker.figure_kept if self.tracker else 0,
                         "named": self.tracker.figure_named if self.tracker else 0},
             "adaptations": self.adaptations,

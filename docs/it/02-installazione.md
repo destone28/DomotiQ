@@ -184,6 +184,8 @@ Per avere una casa che si comporta come una che hai già, dopo l'installazione:
 1. Dalla webapp della casa che hai, **Altro → Impostazioni → Scarica il backup**; dalla webapp della casa nuova, **Ripristina da un backup** con quel file. Porta regole, personaggi con colori e pose, e impostazioni; mai la rete, il nome della casa o le impostazioni della webcam. Ripristinalo prima di registrare personaggi sulla casa nuova, perché li sostituisce.
 2. Copia la rete delle statuine (`models/vision/figures.onnx` e `figures.json`, [capitolo 7](07-riconoscimento-e-identita.md)) e le risposte imparate (`var/config/knowledge.json`), poi riavvia la casa: `sudo systemctl restart domotiq`.
 3. La calibrazione della webcam non si copia: angoli, casa vuota e foto con le luci si fanno sulla casa nuova ([capitolo 5](05-collaudo.md)), perché dipendono da dove sta la sua webcam e da com'è arredata.
+4. Se la casa nuova ha statuine sue, anche dello stesso modello, i colori che il backup porta sono quelli delle statuine dell'altra casa, sotto la sua luce: la casa nuova non riconoscerebbe le sue, o le scambierebbe. Nella scheda di ogni personaggio (**Personaggi**) tocca **Impara di nuovo l'aspetto**, poi di' alla casa chi è ogni statuina, toccandola sulla piantina o rispondendo alle sue domande.
+5. La rete delle statuine conosce i mobili della casa su cui è stata addestrata. Su una casa arredata in un altro modo (un divano arancione, altre griglie) all'inizio vede statuine in qualche mobile: accendi la raccolta continua, correggi il registro della visione e addestrala di nuovo con le immagini della casa nuova e le foto della sua casa vuota ([capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine)).
 
 ## Prima che la casa lasci il laboratorio
 
