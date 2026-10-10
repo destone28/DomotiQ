@@ -21,6 +21,14 @@ stops taking sound for a second is started again, a card that comes back as
 a new USB device is opened again with its levels set, and while there is no
 card the sound is consumed on the clock all the same, so the house never
 waits for a sentence that cannot be heard.
+
+On a new board, on 10 October, the stream took sound for minutes after the
+start and nothing was heard, until the guard opened it again: both times the
+webcam, on the same USB hub, had reset just after the stream was opened (the
+C270 of that house resets when it is opened, the one of casa1 does not). So
+the stream is opened again once the webcam is open (reopen()), and the levels
+of the card are read back every LEVELS_CHECK_S and set again if somebody
+changed them.
 """
 
 from __future__ import annotations
@@ -48,6 +56,7 @@ LEAD_S = 0.12                      # how far ahead of the clock the mixer may wr
 F_SETPIPE_SZ = 1031
 STALL_S = 1.0                      # a stream that takes no sound for this long is started again
 CARD_CHECK_S = 2.0                 # how often the card is checked (a reset makes it a new USB device)
+LEVELS_CHECK_S = 10.0              # how often its levels are read back (amixer, some 15 ms, off the mixer thread)
 
 
 def find_card(root: Path = Path("/proc/asound")) -> str | None:
@@ -113,6 +122,42 @@ def mixer_commands(contents: str, mic_gain: int = 100) -> list[list[str]]:
     return out
 
 
+def _part(line: str, which: str) -> tuple[int | None, str | None] | None:
+    """The percent and the switch of the Playback or Capture part of a channel line of amixer (None if absent):
+    "Mono: Playback 0 [0%] [-99999.99dB] [off] Capture 35 [100%] [23.00dB] [on]"."""
+    m = re.search(rf"\b{which}\s+(.*?)(?=\s+(?:Playback|Capture)\s|$)", line)
+    if not m:
+        return None
+    pct = re.search(r"\[(\d+)%\]", m.group(1))
+    switch = re.search(r"\[(on|off)\]", m.group(1))
+    return (int(pct.group(1)) if pct else None, switch.group(1) if switch else None)
+
+
+def levels_ok(contents: str, mic_gain: int = 100) -> bool:
+    """The levels of the card are those mixer_commands sets, from `amixer scontents`: every playback volume at
+    100 % and on, the microphone silent on the speakers and captured at `mic_gain` %."""
+    gain = max(0, min(100, int(mic_gain)))
+    for block in re.split(r"^Simple mixer control ", contents, flags=re.M)[1:]:
+        m = re.match(r"'([^']+)',(\d+)", block)
+        caps = re.search(r"Capabilities:(.*)", block)
+        if not m or not caps:
+            continue
+        caps_list, mic = caps.group(1).split(), "mic" in m.group(1).lower()
+        channels = [line for line in block.splitlines()[1:]
+                    if re.match(r"^\s+[^:]+:\s+(Playback|Capture)\s", line) and not line.strip().startswith("Limits")]
+        for line in channels:
+            playback, capture = _part(line, "Playback"), _part(line, "Capture")
+            if playback and "pvolume" in caps_list and not mic and (playback[0] != 100 or playback[1] == "off"):
+                return False
+            if playback and mic and ("pvolume" in caps_list or "pswitch" in caps_list):
+                silent = playback[1] == "off" or ("pvolume" in caps_list and playback[0] == 0)
+                if not silent:
+                    return False
+            if capture and mic and "cvolume" in caps_list and capture[0] != gain:
+                return False
+    return True
+
+
 def set_hardware_levels(device: str, mic_gain: int = 100) -> bool:
     m = re.search(r"CARD=([^,]+)", device)
     if not m:
@@ -176,6 +221,10 @@ class Audio:
         self.errors = 0
         self.last_error = ""
         self.restarts = 0
+        self.levels_fixed = 0                      # times the levels of the card had changed and were set again
+        self._levels_checked = 0.0
+        self._levels_thread: threading.Thread | None = None
+        self._reopen = ""                          # why the stream must be opened again (from another thread)
         self._identity: str | None = None          # the USB device the stream was opened on
         self._pending = b""                        # sound not yet taken by aplay
 
@@ -195,12 +244,26 @@ class Audio:
             self._thread.join(timeout=2)
         self._close()
 
+    def reopen(self, why: str) -> None:
+        """Open the stream again, from the mixer thread: another USB device on the same hub reset."""
+        self._reopen = why
+
+    def _take_reopen(self) -> bool:
+        """Close the stream if it was asked to open again (the loop opens it at once); True if it did."""
+        why, self._reopen = self._reopen, ""
+        if not why or self._proc is None:
+            return False
+        log.info("audio output opened again: %s", why)
+        self._close()
+        return True
+
     def set_volume(self, volume: int) -> None:
         self._volume = max(0.0, min(1.0, volume / 100.0))
 
     def status(self) -> dict[str, Any]:
         return {"ok": self.ok, "device": self.device or "", "dry": self.dry,
-                "errors": self.errors, "last_error": self.last_error, "restarts": self.restarts}
+                "errors": self.errors, "last_error": self.last_error, "restarts": self.restarts,
+                "levels_fixed": self.levels_fixed}
 
     # ------------------------------------------------------------ playing
     def _gain(self, key: str, default: int) -> float:
@@ -331,6 +394,22 @@ class Audio:
                     pass
         self._pending = b""
 
+    def _check_levels(self) -> None:
+        """Read the levels of the card back, and set them again if somebody changed them (its own thread: amixer
+        must never hold up the mixer)."""
+        m = re.search(r"CARD=([^,]+)", self.device or "")
+        if not m:
+            return
+        mic_gain = int(self.settings.get("voice.mic_gain", 100))
+        try:
+            contents = subprocess.run(["amixer", "-c", m.group(1), "scontents"], capture_output=True, text=True,
+                                      timeout=5).stdout
+        except (OSError, subprocess.TimeoutExpired):
+            return
+        if contents and not levels_ok(contents, mic_gain) and set_hardware_levels(self.device, mic_gain):
+            self.levels_fixed += 1
+            log.warning("the levels of the sound card %s had changed: set again", self.device)
+
     def _restart(self, why: str) -> None:
         self.errors += 1
         self.restarts += 1
@@ -370,6 +449,7 @@ class Audio:
                     self.device, self.dry, self._waiting_card = card, False, False
                     log.info("audio output: %s (plugged in)", card)
             if not self.dry:
+                self._take_reopen()
                 if self._proc is not None and self._proc.poll() is not None:
                     err = self._proc.stderr.read().decode(errors="replace") if self._proc.stderr else ""
                     self._restart(err.strip() or "aplay stopped")
@@ -378,10 +458,16 @@ class Audio:
                     identity = card_identity(self.device)
                     if identity != self._identity:
                         self._restart(f"the sound card reset ({self._identity} -> {identity})")
+                elif self._proc is not None and now - self._levels_checked > LEVELS_CHECK_S \
+                        and not (self._levels_thread and self._levels_thread.is_alive()):
+                    self._levels_checked = now
+                    self._levels_thread = threading.Thread(target=self._check_levels, name="audio-levels",
+                                                           daemon=True)
+                    self._levels_thread.start()
                 if self._proc is None and now >= retry_at:
                     if self._open():
                         log.info("audio output: %s", self.device)
-                        self._taken = now
+                        self._taken = self._levels_checked = now
                         written, start = 0, now
                     else:
                         retry_at = now + 2.0

@@ -347,6 +347,7 @@ async def periodic(ctx: Context) -> None:
     resets: list[float] = []
     clock_warned = False
     registering = False                  # a registration is waiting for its figurine (told to the vision)
+    camera_seen = False                  # the webcam was open at the last check
     while True:
         now = time.time()
         mono = time.monotonic()
@@ -407,7 +408,13 @@ async def periodic(ctx: Context) -> None:
                     ctx.house.status["llm"] = getattr(ctx.voice, "llm_ok", False)
                 if ctx.audio is not None:
                     ctx.house.status["audio"] = ctx.audio.ok
-                ctx.house.status["camera"] = ctx.vision.available
+                camera = ctx.vision.available
+                if camera and not camera_seen and ctx.audio is not None:
+                    # the webcam may reset on the USB bus when it is opened, and a sound card on the same hub then
+                    # goes on taking sound without playing it (audio/output.py): its stream is opened again
+                    ctx.audio.reopen("the webcam was opened")
+                camera_seen = camera
+                ctx.house.status["camera"] = camera
                 vst = ctx.vision.status() if ctx.vision.available else {}
                 if vst.get("moved"):
                     ctx.house.set_alert("camera-moved", name={"it": "La webcam si è spostata: rifare la calibrazione",

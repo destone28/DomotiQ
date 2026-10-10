@@ -253,6 +253,11 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 
 **Soluzione.** Controlla con `aplay -l` che ci sia una scheda audio USB, poi **Comandi → Volume** e **Loquacità**, e `systemctl status domotiq-tts`. La casa usa la prima scheda audio USB che può suonare; per forzare un altro dispositivo, aggiungi `Environment=DOMOTIQ_AUDIO=plughw:CARD=<name>,DEV=0` con `sudo systemctl edit domotiq` e riavvia il servizio. Se la scheda sparisce o si riavvia da sola mentre la casa è accesa (la US205 ogni tanto lo fa, e torna con il volume basso), la casa se ne accorge entro un paio di secondi, la riapre e rimette i livelli a 0 dB; in *Diagnostica* il contatore *restarts* dell'audio sale di uno. Se succede spesso, controlla che la scheda sia ben inserita e alimenta le casse da un'altra presa USB. Anche senza nessuna scheda audio, la casa continua a scrivere come sottotitoli quello che direbbe.
 
+### La casa non si sente per qualche minuto dopo l'accensione, poi sì
+**Causa.** Una webcam che si riavvia sul bus USB quando viene aperta disturba la scheda audio collegata allo stesso hub. L'uscita della casa continua a prendere il suono, ma non si sente niente, finché dopo qualche minuto si blocca e viene riaperta. Il 10/10 è successo a ogni accensione su una scheda appena montata, la cui C270 si riavviava a ogni apertura; l'altra casa, con una webcam che non si riavvia, si sentiva subito.
+
+**Soluzione.** Quando la webcam risulta aperta, la casa riapre l'uscita audio (nel log: *audio output opened again: the webcam was opened*). In più rilegge ogni 10 secondi i livelli della scheda audio e li rimette se qualcuno li ha cambiati. Su una casa installata prima, aggiorna il software (`release.sh casaN`). Se succede ancora, collega la scheda audio a un'altra porta dell'hub.
+
 ### La prima frase in inglese è lenta
 **Causa.** La voce inglese viene caricata al primo utilizzo.
 

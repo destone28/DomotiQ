@@ -253,6 +253,11 @@ The installer (which needs internet) reloads the firmware when needed; without i
 
 **Fix.** Check `aplay -l` for a USB audio card, **Controls → Volume** and **Talkativeness**, and `systemctl status domotiq-tts`. The house uses the first USB audio card that can play; to force another device, add `Environment=DOMOTIQ_AUDIO=plughw:CARD=<name>,DEV=0` with `sudo systemctl edit domotiq` and restart it. If the card disappears or resets by itself while running (the US205 sometimes does, and comes back with a low volume), the house notices within a couple of seconds, opens it again and sets the levels back to 0 dB; the audio *restarts* counter in *Diagnostics* goes up by one. If it happens often, check that the card is plugged in firmly and power the speakers from another USB socket. Without any sound card, the house still writes what it would say as subtitles.
 
+### The house is not heard for a few minutes after switching on, then it is
+**Cause.** A webcam that resets on the USB bus when it is opened disturbs the sound card on the same hub. The output of the house goes on taking sound, but nothing is heard, until after a few minutes it stops and is opened again. On 10 October it happened at every start on a newly mounted board, whose C270 reset at every opening; the other house, with a webcam that does not reset, was heard at once.
+
+**Fix.** Once the webcam is open, the house opens the audio output again (in the log: *audio output opened again: the webcam was opened*). Besides, it reads the levels of the sound card back every 10 seconds and sets them again if somebody changed them. On a house installed before, update the software (`release.sh casaN`). If it still happens, plug the sound card into another port of the hub.
+
 ### The first English sentence is slow
 **Cause.** The English voice is loaded at its first use.
 

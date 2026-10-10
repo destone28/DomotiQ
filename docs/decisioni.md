@@ -923,3 +923,14 @@ Sulla casa sintetica:
 - il comando del Wi-Fi lasciava la password nella cronologia della shell.
 
 Mentre scaricava le immagini di App Lab, la scheda non rispondeva in rete per una ventina di minuti.
+
+### D-80 — L'uscita audio riaperta quando si apre la webcam (10/10)
+**Scelta:**
+- **La riapertura.** Quando la webcam risulta aperta, all'avvio e dopo ogni riconnessione, l'uscita audio della casa si riapre una volta.
+- **I livelli rimessi.** L'uscita audio rilegge ogni 10 secondi i livelli della scheda (`amixer scontents`), li rimette se qualcuno li ha cambiati e lo scrive nel log. In *Diagnostica* lo stato dell'audio conta le correzioni (`levels_fixed`). La lettura gira in un thread a parte, perché il mixer non deve mai aspettare.
+
+**Perché:** su una scheda appena montata, a ogni accensione la casa è rimasta muta per alcuni minuti, sei la prima volta e tre la seconda.
+- L'uscita era aperta, prendeva il suono, e le frasi risultavano dette. Poi si bloccava, la guardia la riapriva, e da lì si sentiva.
+- In entrambi gli avvii la webcam, sullo stesso hub USB, si era riavviata subito prima o subito dopo l'apertura dell'uscita (alle 10:34:56 e alle 10:52:48). La C270 di quella casa si riavvia quando viene aperta, dal server audio del desktop o dalla casa.
+- Sull'altra casa la webcam non si riavvia. La prima apertura dell'audio fallisce, perché il server audio del desktop sta provando la scheda; la seconda funziona, e la casa si sente subito.
+- Una regola che teneva il server audio del desktop lontano da scheda audio e webcam non è bastata: al secondo avvio la webcam si è riavviata aperta dalla casa. È stata tolta, perché le due case restino uguali.

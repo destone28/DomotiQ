@@ -364,6 +364,70 @@ Simple mixer control 'Auto Gain Control',0
                                          ["Mic,0", "capture", "80%", "cap"]]
 
 
+US205_OK = """Simple mixer control 'Speaker',0
+  Capabilities: pvolume pswitch pswitch-joined
+  Playback channels: Front Left - Front Right
+  Limits: Playback 0 - 37
+  Mono:
+  Front Left: Playback 37 [100%] [0.00dB] [on]
+  Front Right: Playback 37 [100%] [0.00dB] [on]
+Simple mixer control 'Mic',0
+  Capabilities: pvolume pvolume-joined cvolume cvolume-joined pswitch pswitch-joined cswitch cswitch-joined
+  Playback channels: Mono
+  Capture channels: Mono
+  Limits: Playback 0 - 31 Capture 0 - 35
+  Mono: Playback 0 [0%] [-99999.99dB] [off] Capture 35 [100%] [23.00dB] [on]
+Simple mixer control 'Auto Gain Control',0
+  Capabilities: pswitch pswitch-joined
+  Playback channels: Mono
+  Mono: Playback [on]
+"""
+
+
+def test_the_levels_of_the_card_are_recognised():
+    """10 October: amixer of the US205 as the house leaves it, and what may change it."""
+    from domotiq.audio.output import levels_ok
+    assert levels_ok(US205_OK, 100)
+    assert not levels_ok(US205_OK.replace("Playback 37 [100%] [0.00dB] [on]", "Playback 14 [38%] [-23.00dB] [on]", 1))
+    assert not levels_ok(US205_OK.replace("[0.00dB] [on]", "[0.00dB] [off]", 1))          # the speakers muted
+    assert not levels_ok(US205_OK.replace("Playback 0 [0%] [-99999.99dB] [off]", "Playback 16 [52%] [-7.00dB] [on]"))
+    assert levels_ok(US205_OK.replace("Playback 0 [0%] [-99999.99dB] [off]", "Playback 16 [52%] [-7.00dB] [off]"))
+    assert not levels_ok(US205_OK, 80) and levels_ok(US205_OK.replace("Capture 35 [100%]", "Capture 28 [80%]"), 80)
+
+
+def test_levels_changed_by_somebody_else_are_set_again(monkeypatch):
+    """The stream took sound and nothing was heard: the levels are read back and set again, off the mixer thread."""
+    import subprocess
+
+    from domotiq.audio import output
+    calls = []
+    contents = {"now": US205_OK.replace("Playback 37 [100%] [0.00dB] [on]", "Playback 14 [38%] [-23.00dB] [on]")}
+    monkeypatch.setattr(output.subprocess, "run",
+                        lambda args, **kw: subprocess.CompletedProcess(args, 0, stdout=contents["now"], stderr=""))
+    monkeypatch.setattr(output, "set_hardware_levels", lambda device, gain=100: calls.append((device, gain)) or True)
+    audio = output.Audio(type("S", (), {"get": lambda self, k, d=None: d})(), device="plughw:CARD=Device,DEV=0")
+    audio._check_levels()
+    assert calls == [("plughw:CARD=Device,DEV=0", 100)] and audio.levels_fixed == 1
+    contents["now"] = US205_OK
+    audio._check_levels()
+    assert len(calls) == 1 and audio.status()["levels_fixed"] == 1
+
+
+def test_the_stream_is_opened_again_when_the_webcam_is_opened():
+    """10 October: the webcam reset on the same USB hub just after the stream was opened, and the sound card went on
+    taking sound without playing it. Once the webcam is open the stream is closed, and the loop opens it again."""
+    import subprocess
+
+    from domotiq.audio.output import Audio
+    audio = Audio(type("S", (), {"get": lambda self, k, d=None: d})(), device="plughw:CARD=X,DEV=0")
+    assert not audio._take_reopen()                               # nothing asked
+    proc = subprocess.Popen(["sleep", "5"], stdin=subprocess.PIPE)
+    audio._proc = proc
+    audio.reopen("the webcam was opened")
+    assert audio._take_reopen() and audio._proc is None and proc.poll() is not None
+    assert not audio._take_reopen() and audio.restarts == 0       # no error: asked
+
+
 def test_phone_sets_the_clock_only_when_unknown():
     from domotiq.clock import HouseClock
     c = HouseClock(can_set=False)
