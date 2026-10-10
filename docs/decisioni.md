@@ -906,3 +906,20 @@ Sulla casa sintetica:
 - **La password della guida è pubblica.** Prima di lasciare la casa ad altri si permette SSH solo con la chiave (`lockdown.sh`).
 
 **Perché:** richiesta di Emilio: la guida deve poterla seguire chiunque costruisca la casa. Il 10/10, su una scheda nuova, il comando per la password indicato prima non funzionava. Inoltre due comandi alternativi stavano nello stesso riquadro e sono stati incollati insieme.
+
+### D-79 — L'installazione rifatta da capo seguendo la guida (10/10)
+**Scelta:**
+- **La password del Wi-Fi** si può dare all'installer: `--wifi PASSWORD`, da 8 a 63 caratteri. La guida usa `domotica2026`; senza l'opzione l'installer ne sceglie una a caso.
+- **`release.sh casaN --install`** passa all'installer le opzioni che lo seguono e funziona anche per una prima installazione: serve quando la scheda non può scaricare il repository.
+- **SSH attivo all'avvio.** La guida lo attiva con `systemctl enable --now ssh`, e lo fa anche l'installer.
+- **L'aggiornamento del sistema** installa prima la libreria ALSA da backports.
+- **`add-pc.sh`** non chiede più se fidarsi di una scheda mai vista.
+- **Prima di consegnare la casa** si tolgono la rete Wi-Fi del laboratorio, la cronologia dei comandi e le chiavi dei propri PC; la password di rete si scrive solo quando `nmcli` la chiede.
+
+**Perché:** il 10/10 una scheda nuova è stata installata seguendo la guida passo per passo. Sono comparsi questi intoppi:
+- l'aggiornamento si è fermato sulla dipendenza ALSA già nota;
+- SSH, solo fatto ripartire, dopo il riavvio rifiutava la connessione e si arrivava alla scheda solo via USB;
+- `release.sh` non sapeva passare `--house` all'installer, e alla prima copia mancava la cartella dei modelli;
+- il comando del Wi-Fi lasciava la password nella cronologia della shell.
+
+Mentre scaricava le immagini di App Lab, la scheda non rispondeva in rete per una ventina di minuti.

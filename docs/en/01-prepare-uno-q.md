@@ -37,7 +37,7 @@ When the board asks for the new password, type `domotiq2026`. This password is t
 
 ## 3. Name and time zone
 
-Give the board the name `casa1` and the time zone. The installer sets both again later, but the name is needed now for `casa1.local` to work.
+Give the board the name `casa1` and the time zone. The installer sets both again later, but the name is needed now for `casa1.local` to work. If you rename a board that already runs avahi (step 6), restart it so that it announces the new name: `sudo systemctl restart avahi-daemon`.
 
 ```bash
 sudo hostnamectl set-hostname casa1
@@ -49,17 +49,21 @@ sudo timedatectl set-timezone Europe/Rome
 While you prepare it, the board sits on your normal Wi-Fi network, the same as the PC. With NetworkManager:
 
 ```bash
-sudo nmcli device wifi connect "YOUR-NETWORK" password "YOUR-PASSWORD"
+sudo nmcli --ask device wifi connect "YOUR-NETWORK"
 ```
+
+Type the password of the network when `nmcli` asks for it: this way it does not stay in the command history.
 
 ## 5. Make SSH work
 
-On a new image SSH does not start: the log says `sshd: no hostkeys available`. App Lab creates the host keys during its first setup; without App Lab, create them yourself:
+On a new image SSH does not start: the log says `sshd: no hostkeys available`, and the service is not even enabled at boot. App Lab creates the host keys during its first setup; without App Lab, create the keys and enable the service, so that it also starts after every reboot:
 
 ```bash
 sudo ssh-keygen -A
-sudo systemctl restart ssh
+sudo systemctl enable --now ssh
 ```
+
+With `restart` alone SSH works until the first reboot, and then the board answers only over USB (`adb shell`): it happens right after the update of step 8. The installer enables the service too.
 
 ## 6. Turn on avahi (the `.local` name)
 
@@ -88,7 +92,7 @@ bash scripts/add-pc.sh casa1 10.42.1.1
 The script:
 
 1. creates the key `~/.ssh/id_ed25519_domotiq` if this PC does not have it yet;
-2. copies it to the board with `ssh-copy-id`, which asks the password of `arduino` (`domotiq2026`) once and, the first time, whether to trust the board: answer `yes`;
+2. copies it to the board with `ssh-copy-id`, which asks the password of `arduino` (`domotiq2026`) once;
 3. adds a `Host casa1` entry to `~/.ssh/config` (user `arduino`, that key, and the address you gave, or `casa1.local`);
 4. connects once and prints `connected to casa1`.
 
@@ -104,15 +108,16 @@ If the board does not answer, the script prints the network error and reminds yo
 
 ## 8. Update the system
 
-Log in with `ssh casa1` and run the update **as the `arduino` user, without `sudo`**:
+Log in with `ssh casa1`. On the factory image the update would stop on a dependency of the audio library (see below): first install that library from backports, then run the update **as the `arduino` user, without `sudo`**:
 
 ```bash
+sudo apt-get install -y -t trixie-backports libasound2t64 libasound2-data libatopology2t64 alsa-ucm-conf
 arduino-app-cli system update
 ```
 
-`arduino-app-cli` refuses to run as root and calls `sudo apt-get` by itself.
+`arduino-app-cli` refuses to run as root and calls `sudo apt-get` by itself; with `--yes` it asks no confirmation.
 
-Run it from an SSH session. Inside an `adb shell` the update stops if the adb session closes; if you have no other choice, start it detached with `systemd-run --uid=arduino`.
+Run it from an SSH session. Inside an `adb shell` the update stops if the adb session closes; if you have no other choice, start it detached with `systemd-run --uid=arduino`. On a new board it takes about half an hour: at the end it also downloads the Docker images of App Lab, which DomotiQ does not use, and meanwhile the board may not answer on the network (see [Troubleshooting](11-troubleshooting.md)).
 
 While this project was prepared, the update brought `arduino-app-cli` 0.13.0, `arduino-cli` 1.5.1, the Linux kernel 7.0 and the microcontroller core `arduino:zephyr` 1.0.0, which is the version DomotiQ uses. Reboot when it is done, so the new kernel is in use:
 
@@ -122,13 +127,13 @@ sudo reboot
 
 ### If the update stops on an ALSA dependency
 
-On the factory image the update can stop with:
+Without the first command, on the factory image the update stops with (seen on two boards):
 
 ```
 alsa-ucm-conf : Depends: libasound2t64 (>= 1.2.15)
 ```
 
-The image takes the audio profiles, the kernel, firmware and mesa from `trixie-backports`, but not the ALSA library that the new audio profiles need. Install the library from backports too, then repeat the update:
+The image takes the audio profiles, the kernel, firmware and mesa from `trixie-backports`, but not the ALSA library that the new audio profiles need. Install the library from backports too, then repeat the update (the first part, already done, is skipped):
 
 ```bash
 sudo apt-get install -y -t trixie-backports libasound2t64 libasound2-data libatopology2t64 alsa-ucm-conf
@@ -151,7 +156,7 @@ A first installation needs about 2.3 GB there; the installer checks it before st
 
 The password `domotiq2026` is written in this guide, so whoever reads it knows it. Before other people can join the network of the house:
 
-- allow SSH with a key only: `bash scripts/lockdown.sh` on the board, after making sure your key works (see [Before the house leaves the lab](02-install.md#before-the-house-leaves-the-lab));
+- follow [Before the house leaves the lab](02-install.md#before-the-house-leaves-the-lab): remove the network of the lab and the command history, and allow SSH with a key only if the house stays with you, or remove your keys if you hand it over;
 - if you like, choose another password for `arduino` with `passwd`;
 - if you gave the `arduino` user password-less `sudo` during development, give `sudo` its password back (the small rule installed by DomotiQ, which only allows restarting its services, rebooting or powering off the board and changing the hotspot, can stay).
 

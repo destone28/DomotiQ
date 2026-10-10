@@ -2,7 +2,7 @@
 
 House: `casa1` · Wi-Fi `DomotiQ-Casa1` · web app `http://10.42.1.1/`
 
-The Wi-Fi password is in the summary of the installation and in the web app, under **More → Settings → Wi-Fi of the house**.
+The Wi-Fi password is `domotica2026`, unless another one was chosen at installation; the web app shows it under **More → Settings → Wi-Fi of the house**.
 
 ## Power
 

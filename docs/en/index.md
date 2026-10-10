@@ -26,7 +26,7 @@ For everyday use there is a one-page [quick guide](quick-guide.md): switching on
 |---|---|
 | Host name | `casa1` |
 | User and password | `arduino`, `domotiq2026` (chosen in [chapter 1](01-prepare-uno-q.md)) |
-| Wi-Fi hotspot | `DomotiQ-Casa1` (channel 1), password chosen by the installer |
+| Wi-Fi hotspot | `DomotiQ-Casa1` (channel 1), password `domotica2026` |
 | Web app | `http://10.42.1.1/` |
 | Other names | `casa1.lan`, `casa1.local` |
 | Project folder | `/home/arduino/domotiq` |

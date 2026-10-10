@@ -5,8 +5,9 @@
 # Copy the working tree from a PC to a house and restart the application,
 # without git on the board and without internet (it works over the hotspot).
 #
-#   bash scripts/release.sh casa1            code, web app, data
-#   bash scripts/release.sh casa1 --install  and then run install.sh on the board (needs internet)
+#   bash scripts/release.sh casa1                      code, web app, data
+#   bash scripts/release.sh casa1 --install [options]  and then run install.sh on the board with those options
+#                                                      (needs internet; a first installation too)
 
 set -euo pipefail
 HOST="${1:-casa1}"
@@ -19,10 +20,12 @@ rsync -a --delete --exclude .git --filter=':- .gitignore' "${EXTRA[@]}" \
     ./ "$HOST:domotiq/"
 # the fixed sentences of the voice prepared on the PC (scripts/voice_cache.py), if there are any
 if [ -d models/voice-cache ]; then
+    ssh "$HOST" "mkdir -p domotiq/models"         # a first installation has no models yet
     rsync -a --delete models/voice-cache/ "$HOST:domotiq/models/voice-cache/"
 fi
 if [ "${2:-}" = "--install" ]; then
-    ssh -t "$HOST" "cd ~/domotiq && bash scripts/install.sh"
+    shift 2
+    ssh -t "$HOST" "cd ~/domotiq && bash scripts/install.sh $(printf '%q ' "$@")"
 else
     ssh "$HOST" "sudo -n systemctl restart domotiq" && echo "domotiq restarted on $HOST"
 fi

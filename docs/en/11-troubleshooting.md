@@ -12,10 +12,15 @@ Each entry gives the symptom, the likely cause and the fix. Two tools help with 
 
 ## Board and access
 
-### SSH does not answer on a new board
-**Cause.** On a factory image the SSH host keys do not exist (App Lab creates them in its first setup); the log says `sshd: no hostkeys available`.
+### SSH does not answer on a new board, or stops answering after a reboot
+**Cause.** On a factory image the SSH host keys do not exist (App Lab creates them in its first setup); the log says `sshd: no hostkeys available`. Besides, the service is not enabled at boot: if it was only restarted, after the first reboot (for example the one after the system update) port 22 refuses the connection.
 
-**Fix.** From an `adb shell`: `sudo ssh-keygen -A` and `sudo systemctl restart ssh`.
+**Fix.** From an `adb shell`: `sudo ssh-keygen -A` and `sudo systemctl enable --now ssh`.
+
+### *REMOTE HOST IDENTIFICATION HAS CHANGED* when connecting to a board
+**Cause.** The PC remembers the identity of another board with the same name: a new or reinstalled board named like one it has already seen.
+
+**Fix.** `bash scripts/add-pc.sh casaN` recognizes it and asks whether to forget the old identity; by hand: `ssh-keygen -R casaN.local` (or the address used), then `add-pc.sh` again. If the message appears with a board that has not changed, forget nothing: somebody could be pretending to be the board.
 
 ### `casa1.local` does not resolve
 **Cause.** `avahi-daemon` is off on the factory image. Some phones and PCs do not resolve `.local` names at all.
@@ -36,6 +41,11 @@ arduino-app-cli system update
 **Cause.** It must run as the user `arduino`, not with `sudo` (it calls `sudo apt-get` by itself). Started inside `adb shell`, it stops when the adb session closes.
 
 **Fix.** Run it as `arduino` from an SSH session, or detached with `systemd-run --uid=arduino`.
+
+### During the system update the board no longer answers on the network
+**Cause.** At the end the update downloads the Docker images of App Lab (five, a few hundred MB: DomotiQ does not use them). On the new board, for about twenty minutes, the PC could not even ping it.
+
+**Fix.** Wait: with the USB cable `adb shell` works and the log can be followed. When it is done, reboot as chapter 1 says.
 
 ### SSH drops when the hotspot starts
 **Cause.** Expected: the board is either on the lab Wi-Fi or on its hotspot.

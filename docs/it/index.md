@@ -26,7 +26,7 @@ Per l'uso di tutti i giorni c'è una [guida rapida](guida-rapida.md) di una sola
 |---|---|
 | Nome host | `casa1` |
 | Utente e password | `arduino`, `domotiq2026` (scelta nel [capitolo 1](01-preparare-uno-q.md)) |
-| Hotspot Wi-Fi | `DomotiQ-Casa1` (canale 1), password scelta dall'installer |
+| Hotspot Wi-Fi | `DomotiQ-Casa1` (canale 1), password `domotica2026` |
 | Webapp | `http://10.42.1.1/` |
 | Altri nomi | `casa1.lan`, `casa1.local` |
 | Cartella del progetto | `/home/arduino/domotiq` |

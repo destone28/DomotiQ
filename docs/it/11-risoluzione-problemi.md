@@ -12,10 +12,15 @@ Ogni voce riporta il sintomo, la causa probabile e la soluzione. Due strumenti a
 
 ## Scheda e accesso
 
-### SSH non risponde su una scheda nuova
-**Causa.** Su un'immagine di fabbrica le chiavi host di SSH non esistono (le crea App Lab durante la sua prima configurazione); il log dice `sshd: no hostkeys available`.
+### SSH non risponde su una scheda nuova, o smette di rispondere dopo un riavvio
+**Causa.** Su un'immagine di fabbrica le chiavi host di SSH non esistono (le crea App Lab durante la sua prima configurazione); il log dice `sshd: no hostkeys available`. In più il servizio non è attivato all'avvio: se è stato solo fatto ripartire, dopo il primo riavvio (per esempio quello dopo l'aggiornamento del sistema) la porta 22 rifiuta la connessione.
 
-**Soluzione.** Da una `adb shell`: `sudo ssh-keygen -A` e `sudo systemctl restart ssh`.
+**Soluzione.** Da una `adb shell`: `sudo ssh-keygen -A` e `sudo systemctl enable --now ssh`.
+
+### *REMOTE HOST IDENTIFICATION HAS CHANGED* collegandosi a una scheda
+**Causa.** Il PC si ricorda l'identità di un'altra scheda con lo stesso nome: una scheda nuova o reinstallata che si chiama come una già vista.
+
+**Soluzione.** `bash scripts/add-pc.sh casaN` lo riconosce e chiede se dimenticare l'identità vecchia; a mano: `ssh-keygen -R casaN.local` (o l'indirizzo usato), poi di nuovo `add-pc.sh`. Se il messaggio compare con una scheda che non è cambiata, non dimenticare niente: qualcuno potrebbe fingersi la scheda.
 
 ### `casa1.local` non si risolve
 **Causa.** Sull'immagine di fabbrica `avahi-daemon` è spento. Alcuni telefoni e PC non risolvono affatto i nomi `.local`.
@@ -36,6 +41,11 @@ arduino-app-cli system update
 **Causa.** Deve girare come utente `arduino`, non con `sudo` (chiama da solo `sudo apt-get`). Se lo lanci dentro `adb shell`, si ferma quando la sessione adb si chiude.
 
 **Soluzione.** Lancialo come `arduino` da una sessione SSH, oppure staccato con `systemd-run --uid=arduino`.
+
+### Durante l'aggiornamento del sistema la scheda non risponde più in rete
+**Causa.** Alla fine l'aggiornamento scarica le immagini Docker di App Lab (cinque, qualche centinaio di MB: DomotiQ non le usa). Sulla scheda nuova, per una ventina di minuti, il PC non riusciva più nemmeno a fare ping.
+
+**Soluzione.** Aspetta: con il cavo USB `adb shell` funziona e si può seguire il log. Quando ha finito, riavvia come dice il capitolo 1.
 
 ### SSH cade quando parte l'hotspot
 **Causa.** È previsto: la scheda sta o sul Wi-Fi del laboratorio o sul suo hotspot.

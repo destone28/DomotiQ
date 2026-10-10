@@ -37,7 +37,7 @@ Quando la scheda chiede la password nuova, scrivi `domotiq2026`. È la password 
 
 ## 3. Nome e fuso orario
 
-Dai alla scheda il nome `casa1` e il fuso orario. L'installer li imposta di nuovo più avanti, ma il nome serve già adesso perché `casa1.local` funzioni.
+Dai alla scheda il nome `casa1` e il fuso orario. L'installer li imposta di nuovo più avanti, ma il nome serve già adesso perché `casa1.local` funzioni. Se rinomini una scheda che ha già avahi acceso (passo 6), riavvialo perché annunci il nome nuovo: `sudo systemctl restart avahi-daemon`.
 
 ```bash
 sudo hostnamectl set-hostname casa1
@@ -49,17 +49,21 @@ sudo timedatectl set-timezone Europe/Rome
 Durante la preparazione la scheda sta sulla tua normale rete Wi-Fi, la stessa del PC. Con NetworkManager:
 
 ```bash
-sudo nmcli device wifi connect "YOUR-NETWORK" password "YOUR-PASSWORD"
+sudo nmcli --ask device wifi connect "YOUR-NETWORK"
 ```
+
+La password della rete si scrive quando `nmcli` la chiede: così non resta nella cronologia dei comandi.
 
 ## 5. Far funzionare SSH
 
-Su un'immagine nuova SSH non parte: il log dice `sshd: no hostkeys available`. App Lab crea le chiavi host durante la sua prima configurazione; senza App Lab, creale tu:
+Su un'immagine nuova SSH non parte: il log dice `sshd: no hostkeys available`, e il servizio non è nemmeno attivato all'avvio. App Lab crea le chiavi host durante la sua prima configurazione; senza App Lab, crea le chiavi e attiva il servizio, così parte anche dopo ogni riavvio:
 
 ```bash
 sudo ssh-keygen -A
-sudo systemctl restart ssh
+sudo systemctl enable --now ssh
 ```
+
+Con il solo `restart` SSH funziona fino al primo riavvio, poi la scheda risponde solo via USB (`adb shell`): succede proprio dopo l'aggiornamento del passo 8. Anche l'installer attiva il servizio.
 
 ## 6. Attivare avahi (il nome `.local`)
 
@@ -88,7 +92,7 @@ bash scripts/add-pc.sh casa1 10.42.1.1
 Lo script:
 
 1. crea la chiave `~/.ssh/id_ed25519_domotiq`, se questo PC non ce l'ha ancora;
-2. la copia sulla scheda con `ssh-copy-id`, che chiede una volta la password di `arduino` (`domotiq2026`) e, la prima volta, se fidarsi della scheda: rispondi `yes`;
+2. la copia sulla scheda con `ssh-copy-id`, che chiede una volta la password di `arduino` (`domotiq2026`);
 3. aggiunge una voce `Host casa1` a `~/.ssh/config` (utente `arduino`, quella chiave e l'indirizzo che hai indicato, oppure `casa1.local`);
 4. si collega una volta e stampa `connected to casa1`.
 
@@ -104,15 +108,16 @@ Se la scheda non risponde, lo script stampa l'errore di rete e ricorda quale for
 
 ## 8. Aggiornare il sistema
 
-Entra con `ssh casa1` e lancia l'aggiornamento **come utente `arduino`, senza `sudo`**:
+Entra con `ssh casa1`. Sull'immagine di fabbrica l'aggiornamento si fermerebbe su una dipendenza della libreria audio (vedi sotto): installa prima quella libreria da backports, poi lancia l'aggiornamento **come utente `arduino`, senza `sudo`**:
 
 ```bash
+sudo apt-get install -y -t trixie-backports libasound2t64 libasound2-data libatopology2t64 alsa-ucm-conf
 arduino-app-cli system update
 ```
 
-`arduino-app-cli` si rifiuta di funzionare come root e chiama da solo `sudo apt-get`.
+`arduino-app-cli` si rifiuta di funzionare come root e chiama da solo `sudo apt-get`; con `--yes` non chiede conferme.
 
-Lancialo da una sessione SSH. Dentro una `adb shell` l'aggiornamento si interrompe se la sessione adb si chiude; se non hai alternative, avvialo staccato con `systemd-run --uid=arduino`.
+Lancialo da una sessione SSH. Dentro una `adb shell` l'aggiornamento si interrompe se la sessione adb si chiude; se non hai alternative, avvialo staccato con `systemd-run --uid=arduino`. Su una scheda nuova dura una mezz'ora: alla fine scarica anche le immagini Docker di App Lab, che DomotiQ non usa, e intanto la scheda può non rispondere in rete (vedi [Risoluzione dei problemi](11-risoluzione-problemi.md)).
 
 Durante la preparazione del progetto l'aggiornamento ha portato `arduino-app-cli` 0.13.0, `arduino-cli` 1.5.1, il kernel Linux 7.0 e il core del microcontrollore `arduino:zephyr` 1.0.0, che è la versione usata da DomotiQ. Quando ha finito, riavvia, così entra in uso il nuovo kernel:
 
@@ -122,13 +127,13 @@ sudo reboot
 
 ### Se l'aggiornamento si ferma su una dipendenza ALSA
 
-Sull'immagine di fabbrica l'aggiornamento può fermarsi con:
+Senza il primo comando, sull'immagine di fabbrica l'aggiornamento si ferma con (provato su due schede):
 
 ```
 alsa-ucm-conf : Depends: libasound2t64 (>= 1.2.15)
 ```
 
-L'immagine prende i profili audio, il kernel, il firmware e mesa da `trixie-backports`, ma non la libreria ALSA che serve ai nuovi profili audio. Installa anche la libreria da backports, poi ripeti l'aggiornamento:
+L'immagine prende i profili audio, il kernel, il firmware e mesa da `trixie-backports`, ma non la libreria ALSA che serve ai nuovi profili audio. Installa anche la libreria da backports, poi ripeti l'aggiornamento (la prima parte, già fatta, viene saltata):
 
 ```bash
 sudo apt-get install -y -t trixie-backports libasound2t64 libasound2-data libatopology2t64 alsa-ucm-conf
@@ -151,7 +156,7 @@ Una prima installazione ha bisogno di circa 2,3 GB lì; l'installer lo controlla
 
 La password `domotiq2026` è scritta in questa guida, quindi chiunque la legga la conosce. Prima che altre persone possano collegarsi alla rete della casa:
 
-- fai entrare SSH solo con la chiave: `bash scripts/lockdown.sh` sulla scheda, dopo aver controllato che la tua chiave funzioni (vedi [Prima che la casa lasci il laboratorio](02-installazione.md#prima-che-la-casa-lasci-il-laboratorio));
+- segui [Prima che la casa lasci il laboratorio](02-installazione.md#prima-che-la-casa-lasci-il-laboratorio): togli la rete del laboratorio e la cronologia dei comandi, e fai entrare SSH solo con la chiave se la casa resta a te, oppure togli le tue chiavi se la consegni;
 - se vuoi, scegli un'altra password per `arduino` con `passwd`;
 - se durante lo sviluppo hai dato all'utente `arduino` un `sudo` senza password, rimetti la password a `sudo` (la piccola regola installata da DomotiQ, che permette solo di riavviare i suoi servizi, riavviare o spegnere la scheda e cambiare l'hotspot, può restare).
 

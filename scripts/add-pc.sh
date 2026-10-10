@@ -33,7 +33,8 @@ elif grep -qiE "could not resolve|no route to host|timed out|connection refused|
     exit 1
 fi
 
-ssh-copy-id -i "$KEY.pub" "arduino@$ADDR"
+# a board never seen before is trusted at once (as the Host entry below does); a changed one was handled above
+ssh-copy-id -o StrictHostKeyChecking=accept-new -i "$KEY.pub" "arduino@$ADDR"
 if grep -q "^Host $NAME\$" "$HOME/.ssh/config" 2>/dev/null; then
     now=$(ssh -G "$NAME" | awk '$1 == "hostname" {print $2}')
     [ "$now" = "$ADDR" ] || echo "~/.ssh/config already has Host $NAME with the address $now (not $ADDR): left as it is."

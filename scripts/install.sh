@@ -12,6 +12,7 @@
 #
 # Options:
 #   --house N          number of the house, 1 if not given (name casaN, Wi-Fi DomotiQ-CasaN, address 10.42.N.1)
+#   --wifi PASSWORD    the password of the Wi-Fi of the house, 8 to 63 characters (default: chosen at random once)
 #   --hotspot MODE     now | boot | no   (default: boot = active from the next start)
 #   --no-llm           skip llama.cpp and the language model
 #   --skip-firmware    do not rebuild or reload the microcontroller firmware
@@ -22,6 +23,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 HOUSE=""
+WIFI_ARG=""
 HOTSPOT="boot"
 WITH_LLM=1
 CHAT_MODEL="Qwen_Qwen3.5-0.8B-Q4_0.gguf"      # Apache-2.0: the free answers (docs/decisioni.md D-63)
@@ -29,6 +31,7 @@ WITH_FIRMWARE=1
 while [ $# -gt 0 ]; do
     case "$1" in
         --house) HOUSE="$2"; shift 2 ;;
+        --wifi) WIFI_ARG="$2"; shift 2 ;;
         --hotspot) HOTSPOT="$2"; shift 2 ;;
         --no-llm) WITH_LLM=0; shift ;;
         --skip-firmware) WITH_FIRMWARE=0; shift ;;
@@ -80,6 +83,9 @@ if [ -z "$HOUSE" ]; then
     HOUSE=$(python3 -c "import json;print(json.load(open('$VAR/config/settings.json'))['house']['number'])" 2>/dev/null || echo 1)
 fi
 [[ "$HOUSE" =~ ^[0-9]+$ ]] && [ "$HOUSE" -ge 1 ] && [ "$HOUSE" -le 254 ] || die "the number of the house goes from 1 to 254 (--house N)"
+# a WPA2 passphrase: 8 to 63 printable characters (as the web app checks it)
+[ -z "$WIFI_ARG" ] || python3 -c "import sys; p = sys.argv[1]; sys.exit(not (8 <= len(p) <= 63 and all(32 <= ord(c) <= 126 for c in p)))" "$WIFI_ARG" \
+    || die "the Wi-Fi password must be 8 to 63 letters, digits or symbols (--wifi PASSWORD)"
 ok "house $HOUSE, ${FREE} MB free"
 
 # ---------------------------------------------------------------------------
@@ -95,6 +101,8 @@ sudo NEEDRESTART_SUSPEND=1 DEBIAN_FRONTEND=noninteractive apt-get install -y --n
     python3-venv python3-dev build-essential cmake git curl rsync unzip \
     alsa-utils v4l-utils iw sqlite3 avahi-daemon dnsmasq-base libgomp1 >/dev/null
 sudo systemctl enable --now avahi-daemon >/dev/null 2>&1 || true
+# the factory image does not start ssh at boot: after a restart the board would answer only over USB
+sudo systemctl enable --now ssh >/dev/null 2>&1 || true
 ok "packages installed"
 
 # ---------------------------------------------------------------------------
@@ -208,6 +216,7 @@ mkdir -p "$VAR/config"
 arduino-app-cli system set-name "casa$HOUSE" >/dev/null 2>&1 || sudo hostnamectl set-hostname "casa$HOUSE"
 sudo timedatectl set-timezone Europe/Rome
 WIFI_PASS=$(python3 -c "import json;print(json.load(open('$VAR/config/settings.json'))['network']['password'])" 2>/dev/null || echo "")
+[ -z "$WIFI_ARG" ] || WIFI_PASS="$WIFI_ARG"
 if [ -z "$WIFI_PASS" ]; then
     WIFI_PASS=$(python3 -c "import secrets;a='abcdefghjkmnpqrstuvwxyz23456789';print('-'.join(''.join(secrets.choice(a) for _ in range(4)) for _ in range(3)))")
 fi
