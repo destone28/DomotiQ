@@ -25,6 +25,7 @@ DEFAULTS: dict[str, Any] = {
     "voice": {
         "language": "it",            # language the house speaks and listens in
         "verbosity": "normal",       # silent | normal | chatty
+        "voice": "natural",          # natural (Piper: more natural, slower) | fast (SVOX Pico: plainer, at once)
         "volume": 70,                # master, 0-100
         "voice_gain": 100,
         "music_gain": 80,

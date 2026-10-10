@@ -46,6 +46,10 @@ export function mount(root) {
         <button class="btn primary block" id="save">${t("common.save")}</button>
       </div>
       <div class="card"><h3 class="card-title">🔊 ${t("set.voice")}</h3>
+        <label class="field"><span>${t("set.voice_kind")}</span><select id="voice-kind">
+          <option value="natural" ${s.voice.voice !== "fast" ? "selected" : ""}>${t("set.voice_natural")}</option>
+          <option value="fast" ${s.voice.voice === "fast" ? "selected" : ""}>${t("set.voice_fast")}</option></select></label>
+        <p class="muted small">${t("set.voice_kind_hint")}</p>
         <label class="row spread"><span>${t("set.greet_phones")}</span><span class="switch"><input type="checkbox" id="greet" ${s.voice.greet_phones ? "checked" : ""}><span></span></span></label>
         <label class="row spread"><span>${t("set.chatty_questions")}</span><span class="switch"><input type="checkbox" id="chatq" ${s.voice.chatty_questions ? "checked" : ""}><span></span></span></label>
         <label class="field"><span>${t("set.question_every")}</span>
@@ -85,7 +89,7 @@ export function mount(root) {
       const body = { house: { name: { it: $("#hn-it").value, en: $("#hn-en").value } }, buttons: { reversed: $("#rev").checked },
         lights: { follow_color: $("#fcol").value, follow_favourite: $("#ffav").checked }, camera: { blur_bathroom: $("#blur").checked, figures: $("#figs").checked, figures_consent: $("#figc").checked,
           collect: $("#coll").checked, collect_mb: Math.max(50, Number($("#collmb").value) || 500) },
-        voice: { greet_phones: $("#greet").checked, chatty_questions: $("#chatq").checked,
+        voice: { greet_phones: $("#greet").checked, chatty_questions: $("#chatq").checked, voice: $("#voice-kind").value,
                  wake_enabled: $("#wake").checked, wake_word: $("#wake-word").value.trim() } };
       root.querySelectorAll("[data-path]").forEach(inp => {
         const [a, b] = inp.dataset.path.split(".");

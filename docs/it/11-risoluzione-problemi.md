@@ -186,6 +186,16 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 
 **Soluzione.** Accendi una luce, o togli quello che copre la webcam. Nel frattempo i personaggi restano dove erano e la casa non impara niente da quell'immagine. Quando la luce torna, la casa si adatta da sola.
 
+### La casa risponde con qualche secondo di ritardo
+**Causa.** Con la voce naturale ogni frase nuova va sintetizzata, e sulla scheda una frase di tre secondi e mezzo richiede circa 4,5 secondi. Le frasi fisse e quelle già dette partono subito.
+
+**Soluzione.** In **Impostazioni → Voce** scegli *Voce della casa*: **Veloce (meno naturale)**: le frasi sono pronte in un decimo di secondo, con una voce più artificiale. La parola di attivazione riceve il suo "Dimmi!" subito in entrambi i casi.
+
+### In una sala molto buia la casa non vede alcune statuine
+**Causa.** La webcam è al massimo del guadagno e dell'esposizione e il suo rumore è alto: le statuine scure su un pavimento scuro non si distinguono più dal pavimento.
+
+**Soluzione.** Accendi una luce. Con la luce normale la casa le ritrova; per farle riconoscere da subito, toccale sulla piantina e di' chi sono.
+
 ### Avviso *La webcam vede tutta la casa diversa*
 **Causa.** Per più di cinque secondi oltre un terzo della casa appare diverso dalla casa vuota: la luce della sala è cambiata molto, qualcosa copre la webcam, oppure la webcam è stata urtata.
 

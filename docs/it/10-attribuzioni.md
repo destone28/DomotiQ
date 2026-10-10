@@ -73,6 +73,7 @@ Questi girano come programmi separati, in processi propri; il codice di DomotiQ 
 |---|---|---|---|
 | [Piper](https://github.com/OHF-Voice/piper1-gpl) (`piper1-gpl`, pacchetto `piper-tts`) | 1.8.0 | GPL-3.0 | sintesi vocale, nel suo ambiente, come server HTTP locale |
 | [Flask](https://flask.palletsprojects.com) | non fissata | BSD-3-Clause | usato dal server HTTP di Piper, nell'ambiente di Piper |
+| [SVOX Pico](https://android.googlesource.com/platform/external/svox/) (`pico2wave`, pacchetto Debian `libttspico-utils`) | 1.0+git20130326-14.1 | Apache-2.0 (i dati delle voci: dichiarati Apache-2.0, redistribuibili, senza sorgenti; per questo Debian li tiene in *non-free*) | la voce veloce, come programma separato |
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) (`llama-server`) | commit 74a7c897 | MIT | fa girare il modello linguistico; compilato sulla scheda |
 
 Piper è GPL-3.0. DomotiQ lo esegue come programma esterno e gli parla via HTTP: si tratta di aggregazione, non di un'opera derivata, quindi il codice di DomotiQ resta sotto licenza MIT.

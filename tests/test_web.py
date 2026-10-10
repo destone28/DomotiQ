@@ -364,6 +364,19 @@ def test_a_deleted_character_leaves_the_presences_the_questions_and_the_journal(
     assert "Rosaria" not in c.get("/api/journal").json()["names"]
 
 
+def test_a_character_is_added_by_name_before_the_house_sees_it(web):
+    """The characters of a house known before their figurines are put on it (a cat and a dog to come)."""
+    ctx, c = web
+    r = c.post("/api/identities", json={"name": "Romeo", "category": "cat", "color": "#f08020"})
+    assert r.status_code == 200 and r.json()["category"] == "cat" and r.json()["signature"] is None
+    romeo = ctx.identities.by_name("Romeo")
+    assert romeo is not None and romeo.signature == [] and romeo.color == "#f08020"
+    assert c.post("/api/identities", json={"name": "romeo", "category": "cat"}).status_code == 409
+    assert c.post("/api/identities", json={"name": " ", "category": "cat"}).status_code == 400
+    assert c.post("/api/identities", json={"name": "Fido", "category": "drago"}).status_code == 400
+    assert any(e["action"] == "create" and e["entity"] == "identity" for e in c.get("/api/audit").json())
+
+
 def test_a_character_learns_its_look_again(web):
     """The characters of a house copied onto another one built with its own figurines: their colours were those of
     the first house, and the second recognized nobody or the wrong one."""

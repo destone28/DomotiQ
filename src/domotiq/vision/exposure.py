@@ -43,6 +43,14 @@ GAIN_FLOOR, GAIN_MAX = 12, 255     # below 12 the gain of the C270 does nothing
 GAIN_OFF = 0.129                   # the light of gain 0-8 (and of 9-11, never asked), relative to gain 32
 EXPOSURES = (625, 312, 156, 78)    # the real steps of the exposure, longest first
 EXPOSURE_STEP = 0.36               # one of them down gives this much of the light (measured 0.32-0.40)
+# Beyond 625 the C270 multiplies the picture digitally, in plateaus, still at 15 frames a second (measured on 9 October
+# with the light of the hall at most: 700-1250 x1.7, 1600-2047 x2.3, 3000 x2.9). The noise grows with the light, and
+# the gain gives a cleaner picture: these come only at the highest gain, for a hall darker than the gain can make up
+# (10 October: brightness 22 of 50 at gain 255), and go first on the way back. One digital plateau each.
+DIGITAL = (3000, 1600, 700)
+EXPOSURE_LIGHT = {3000: 2.9, 1600: 2.3, 700: 1.7, 625: 1.0, 312: EXPOSURE_STEP, 156: EXPOSURE_STEP ** 2,
+                  78: EXPOSURE_STEP ** 3}
+LADDER = DIGITAL + EXPOSURES       # every exposure the steps use, the most light first
 NOISE_EXP = 0.6                    # the noise of a pixel grows as its brightness^0.6 when the gain rises
 HOUR_S = 3600.0
 
@@ -63,6 +71,11 @@ def gain_light(gain: float) -> float:
             t = math.log(g / g0) / math.log(g1 / g0)
             return math.exp(math.log(l0) + t * (math.log(l1) - math.log(l0)))
     return GAIN_LIGHT[-1][1]
+
+
+def exposure_light(exposure: int) -> float:
+    """How much light an exposure of the steps gives, relative to 625 (1.0 for one the full setting chose)."""
+    return EXPOSURE_LIGHT.get(int(exposure), 1.0)
 
 
 def gain_for(light: float) -> int:
@@ -130,8 +143,10 @@ class GainRegulator:
 
     @property
     def at_dark_end(self) -> bool:
-        """The brightest the webcam can make its pictures: the highest gain at the longest exposure."""
-        return self.gain >= GAIN_MAX and self.exposure == EXPOSURES[0]
+        """The brightest the webcam can make its pictures: the highest gain at the longest exposure, or on the way
+        to it where the next digital plateau would bring the picture farther from the empty house."""
+        return self.gain >= GAIN_MAX and (self.exposure == LADDER[0]
+                                          or self.at_limit and exposure_light(self.exposure) >= 1.0)
 
     def done(self, step: CameraStep, now: float) -> None:
         """The step is in the pictures from now on."""
@@ -172,7 +187,10 @@ class GainRegulator:
         limit = math.log(1.0 + cap)
         want = max(-limit, min(limit, DAMP * math.log(1.0 / max(ratio, 1e-3))))   # in log of the light
         k = self._k or prior_k(self.gain)
-        if self.gain < GAIN_FLOOR:
+        if self.exposure in DIGITAL and want < 0:
+            # brighter than wanted on a digital plateau: the plateau below first, the gain stays at its highest
+            gain = GAIN_MAX
+        elif self.gain < GAIN_FLOOR:
             # below its floor the gain does nothing: up, the first step is the floor itself; down, only the exposure
             gain = GAIN_FLOOR if want > 0 else self.gain
         else:
@@ -195,12 +213,13 @@ class GainRegulator:
         # rooms is measured again after it
         uncertain = exposure != self.exposure or min(gain, self.gain) < GAIN_FLOOR
         if uncertain:
-            levels = EXPOSURES.index(exposure) - EXPOSURES.index(self.exposure) if exposure != self.exposure else 0
-            factor = EXPOSURE_STEP ** levels * gain_light(gain) / gain_light(self.gain)
+            factor = exposure_light(exposure) / exposure_light(self.exposure) * gain_light(gain) / gain_light(self.gain)
         else:
             factor = (gain / self.gain) ** k
         if abs(math.log(max(ratio * factor, 1e-3))) >= off:
             self.settled = True              # the smallest step there is would land farther from the empty house
+            # a digital plateau that would overshoot more than it brings: as close as the webcam can get
+            self.at_limit = exposure in DIGITAL and exposure != self.exposure
             return None
         step = CameraStep(gain, exposure, factor, ratio, uncertain)
         self._record(step, now)
@@ -210,15 +229,22 @@ class GainRegulator:
         """At the end of the gain: one real step of the exposure, the gain set again to keep the light about where it
         was going. None at the very end (the brightest or darkest the webcam can do), and with an exposure the full
         setting chose outside these steps (a very bright hall): that is for the full setting again."""
-        if self.exposure not in EXPOSURES:
+        if self.exposure not in LADDER:
             return None
-        i = EXPOSURES.index(self.exposure)
-        if want < 0 and self.gain <= GAIN_FLOOR and i + 1 < len(EXPOSURES):
+        i = LADDER.index(self.exposure)
+        here = exposure_light(self.exposure)
+        if want < 0 and self.exposure in DIGITAL:
+            return GAIN_MAX, LADDER[i + 1]                  # less digital light, the gain at its highest
+        if want < 0 and self.gain <= GAIN_FLOOR and i + 1 < len(LADDER):
             # the gain makes up for the shorter exposure
-            return gain_for(gain_light(self.gain) * math.exp(want) / EXPOSURE_STEP), EXPOSURES[i + 1]
+            return gain_for(gain_light(self.gain) * math.exp(want) * here / exposure_light(LADDER[i + 1])), LADDER[i + 1]
         if want > 0 and i > 0:
+            longer = LADDER[i - 1]
+            if longer in DIGITAL:
+                # digital light only once the gain can give no more, and with the gain left at its highest
+                return (GAIN_MAX, longer) if self.gain >= GAIN_MAX else None
             # the longer exposure gives more than needed: less gain
-            return gain_for(gain_light(self.gain) * math.exp(want) * EXPOSURE_STEP), EXPOSURES[i - 1]
+            return gain_for(gain_light(self.gain) * math.exp(want) * here / exposure_light(longer)), longer
         return None
 
     def _record(self, step: CameraStep, now: float) -> None:

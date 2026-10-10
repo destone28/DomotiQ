@@ -186,6 +186,16 @@ The installer (which needs internet) reloads the firmware when needed; without i
 
 **Fix.** Turn on a light, or remove what covers the camera. Meanwhile the characters stay where they were and the house learns nothing from that picture. When the light comes back, the house adapts by itself.
 
+### The house answers a few seconds late
+**Cause.** With the natural voice every new sentence must be synthesized, and on the board a sentence of three and a half seconds takes about 4.5 seconds. Fixed sentences and those already said start at once.
+
+**Solution.** In **Settings → Voice** choose *Voice of the house*: **Fast (less natural)**: sentences are ready in a tenth of a second, with a more artificial voice. The keyword gets its "Yes?" at once either way.
+
+### In a very dark hall the house does not see some figurines
+**Cause.** The webcam is at its highest gain and exposure and its noise is high: dark figurines on a dark floor no longer stand out from the floor.
+
+**Solution.** Turn on a light. With normal light the house finds them again; to have them recognized at once, tap them on the plan and say who they are.
+
 ### Banner *The webcam sees the whole house changed*
 **Cause.** For more than five seconds, more than a third of the house looks different from the empty house: the hall light changed a lot, something covers the camera, or the camera was knocked.
 

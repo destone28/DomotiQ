@@ -408,7 +408,13 @@ class Engine:
         elif self._scan_pending or now < self._scan_until:
             why = "start"
         elif not DARK_LEVEL <= self._level <= DAZZLED_LEVEL:
-            why = "dark" if self._level < DARK_LEVEL else "dazzled"
+            # too dark (or dazzled) to be learned, but the webcam still goes towards the empty house while it can,
+            # that way only: on 10 October the light of the room went down to a fifth, the gain stayed at 28 of 255
+            # and the house was blind until the light came back
+            dark = self._level < DARK_LEVEL
+            ratio, why = self._room_light(small, now, hands=False)
+            if not why and (ratio is None or (ratio >= 1.0) == dark):
+                why = "dark" if dark else "dazzled"
         elif now - self._hand_at < SETTLE_S and not self._stuck:
             why = "hands"
         else:
@@ -439,15 +445,16 @@ class Engine:
         if self.regulator is not None:
             self.regulator.target_changed()
 
-    def _room_light(self, small: np.ndarray, now: float) -> tuple[float | None, str]:
+    def _room_light(self, small: np.ndarray, now: float, hands: bool = True) -> tuple[float | None, str]:
         """How bright the rooms are against the empty house in use: in every region the median over its free floor,
         away from the presences and the hands, then the median over the regions, leaving out those whose light the
-        house has just changed or animates. With too little in sight, the reason for no step instead."""
+        house has just changed or animates. With too little in sight, the reason for no step instead. `hands`: also
+        away from the hands (not in a picture too dark, where all the house differs and is taken for hands)."""
         if not self._target_px:
             return None, "start"
         seg = self.segmenter
         busy = self._footprints()
-        if seg.hand_mask is not None and seg.hand_mask.shape == busy.shape:
+        if hands and seg.hand_mask is not None and seg.hand_mask.shape == busy.shape:
             busy |= seg.hand_mask
         busy = busy.ravel()
         flat = small.reshape(-1, 3)
@@ -1459,8 +1466,11 @@ class Engine:
         # (a covered camera)
         steady = not light_event and share <= 0.35 and self._seeing()
         self._absorb_ghosts(small, fg, obs, hands, frozen or scan or share > 0.35, now, steady)
-        # the hall light drifts slowly: follow it on the free floor, when nothing moves
-        calm = not frozen and not any(o.hand for o in obs)
+        # the hall light drifts slowly: follow it on the free floor, when nothing moves. At the dark end of the webcam
+        # "hands" are no reason to wait: on 10 October its noise at gain 255 in a dark hall made "hands" everywhere,
+        # and the noise they came from was never learned again, so they never went (a real hand there only raises the
+        # noise for a moment, and it fades)
+        calm = (self._darkest() and not light_event) or (not frozen and not any(o.hand for o in obs))
         drift = calm and now - self._last_ref_update > 5.0
         if drift:
             self._last_ref_update = now

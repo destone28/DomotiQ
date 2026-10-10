@@ -406,6 +406,20 @@ def create_app(ctx: "Context") -> FastAPI:
     async def identities():
         return ctx.identities.to_list()
 
+    @app.post("/api/identities")
+    async def identity_add(body: dict, w: Who = Depends(who)):
+        """A character the house knows by name before it has seen it: its look is learned the first time somebody
+        says who it is (on the plan, answering a question, aloud)."""
+        try:
+            ident = ctx.identities.add(str(body.get("name") or ""), str(body.get("category") or "person"),
+                                       color=str(body.get("color") or "#888888"), alias_en=body.get("alias_en"),
+                                       device=w.device, nickname=w.nickname)
+        except NameTaken as e:
+            raise HTTPException(409, f"name taken: {e.name}") from e
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
+        return ident.to_dict() | {"signature": None, "poses": None}
+
     @app.put("/api/identities/{identity_id}")
     async def identity_update(identity_id: str, body: dict, w: Who = Depends(who)):
         if not ctx.identities.get(identity_id):

@@ -119,6 +119,8 @@ class _Session:
 
     def feed_partial(self, pcm):
         self.heard += self._words(pcm)
+        if self.grammar is None:
+            return " ".join(self.heard)                    # the free recognizer writes what it heard
         # held to the word, the recognizer takes anything like it for the word
         return " ".join("casa" if w in ("casa", "cosa") else "[unk]" for w in self.heard)
 
@@ -362,4 +364,41 @@ def test_a_word_the_recognizer_does_not_know_is_heard_by_a_spelling_it_knows(ctx
         v.mic = _Mic(_said("il", "cancello", "e", "automatico", quiet=25), [])
         assert await v._wake_listen("domotiq") == (False, "")
         assert not v.busy.locked()
+    asyncio.run(scenario())
+
+
+def test_a_word_the_recognizer_does_not_know_is_answered_as_soon_as_it_is_written(ctx):
+    """"Domotiq", known to the recognizer only as "domotica", was always checked on the whole decoding of the free
+    recognizer: "Dimmi!" came a second after the LEDs, which even went off meanwhile. Written in its partial
+    result, the word alone is answered 0.3 s after it, with the LEDs still on."""
+    async def scenario():
+        v = ctx.voice
+        log = []
+
+        async def leds(mask, blink=0):
+            log.append(("leds", mask, blink))
+        ctx.mcu.leds = leds
+
+        class Session(_Session):
+            def result(self):
+                if self.grammar is None:
+                    raise AssertionError("the whole decoding is not waited for")
+                return super().result()
+
+        class Listener(_Listener):
+            def session(self, lang, grammar=None, respell=True, alternatives=0):
+                return _SpelledSession(grammar) if grammar else Session(grammar)
+
+            def known(self, word, lang):
+                return word != "domotiq"
+
+            def spelling(self, phrase, lang):
+                return phrase.replace("domotiq", "domotica")
+        v.listener = Listener()
+        v.mic = _Mic(_said("domotica", quiet=30), log)
+        assert await v._wake_listen("domotiq") == (True, "")
+        chunks = [e[1] for e in log if e[0] == "chunk"]
+        assert max(chunks) <= 3 + 1 + 3 + 2                    # the word, 0.3 s, a little lag
+        assert ("leds", 0, 0) not in log
+        v.busy.release()
     asyncio.run(scenario())

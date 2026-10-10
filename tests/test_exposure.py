@@ -9,8 +9,8 @@ import random
 
 import pytest
 
-from domotiq.vision.exposure import (BAND, CAP, CAP_ADAPT, EXPOSURES, GAIN_FLOOR, GAIN_MAX, GainRegulator, gain_light,
-                                     MEASURE_S)
+from domotiq.vision.exposure import (BAND, CAP, CAP_ADAPT, DIGITAL, EXPOSURES, GAIN_FLOOR, GAIN_MAX, LADDER,
+                                     GainRegulator, exposure_light, gain_light, MEASURE_S)
 
 
 def scene(c: float, k: float):
@@ -18,8 +18,7 @@ def scene(c: float, k: float):
     measured curve (k bends it: 1 is the curve of casa1)."""
     def light(gain: int, exposure: int) -> float:
         g = gain_light(gain) ** k
-        e = 0.36 ** EXPOSURES.index(exposure) if exposure in EXPOSURES else 1.0
-        return c * g * e
+        return c * g * exposure_light(exposure)
     return light
 
 
@@ -92,8 +91,28 @@ def test_too_bright_at_the_lowest_gain_one_real_step_of_the_exposure():
 
 
 def test_in_the_dark_it_stops_at_the_highest_gain():
-    seen, reg = follow(scene(0.05, 1.0), looks=60)
-    assert reg.gain == GAIN_MAX and reg.at_limit and reg.exposure == EXPOSURES[0]
+    seen, reg = follow(scene(0.05, 1.0), looks=80)
+    assert reg.gain == GAIN_MAX and reg.at_limit and reg.exposure == LADDER[0] and reg.at_dark_end
+
+
+def test_a_hall_darker_than_the_gain_can_make_up_takes_the_digital_light_at_the_highest_gain():
+    """10 October: brightness 22 of 50 at gain 255 and exposure 625. Beyond it the webcam multiplies its pictures
+    (x1.7 to x2.9): taken only with the gain at its highest, and given back first when the hall gets lighter."""
+    seen, reg = follow(scene(0.15, 1.0), looks=80)
+    assert reg.exposure in DIGITAL and reg.gain == GAIN_MAX
+    assert abs(math.log(seen[-1])) <= math.log(1 + 0.3)              # back near the empty house
+    light = {"c": 0.15}
+    seen, reg2 = [], GainRegulator(reg.gain, reg.exposure)
+    t = 200.0
+    for _ in range(60):                                             # the hall lit again, three times as much
+        ratio = 0.45 * gain_light(reg2.gain) * exposure_light(reg2.exposure)
+        step = reg2.consider(ratio, t)
+        if step is not None:
+            assert not (step.gain < GAIN_MAX and step.exposure in DIGITAL), step   # never digital light with less gain
+            reg2.done(step, t + 0.15)
+        seen.append(ratio)
+        t += MEASURE_S
+    assert reg2.exposure not in DIGITAL and abs(math.log(seen[-1])) <= math.log(1 + BAND) + 0.02
 
 
 def test_one_look_every_half_second_of_time_however_many_frames():
@@ -186,6 +205,9 @@ def test_busy_until_the_light_is_back_or_nothing_more_can_be_done():
     reg.consider(1.0, 1.0)
     assert not reg.busy
     reg = GainRegulator(GAIN_MAX, 625)
+    step = reg.consider(0.5, 0.0)
+    assert step is not None and step.exposure in DIGITAL and step.gain == GAIN_MAX     # the digital light first
+    reg = GainRegulator(GAIN_MAX, LADDER[0])
     reg.consider(0.5, 0.0)
     assert reg.at_limit and reg.at_dark_end and not reg.busy
 

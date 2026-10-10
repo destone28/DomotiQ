@@ -1,11 +1,14 @@
 # SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
 # SPDX-License-Identifier: MIT
-"""Speech synthesis through the Piper HTTP server.
+"""Speech synthesis: the natural voice through the Piper HTTP server, the fast one through SVOX Pico.
 
 Piper (piper1-gpl, GPL-3.0) is a separate program: it runs as its own
 service in its own Python environment (`domotiq-tts`), and this module only
 sends it text over HTTP on the loopback interface and gets WAV audio back.
-Nothing of Piper is imported here.
+Nothing of Piper is imported here. The fast voice (Settings -> Voice) is SVOX
+Pico (`pico2wave`, Apache-2.0), also a separate program: plainer, but a
+sentence is ready at once where Piper takes some tenths of a second on the
+board. Without it the natural voice is used.
 
 Sentences that the house says often are synthesized once and kept in memory,
 so "Who is it?" plays at once even while the processor is busy. Every
@@ -29,10 +32,13 @@ import json
 import logging
 import os
 import re
+import subprocess
+import tempfile
 import urllib.request
 import wave
 from collections import OrderedDict
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 
@@ -40,7 +46,10 @@ from ..audio import RATE
 
 log = logging.getLogger(__name__)
 
-VOICES = {"it": "it_IT-serena-medium", "en": "en_US-ljspeech-medium"}
+VOICES = {"it": "it_IT-serena-medium", "en": "en_US-ljspeech-medium"}     # the natural voices (Piper)
+FAST = {"it": "it-IT", "en": "en-US"}                                     # the fast voices (SVOX Pico)
+PICO = "pico2wave"
+PICO_SPEED = 140      # its own pace is slow: a sentence of 3.5 s for Piper took 5.3 s (4.7 s at 140, measured)
 URL = "http://127.0.0.1:5010/synthesize"
 
 # an interjection made of m and h only ("Mmm...", "Hmm,"): the voices spell it out letter by letter
@@ -56,9 +65,11 @@ UNITS = {
 }
 
 
-def normalize(text: str, lang: str) -> str:
+def normalize(text: str, lang: str, phonemes: bool = True) -> str:
+    """Units, words to say otherwise and, for Piper (`phonemes`), the phrases given to it as phonemes."""
     for pattern, repl in UNITS.get(lang, []):
-        text = re.sub(pattern, repl, text)
+        if phonemes or "[[" not in repl:
+            text = re.sub(pattern, repl, text)
     return text.strip()
 
 
@@ -71,7 +82,8 @@ def _resample(x: np.ndarray, src: int, dst: int) -> np.ndarray:
 
 class Speaker:
     def __init__(self, url: str = URL, cache_size: int = 300, cache_dir: Path | str | None = None,
-                 disk_max: int = 3000, seed_dir: Path | str | None = None) -> None:
+                 disk_max: int = 3000, seed_dir: Path | str | None = None,
+                 voice: Callable[[], str] | None = None) -> None:
         self.url = url
         self.cache: OrderedDict[tuple[str, str], np.ndarray] = OrderedDict()
         self.cache_size = cache_size
@@ -81,20 +93,34 @@ class Speaker:
         self._written = 0
         self.ok = False
         self.errors = 0
+        self.voice = voice                    # "natural" or "fast", asked at every sentence (Settings)
+        self.fast_ok: bool | None = None      # SVOX Pico there (None: not tried yet)
+        self._tmp = "/dev/shm" if os.path.isdir("/dev/shm") else None
+
+    def current(self) -> str:
+        """The voice the house speaks with now: the natural one if the fast one is missing."""
+        wanted = self.voice() if self.voice else "natural"
+        return "fast" if wanted == "fast" and self.fast_ok is not False else "natural"
 
     @staticmethod
-    def _name(lang: str, text: str) -> str:
-        key = f"{VOICES.get(lang, VOICES['it'])}\n{text}".encode()
+    def voice_name(voice: str, lang: str) -> str:
+        if voice == "fast":
+            return f"pico-{FAST.get(lang, FAST['it'])}"
+        return VOICES.get(lang, VOICES["it"])
+
+    @staticmethod
+    def _name(lang: str, text: str, voice_name: str | None = None) -> str:
+        key = f"{voice_name or VOICES.get(lang, VOICES['it'])}\n{text}".encode()
         return f"{hashlib.sha1(key).hexdigest()[:24]}.wav"
 
-    def _file(self, lang: str, text: str) -> Path | None:
-        return self.dir / self._name(lang, text) if self.dir is not None else None
+    def _file(self, lang: str, text: str, voice_name: str | None = None) -> Path | None:
+        return self.dir / self._name(lang, text, voice_name) if self.dir is not None else None
 
-    def _from_disk(self, lang: str, text: str) -> np.ndarray | None:
+    def _from_disk(self, lang: str, text: str, voice_name: str | None = None) -> np.ndarray | None:
         for folder, own in ((self.dir, True), (self.seed, False)):
             if folder is None:
                 continue
-            f = folder / self._name(lang, text)
+            f = folder / self._name(lang, text, voice_name)
             try:
                 samples = self._decode(f.read_bytes())
                 if own:
@@ -104,8 +130,8 @@ class Speaker:
                 continue
         return None
 
-    def _to_disk(self, lang: str, text: str, data: bytes) -> None:
-        f = self._file(lang, text)
+    def _to_disk(self, lang: str, text: str, data: bytes, voice_name: str | None = None) -> None:
+        f = self._file(lang, text, voice_name)
         if f is None:
             return
         try:
@@ -138,6 +164,18 @@ class Speaker:
         self._to_disk(lang, text, data)
         return samples
 
+    def _synth_fast(self, text: str, lang: str) -> np.ndarray:
+        """SVOX Pico: a WAV file written in memory (/dev/shm), read back and thrown away."""
+        with tempfile.TemporaryDirectory(prefix="pico-", dir=self._tmp) as folder:
+            out = Path(folder) / "s.wav"
+            plain = re.sub(r"[<>&]", " ", text)
+            subprocess.run([PICO, "-l", FAST.get(lang, FAST["it"]), "-w", str(out),
+                            f'<speed level="{PICO_SPEED}">{plain}</speed>'], check=True, timeout=15, capture_output=True)
+            data = out.read_bytes()
+        samples = self._decode(data)
+        self._to_disk(lang, text, data, self.voice_name("fast", lang))
+        return samples
+
     @staticmethod
     def _decode(data: bytes) -> np.ndarray:
         with wave.open(io.BytesIO(data)) as w:
@@ -156,21 +194,33 @@ class Speaker:
             self.cache.popitem(last=False)
 
     async def synth(self, text: str, lang: str, fresh: bool = False) -> np.ndarray | None:
-        """The audio of a sentence: from memory, from the disk, or from Piper (`fresh`: from Piper, to know that it
-        answers)."""
-        text = normalize(text, lang)
+        """The audio of a sentence, in the voice chosen: from memory, from the disk, or synthesized (`fresh`: from
+        Piper, to know that it answers)."""
+        voice = "natural" if fresh else self.current()
+        text = normalize(text, lang, phonemes=voice == "natural")
         if not text:
             return None
-        key = (lang, text)
+        name = self.voice_name(voice, lang)
+        key = (name, text)
         loop = asyncio.get_running_loop()
         if not fresh:
             if key in self.cache:
                 self.cache.move_to_end(key)
                 return self.cache[key]
-            samples = await loop.run_in_executor(None, self._from_disk, lang, text)
+            samples = await loop.run_in_executor(None, self._from_disk, lang, text, name)
             if samples is not None:
                 self._keep(key, samples)
                 return samples
+        if voice == "fast":
+            try:
+                samples = await loop.run_in_executor(None, self._synth_fast, text, lang)
+                self.fast_ok = True
+                self._keep(key, samples)
+                return samples
+            except (OSError, ValueError, wave.Error, subprocess.SubprocessError) as e:
+                log.warning("the fast voice is not there (%s): the natural voice speaks", e)
+                self.fast_ok = False
+                return await self.synth(text, lang)
         try:
             samples = await loop.run_in_executor(None, self._synth, text, lang)
             self.ok = True
@@ -193,12 +243,14 @@ class Speaker:
         """
         loop = asyncio.get_running_loop()
         missing = []
+        voice = self.current()
         for lang, lines in sentences.items():
             for line in lines:
-                text = normalize(line, lang)
-                samples = await loop.run_in_executor(None, self._from_disk, lang, text) if text else None
+                text = normalize(line, lang, phonemes=voice == "natural")
+                name = self.voice_name(voice, lang)
+                samples = await loop.run_in_executor(None, self._from_disk, lang, text, name) if text else None
                 if samples is not None:
-                    self._keep((lang, text), samples)
+                    self._keep((name, text), samples)
                 elif text:
                     missing.append((lang, line))
         total = sum(len(v) for v in sentences.values())

@@ -88,6 +88,8 @@ WAKE_PREROLL_S = 2.0  # the audio kept from before the word is caught: what is s
 WAKE_TAIL_S = 0.1     # the end of the word itself, still being said when it is caught
 WAKE_ON = 0.4         # speech after the word: at least this share of how loud the word was (its fading end is less)
 WAKE_REST_S = 0.45    # after the word, this long with nothing said: the house answers at once ("Dimmi!")
+WAKE_QUICK_S = 0.3    # ...or this long, once the free recognizer has already written the word (its partial result):
+                      # "Dimmi!" comes with the LEDs instead of a second later, after the whole decoding
 WAKE_END_S = 0.9      # a pause this long after what was said with the word: the request has ended
 WAKE_REQUEST_S = 10.0 # what is said with the word, at most
 
@@ -112,6 +114,12 @@ def _sounding(phrase: str, words: list[str]) -> list[tuple[int, int]]:
             if difflib.SequenceMatcher(None, want, "".join(words[i:i + n])).ratio() >= WAKE_LIKE]
 
 
+def _sentences(text: str) -> list[str]:
+    """The sentences of a text, each with its own full stop ("21.5 gradi" stays whole: no space after the dot)."""
+    parts = [p.strip() for p in re.split(r"(?<=[.!?…])\s+(?=[A-ZÀ-ÝÈÉ«\"'])", text or "") if p.strip()]
+    return parts or [text or ""]
+
+
 def _bare(text: str) -> str:
     """A sentence said back inside another: with no full stop or question mark of its own."""
     return text.strip().rstrip(" .!?")
@@ -120,7 +128,8 @@ def _bare(text: str) -> str:
 class Voice:
     def __init__(self, ctx: "Context") -> None:
         self.ctx = ctx
-        self.speaker = Speaker(cache_dir=ctx.paths.var / "voice", seed_dir=ctx.paths.models / "voice-cache")
+        self.speaker = Speaker(cache_dir=ctx.paths.var / "voice", seed_dir=ctx.paths.models / "voice-cache",
+                               voice=lambda: ctx.settings.get("voice.voice", "natural"))
         self.listener = None if ctx.args.no_voice else Listener(ctx.paths.models)
         audio = ctx.audio
         device = audio.device if audio is not None and not audio.dry else None
@@ -258,19 +267,37 @@ class Voice:
     def status(self) -> dict[str, Any]:
         return {"ok": bool(self.listener and self.listener.ok) or self.speaker.ok,
                 "stt": "vosk" if self.listener and self.listener.ok else "",
-                "tts": self.speaker.ok, "llm": self.llm_ok, "stories": self.stories.ok, "mic": self.mic.available,
+                "tts": self.speaker.ok, "voice": self.speaker.current(), "fast_voice": self.speaker.fast_ok,
+                "llm": self.llm_ok, "stories": self.stories.ok, "mic": self.mic.available,
                 "level": round(self.mic.last_level, 3)}
 
     # ================================================================ speaking
     async def speak(self, text: str, lang: str | None = None) -> None:
+        """A text, one sentence after the other: each is synthesized while the one before is said (with the natural
+        voice a sentence takes longer to synthesize than to say on the board: 4.6 s for 3.5 s on 10 October)."""
         lang = lang or self.lang
         self.in_flight += 1
         await self.ctx.actions.thinking(False)             # it knows what to say: the buttons stop breathing
         try:
-            samples = await self.speaker.synth(text, lang)
-            if samples is None:
-                return
-            await self._play(samples)
+            parts = _sentences(text)
+            nxt = asyncio.ensure_future(self.speaker.synth(parts[0], lang))
+            speaking = False
+            try:
+                for i in range(len(parts)):
+                    samples = await nxt
+                    if i + 1 < len(parts):
+                        nxt = asyncio.ensure_future(self.speaker.synth(parts[i + 1], lang))
+                    if samples is None:
+                        continue
+                    if not speaking:
+                        await self.ctx.actions.speaking(True)      # the LEDs of the buttons stay on while it speaks
+                        speaking = True
+                    await self._sound(samples)
+            finally:
+                if not nxt.done():
+                    nxt.cancel()
+                if speaking:
+                    await self.ctx.actions.speaking(False)
         finally:
             self.in_flight -= 1
             self.voice_end = time.monotonic()
@@ -287,12 +314,15 @@ class Voice:
     async def _play(self, samples) -> None:
         await self.ctx.actions.speaking(True)              # the LEDs of the buttons stay on while it speaks
         try:
-            if self.ctx.audio is not None and not (self.ctx.sim.enabled and self.ctx.sim.mute):
-                await self.ctx.audio.play_voice(samples)
-            else:
-                await asyncio.sleep(len(samples) / 22050)
+            await self._sound(samples)
         finally:
             await self.ctx.actions.speaking(False)
+
+    async def _sound(self, samples) -> None:
+        if self.ctx.audio is not None and not (self.ctx.sim.enabled and self.ctx.sim.mute):
+            await self.ctx.audio.play_voice(samples)
+        else:
+            await asyncio.sleep(len(samples) / 22050)
 
     async def say(self, text: str, level: str = "normal") -> None:
         await self.ctx.actions.say(text, level=level)
@@ -508,6 +538,7 @@ class Voice:
         levels: deque[float] = deque(maxlen=8)                              # how loud the last ones were
         loud = 0.02
         held, free, sure, named = False, None, 0.0, None
+        confirmed = quick = False
         feeds: list[asyncio.Future] = []
         spot_feeds: list[asyncio.Future] = []
         self._wake_spotted = None
@@ -547,21 +578,27 @@ class Voice:
                     await self.ctx.actions.update_leds(listening=True)
                     sure = await loop.run_in_executor(self.pool, spot.sureness, phrase)
                     free = await loop.run_in_executor(self.pool, self.listener.session, lang, None)
-                    feeds.append(loop.run_in_executor(self.pool, free.feed, b"".join(ring)))
+                    feeds.append(loop.run_in_executor(self.pool, free.feed_partial, b"".join(ring)))
                     if self._names():
                         named = await loop.run_in_executor(self.pool_free, self.listener.session, lang,
                                                            self._names_grammar())
                         spot_feeds.append(loop.run_in_executor(self.pool_free, named.feed, b"".join(ring)))
                     continue
-                feeds.append(loop.run_in_executor(self.pool, free.feed, chunk))
+                feeds.append(loop.run_in_executor(self.pool, free.feed_partial, chunk))
                 if named is not None:
                     spot_feeds.append(loop.run_in_executor(self.pool_free, named.feed, chunk))
                 after += 0.1
+                if not confirmed:
+                    confirmed = any(f.done() and not f.cancelled() and f.exception() is None
+                                    and self._wake_written(f.result(), phrase, heard_as, lang) for f in feeds)
                 # the request has started when something as loud as the word follows it; then any speech goes on
                 if level > (0.02 if speech else loud) and after > WAKE_TAIL_S:
                     speech, quiet = True, 0.0
                 else:
                     quiet += 0.1
+                if not speech and confirmed and after >= WAKE_QUICK_S:
+                    quick = True                            # the word alone, already written: answered now
+                    break
                 if (speech and quiet >= WAKE_END_S) or (not speech and after >= WAKE_REST_S) \
                         or after >= WAKE_REQUEST_S:
                     break
@@ -576,6 +613,9 @@ class Voice:
             self._wake_idle.set()
         if not held:
             return False, ""
+        if quick:
+            log.info("word of activation, alone (written by the free recognizer)")
+            return True, ""
         if not speech and sure >= WAKE_CONFIDENCE and heard_as == phrase:
             # the word alone, heard surely: the house answers at once, with no wait for the free recognizer (what
             # it was given is left to finish on its own), and the LEDs go on blinking until it speaks. A word the
@@ -614,6 +654,15 @@ class Voice:
         if rest:
             await self.ctx.actions.thinking(True)
         return True, " ".join(rest)
+
+    @staticmethod
+    def _wake_written(text: str, phrase: str, heard_as: str, lang: str) -> bool:
+        """The free recognizer has written the word, or words that sound like it ("domotiche" for "domotiq")."""
+        words = spoken(text or "", lang).split()
+        if not words:
+            return False
+        line = f" {' '.join(words)} "
+        return f" {phrase} " in line or f" {heard_as} " in line or bool(_sounding(phrase, words))
 
     async def _woken(self, rest: str, held: bool = False) -> None:
         """The word of activation was said: what Talk does. What came right after it is the request; otherwise the

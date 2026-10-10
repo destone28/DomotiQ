@@ -1617,6 +1617,43 @@ def test_the_empty_house_is_learned_again_after_the_steps_of_the_webcam(engine, 
     assert all(t < when for t, _, _ in cam.steps) and len(cam.steps) <= 6, (learned, cam.steps)
 
 
+def test_in_a_dark_hall_the_webcam_goes_on_towards_the_light_while_it_can(engine, renderer):
+    """10 October at 14:58: the light of the room went down to a fifth or less, and with the gain at 28 of 255 the picture
+    was "almost dark". The gain waited for the light to come back, and the house stayed blind. A picture too dark
+    to be learned is still brought towards the empty house, upwards only, as long as the webcam can."""
+    things = [Thing(150, 250, "#3050d0"), Thing(300, 100, "#d03030")]
+    before = _named(engine, renderer, things)
+    cam = _Webcam(engine, renderer, gain=28)
+    for i in range(30):
+        cam.feed(things, 20.0 + i * 0.1)
+    from domotiq.vision.engine import DARK_LEVEL
+    darkest = 255.0
+    for i in range(400):
+        now = 23.0 + i * 0.1
+        tracks = cam.feed(things, now, hall=0.15)
+        darkest = min(darkest, engine._level)
+    assert darkest < DARK_LEVEL                                  # it was too dark to be learned
+    assert cam.gain > 100 and engine._level >= DARK_LEVEL and not engine.status()["dark"], (cam.gain, engine._level)
+    assert _same(tracks, before), [(x.identity, round(x.x), round(x.y)) for x in tracks]
+
+
+def test_at_the_dark_end_hands_do_not_stop_the_noise_from_being_learned(engine, renderer, monkeypatch):
+    """At gain 255 in a dark hall the noise made "hands" everywhere; the noise is learned only on calm pictures, so it
+    was never learned again and the "hands" never went. At the dark end of the webcam it is learned anyway."""
+    red = Thing(300, 100, "#d03030")
+    _named(engine, renderer, [red])
+    learned = []
+    monkeypatch.setattr(engine.segmenter, "learn_noise", lambda away=None: learned.append(1))
+    monkeypatch.setattr(type(engine.segmenter), "noise_young", property(lambda self: True))
+    restless = [([red], {"hands": [Hand(300 + 30 * (i % 2), 20)]}) for i in range(40)]   # never still, as noise
+    run(engine, renderer, restless[:20], t0=30.0, dt=0.5)
+    assert len(learned) <= 3                                 # a hand at work: the noise waits
+    monkeypatch.setattr(engine, "_darkest", lambda: True)
+    before = len(learned)
+    run(engine, renderer, restless[20:], t0=40.0, dt=0.5)
+    assert len(learned) - before >= 15
+
+
 def test_hands_that_never_leave_do_not_stop_the_light_of_the_webcam(engine, renderer):
     """casa1, 9 October in the evening: the tops of the walls, lit another way than in the empty house, were "hands"
     for minutes. The gain waited for them to leave, never reached its limit, and so the full setting never came
