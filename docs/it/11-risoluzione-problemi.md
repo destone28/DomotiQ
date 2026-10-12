@@ -1,6 +1,6 @@
 # 11. Risoluzione dei problemi
 
-Ogni voce riporta il sintomo, la causa probabile e la soluzione. Due strumenti aiutano in quasi tutti i casi:
+Ogni voce parte dal problema che vedi (il titolo), poi ne spiega la causa probabile e la soluzione. Due strumenti ti aiutano in quasi tutti i casi:
 
 - **Altro → Diagnostica** nella webapp: lo stato di scheda, microcontrollore, moduli, webcam, audio, voce e orologio.
 - Il log dell'applicazione, via SSH:
@@ -43,14 +43,14 @@ arduino-app-cli system update
 **Soluzione.** Lancialo come `arduino` da una sessione SSH, oppure staccato con `systemd-run --uid=arduino`.
 
 ### Durante l'aggiornamento del sistema la scheda non risponde più in rete
-**Causa.** Alla fine l'aggiornamento scarica le immagini Docker di App Lab (cinque, qualche centinaio di MB: DomotiQ non le usa). Sulla scheda nuova, per una ventina di minuti, il PC non riusciva più nemmeno a fare ping.
+**Causa.** Alla fine l'aggiornamento scarica le immagini Docker di App Lab (cinque, qualche centinaio di MB: DomotiQ non le usa). Intanto, anche per una ventina di minuti, la scheda può non rispondere nemmeno al ping.
 
-**Soluzione.** Aspetta: con il cavo USB `adb shell` funziona e si può seguire il log. Quando ha finito, riavvia come dice il capitolo 1.
+**Soluzione.** Aspetta: con il cavo USB `adb shell` funziona e puoi seguire il log. Quando ha finito, riavvia come spiega il [capitolo 1](01-preparare-uno-q.md).
 
 ### SSH cade quando parte l'hotspot
-**Causa.** È previsto: la scheda sta o sul Wi-Fi del laboratorio o sul suo hotspot.
+**Causa.** È previsto: la scheda è collegata o alla tua rete Wi-Fi o al suo hotspot, mai a tutti e due.
 
-**Soluzione.** Collega il PC a `DomotiQ-CasaN` e usa `ssh arduino@10.42.N.1` (oppure `bash scripts/add-pc.sh casaN 10.42.N.1` per avere un alias). `bash scripts/hotspot.sh off` riporta la scheda sul Wi-Fi del laboratorio.
+**Soluzione.** Collega il PC a `DomotiQ-CasaN` e usa `ssh arduino@10.42.N.1` (oppure `bash scripts/add-pc.sh casaN 10.42.N.1` per avere un alias). `bash scripts/hotspot.sh off` riporta la scheda sulla tua rete Wi-Fi.
 
 ## Installazione e aggiornamenti
 
@@ -167,7 +167,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 **Soluzione.** Calibra ([capitolo 5](05-collaudo.md#9-calibrazione-della-webcam)).
 
 ### Avviso *La casa vuota è stata salvata al buio*
-**Causa.** La casa vuota è stata salvata con la sala al buio (prima che la webapp lo rifiutasse): con la luce accesa tutto sembra diverso da quella.
+**Causa.** La casa vuota in uso è stata salvata con la sala al buio, con una versione precedente del software (ora la webapp non lo permette): con la luce accesa tutto sembra diverso da quella.
 
 **Soluzione.** Togli le statuine e, con la luce accesa, fai **Calibrazione → Regola la luce e salva la casa vuota**; poi rimettile a mano.
 
@@ -175,21 +175,16 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 **Causa.** Mentre la casa guarda, il guadagno della webcam segue la luce della sala a piccoli passi, misurando la luce delle stanze rispetto alla casa vuota in uso. In *Diagnostica → Luce della webcam*, "al limite della webcam" vuol dire che il guadagno è già al massimo (sala troppo buia) o al minimo con l'esposizione più corta (sala molto illuminata).
 
 **Soluzione.**
-- **Ritocchi frequenti, o tanti cambi di verso nell'ultima ora:** una luce della sala che sfarfalla o che cambia di continuo.
+- **Ritocchi frequenti, o tanti cambi di verso nell'ultima ora:** cerca una luce della sala che sfarfalla o che cambia di continuo.
 - **In pausa per "stanze coperte":** mani, personaggi o oggetti coprono gran parte delle stanze; quando si tolgono riprende da sola.
 - **Al limite al buio:** accendi una luce. Se la regolazione completa è già stata fatta al buio, la casa non la rifà: darebbe gli stessi valori, con 10 secondi senza immagini.
 - **Dopo aver cambiato del tutto l'illuminazione della sala:** rifai **Calibrazione → Regola la luce e salva la casa vuota**.
-- **Per tornare al comportamento di prima:** `camera.follow_light: false` in `var/config/settings.json`.
+- **Per tenere fisso il guadagno della webcam:** `camera.follow_light: false` in `var/config/settings.json`.
 
 ### Avviso *La webcam vede quasi buio*
-**Causa.** Da più di cinque secondi l'immagine è troppo scura (grigio medio sotto 25 su 255): la sala è troppo buia (su casa1 di sera, con la luce della stanza spenta, la webcam arrivava a 9-17 su 50 anche al guadagno massimo) oppure qualcosa copre la webcam.
+**Causa.** Da più di cinque secondi l'immagine è troppo scura (grigio medio sotto 25 su 255): la sala è troppo buia oppure qualcosa copre la webcam.
 
 **Soluzione.** Accendi una luce, o togli quello che copre la webcam. Nel frattempo i personaggi restano dove erano e la casa non impara niente da quell'immagine. Quando la luce torna, la casa si adatta da sola.
-
-### La casa risponde con qualche secondo di ritardo
-**Causa.** Con la voce naturale ogni frase nuova va sintetizzata, e sulla scheda una frase di tre secondi e mezzo richiede circa 4,5 secondi. Le frasi fisse e quelle già dette partono subito.
-
-**Soluzione.** È normale con la voce naturale, e la casa fa il possibile per accorciare l'attesa: le frasi frequenti sono già pronte in memoria e partono subito, una frase breve nuova si prepara in un paio di secondi, e una risposta lunga parte dalla prima frase mentre la casa prepara le altre. La parola di attivazione riceve il suo "Dimmi!" subito.
 
 ### In una sala molto buia la casa non vede alcune statuine
 **Causa.** La webcam è al massimo del guadagno e dell'esposizione e il suo rumore è alto: le statuine scure su un pavimento scuro non si distinguono più dal pavimento.
@@ -207,7 +202,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 **Soluzione.** Di solito la casa si arrangia. Si accorge del cambio di luce e tiene i personaggi come erano un attimo prima. Se serve riregola subito la webcam, senza perdere la calibrazione. Poi reimpara la casa vuota con la luce nuova, tranne intorno ai personaggi. In *Diagnostica* il contatore degli adattamenti sale di uno. Se non basta, svuota la casa e tocca **Regola la luce e salva la casa vuota**.
 
 ### La casa non nota i personaggi che metto
-**Causa.** La casa crede che ci sia una mano sopra la casa e aspetta che se ne vada (in *Diagnostica* risulta una mano anche quando nessuno tocca la casa). Succede se sul bordo della base è appoggiato qualcosa di grande: un modulo, un cavo, il braccio di un visitatore.
+**Causa.** La casa crede che ci sia una mano sopra la casa e aspetta che se ne vada (in *Diagnostica* risulta una mano anche quando nessuno tocca la casa). Succede se sul bordo della base è appoggiato qualcosa di grande: un modulo, un cavo, un braccio.
 
 **Soluzione.** Togli o fissa quello che è sul bordo. Una "mano" ferma per 8 secondi la casa la considera comunque un oggetto e la fa entrare nella casa vuota; un personaggio posato nel frattempo compare 2 secondi dopo.
 
@@ -219,14 +214,9 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### La casa vede personaggi che non ci sono, anche a casa vuota
 **Causa.** Quando cambia la luce (il sole nella stanza, le luci colorate della casa) mobili, griglie e prati non somigliano più alla casa vuota, e la rete delle statuine, addestrata con altre luci o su un'altra casa, non è sicura che siano "niente". I colori poi danno loro il nome del personaggio più simile.
 
-**Soluzione.** Una presenza nuova viene annunciata solo quando la rete vi ha visto una statuina, due volte di fila: quasi tutte queste presenze non vengono più annunciate. Se succede ancora:
+**Soluzione.** Una presenza nuova viene annunciata solo quando la rete vi ha visto una statuina, due volte di fila: così quasi tutte queste presenze restano in silenzio. Se succede ancora:
 - a casa vuota, con la luce di tutti i giorni, **Altro → Calibrazione → Aggiungi la luce di adesso**, una volta per ogni luce della stanza (mattina, sera, lampada accesa);
 - accendi **Raccolta continua di immagini per la rete**, in **Addestramento immagini** segna "niente" le presenze false, e addestra di nuovo la rete con queste immagini e con le foto della casa vuota ([capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine)).
-
-### Una casa resa uguale a un'altra non riconosce le sue statuine, o le scambia
-**Causa.** Il backup porta i colori delle statuine dell'altra casa, viste sotto la sua luce. Se la casa ha statuine sue, anche dello stesso modello, li cerca invano: le sue diventano nuovi arrivati, prendono il nome sbagliato, o restano ammucchiate dove una mano le ha prese.
-
-**Soluzione.** Nella scheda di ogni personaggio tocca **Impara di nuovo l'aspetto**, poi di' alla casa chi è ogni statuina: toccandola sulla piantina, rispondendo alle sue domande o a voce. Basta una volta per statuina.
 
 ### Un personaggio eliminato compare ancora
 **Causa.** Il nome resta dove racconta qualcosa che è successo: gli eventi passati e le voci di **Addestramento immagini**, segnate *(eliminato)*. La rete delle statuine continua a conoscerlo finché non viene addestrata di nuovo, e **Addestramento immagini** mostra ancora quello che dice.
@@ -271,7 +261,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### L'area sfocata non coincide con il bagno
 **Causa.** La webcam non è ancora calibrata: fino ad allora la casa sfoca un'area ampia dove dovrebbe trovarsi il bagno se la webcam fosse montata come da progetto. Se il palo o la culla della webcam sono girati, quell'area finisce nel posto sbagliato.
 
-**Soluzione.** Calibra prima di aprire la casa ai visitatori: da quel momento la sfocatura segue il bagno vero.
+**Soluzione.** Calibra la webcam prima di usare la casa: da quel momento la sfocatura segue il bagno vero.
 
 ## Audio e voce
 
@@ -281,14 +271,19 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 **Soluzione.** Controlla con `aplay -l` che ci sia una scheda audio USB, poi **Comandi → Volume** e **Loquacità**, e `systemctl status domotiq-tts`. La casa usa la prima scheda audio USB che può suonare; per forzare un altro dispositivo, aggiungi `Environment=DOMOTIQ_AUDIO=plughw:CARD=<name>,DEV=0` con `sudo systemctl edit domotiq` e riavvia il servizio. Se la scheda sparisce o si riavvia da sola mentre la casa è accesa (la US205 ogni tanto lo fa, e torna con il volume basso), la casa se ne accorge entro un paio di secondi, la riapre e rimette i livelli a 0 dB; in *Diagnostica* il contatore *restarts* dell'audio sale di uno. Se succede spesso, controlla che la scheda sia ben inserita e alimenta le casse da un'altra presa USB. Anche senza nessuna scheda audio, la casa continua a scrivere come sottotitoli quello che direbbe.
 
 ### La casa non si sente per qualche minuto dopo l'accensione, poi sì
-**Causa.** Una webcam che si riavvia sul bus USB quando viene aperta disturba la scheda audio collegata allo stesso hub. L'uscita della casa continua a prendere il suono, ma non si sente niente, finché dopo qualche minuto si blocca e viene riaperta. Il 10/10 è successo a ogni accensione su una scheda appena montata, la cui C270 si riavviava a ogni apertura; l'altra casa, con una webcam che non si riavvia, si sentiva subito.
+**Causa.** Una webcam che si riavvia sul bus USB quando viene aperta disturba la scheda audio collegata allo stesso hub. L'uscita della casa continua a prendere il suono, ma non si sente niente, finché dopo qualche minuto si blocca e viene riaperta. Succede con una C270 che si riavvia a ogni apertura; con una webcam che non si riavvia la casa si sente subito.
 
-**Soluzione.** Quando la webcam risulta aperta, la casa riapre l'uscita audio (nel log: *audio output opened again: the webcam was opened*). In più rilegge ogni 10 secondi i livelli della scheda audio e li rimette se qualcuno li ha cambiati. Su una casa installata prima, aggiorna il software (`release.sh casaN`). Se succede ancora, collega la scheda audio a un'altra porta dell'hub.
+**Soluzione.** Quando la webcam risulta aperta, la casa riapre l'uscita audio (nel log: *audio output opened again: the webcam was opened*). In più rilegge ogni 10 secondi i livelli della scheda audio e li rimette se qualcuno li ha cambiati. Se hai installato la casa con una versione precedente di DomotiQ, aggiorna il software (`bash scripts/release.sh casaN`). Se succede ancora, collega la scheda audio a un'altra porta dell'hub.
 
 ### La prima frase in inglese è lenta
 **Causa.** La voce inglese viene caricata al primo utilizzo.
 
 **Soluzione.** È normale; all'avvio la casa prepara le sue frasi frequenti.
+
+### La casa risponde con qualche secondo di ritardo
+**Causa.** Con la voce naturale ogni frase nuova va sintetizzata, e sulla scheda una frase di tre secondi e mezzo richiede circa 4,5 secondi. Le frasi fisse e quelle già dette partono subito.
+
+**Soluzione.** È normale con la voce naturale, e la casa fa il possibile per accorciare l'attesa: le frasi frequenti sono già pronte in memoria e partono subito, una frase breve nuova si prepara in un paio di secondi, e una risposta lunga parte dalla prima frase mentre la casa prepara le altre. La parola di attivazione riceve il suo "Dimmi!" subito.
 
 ### La casa non sente niente
 **Causa.** Il lavalier non è nell'ingresso microfono della US205, oppure è troppo lontano dalla bocca di chi parla.
@@ -313,7 +308,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 **Soluzione.** Quando il telefono lo chiede, scegli *Resta connesso* o *Usa senza Internet*. Su Android, spegni per un attimo i dati mobili. Apri esattamente `http://10.42.N.1/`, con `http://`.
 
 ### L'hotspot `DomotiQ-CasaN` non si vede
-**Causa.** La scheda è ancora sul Wi-Fi del laboratorio, oppure l'hotspot non è partito.
+**Causa.** La scheda è ancora collegata alla tua rete Wi-Fi, oppure l'hotspot non è partito.
 
 **Soluzione.** `bash scripts/hotspot.sh status`, poi `bash scripts/hotspot.sh on`; `bash scripts/hotspot.sh boot` lo fa partire a ogni avvio. È una rete a 2,4 GHz.
 

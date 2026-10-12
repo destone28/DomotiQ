@@ -4,7 +4,7 @@ DomotiQ stands on the work of many open projects. This chapter lists every third
 
 ## The project
 
-> Created by Emilio Destratis ([destratis.it](https://destratis.it)) in collaboration with Arduino.
+> **Emilio Destratis** · [destratis.it](https://destratis.it) · An Arduino project
 
 | Part | Licence |
 |---|---|

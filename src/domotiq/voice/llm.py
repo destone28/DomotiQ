@@ -450,7 +450,7 @@ def tidy(text: str) -> str | None:
 
 class ChatModel:
     """The free answers (domotiq-chat, Qwen3.5-0.8B): a question that is not about the house, answered from scratch
-    when the visitor chooses to wait for it (docs/decisioni.md D-63)."""
+    when the visitor chooses to wait for it."""
 
     def __init__(self, url: str = CHAT_URL) -> None:
         self.url = url

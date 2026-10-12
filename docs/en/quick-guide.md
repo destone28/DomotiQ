@@ -2,7 +2,7 @@
 
 House: `casa1` · Wi-Fi `DomotiQ-Casa1` · web app `http://10.42.1.1/`
 
-The Wi-Fi password is `domotica2026`, unless another one was chosen at installation; the web app shows it under **More → Settings → Wi-Fi of the house**.
+The Wi-Fi password is `domotica2026`, unless you chose another one at installation; the web app shows it under **More → Settings → Wi-Fi of the house**.
 
 ## Power
 
@@ -60,11 +60,11 @@ On the phone choose the network `DomotiQ-Casa1`, type the Wi-Fi password and ope
 
 ## Setting up (More)
 
-- **Calibration**: take figurines and car out → tap the 4 corners of the base (front left, front right, back right, back left; front = driveway) → **Use these corners**: the house sets the light and saves the empty house by itself (about 15 seconds, with a spinner; do not touch the house) → check that the drawn walls sit on the real ones. Calibrate before other people use the house: until then the blur only guesses where the bathroom is.
+- **Calibration**: take figurines and car out → tap the 4 corners of the base (front left, front right, back right, back left; front = driveway) → **Use these corners**: the house sets the light and saves the empty house by itself (about 15 seconds, with a spinner; do not touch the house) → check that the drawn walls sit on the real ones. Calibrate before using the live view: until then the blur only guesses where the bathroom is.
 - **Diagnostics**: modules, I2C scan, **Audio test**, **Microphone test (3 s)**, logs.
 - **Settings**: brightness and durations, Wi-Fi password, **Use this phone's time**, backup, bin, restart, reboot, power off.
 - **Controls → Make the house say**; **Controls → Ask a question** (the house asks a character something and keeps it).
 - **Settings → Voice → Wake up with a keyword**: once the word is said (for example *Casa*), the LEDs blink at once and, if you do not go on, the house answers "Yes?" and listens as with Talk. You can also say it all in one go: "Casa, turn on the kitchen light".
 - **Alarm**: box at the bottom of the **House** page, **Switch on** / **Switch off**.
 
-Full guide: `docs/en/` in the repository.
+Full guide: [docs/en](index.md) in the repository.

@@ -4,8 +4,7 @@ SPDX-License-Identifier: MIT
 Kernels of llama.cpp (ggml CPU backend) for ARMv8.0 cores with NEON and no dot product instruction, such as the
 Cortex-A53 of the Arduino UNO Q: Q5_0, Q8_0, Q4_K and Q6_K dot products, two rows by two columns where the matrix
 product allows it, and the ends of a product with an odd number of tokens or rows. For llama.cpp at commit
-74a7c897f049c17e7080423aa2111776eff6ebbf (scripts/install.sh applies it). Description and measurements:
-docs/accelerazione-modello.md.
+74a7c897f049c17e7080423aa2111776eff6ebbf (scripts/install.sh applies it).
 
 diff --git a/ggml/src/ggml-cpu/arch/arm/quants-nodot.h b/ggml/src/ggml-cpu/arch/arm/quants-nodot.h
 new file mode 100644

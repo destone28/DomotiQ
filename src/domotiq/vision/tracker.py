@@ -128,7 +128,7 @@ HAND_RECENT_S = 3.6         # for this long after the last hand a figurine may s
 # within HAND_NEAR_MM, a shadow, the light of the hall, its blob merging with something next to it do not move it,
 # not even by a few millimetres (on casa1 the middle of a blob jumped by 15 mm back and forth while nobody touched
 # the figurine). Once the hand has left it (HAND_NEAR_S), its place is the median of the next SETTLE_FRAMES places
-# seen (about a second; see docs/decisioni.md D-60 for how many), and there it stays.
+# seen (about a second), and there it stays.
 HAND_NEAR_MM = 50.0
 HAND_NEAR_S = 0.6
 SETTLE_FRAMES = 10

@@ -6,7 +6,7 @@ La casa si stampa a partire da 84 file STL in `hardware/stl/` (versione 8), dist
 
 Nei nomi dei file compaiono alcune abbreviazioni: *Fac* facciata, *Sx* sinistra, *Dx* destra.
 
-In questa guida il **davanti** è il lato del vialetto, dove stanno i visitatori, e **sinistra** e **destra** si intendono guardando la casa da davanti: cucina e giardino sono a sinistra, camera e garage a destra. Il repository contiene solo i file STL, senza profili per lo slicer. Il colore nelle tabelle è quello previsto per la stampa.
+In questa guida il **davanti** è il lato del vialetto, da cui arrivano i visitatori, e **sinistra** e **destra** si intendono guardando la casa da davanti: cucina e giardino sono a sinistra, camera e garage a destra. Il repository contiene solo i file STL, senza profili per lo slicer. Il colore nelle tabelle è quello previsto per la stampa.
 
 ![La pianta dall'alto: in basso il davanti, con il vialetto, il totem e le due fioriere; a sinistra cucina e giardino, a destra camera e garage](../images/render/03_pianta_dall_alto.png)
 

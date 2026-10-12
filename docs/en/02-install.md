@@ -6,7 +6,7 @@ DomotiQ runs as native systemd services on the UNO Q, not as an App Lab app: App
 
 - The board is prepared as in [chapter 1](01-prepare-uno-q.md): password, name, Wi-Fi with internet, SSH, system update.
 - The board has internet. It is needed once, for packages and models; later updates can be copied from a PC without internet (see [Updates](#updates)).
-- About 2.3 GB are free in `/home/arduino` (models about 800 MB, Python environments about 500 MB, compilers and llama.cpp about 600 MB, plus a margin).
+- About 2.9 GB are free in `/home/arduino` (models about 1.4 GB, Python environments about 500 MB, compilers and llama.cpp about 600 MB, plus a margin).
 - You have time: building `llama-server` alone takes about twenty minutes.
 
 ## Get the code and run the installer
@@ -51,10 +51,10 @@ The script prints numbered steps. The numbers shift when a step is skipped by an
 3. **Python environment of the application.** `venv/` with the exact versions listed in `requirements.txt`. An environment that is broken or copied from elsewhere is made again.
 4. **Speech synthesis.** A separate environment, `piper-venv/`, with `piper-tts` 1.8.0 and Flask. Piper is GPL-3.0 and runs as its own program: the application talks to it over HTTP on the loopback interface and never imports it.
 5. **Models.** Downloaded into `models/` and checked against the SHA-256 sums in `scripts/models.sha256`: the Piper voices `it_IT-serena-medium` (at a fixed revision) and `en_US-ljspeech-medium`, the Vosk models `vosk-model-small-it-0.22` and `vosk-model-small-en-us-0.15`, YOLOX-Nano (`yolox_nano.onnx`) and, unless `--no-llm`, `qwen2.5-0.5b-instruct-q4_k_m.gguf` (the commands) and `Qwen_Qwen3.5-0.8B-Q4_0.gguf` (the free answers to questions about the world, service `domotiq-chat`). A file already present with the right checksum is not downloaded again.
-6. **llama.cpp.** Fetches llama.cpp at the commit tested on the UNO Q (`74a7c897`), applies the kernels written for its processor (`scripts/llama/arm-nodot.patch`, see [Accelerating the model](../accelerazione-modello.md), in Italian) and builds `llama-server` (about twenty minutes). Skipped when the same commit is already built with the same patch, or with `--no-llm`.
+6. **llama.cpp.** Fetches llama.cpp at the commit tested on the UNO Q (`74a7c897`), applies the kernels written for its processor, in the patch `scripts/llama/arm-nodot.patch`, and builds `llama-server` (about twenty minutes). Skipped when the same commit is already built with the same patch, or with `--no-llm`.
 7. **Microcontroller firmware.** Installs the core `arduino:zephyr` 1.0.0 and the library `Arduino_RouterBridge` 0.4.3, compiles `firmware/domotiq_mcu` in the "Immediate" start mode (`wait_linux_boot=no`) and loads it with the local `remoteocd`, which needs no password. It is reloaded only when the sketch, the core, the library or the board options change. Finally `arduino-app-cli properties set default none` makes sure no App Lab app replaces the firmware at boot. See `firmware/domotiq_mcu/README.md` to do the same by hand.
 8. **House settings.** Sets the host name `casaN` and the time zone Europe/Rome; creates the Wi-Fi password (if none exists yet); writes house number, names and network into `var/config/settings.json`.
-9. **Services.** Installs `domotiq`, `domotiq-tts` and `domotiq-llm` in `/etc/systemd/system`, a `sudoers` rule, and a journald limit (200 MB, 7 days of logs). It disables the automatic `apt` timers and holds `alsa-ucm-conf`, `libasound2t64` and the running kernel: nothing should update the system while the house is in use.
+9. **Services.** Installs `domotiq`, `domotiq-tts`, `domotiq-llm` and `domotiq-chat` in `/etc/systemd/system`, a `sudoers` rule, and a journald limit (200 MB, 7 days of logs). It disables the automatic `apt` timers and holds `alsa-ucm-conf`, `libasound2t64` and the running kernel: nothing should update the system while the house is in use.
 10. **Hotspot.** Creates or updates the hotspot profile, then applies `--hotspot` (`now`, `boot` or `no`).
 11. **Start.** Restarts the services and prints a summary.
 
@@ -87,20 +87,21 @@ Everything is inside `/home/arduino/domotiq`:
 
 `var/` is what the house remembers. It belongs to that board and is excluded from the repository.
 
-## The three services
+## The services
 
 | Service | What it runs |
 |---|---|
 | `domotiq` | The application (`python -m domotiq`): web app on port 80, rules, voice, audio, the link to the microcontroller, with the vision as a child process. Restarts by itself. It may bind port 80 and set the clock, nothing else. |
 | `domotiq-tts` | Piper's HTTP server on `127.0.0.1:5010`, with the voices in `models/piper`. |
 | `domotiq-llm` | `llama-server` with Qwen2.5-0.5B-Instruct on `127.0.0.1:8081`, always loaded so free questions get a fast answer, at a lower CPU priority than vision and voice. The instructions it has read are saved in `/var/lib/domotiq-llm` and come back in a few seconds at the next starts instead of about 10 minutes ([chapter 8](08-voice.md)). Not enabled with `--no-llm`. |
+| `domotiq-chat` | A second `llama-server`, with Qwen3.5-0.8B on `127.0.0.1:8082`, for the free answers to questions about the world, when the visitor chooses to wait for them ([chapter 8](08-voice.md)). Same low priority as `domotiq-llm`. Not enabled with `--no-llm`. |
 
-`domotiq` starts after `arduino-router` (the system service that links Linux and the microcontroller) and after `domotiq-tts`. All three restart automatically if they stop, and all three start at boot: after a reboot the house comes up by itself.
+`domotiq` starts after `arduino-router` (the system service that links Linux and the microcontroller) and after `domotiq-tts`. All the services restart automatically if they stop, and all of them start at boot: after a reboot the house comes up by itself.
 
 Useful commands:
 
 ```bash
-systemctl status domotiq domotiq-tts domotiq-llm --no-pager
+systemctl status domotiq domotiq-tts domotiq-llm domotiq-chat --no-pager
 journalctl -u domotiq -f                 # follow the application log
 sudo systemctl restart domotiq           # restart the application
 ```
@@ -123,19 +124,19 @@ With `--house N` they become `DomotiQ-CasaN`, `10.42.N.1` and `casaN`, and the c
 
 The DNS of the hotspot answers for `casaN.lan` (and `domotiq.lan`), and it makes the iCloud Private Relay names fail at once, so iPhones do not wait for them. There is no captive portal on purpose: the captive-portal window of phones does not allow the camera, and on iPhone it closes when you switch app. Phones join the network with the Wi-Fi password and open the numeric address, which always works.
 
-The board is either on the lab Wi-Fi or on its hotspot. Switching to the hotspot drops the lab connection, and your SSH session with it.
+The board is either on your Wi-Fi network or on its hotspot. Switching to the hotspot drops the connection to your network, and your SSH session with it.
 
 The installer option chooses the starting point:
 
 - `--hotspot boot` (default): the hotspot starts by itself at every boot. The other Wi-Fi profiles stop connecting automatically, so they do not compete with it at boot.
 - `--hotspot now`: switch to the hotspot immediately.
-- `--hotspot no`: configure it but leave the board on the lab Wi-Fi.
+- `--hotspot no`: configure it but leave the board on your Wi-Fi network.
 
 Later you can switch with `scripts/hotspot.sh`:
 
 ```bash
 bash scripts/hotspot.sh on        # switch to the hotspot now (Wi-Fi client connections drop)
-bash scripts/hotspot.sh off       # back to the Wi-Fi of the lab
+bash scripts/hotspot.sh off       # back to your Wi-Fi network
 bash scripts/hotspot.sh boot      # the hotspot starts by itself at every boot
 bash scripts/hotspot.sh status    # state of wlan0 and the active connections
 ```
@@ -161,54 +162,37 @@ bash scripts/release.sh casa1 --install    # then run install.sh on the board (n
 
 `release.sh` copies the working tree of the PC to `~/domotiq` on the board with `rsync` over SSH (the `casa1` alias from `add-pc.sh`), then restarts `domotiq`. It leaves out what git ignores and what belongs to the board: `.git`, `venv`, `piper-venv`, `models`, `var` and `llama.cpp`. The board does not need git for this. The copy mirrors the PC: a code file changed only on the board is overwritten or removed. The exception is `models/voice-cache/`, the fixed sentences of the voice prepared ahead of time: if the PC has it, it is copied too.
 
-**The sentences of the voice prepared ahead of time.** The fixed sentences (239 today) are synthesized once with `scripts/voice_cache.py` and copied to the house, so the first start does not wait for Piper:
+**The sentences of the voice prepared ahead of time.** The fixed sentences of the house, the ones with no name or number in them, are synthesized once with `scripts/voice_cache.py` and copied to the house, so the first start does not wait for Piper:
 
 ```bash
-venv/bin/python scripts/voice_cache.py                   # on the board, with its own Piper (about 13 minutes)
+venv/bin/python scripts/voice_cache.py                   # on the board, with its own Piper (quite a few minutes)
 python scripts/voice_cache.py --url http://127.0.0.1:5010/synthesize   # on a PC (the Python environment of the repository)
 ```
 
 The script writes to `models/voice-cache/` only the sentences that are missing, and with `--list` it only lists them. On a PC, start the Piper server as the `domotiq-tts` service does (the same version and voices as `install.sh`).
 
-Without `--install`, a change to the firmware is copied but not loaded on the microcontroller, and new Python packages, models and services in `scripts/systemd` (such as `domotiq-llm.service`, which now keeps four slots, `-np 4`, and saves them in `/var/lib/domotiq-llm`, or the `CPUWeight` priorities of the three services) are not installed: use `--install` (or `install.sh` on the board) when those change. For one service alone, even with no internet, this on the board is enough (it asks for the password of `arduino`):
+Without `--install`, a change to the firmware is copied but not loaded on the microcontroller, and new Python packages, models and service files in `scripts/systemd` (such as `domotiq-llm.service`) are not installed: use `--install` (or `install.sh` on the board) when those change. For one service alone, even with no internet, this on the board is enough (it asks for the password of `arduino`):
 
 ```bash
 cd ~/domotiq && sudo install -m644 scripts/systemd/domotiq-llm.service /etc/systemd/system/ \
   && sudo systemctl daemon-reload && sudo systemctl restart domotiq-llm
 ```
 
-## A house like another one
+## Protect access
 
-To have a house that behaves like one you already have, after the installation:
+The password `domotiq2026` of the `arduino` user, the one of [chapter 1](01-prepare-uno-q.md), is written in this guide, so whoever reads it knows it. When the house is ready, allow SSH with a key only:
 
-1. From the web app of the house you have, **More → Settings → Download the backup**; from the web app of the new house, **Restore from a backup** with that file. It carries rules, characters with their colours and poses, and settings; never the network, the name of the house or the webcam settings. Restore it before registering characters on the new house, because it replaces them.
-2. Copy the figurine network (`models/vision/figures.onnx` and `figures.json`, [chapter 7](07-recognition-and-identities.md)) and the learned answers (`var/config/knowledge.json`), then restart the house: `sudo systemctl restart domotiq`.
-3. The webcam calibration is not copied: corners, empty house and the pictures in every light are made on the new house ([chapter 5](05-testing.md)), because they depend on where its webcam stands and how it is furnished.
-4. If the new house has its own figurines, even of the same model, the colours the backup brings are those of the figurines of the other house, under its light: the new house would not recognize its own, or would mix them up. On the card of every character (**Characters**) tap **Learn the look again**, then tell the house who every figurine is, by tapping it on the plan or answering its questions.
-5. The network of the figurines knows the furniture of the house it was trained on. On a house furnished another way (an orange sofa, other grilles) at first it sees figurines in some furniture: switch on the continuous collection, correct the entries of **Image training** and train it again with the pictures of the new house and the photos of its empty house ([chapter 7](07-recognition-and-identities.md#the-network-that-knows-the-figurines)).
-
-## Before the house leaves the lab
-
-1. Switch the hotspot on at every boot: `bash scripts/hotspot.sh boot`, then reboot.
-2. Remove from the board the Wi-Fi network of the lab, with its password, and the command history, which may contain it:
-
-   ```bash
-   sudo nmcli connection delete "YOUR-NETWORK"
-   rm -f ~/.bash_history && history -c
-   ```
-
-3. **If the house stays with you**, run `bash scripts/add-pc.sh casaN` once from every PC that must keep access (it copies a key to the board), then on the board allow only keys for SSH:
+1. From every PC that must keep reaching the board, run `bash scripts/add-pc.sh casaN` once (it copies a key to the board). If the board is already on its hotspot, join the PC to `DomotiQ-CasaN` and use `bash scripts/add-pc.sh casaN 10.42.N.1`.
+2. On the board, allow only keys for SSH:
 
    ```bash
    cd ~/domotiq && bash scripts/lockdown.sh
    ```
 
-   It lists the keys that will still get in and refuses to run if there are none; `bash scripts/lockdown.sh --undo` allows passwords again. `sudo` keeps asking for the password of the user `arduino`, except for the few commands the web app needs (restart, reboot, power off, hotspot). With the password `domotiq2026` of chapter 1 this step is a must: that password is written in this guide.
-4. **If you hand the house over to somebody else**, do not leave the keys of your PCs on the board: `rm -f ~/.ssh/authorized_keys`. SSH then accepts only the password of `arduino`: whoever receives the house adds their PCs with `add-pc.sh` and then does step 3.
-5. If you gave the `arduino` user password-less `sudo` while preparing it, remove that rule: `sudo` must ask for the password.
-6. Write the Wi-Fi password down for whoever will use the house, never in the repository.
+   The script lists the keys that will still get in and refuses to run if there are none; `bash scripts/lockdown.sh --undo` allows passwords again. `sudo` keeps asking for the password of the user `arduino`, except for the few commands the web app needs (restart, reboot, power off, hotspot).
+3. If you gave the `arduino` user password-less `sudo`, remove that rule: `sudo` must ask for the password. The small rule installed by DomotiQ, which only allows the commands of the web app, can stay.
 
-The password can be changed at any time from **More → Settings** in the web app, or on the board:
+The password of the Wi-Fi of the house can be changed at any time from **More → Settings** in the web app, or on the board:
 
 ```bash
 cd ~/domotiq

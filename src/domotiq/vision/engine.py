@@ -167,7 +167,7 @@ FIGURE_ROW_S = 10.0      # two answers this close are "in a row" (a track with a
 # house is the photograph, not the copy the house compares with, which every new light changes. No step with hands
 # over the house (hands that never leave are the walls, lit another way), while the house looks for its characters at
 # a start, in the dark, during a party. Its steps are taken out of the brightness the house watches for a change of
-# the hall (D-66); while it follows one, the steps may be larger and the empty house is learned again only after them.
+# the hall; while it follows one, the steps may be larger and the empty house is learned again only after them.
 # The full setting of the webcam is asked only at a limit, and not at the dark end if it was made in the dark already
 FOLLOW_MIN_REGIONS = 3   # fewer regions to measure on: no step
 FOLLOW_FREE = 0.3        # share of the measuring points that must be in sight, free of presences and hands
@@ -175,7 +175,7 @@ FOLLOW_FREE = 0.3        # share of the measuring points that must be in sight, 
 # the other and the empty house is photographed in each; so is the light of the hall that somebody switches on
 # (Calibration). When the light changes, or at a start, the stored empty house most like the picture, once the light
 # of every room is measured on it, is the one compared with; the house learns the empty house from the picture itself
-# only when none is close enough (a figurine it does not follow could become part of it, D-71). The closest is the one
+# only when none is close enough (a figurine it does not follow could become part of it). The closest is the one
 # with the smallest median difference over the free floor and walls, away from the presences (0-255); it is taken as
 # it is only if 90% of those points are within EMPTY_FIT: a light uneven within a room (the driveway lit from one side)
 # is close in the median and far in a corner

@@ -6,7 +6,7 @@ The house is printed from 84 STL files in `hardware/stl/` (version 8), released 
 
 The file names are in Italian. A few words help: *Pedana* platform, *Chiave* key, *Staffa* bracket, *Scheda Audio* audio board, *Fermacavo* cable clip, *Parete* wall, *Fac* facade, *Sx* left, *Dx* right, *Palo* pole, *Collare* collar, *Braccio* arm, *Fermo* retainer, *Placca* plate, *Scocca* shell, *Tasto* button, *Coperchio* lid, *Cappucci* caps, *Credenza* sideboard, *Griglia* barbecue, *Basetta* base, *Albero* tree, *Chioma* canopy, *Tronco* trunk, *Panca* bench, *Staccionata* fence, *Fioriera* planter, *Cassa* speaker, *Prato* lawn, *Vialetto* driveway, *Arredo* furniture.
 
-In this guide, **front** is the driveway side, where visitors stand, and **left** and **right** are seen from the front: the kitchen and the garden are on the left, the bedroom and the garage on the right. The repository contains the STL files only, without slicer profiles. The colour in the tables is the one meant for printing.
+In this guide, **front** is the driveway side, where visitors arrive, and **left** and **right** are seen from the front: the kitchen and the garden are on the left, the bedroom and the garage on the right. The repository contains the STL files only, without slicer profiles. The colour in the tables is the one meant for printing.
 
 ![The plan from above: the front at the bottom, with the driveway, the totem and the two planters; kitchen and garden on the left, bedroom and garage on the right](../images/render/03_pianta_dall_alto.png)
 
@@ -24,7 +24,7 @@ In this guide, **front** is the driveway side, where visitors stand, and **left*
 
 ### Walls
 
-The walls stand 135 mm above the floor; the facades of kitchen, living room and bedroom are 46 mm tall, so the camera can look into the front rooms. Walls that touch along a whole face are joined into one part, printed standing (all within 250 mm); doors and windows bridge, the garage gate (100 mm) is printed with supports.
+The walls rise 135 mm above the floor; the facades of kitchen, living room and bedroom are 46 mm tall, so the camera can look into the front rooms. Walls that touch along a whole face are joined into one part, printed standing (all within 250 mm); doors and windows bridge, the garage gate (100 mm) is printed with supports.
 
 ![The seven walls, one colour each: the closed kitchen and bedroom, the T-shaped front of bathroom and utility room, bathroom, utility room, garage and the living room facade](../images/render/04_muri_uniti.png)
 
@@ -108,7 +108,7 @@ The walls stand 135 mm above the floor; the facades of kitchen, living room and 
 
 The recognition compares every image with a picture of the empty house, so it does not need particular colours for walls or furniture. What matters is the contrast of what moves: a figurine whose colour is very close to the grey floor, to the walls or to the lawns is hard to see, and the house warns about it when you register it (see [chapter 7](07-recognition-and-identities.md#warnings)).
 
-The web app draws the plan with the reference colours stored in `data/house.json`: white for counter, fridge, toilet and sink, wood brown for tables, sideboard and nightstands, blue for sofa and bed, dark grey for the TV stand and the totem, brick red for the barbecue, green for the tree and dark green for the planters. The renders show the wall lights in a translucent material, so the Pixels can shine through.
+The web app draws the plan with the reference colours stored in `data/house.json`: white for counter, fridge, toilet and sink, wood brown for tables, sideboard and nightstands, blue for sofa and bed, dark grey for the TV unit and the totem, brick red for the barbecue, green for the tree and dark green for the planters. The renders show the wall lights in a translucent material, so the Pixels can shine through.
 
 ![The house without the pole, in the colours meant for printing](../images/render/02_casa.png)
 
@@ -126,7 +126,7 @@ The renders in `docs/images/render/` show every step.
 
    ![Plate 23 with the UNO Q and the engraved number](../images/render/12_placca_uno_q.png)
 
-5. **Pole and camera.** Stand the bottom segment `18` in the utility room, slide the collar `19` onto it, stack the segments `20_Palo_2` to `20_Palo_4` running the USB cable of the camera through their windows, and add the arm `21`. Put the C270 in the cradle and close it with the retainer `22`. The house data puts the lens 930 mm above the floor, above the centre of the base: the calibration adapts to small differences, but the whole base must be in view.
+5. **Pole and camera.** Set the bottom segment `18` upright in the utility room, slide the collar `19` onto it, stack the segments `20_Palo_2` to `20_Palo_4` running the USB cable of the camera through their windows, and add the arm `21`. Put the C270 in the cradle and close it with the retainer `22`. The house data puts the lens 930 mm above the floor, above the centre of the base: the calibration adapts to small differences, but the whole base must be in view.
 
    ![The pole and the arm in section: the segments fitted into each other and the camera in the cradle, at the top](../images/render/11_sezione_palo_braccio.png)
 

@@ -50,6 +50,7 @@ Only one hub channel is open at a time. Modules are searched at power-up and eve
 | `limits` | maximum brightness 0-100, current budget mA | true |
 | `modules` | – | bitmask, in the order of `domotiq.mcu.MODULES` |
 | `scan` | hub channel (8 = main bus), block 0-3 | addresses that answer, 32 per block |
+| `bus` | – | state of the Qwiic bus as a bitmask (see *Stuck bus* below) |
 
 Lights: 0 garage, 1 bedroom, 2 kitchen, 3 living room, 4 bathroom, 5 utility room (the LED matrix of the board: one colour, 8 levels; the colour shows on its RGB LED3). Effects: 0 off, 1 solid, 2 breathe, 3 blink, 4 wave, 5 rainbow, 6 sparkle, 7 fire, 8 alarm, 9 cool, 10 warm. No effect flashes more than 3 times per second.
 

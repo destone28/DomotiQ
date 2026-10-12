@@ -6,7 +6,7 @@ Everything else — documentation and guides (`docs/`, `README.md`, `README.it.m
 
 ## Attribution
 
-> Created by Emilio Destratis ([destratis.it](https://destratis.it)) in collaboration with Arduino.
+> **Emilio Destratis** · [destratis.it](https://destratis.it) · An Arduino project
 
 Anyone who reuses, adapts or redistributes the project, also commercially, must give this attribution, link to the license and indicate if changes were made.
 
@@ -24,7 +24,7 @@ Tutto il resto — documentazione e guide (`docs/`, `README.md`, `README.it.md`)
 
 ## Attribuzione
 
-> Created by Emilio Destratis ([destratis.it](https://destratis.it)) in collaboration with Arduino.
+> **Emilio Destratis** · [destratis.it](https://destratis.it) · Progetto Arduino
 
 Chi riutilizza, modifica o ridistribuisce il progetto, anche a fini commerciali, è tenuto a riportare questa attribuzione, un collegamento alla licenza e l'indicazione delle modifiche apportate.
 

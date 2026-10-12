@@ -138,7 +138,9 @@ Each light has a stack of layers. The highest active layer decides what the ligh
 
 During a party the microcontroller runs the light show by itself, in time with the music; when the party ends the house redraws every light from its layers.
 
-**Follow-me lights.** For now they are off by default, and the web app has no switch to turn them on: their glow on the walls and the floor confused the webcam. When they are on, a room with at least one person gets a warm white light (`#fff2e0`) at 60 % (of the house maximum), one colour for everybody and not the favourite colour of who comes in; it goes off 3 seconds after the last person leaves. Animals do not turn lights on. In the garage the car counts too: the light stays on while the car arrives and until it has been parked for 10 seconds. The garden and the driveway have no light; the light of the utility room is the LED matrix of the UNO Q. Colour, brightness and delay are in the settings, together with **Light in the favourite colour of who comes in**, off by default.
+**Follow-me lights.** For now they are off by default, and the web app has no switch to turn them on: their glow on the walls and the floor confuses the webcam.
+
+When they are on, a room with at least one person gets a warm white light (`#fff2e0`) at 60 % (of the house maximum), one colour for everybody and not the favourite colour of who comes in; it goes off 3 seconds after the last person leaves. Animals do not turn lights on. In the garage the car counts too: the light stays on while the car arrives and until it has been parked for 10 seconds. The garden and the driveway have no light; the light of the utility room is the LED matrix of the UNO Q. Colour, brightness and delay are in the settings, together with **Light in the favourite colour of who comes in**, off by default.
 
 ## Scenes
 

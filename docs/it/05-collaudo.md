@@ -2,7 +2,7 @@
 
 Segui questo capitolo dopo il montaggio e i collegamenti, e di nuovo ogni volta che la casa cambia posto. Ogni passo dice cosa fare e cosa dovresti vedere. Quando qualcosa non torna, il capitolo sulla [risoluzione dei problemi](11-risoluzione-problemi.md) riporta le cause probabili.
 
-Ti serve un telefono o un PC collegato alla stessa rete della scheda: il Wi-Fi del laboratorio (`http://casa1.local/`) o l'hotspot della casa (`http://10.42.1.1/`).
+Ti serve un telefono o un PC collegato alla stessa rete della scheda: la tua rete Wi-Fi (`http://casa1.local/`) o l'hotspot della casa (`http://10.42.1.1/`).
 
 ## 1. Accensione
 
@@ -71,14 +71,14 @@ In **Diagnostica**:
 
 ## 9. Calibrazione della webcam
 
-La calibrazione dice alla casa dove si trova la base nell'immagine. Finché non è fatta la casa non vede niente, e nella diretta la sfocatura del bagno è solo approssimativa (vedi il [capitolo 7](07-riconoscimento-e-identita.md#privacy)): calibra prima di aprire la casa ai visitatori.
+La calibrazione dice alla casa dove si trova la base nell'immagine. Finché non è fatta la casa non vede niente, e nella diretta la sfocatura del bagno è solo approssimativa (vedi il [capitolo 7](07-riconoscimento-e-identita.md#privacy)): calibra prima di usare la diretta.
 
 Apri **Altro → Calibrazione**.
 
 1. **Togli personaggi e auto dalla casa (gli arredi restano).** Lascia gli arredi esattamente dove resteranno.
 2. **Tocca i 4 angoli della base, nell'ordine indicato**: davanti a sinistra, davanti a destra, dietro a destra, dietro a sinistra. Il davanti è il bordo del vialetto; la sinistra è il lato di cucina e giardino. Un'etichetta indica l'angolo successivo; ↶ toglie l'ultimo. Tocca **Usa questi angoli**. Se i quattro punti non formano un contorno plausibile della base, la casa li rifiuta: toccali di nuovo, in ordine.
 3. **Controlla la sovrapposizione.** Con *Sovrapposizione* attiva, l'immagine mostra il contorno della base, le stanze, le porte in verde, le pareti disegnate alla loro altezza reale e le zone escluse scurite (applique, chioma dell'albero, palo). Le pareti disegnate devono coincidere con quelle nell'immagine. Se non coincidono, tocca di nuovo gli angoli.
-4. **La luce e la casa vuota.** Subito dopo gli angoli la casa regola da sola la luce della webcam e salva la casa vuota; una finestra con una rotellina mostra che sta lavorando, e i pulsanti restano bloccati fino al messaggio *Casa vuota salvata*. Non toccare la casa in quei 15 secondi. Per qualche secondo la webcam regola da sola esposizione e bilanciamento del bianco, e la casa misura la luminosità e i colori che ottiene. Poi cerca i valori manuali che danno la stessa immagine, un quarto più scura (così il pavimento sotto le luci colorate della casa non si satura), e li blocca. Con alcune luci, come quelle calde e verdastre del laboratorio, nessuna temperatura della webcam dà colori neutri: quello che resta lo corregge la casa con un guadagno fisso su ogni colore. Alla fine salva la casa vuota, cioè la mediana di 20 fotogrammi. In tutto ci vogliono circa 15 secondi, e la casa deve essere vuota.
+4. **La luce e la casa vuota.** Subito dopo gli angoli la casa regola da sola la luce della webcam e salva la casa vuota; una finestra con una rotellina mostra che sta lavorando, e i pulsanti restano bloccati fino al messaggio *Casa vuota salvata*. Non toccare la casa in quei 15 secondi. Per qualche secondo la webcam regola da sola esposizione e bilanciamento del bianco, e la casa misura la luminosità e i colori che ottiene. Poi cerca i valori manuali che danno la stessa immagine, un quarto più scura (così il pavimento sotto le luci colorate della casa non si satura), e li blocca. Con alcune luci, come certe lampade calde e verdastre, nessuna temperatura della webcam dà colori neutri: quello che resta lo corregge la casa con un guadagno fisso su ogni colore. Alla fine salva la casa vuota, cioè la mediana di 20 fotogrammi. In tutto ci vogliono circa 15 secondi, e la casa deve essere vuota.
 
 In seguito:
 
@@ -92,7 +92,7 @@ Ora in **Diagnostica**, alla riga *Webcam*, compaiono i fotogrammi al secondo (d
 
 1. **Personaggi → + Aggiungi.** Scrivi un nome, se vuoi scatta una foto, tocca **Avanti**.
 2. Metti il personaggio in un punto libero della casa. La casa lo trova e chiede che cos'è, proponendo un tipo; tocca quello giusto e **Salva**.
-3. Nella schermata **Casa** il personaggio compare con il suo nome. Spostalo in un'altra stanza: sulla piantina passa in quella stanza. Le luci che seguono le persone per ora sono spente di serie ([capitolo 9](09-regole.md#priorità-e-livelli-delle-luci)), quindi la luce della stanza resta com'è.
+3. Nella schermata **Casa** il personaggio compare con il suo nome. Spostalo in un'altra stanza: sulla piantina passa in quella stanza. Le luci che seguono le persone sono spente di serie ([capitolo 9](09-regole.md#priorità-e-livelli-delle-luci)), quindi la luce della stanza resta com'è.
 4. Prendilo in mano e appoggialo in un'altra stanza: mantiene il suo nome.
 
 Il [capitolo 7](07-riconoscimento-e-identita.md) spiega nel dettaglio la registrazione e i suoi avvisi.
@@ -114,7 +114,7 @@ Poi chiedi qualcosa che le frasi fisse non coprono, per esempio "Quanta gente c'
 ## 13. Hotspot e telefoni
 
 1. Passa la scheda al suo hotspot (`bash scripts/hotspot.sh on`, oppure riavvia se hai installato con il valore predefinito `--hotspot boot`).
-2. Con un telefono Android e un iPhone: entra nella rete `DomotiQ-CasaN` con la password del Wi-Fi (è nel riepilogo dell'installazione e in **Altro → Impostazioni → Wi-Fi della casa**), poi apri `http://10.42.N.1/`. Se il telefono lo chiede, scegli *Resta connesso* o *Usa senza Internet*. Su Android, se la pagina non si apre, spegni per un attimo i dati mobili.
+2. Con un telefono Android e un iPhone: entra nella rete `DomotiQ-Casa1` con la password del Wi-Fi (è nel riepilogo dell'installazione e in **Altro → Impostazioni → Wi-Fi della casa**), poi apri `http://10.42.1.1/` (se hai installato con `--house N`, la rete è `DomotiQ-CasaN` e l'indirizzo `http://10.42.N.1/`). Se il telefono lo chiede, scegli *Resta connesso* o *Usa senza Internet*. Su Android, se la pagina non si apre, spegni per un attimo i dati mobili.
 3. In **Diagnostica**, alla riga *Wi-Fi*, compare il numero di dispositivi collegati all'hotspot. Apri **Diretta** su più telefoni contemporaneamente per controllare che il flusso video regga.
 
 ## 14. Orologio

@@ -2,12 +2,12 @@
 
 DomotiQ is a 1:20 scale smart house that runs entirely offline on a single **Arduino UNO Q 4GB**. A webcam on a pole looks down on the house and follows figurines, pets, a toy car and objects with computer vision. Rules react to what happens with lights, sounds and warnings, a voice interface answers questions in Italian and English, and any phone can open the house's own web app over the board's Wi-Fi hotspot.
 
-This guide covers the whole project, from a factory-new board to a working house. The chapters follow the order in which you build a house.
+This guide covers the whole project, from a factory-new board to a working house. The chapters follow the order in which you build the house.
 
 ## Chapters
 
 1. [Prepare the UNO Q](01-prepare-uno-q.md): first password, SSH, network names, system update, access from a PC.
-2. [Install the software](02-install.md): `install.sh`, the three services, the hotspot, updates.
+2. [Install the software](02-install.md): `install.sh`, the services, the hotspot, updates.
 3. [Print and assemble](03-print-and-assemble.md): the numbered STL files and how the parts go together.
 4. [Wiring](04-wiring.md): the Qwiic chain through the Modulino Hub, power, relay and fan, audio, webcam.
 5. [Testing and commissioning](05-testing.md): checking every part, camera calibration, first figurine, voice, phones.
@@ -35,4 +35,4 @@ For everyday use there is a one-page [quick guide](quick-guide.md): switching on
 
 The source code is released under the MIT License; documentation, images, 3D printing files and the data in `data/` are released under CC BY 4.0. See [Attributions](10-attributions.md) for the details and for the licences of the components the house uses.
 
-> Created by Emilio Destratis ([destratis.it](https://destratis.it)) in collaboration with Arduino.
+**Emilio Destratis** · [destratis.it](https://destratis.it) · An Arduino project

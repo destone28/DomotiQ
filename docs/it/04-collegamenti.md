@@ -83,7 +83,7 @@ Ogni Pixels, a piena luce bianca, può assorbire fino a 264 mA dalla linea a 3,3
 - quando la stima supera il **budget, 450 mA di serie**, riduce tutte le luci in proporzione;
 - in più, limita ogni luce a una **luminosità massima del 30 %** di serie.
 
-Sono valori fissi: non stanno più nelle impostazioni, e la casa li manda al firmware così come sono. Sono volutamente prudenti, perché l'assorbimento reale non è stato misurato con un amperometro.
+Sono valori fissi, che non si cambiano dalle impostazioni: la casa li manda al firmware così come sono. Sono volutamente prudenti, perché l'assorbimento reale non è stato misurato con un amperometro.
 
 ## Relè e ventola
 

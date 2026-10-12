@@ -1,19 +1,19 @@
 # DomotiQ – a smart house on one Arduino UNO Q
 
+**Emilio Destratis** · [destratis.it](https://destratis.it) · An Arduino project
+
 ![The DomotiQ diorama with the webcam pole](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/render/01_casa_completa.png)
 
-DomotiQ is a 1:20 scale smart house. A webcam on a pole looks down on the house and recognizes who is in which room: figurines, pets, a toy car and any object a visitor puts inside. The house enforces its own rules (nobody in the utility room, one person at a time in the bathroom), reacts to a shower, a car coming home or a barbecue, plays a party with music it composes itself, and talks: visitors ask it questions in Italian or English, ring the intercom and introduce new characters with their voice.
+DomotiQ is a 1:20 scale smart house. A webcam on a pole looks down on the house and recognizes who is in which room: figurines, pets, a toy car and any object you put inside. The house enforces its own rules (nobody in the utility room, one person at a time in the bathroom), reacts to a shower, a car coming home or a barbecue, plays a party with music it composes itself, and talks: you can ask it questions in Italian or English, ring the intercom and introduce new characters with your voice.
 
 Everything runs on one Arduino UNO Q 4GB, fully offline. Phones join the house's own Wi-Fi and become the remote control, the live camera view and the rule editor.
-
-Created by Emilio Destratis (destratis.it) in collaboration with Arduino.
 
 Italian version: [README.it.md](https://github.com/destone28/DomotiQ/blob/main/README.it.md)
 
 # What it does
 
 - Tracks people, animals, the car and objects with computer vision: position in millimetres, room, counts, identity and history.
-- Scenes (normal, relax, cinema, night, away), lights per room and effects drawn by the microcontroller; lights that follow people are there but off for now, because their glow confused the webcam.
+- Scenes (normal, relax, cinema, night, away), lights per room and effects drawn by the microcontroller. Lights that follow people are there, but off by default because their glow confuses the webcam.
 - When/If/Then rules that anyone can change from the web app, with a log of who changed what.
 - Built-in constraints: the utility room is off limits after 5 seconds, the bathroom takes one person at a time.
 - A virtual climate: a thermostat you can warm with a finger, and a bathroom whose humidity rises when someone "showers" (blow on the sensor).
@@ -24,32 +24,9 @@ Italian version: [README.it.md](https://github.com/destone28/DomotiQ/blob/main/R
 - A garage that sees the car arrive and park.
 - A complete web app served by the board on its own hotspot, with the bathroom blurred in the live view by default.
 
-# How it works
+# Things used in this project
 
-The UNO Q has two brains. The Qualcomm processor runs Debian Linux and does the thinking; the STM32U585 microcontroller owns the Qwiic bus and drives every Modulino (five Pixels, two Thermo, Buttons, Latch Relay and the Hub that splits the bus into channels). The two talk through the board's router with MessagePack-RPC: Linux decides, the microcontroller executes and reports buttons and sensors. Light effects and the party animation run on the microcontroller, so they stay smooth whatever Linux is doing, and a watchdog switches the fan off if Linux goes silent.
-
-On Linux a Python application (FastAPI, asyncio) holds the state of the house, runs the rule engine, the voice and the web app. Vision runs in a separate process, speech synthesis and the language model in their own services, so a slow step never blocks the rest.
-
-# Computer vision
-
-Recognition is classical computer vision, with no training needed: a new character is registered in a few seconds.
-
-- Four taps on the corners of the base in the web app give the geometry between image and floor; the position of the camera, known from the CAD model, corrects the parallax of tall figurines.
-- Each frame is compared with a picture of the empty house in the Lab colour space, after correcting the light room by room and channel by channel, so the coloured lights of the house and the lights of the room around it do not create ghosts. Shadows are ignored.
-- Every figurine gets a colour signature. Tracks are followed frame to frame with the Hungarian method; identities are matched by colour, and two figurines of the same colour are told apart by following them. When a visitor's hand picks one up, the house keeps track of it and asks when it cannot be sure.
-- When a character is registered with a photo from the phone, a YOLOX-Nano detector (machine learning, trained on the COCO dataset) runs on the board to propose the category: person, dog, cat, other animal, car or object.
-
-# Voice and the language model
-
-The totem has three buttons: talk (hold it down and speak), intercom and language. Speech recognition is Vosk, offline, with restricted grammars for names and yes/no answers. A fast rule-based parser understands the common requests; free phrases go to a small large language model (Qwen2.5-0.5B-Instruct through llama.cpp) running on the board, which only chooses what to do among a fixed list of intents. The answers are always composed from the real state of the house, so the house cannot invent anything. Piper speaks the answers with an Italian and an English voice.
-
-# The web app
-
-Phones join the hotspot of the house (DomotiQ-Casa1) with its password and open the house page. Everyone can do everything, with no PIN: see the house, watch the live view, give commands, read events, edit rules, register characters, switch the alarm on and off, calibrate the camera, read the diagnostics and change the settings. Every change stays in the log and deleted things in the bin for 24 hours.
-
-![Home, live view, characters and rules on a phone](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/screens/en/home.png)
-
-# Hardware for one house
+## Hardware
 
 - Arduino UNO Q 4GB.
 - Modulino: five Pixels, two Thermo, one Buttons, one Latch Relay, one Hub.
@@ -58,30 +35,67 @@ Phones join the hotspot of the house (DomotiQ-Casa1) with its password and open 
 - UGREEN US205 USB sound card, a lavalier microphone with 3.5 mm TRS plug, USB-powered speakers with a 3.5 mm jack.
 - A 5 V 40 mm fan for the barbecue, switched by the Latch Relay.
 - The 3D printed house: the numbered STL files are in the hardware folder, and each part has its number engraved.
+- Figurines, pets and a toy car: third-party models, not included; [chapter 3](https://github.com/destone28/DomotiQ/blob/main/docs/en/03-print-and-assemble.md) gives the sizes that work.
 
-# Build your own
+## Tools
 
-- Prepare the board: [docs/en/01-prepare-uno-q.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/01-prepare-uno-q.md)
-- Install the software: [docs/en/02-install.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/02-install.md)
-- Print and assemble: [docs/en/03-print-and-assemble.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/03-print-and-assemble.md)
-- Wiring: [docs/en/04-wiring.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/04-wiring.md)
-- Testing and calibration: [docs/en/05-testing.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/05-testing.md)
-- Using the web app: [docs/en/06-web-app.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/06-web-app.md)
-- Recognition and identities: [docs/en/07-recognition-and-identities.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/07-recognition-and-identities.md)
-- Voice: [docs/en/08-voice.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/08-voice.md)
-- Rules: [docs/en/09-rules.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/09-rules.md)
-- Attributions: [docs/en/10-attributions.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/10-attributions.md)
-- Troubleshooting: [docs/en/11-troubleshooting.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/11-troubleshooting.md)
-- Quick guide: [docs/en/quick-guide.md](https://github.com/destone28/DomotiQ/blob/main/docs/en/quick-guide.md)
+- A 3D printer.
+- A PC with `adb` (Android platform tools) and a USB-C cable, for the first setup of the board.
+- A Wi-Fi network with internet, for the system update and the installation. After that the house works offline.
 
-The whole installation is one command on the board, once the board has internet:
+# How it works
 
-```
-git clone https://github.com/destone28/DomotiQ ~/domotiq
-cd ~/domotiq && bash scripts/install.sh
-```
+The UNO Q has two brains. The Qualcomm processor runs Debian Linux and does the thinking; the STM32U585 microcontroller owns the Qwiic bus and drives every Modulino (five Pixels, two Thermo, Buttons, Latch Relay and the Hub that splits the bus into channels). The two talk through the board's router with MessagePack-RPC: Linux decides, the microcontroller executes and reports buttons and sensors. Light effects and the party animation run on the microcontroller, so they stay smooth whatever Linux is doing, and a watchdog switches the fan off if Linux goes silent.
 
-No hardware at hand? The house runs in simulation on any PC, with virtual figurines you put on the plan:
+On Linux a Python application (FastAPI, asyncio) holds the state of the house, runs the rule engine, the voice and the web app. Vision runs in a separate process, speech synthesis and the language models in their own services, so a slow step never blocks the rest.
+
+## Computer vision
+
+Recognition is based on classical computer vision: a new character is registered in a few seconds, without training a model.
+
+- Four taps on the corners of the base in the web app give the geometry between image and floor; the position of the camera, known from the CAD model, corrects the parallax of tall figurines.
+- Each frame is compared with a picture of the empty house in the CIELAB colour space, after correcting the light room by room and channel by channel, so the coloured lights of the house and the lights of the room around it do not create ghosts. Shadows are ignored.
+- Every figurine gets a colour signature. Tracks are followed frame to frame with the Hungarian method; identities are matched by colour, and two figurines of the same colour are told apart by following them. When a hand picks one up, the house keeps track of it and asks when it cannot be sure.
+- A small neural network, which you train on the PC with recordings of your own house, gives a second opinion on every blob: which character it is, or "nothing". Without the network file the house works with the classical method alone.
+- When a character is registered with a photo from the phone, a YOLOX-Nano detector (machine learning, trained on the COCO dataset) runs on the board to propose the category: person, dog, cat, other animal, car or object.
+
+## Voice and the language model
+
+The intercom totem has three buttons: talk (hold it down and speak), intercom and language. Speech recognition is Vosk, offline, with restricted grammars for names and yes/no answers. A fast rule-based parser understands the common requests; free phrases go to a small large language model (Qwen2.5-0.5B-Instruct through llama.cpp) running on the board, which only chooses what to do among a fixed list of intents. Answers about the house are always composed from its real state, so there the house cannot invent anything. For questions about the world ("Why is the sky blue?") the house asks whether you want to wait: if you do, a second model, Qwen3.5-0.8B, writes the answer in 20-50 seconds; it is small, and it can get facts wrong. Piper speaks the answers with an Italian and an English voice.
+
+## The web app
+
+Phones join the hotspot of the house (`DomotiQ-Casa1`) with its password and open `http://10.42.1.1/`. Everyone can do everything, with no PIN: see the house, watch the live view, give commands, read events, edit rules, register characters, switch the alarm on and off, calibrate the camera, read the diagnostics and change the settings. Every change stays in the log and deleted things in the bin for 24 hours.
+
+![Home, live view, characters and rules on a phone](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/screens/en/home.png)
+
+# Build it step by step
+
+The full guide is in [docs/en](https://github.com/destone28/DomotiQ/blob/main/docs/en/index.md). The chapters follow the order in which you build the house:
+
+1. **Prepare the board**: password, SSH, network name, system update, access from the PC. [Chapter 1](https://github.com/destone28/DomotiQ/blob/main/docs/en/01-prepare-uno-q.md)
+2. **Install the software** with one command on the board, once the board has internet:
+
+   ```
+   git clone https://github.com/destone28/DomotiQ ~/domotiq
+   cd ~/domotiq && bash scripts/install.sh
+   ```
+
+   Options, services, hotspot and updates: [chapter 2](https://github.com/destone28/DomotiQ/blob/main/docs/en/02-install.md).
+3. **Print and assemble the house**: the numbered STL files, the colours and the assembly order. [Chapter 3](https://github.com/destone28/DomotiQ/blob/main/docs/en/03-print-and-assemble.md)
+4. **Wire it up**: the Qwiic chain through the Modulino Hub, power, relay and fan, audio, webcam. [Chapter 4](https://github.com/destone28/DomotiQ/blob/main/docs/en/04-wiring.md)
+5. **Test and calibrate**: check every part, calibrate the camera, register the first figurine, try the voice and the phones. [Chapter 5](https://github.com/destone28/DomotiQ/blob/main/docs/en/05-testing.md)
+6. **Use the house**:
+   - [Using the web app](https://github.com/destone28/DomotiQ/blob/main/docs/en/06-web-app.md)
+   - [Recognition and identities](https://github.com/destone28/DomotiQ/blob/main/docs/en/07-recognition-and-identities.md)
+   - [Voice](https://github.com/destone28/DomotiQ/blob/main/docs/en/08-voice.md)
+   - [Rules](https://github.com/destone28/DomotiQ/blob/main/docs/en/09-rules.md)
+
+For everyday use there is a one-page [quick guide](https://github.com/destone28/DomotiQ/blob/main/docs/en/quick-guide.md); if something goes wrong, see [troubleshooting](https://github.com/destone28/DomotiQ/blob/main/docs/en/11-troubleshooting.md). The licences of every component are in the [attributions](https://github.com/destone28/DomotiQ/blob/main/docs/en/10-attributions.md).
+
+## Try it without hardware
+
+The house runs in simulation on any PC, with virtual figurines you put on the plan:
 
 ```
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
@@ -97,9 +111,9 @@ Then open http://localhost:8080 in a browser.
 - data/house.json: the map of the house, shared by vision, rules and web app.
 - data/stories.json: the pieces the house combines into stories, memories and answers, in Italian and English.
 - hardware/stl: the numbered print files.
-- scripts: installation, hotspot, release to a board, screenshots.
+- scripts: installation, hotspot, copy from the PC to the board, training of the figurine network, screenshots.
 - tests: tests of the core, the voice, the vision (on synthetic frames) and the web API.
-- docs: guides in English and Italian, specification, development diary, decisions, tools and licences.
+- docs: guides in English and Italian, images, the list of tools and licences.
 
 # Licences
 

@@ -51,10 +51,10 @@ Lo script stampa dei passi numerati. Quando un'opzione fa saltare un passo, i nu
 3. **Ambiente Python dell'applicazione.** `venv/` con le versioni esatte elencate in `requirements.txt`. Un ambiente rotto o copiato da un'altra parte viene rifatto.
 4. **Sintesi vocale.** Un ambiente separato, `piper-venv/`, con `piper-tts` 1.8.0 e Flask. Piper è GPL-3.0 e gira come programma a sé: l'applicazione gli parla via HTTP sull'interfaccia di loopback e non lo importa mai.
 5. **Modelli.** Vengono scaricati in `models/` e verificati con le somme SHA-256 di `scripts/models.sha256`: le voci Piper `it_IT-serena-medium` (a una revisione fissa) e `en_US-ljspeech-medium`, i modelli Vosk `vosk-model-small-it-0.22` e `vosk-model-small-en-us-0.15`, YOLOX-Nano (`yolox_nano.onnx`) e, se non c'è `--no-llm`, `qwen2.5-0.5b-instruct-q4_k_m.gguf` (i comandi) e `Qwen_Qwen3.5-0.8B-Q4_0.gguf` (le risposte libere alle domande sul mondo, servizio `domotiq-chat`). Un file già presente con il checksum giusto non viene riscaricato.
-6. **llama.cpp.** Scarica llama.cpp al commit provato sulla UNO Q (`74a7c897`), applica le istruzioni scritte per il suo processore (`scripts/llama/arm-nodot.patch`, vedi [Accelerare il modello](../accelerazione-modello.md)) e compila `llama-server` (una ventina di minuti). Il passo viene saltato quando lo stesso commit è già compilato con la stessa patch, o con `--no-llm`.
+6. **llama.cpp.** Scarica llama.cpp al commit provato sulla UNO Q (`74a7c897`), applica le istruzioni scritte per il suo processore, contenute nella patch `scripts/llama/arm-nodot.patch`, e compila `llama-server` (una ventina di minuti). Il passo viene saltato quando lo stesso commit è già compilato con la stessa patch, o con `--no-llm`.
 7. **Firmware del microcontrollore.** Installa il core `arduino:zephyr` 1.0.0 e la libreria `Arduino_RouterBridge` 0.4.3, compila `firmware/domotiq_mcu` con la modalità di avvio "Immediate" (`wait_linux_boot=no`) e lo carica con il `remoteocd` locale, che non chiede password. Viene ricaricato solo quando cambiano lo sketch, il core, la libreria o le opzioni della scheda. Alla fine `arduino-app-cli properties set default none` fa sì che nessuna app di App Lab sostituisca il firmware all'avvio. Per fare lo stesso a mano, vedi `firmware/domotiq_mcu/README.md`.
 8. **Impostazioni della casa.** Imposta il nome host `casaN` e il fuso orario Europe/Rome; crea la password del Wi-Fi (se non esiste ancora); scrive numero della casa, nomi e rete in `var/config/settings.json`.
-9. **Servizi.** Installa `domotiq`, `domotiq-tts` e `domotiq-llm` in `/etc/systemd/system`, una regola `sudoers` e un limite per journald (200 MB, 7 giorni di log). Disattiva i timer automatici di `apt` e blocca `alsa-ucm-conf`, `libasound2t64` e il kernel in uso: mentre la casa è in uso niente deve aggiornare il sistema.
+9. **Servizi.** Installa `domotiq`, `domotiq-tts`, `domotiq-llm` e `domotiq-chat` in `/etc/systemd/system`, una regola `sudoers` e un limite per journald (200 MB, 7 giorni di log). Disattiva i timer automatici di `apt` e blocca `alsa-ucm-conf`, `libasound2t64` e il kernel in uso: mentre la casa è in uso niente deve aggiornare il sistema.
 10. **Hotspot.** Crea o aggiorna il profilo dell'hotspot, poi applica `--hotspot` (`now`, `boot` o `no`).
 11. **Avvio.** Riavvia i servizi e stampa un riepilogo.
 
@@ -87,20 +87,21 @@ Tutto sta dentro `/home/arduino/domotiq`:
 
 `var/` è la memoria della casa. Appartiene a quella scheda ed è escluso dal repository.
 
-## I tre servizi
+## I servizi
 
 | Servizio | Cosa fa girare |
 |---|---|
 | `domotiq` | L'applicazione (`python -m domotiq`): webapp sulla porta 80, regole, voce, audio, collegamento con il microcontrollore, con la visione come processo figlio. Si riavvia da solo. Può occupare la porta 80 e impostare l'orologio, nient'altro. |
 | `domotiq-tts` | Il server HTTP di Piper su `127.0.0.1:5010`, con le voci in `models/piper`. |
 | `domotiq-llm` | `llama-server` con Qwen2.5-0.5B-Instruct su `127.0.0.1:8081`, sempre caricato perché le domande libere ricevano una risposta rapida, con una priorità di CPU più bassa di visione e voce. Le istruzioni lette si salvano in `/var/lib/domotiq-llm` e agli avvii successivi tornano in pochi secondi invece di circa 10 minuti ([capitolo 8](08-voce.md)). Con `--no-llm` non viene attivato. |
+| `domotiq-chat` | Un secondo `llama-server`, con Qwen3.5-0.8B su `127.0.0.1:8082`, per le risposte libere alle domande sul mondo, quando chi chiede sceglie di aspettare ([capitolo 8](08-voce.md)). Ha la stessa priorità bassa di `domotiq-llm`. Con `--no-llm` non viene attivato. |
 
-`domotiq` parte dopo `arduino-router` (il servizio di sistema che collega Linux e il microcontrollore) e dopo `domotiq-tts`. Tutti e tre si riavviano automaticamente se si fermano, e tutti e tre partono all'avvio: dopo un riavvio la casa riparte da sola.
+`domotiq` parte dopo `arduino-router` (il servizio di sistema che collega Linux e il microcontrollore) e dopo `domotiq-tts`. Tutti i servizi si riavviano automaticamente se si fermano, e tutti partono all'avvio: dopo un riavvio la casa riparte da sola.
 
 Comandi utili:
 
 ```bash
-systemctl status domotiq domotiq-tts domotiq-llm --no-pager
+systemctl status domotiq domotiq-tts domotiq-llm domotiq-chat --no-pager
 journalctl -u domotiq -f                 # follow the application log
 sudo systemctl restart domotiq           # restart the application
 ```
@@ -123,19 +124,19 @@ Con `--house N` diventano `DomotiQ-CasaN`, `10.42.N.1` e `casaN`, e il canale pa
 
 Il DNS dell'hotspot risponde per `casaN.lan` (e per `domotiq.lan`) e fa fallire subito i nomi di iCloud Private Relay, così gli iPhone non restano ad aspettarli. Non c'è un captive portal, ed è una scelta voluta: la finestra del captive portal dei telefoni non permette di usare la fotocamera, e su iPhone si chiude quando si cambia app. I telefoni entrano nella rete con la password del Wi-Fi e aprono l'indirizzo numerico, che funziona sempre.
 
-La scheda sta o sul Wi-Fi del laboratorio o sul suo hotspot. Passare all'hotspot fa cadere la connessione al laboratorio, e con lei la tua sessione SSH.
+La scheda sta o sulla tua rete Wi-Fi o sul suo hotspot. Passare all'hotspot fa cadere la connessione alla tua rete, e con lei la tua sessione SSH.
 
 L'opzione dell'installer sceglie il punto di partenza:
 
 - `--hotspot boot` (predefinito): l'hotspot parte da solo a ogni avvio. Gli altri profili Wi-Fi smettono di connettersi automaticamente, così all'avvio non gli fanno concorrenza.
 - `--hotspot now`: passa subito all'hotspot.
-- `--hotspot no`: lo configura ma lascia la scheda sul Wi-Fi del laboratorio.
+- `--hotspot no`: lo configura ma lascia la scheda sulla tua rete Wi-Fi.
 
 In seguito puoi passare dall'uno all'altro con `scripts/hotspot.sh`:
 
 ```bash
 bash scripts/hotspot.sh on        # switch to the hotspot now (Wi-Fi client connections drop)
-bash scripts/hotspot.sh off       # back to the Wi-Fi of the lab
+bash scripts/hotspot.sh off       # back to your Wi-Fi network
 bash scripts/hotspot.sh boot      # the hotspot starts by itself at every boot
 bash scripts/hotspot.sh status    # state of wlan0 and the active connections
 ```
@@ -161,54 +162,37 @@ bash scripts/release.sh casa1 --install    # then run install.sh on the board (n
 
 `release.sh` copia la cartella di lavoro del PC in `~/domotiq` sulla scheda con `rsync` via SSH (usando l'alias `casa1` creato da `add-pc.sh`), poi riavvia `domotiq`. Lascia fuori quello che git ignora e quello che appartiene alla scheda: `.git`, `venv`, `piper-venv`, `models`, `var` e `llama.cpp`. Per questo la scheda non ha bisogno di git. La copia rispecchia il PC: un file di codice modificato solo sulla scheda viene sovrascritto o cancellato. Fa eccezione `models/voice-cache/`, le frasi fisse della voce preparate in anticipo: se c'è sul PC, viene copiata anche quella.
 
-**Le frasi della voce preparate in anticipo.** Le frasi fisse (oggi 239) si sintetizzano una volta con `scripts/voice_cache.py` e si copiano sulla casa, così la prima accensione non aspetta Piper:
+**Le frasi della voce preparate in anticipo.** Le frasi fisse della casa, quelle senza nomi né numeri, si sintetizzano una volta con `scripts/voice_cache.py` e si copiano sulla casa, così la prima accensione non aspetta Piper:
 
 ```bash
-venv/bin/python scripts/voice_cache.py                   # sulla scheda, con il suo Piper (circa 13 minuti)
+venv/bin/python scripts/voice_cache.py                   # sulla scheda, con il suo Piper (parecchi minuti)
 python scripts/voice_cache.py --url http://127.0.0.1:5010/synthesize   # su un PC (ambiente Python del repository)
 ```
 
 Lo script scrive in `models/voice-cache/` solo le frasi che mancano e con `--list` le elenca soltanto. Sul PC basta avviare il server di Piper come fa il servizio `domotiq-tts` (stessa versione e stesse voci di `install.sh`).
 
-Senza `--install`, una modifica al firmware viene copiata ma non caricata sul microcontrollore, e i nuovi pacchetti Python, i modelli e i servizi di `scripts/systemd` (per esempio `domotiq-llm.service`, che ora tiene quattro slot, `-np 4`, e li salva in `/var/lib/domotiq-llm`, o le priorità `CPUWeight` dei tre servizi) non vengono installati: quando cambiano queste cose, usa `--install` (oppure `install.sh` sulla scheda). Per un servizio soltanto, anche senza internet, basta questo sulla scheda (chiede la password di `arduino`):
+Senza `--install`, una modifica al firmware viene copiata ma non caricata sul microcontrollore, e i nuovi pacchetti Python, i modelli e i file dei servizi in `scripts/systemd` (per esempio `domotiq-llm.service`) non vengono installati: quando cambiano queste cose, usa `--install` (oppure `install.sh` sulla scheda). Per un servizio soltanto, anche senza internet, basta questo sulla scheda (chiede la password di `arduino`):
 
 ```bash
 cd ~/domotiq && sudo install -m644 scripts/systemd/domotiq-llm.service /etc/systemd/system/ \
   && sudo systemctl daemon-reload && sudo systemctl restart domotiq-llm
 ```
 
-## Una casa uguale a un'altra
+## Proteggere l'accesso
 
-Per avere una casa che si comporta come una che hai già, dopo l'installazione:
+La password `domotiq2026` dell'utente `arduino`, quella del [capitolo 1](01-preparare-uno-q.md), è scritta in questa guida, quindi chiunque la legga la conosce. Quando la casa è pronta, fai entrare SSH solo con la chiave:
 
-1. Dalla webapp della casa che hai, **Altro → Impostazioni → Scarica il backup**; dalla webapp della casa nuova, **Ripristina da un backup** con quel file. Porta regole, personaggi con colori e pose, e impostazioni; mai la rete, il nome della casa o le impostazioni della webcam. Ripristinalo prima di registrare personaggi sulla casa nuova, perché li sostituisce.
-2. Copia la rete delle statuine (`models/vision/figures.onnx` e `figures.json`, [capitolo 7](07-riconoscimento-e-identita.md)) e le risposte imparate (`var/config/knowledge.json`), poi riavvia la casa: `sudo systemctl restart domotiq`.
-3. La calibrazione della webcam non si copia: angoli, casa vuota e foto con le luci si fanno sulla casa nuova ([capitolo 5](05-collaudo.md)), perché dipendono da dove sta la sua webcam e da com'è arredata.
-4. Se la casa nuova ha statuine sue, anche dello stesso modello, i colori che il backup porta sono quelli delle statuine dell'altra casa, sotto la sua luce: la casa nuova non riconoscerebbe le sue, o le scambierebbe. Nella scheda di ogni personaggio (**Personaggi**) tocca **Impara di nuovo l'aspetto**, poi di' alla casa chi è ogni statuina, toccandola sulla piantina o rispondendo alle sue domande.
-5. La rete delle statuine conosce i mobili della casa su cui è stata addestrata. Su una casa arredata in un altro modo (un divano arancione, altre griglie) all'inizio vede statuine in qualche mobile: accendi la raccolta continua, correggi le voci di **Addestramento immagini** e addestrala di nuovo con le immagini della casa nuova e le foto della sua casa vuota ([capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine)).
-
-## Prima che la casa lasci il laboratorio
-
-1. Fai partire l'hotspot a ogni avvio: `bash scripts/hotspot.sh boot`, poi riavvia.
-2. Togli dalla scheda la rete Wi-Fi del laboratorio, con la sua password, e la cronologia dei comandi, che può contenerla:
-
-   ```bash
-   sudo nmcli connection delete "YOUR-NETWORK"
-   rm -f ~/.bash_history && history -c
-   ```
-
-3. **Se la casa resta a te**, da ogni PC che deve mantenere l'accesso lancia una volta `bash scripts/add-pc.sh casaN` (copia una chiave sulla scheda), poi sulla scheda lascia entrare in SSH solo con la chiave:
+1. Da ogni PC che deve continuare a raggiungere la scheda, lancia una volta `bash scripts/add-pc.sh casaN` (copia una chiave sulla scheda). Se la scheda è già sul suo hotspot, collega il PC a `DomotiQ-CasaN` e usa `bash scripts/add-pc.sh casaN 10.42.N.1`.
+2. Sulla scheda, lascia entrare in SSH solo con la chiave:
 
    ```bash
    cd ~/domotiq && bash scripts/lockdown.sh
    ```
 
-   Elenca le chiavi che potranno ancora entrare e si rifiuta di proseguire se non ce n'è nessuna; `bash scripts/lockdown.sh --undo` riammette le password. `sudo` continua a chiedere la password dell'utente `arduino`, tranne per i pochi comandi che servono alla webapp (riavvio del servizio, riavvio, spegnimento, hotspot). Con la password `domotiq2026` del capitolo 1 questo passo è indispensabile: quella password è scritta in questa guida.
-4. **Se consegni la casa a qualcun altro**, non lasciare sulla scheda le chiavi dei tuoi PC: `rm -f ~/.ssh/authorized_keys`. SSH accetta allora solo la password di `arduino`: chi riceve la casa aggiunge i suoi PC con `add-pc.sh` e poi fa il passo 3.
-5. Se durante la preparazione hai dato all'utente `arduino` un `sudo` senza password, togli quella regola: `sudo` deve chiedere la password.
-6. Annota la password del Wi-Fi per chi userà la casa, mai nel repository.
+   Lo script elenca le chiavi che potranno ancora entrare e si rifiuta di proseguire se non ce n'è nessuna; `bash scripts/lockdown.sh --undo` riammette le password. `sudo` continua a chiedere la password dell'utente `arduino`, tranne per i pochi comandi che servono alla webapp (riavvio del servizio, riavvio, spegnimento, hotspot).
+3. Se hai dato all'utente `arduino` un `sudo` senza password, togli quella regola: `sudo` deve chiedere la password. La piccola regola installata da DomotiQ, che permette solo i comandi della webapp, può restare.
 
-La password si può cambiare in qualsiasi momento da **Altro → Impostazioni** nella webapp, oppure sulla scheda:
+La password del Wi-Fi della casa si può cambiare in qualsiasi momento da **Altro → Impostazioni** nella webapp, oppure sulla scheda:
 
 ```bash
 cd ~/domotiq

@@ -2,7 +2,7 @@
 
 Go through this chapter after assembly and wiring, and again every time the house moves to another place. Each step says what to do and what you should see. When something does not match, the [troubleshooting](11-troubleshooting.md) chapter has the likely causes.
 
-You need a phone or PC connected to the same network as the board: the lab Wi-Fi (`http://casa1.local/`) or the hotspot of the house (`http://10.42.1.1/`).
+You need a phone or PC connected to the same network as the board: your Wi-Fi network (`http://casa1.local/`) or the hotspot of the house (`http://10.42.1.1/`).
 
 ## 1. Power on
 
@@ -71,14 +71,14 @@ In **Diagnostics**:
 
 ## 9. Camera calibration
 
-The calibration tells the house where the base is in the image. Until it is done the house sees nothing, and the blur of the bathroom in the live view is only approximate (see [chapter 7](07-recognition-and-identities.md#privacy)): calibrate before other people use the house.
+The calibration tells the house where the base is in the image. Until it is done the house sees nothing, and the blur of the bathroom in the live view is only approximate (see [chapter 7](07-recognition-and-identities.md#privacy)): calibrate before you use the live view.
 
 Open **More → Calibration**.
 
 1. **Take characters and car out of the house (furniture stays).** Leave the furniture exactly where it will stay.
 2. **Tap the 4 corners of the base, in the order shown**: front left, front right, back right, back left. Front is the driveway edge; left is the kitchen and garden side. A chip shows which corner is next; ↶ removes the last one. Tap **Use these corners**. If the four points are not a plausible outline of the base, the house refuses them: tap them again, in order.
 3. **Check the overlay.** With *Overlay* on, the image shows the outline of the base, the rooms, the doors in green, the walls drawn at their real height and the excluded zones darkened (wall lights, the tree canopy, the pole). The drawn walls must sit on the walls in the image. If they do not, tap the corners again.
-4. **The light and the empty house.** Right after the corners the house sets the light of the camera by itself and saves the empty house; a box with a spinner shows it is working, and the buttons stay locked until the message *Empty house saved*. Do not touch the house during those 15 seconds. For a few seconds the camera adjusts exposure and white balance on its own, and the house measures the brightness and colours it reaches. It then looks for the manual values that give the same picture, a quarter darker (so the floor under the coloured house lights does not saturate), and locks them. Under some lights, like the warm, greenish ones of the lab, no colour temperature of the camera gives neutral colours: the house corrects what is left with a fixed gain on each colour. Finally it saves the empty house, the median of 20 frames. It takes about 15 seconds, and the house must be empty.
+4. **The light and the empty house.** Right after the corners the house sets the light of the camera by itself and saves the empty house; a box with a spinner shows it is working, and the buttons stay locked until the message *Empty house saved*. Do not touch the house during those 15 seconds. For a few seconds the camera adjusts exposure and white balance on its own, and the house measures the brightness and colours it reaches. It then looks for the manual values that give the same picture, a quarter darker (so the floor under the coloured house lights does not saturate), and locks them. Under some lights, like some warm, greenish lamps, no colour temperature of the camera gives neutral colours: the house corrects what is left with a fixed gain on each colour. Finally it saves the empty house, the median of 20 frames. It takes about 15 seconds, and the house must be empty.
 
 Later:
 
@@ -92,7 +92,7 @@ Later:
 
 1. **Characters → + Add.** Type a name, optionally take a photo, tap **Next**.
 2. Put the figurine on a free spot of the house. The house finds it and asks what it is, proposing a kind; tap the right one and **Save**.
-3. On the **House** screen the figurine appears with its name. Move it into another room: on the plan it moves into that room. The follow-me lights are off by default for now ([chapter 9](09-rules.md#priorities-and-light-layers)), so the light of the room stays as it is.
+3. On the **House** screen the figurine appears with its name. Move it into another room: on the plan it moves into that room. The follow-me lights are off by default ([chapter 9](09-rules.md#priorities-and-light-layers)), so the light of the room stays as it is.
 4. Pick it up with your hand and put it down in another room: it keeps its name.
 
 [Chapter 7](07-recognition-and-identities.md) explains the registration and its warnings in detail.
@@ -114,7 +114,7 @@ Then ask something the fixed phrases do not cover, such as "Quanta gente c'è in
 ## 13. Hotspot and phones
 
 1. Switch the board to its hotspot (`bash scripts/hotspot.sh on`, or reboot if you installed with the default `--hotspot boot`).
-2. With an Android phone and an iPhone: join `DomotiQ-CasaN` with the Wi-Fi password (it is in the summary of the installation and in **More → Settings → Wi-Fi of the house**), then open `http://10.42.N.1/`. If the phone asks, choose *Stay connected* or *Use without Internet*. On Android, if the page does not open, turn mobile data off for a moment.
+2. With an Android phone and an iPhone: join `DomotiQ-Casa1` with the Wi-Fi password (it is in the summary of the installation and in **More → Settings → Wi-Fi of the house**), then open `http://10.42.1.1/` (if you installed with `--house N`, the network is `DomotiQ-CasaN` and the address `http://10.42.N.1/`). If the phone asks, choose *Stay connected* or *Use without Internet*. On Android, if the page does not open, turn mobile data off for a moment.
 3. **Diagnostics → Wi-Fi** shows how many devices are connected to the hotspot. Open **Live** on several phones at the same time to check that the stream keeps up.
 
 ## 14. Clock

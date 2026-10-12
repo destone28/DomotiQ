@@ -83,7 +83,7 @@ Each Pixels at full white can draw up to 264 mA from the 3.3 V line of the Qwiic
 - when the estimate goes above the **budget, 450 mA by default**, it scales all the lights down in proportion;
 - on top of that, it limits every light to a **maximum brightness of 30 %** by default.
 
-They are fixed values: they are no longer in the settings, and the house sends them to the firmware as they are. They are deliberately cautious, since no current meter was used to measure the real draw.
+They are fixed values, which the settings do not change: the house sends them to the firmware as they are. They are deliberately cautious, since the real draw has not been measured with a current meter.
 
 ## Relay and fan
 

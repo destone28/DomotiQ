@@ -1,6 +1,6 @@
 # Strumenti, librerie, modelli e licenze
 
-Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna quando si aggiunge o si cambia qualcosa. Le versioni esatte dei pacchetti Python installati sulla scheda sono in `requirements.txt`.
+Elenco di tutto ciò che il progetto usa, con versione e licenza. Le versioni esatte dei pacchetti Python installati sulla scheda sono in `requirements.txt`.
 
 ## Licenze del progetto
 | Parte | Licenza |
@@ -42,7 +42,7 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna qu
 |---|---|---|
 | Piper (`piper1-gpl`) 1.8.0 | GPL-3.0 | sintesi vocale; ambiente separato, server HTTP locale, non incluso nel codice |
 | Flask | BSD-3-Clause | serve al server HTTP di Piper (nel suo ambiente) |
-| llama.cpp (`llama-server`), commit 74a7c897 | MIT | modello linguistico; compilato sulla scheda con `scripts/llama/arm-nodot.patch` (MIT, istruzioni per il Cortex-A53, vedi `docs/accelerazione-modello.md`) |
+| llama.cpp (`llama-server`), commit 74a7c897 | MIT | modello linguistico; compilato sulla scheda con `scripts/llama/arm-nodot.patch` (MIT, istruzioni per il Cortex-A53) |
 
 ## Modelli e voci
 | Modello | Licenza | Uso |
@@ -50,9 +50,9 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Si aggiorna qu
 | vosk-model-small-it-0.22 | Apache-2.0 | riconoscimento vocale italiano |
 | vosk-model-small-en-us-0.15 | Apache-2.0 | riconoscimento vocale inglese |
 | Qwen2.5-0.5B-Instruct (GGUF) | Apache-2.0 | intenti delle frasi libere |
-| Qwen3.5-0.8B (GGUF Q4_0, bartowski) | Apache-2.0 | risposte libere alle domande sul mondo, quando il visitatore sceglie di aspettarle (servizio `domotiq-chat`, D-63) |
+| Qwen3.5-0.8B (GGUF Q4_0, bartowski) | Apache-2.0 | risposte libere alle domande sul mondo, quando chi fa la domanda sceglie di aspettarle (servizio `domotiq-chat`) |
 | YOLOX-Nano (ONNX, release 0.1.1rc0) | Apache-2.0, addestrato su COCO | categoria di un oggetto nuovo |
-| Rete delle statuine (`figures.onnx`, nostra) | pesi nostri, addestrati da zero sulle registrazioni della casa (D-68) | secondo parere sulle macchie: quale personaggio, o "niente"; un file per casa in `models/vision/`, non nel repository |
+| Rete delle statuine (`figures.onnx`, del progetto) | pesi del progetto, addestrati da zero sulle registrazioni della casa | secondo parere sulle macchie: quale personaggio, o "niente"; un file per casa in `models/vision/`, non nel repository |
 | Voce Piper it_IT-serena-medium, revisione ea046e84 | CC BY 4.0 (dataset serena-synthetic-it-27h) | voce italiana |
 | Voce Piper en_US-ljspeech-medium | pubblico dominio (LJ Speech) | voce inglese |
 

@@ -3,7 +3,7 @@
 # The free answers: a second llama-server with Qwen3.5-0.8B, which writes Italian better than the model of the
 # commands. Loopback only, one slot, lower priority than vision and voice. Used only when a visitor asks something
 # that is not about the house, its characters or what it does, and chooses to wait for the answer
-# (docs/decisioni.md D-63). --reasoning-budget 0: it answers at once, without thinking aloud first.
+# --reasoning-budget 0: it answers at once, without thinking aloud first.
 [Unit]
 Description=DomotiQ free answers model (llama.cpp)
 After=network.target domotiq-llm.service

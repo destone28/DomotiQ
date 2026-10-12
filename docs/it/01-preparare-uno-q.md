@@ -119,7 +119,7 @@ arduino-app-cli system update
 
 Lancialo da una sessione SSH. Dentro una `adb shell` l'aggiornamento si interrompe se la sessione adb si chiude; se non hai alternative, avvialo staccato con `systemd-run --uid=arduino`. Su una scheda nuova dura una mezz'ora: alla fine scarica anche le immagini Docker di App Lab, che DomotiQ non usa, e intanto la scheda può non rispondere in rete (vedi [Risoluzione dei problemi](11-risoluzione-problemi.md)).
 
-Durante la preparazione del progetto l'aggiornamento ha portato `arduino-app-cli` 0.13.0, `arduino-cli` 1.5.1, il kernel Linux 7.0 e il core del microcontrollore `arduino:zephyr` 1.0.0, che è la versione usata da DomotiQ. Quando ha finito, riavvia, così entra in uso il nuovo kernel:
+DomotiQ è provato con le versioni portate da questo aggiornamento: `arduino-app-cli` 0.13.0, `arduino-cli` 1.5.1, il kernel Linux 7.0 e il core del microcontrollore `arduino:zephyr` 1.0.0, che è la versione usata da DomotiQ. Quando l'aggiornamento ha finito, riavvia, così entra in uso il nuovo kernel:
 
 ```bash
 sudo reboot
@@ -127,7 +127,7 @@ sudo reboot
 
 ### Se l'aggiornamento si ferma su una dipendenza ALSA
 
-Senza il primo comando, sull'immagine di fabbrica l'aggiornamento si ferma con (provato su due schede):
+Senza il primo comando, sull'immagine di fabbrica l'aggiornamento si ferma con:
 
 ```
 alsa-ucm-conf : Depends: libasound2t64 (>= 1.2.15)
@@ -140,24 +140,23 @@ sudo apt-get install -y -t trixie-backports libasound2t64 libasound2-data libato
 arduino-app-cli system update
 ```
 
-`scripts/install.sh` applica la stessa correzione, quindi sulle schede che installerai in seguito se ne occupa lui.
+Anche l'installer, `scripts/install.sh`, applica la stessa correzione.
 
 ## 9. Controllare lo spazio libero
 
-Sulla scheda usata per il progetto la partizione di sistema aveva circa 2 GB liberi su 9,8 GB, mentre `/home/arduino` è una partizione separata con circa 15 GB liberi. DomotiQ vive in `/home/arduino/domotiq`, quindi quella che conta è la partizione home:
+Su una UNO Q 4GB la partizione di sistema ha circa 2 GB liberi su 9,8 GB, mentre `/home/arduino` è una partizione separata con circa 15 GB liberi. DomotiQ vive in `/home/arduino/domotiq`, quindi quella che conta è la partizione home:
 
 ```bash
 df -h /home/arduino
 ```
 
-Una prima installazione ha bisogno di circa 2,3 GB lì; l'installer lo controlla prima di cominciare.
+Una prima installazione ha bisogno di circa 2,9 GB lì; l'installer lo controlla prima di cominciare.
 
-## Prima di lasciare la casa ad altri
+## La password di questa guida
 
-La password `domotiq2026` è scritta in questa guida, quindi chiunque la legga la conosce. Prima che altre persone possano collegarsi alla rete della casa:
+La password `domotiq2026` è scritta in questa guida, quindi chiunque la legga la conosce. Quando la casa è installata, prima che altre persone si colleghino alla sua rete Wi-Fi:
 
-- segui [Prima che la casa lasci il laboratorio](02-installazione.md#prima-che-la-casa-lasci-il-laboratorio): togli la rete del laboratorio e la cronologia dei comandi, e fai entrare SSH solo con la chiave se la casa resta a te, oppure togli le tue chiavi se la consegni;
-- se vuoi, scegli un'altra password per `arduino` con `passwd`;
-- se durante lo sviluppo hai dato all'utente `arduino` un `sudo` senza password, rimetti la password a `sudo` (la piccola regola installata da DomotiQ, che permette solo di riavviare i suoi servizi, riavviare o spegnere la scheda e cambiare l'hotspot, può restare).
+- fai entrare SSH solo con la chiave, come spiegato in [Proteggere l'accesso](02-installazione.md#proteggere-laccesso);
+- se vuoi, scegli un'altra password per `arduino` con `passwd`.
 
 Avanti: [installare il software](02-installazione.md).

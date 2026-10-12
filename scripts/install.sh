@@ -26,7 +26,7 @@ HOUSE=""
 WIFI_ARG=""
 HOTSPOT="boot"
 WITH_LLM=1
-CHAT_MODEL="Qwen_Qwen3.5-0.8B-Q4_0.gguf"      # Apache-2.0: the free answers (docs/decisioni.md D-63)
+CHAT_MODEL="Qwen_Qwen3.5-0.8B-Q4_0.gguf"      # Apache-2.0: the free answers
 WITH_FIRMWARE=1
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -158,7 +158,7 @@ ok "$(du -sh "$MODELS" | cut -f1) of models"
 # ---------------------------------------------------------------------------
 if [ "$WITH_LLM" = 1 ]; then
     step "llama.cpp (language model server)"
-    # the kernels for the Cortex-A53 of the UNO Q (docs/accelerazione-modello.md), applied to the commit tested
+    # the kernels for the Cortex-A53 of the UNO Q (scripts/llama/arm-nodot.patch), applied to the commit tested
     PATCH_SUM="$(sha256sum scripts/llama/arm-nodot.patch | cut -c1-16)"
     if [ -x llama.cpp/build/bin/llama-server ] && [ "$(git -C llama.cpp rev-parse HEAD 2>/dev/null)" = "$LLAMA_COMMIT" ] \
             && [ "$(cat llama.cpp/.domotiq-patch 2>/dev/null)" = "$PATCH_SUM" ]; then

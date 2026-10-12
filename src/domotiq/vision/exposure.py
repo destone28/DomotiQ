@@ -32,7 +32,7 @@ MEASURE_S = 0.5          # time between two looks, not frames: with long exposur
 BAND = 0.05              # within 5% of the empty house in use nothing is touched (the light moves 1-3% by itself)
 DAMP = 0.8               # each step goes this share of the way: the response of the scene is measured, and noisy
 CAP = 0.08               # and changes the light by at most 8%: the light changing by 12% in 2 s is a change of the
-                         # hall for the house (D-66), the steps of the webcam must not look like one
+                         # hall for the house, the steps of the webcam must not look like one
 CAP_ADAPT = 0.25         # ...unless the house is already following a change of the hall: then it looks at nothing,
                          # and learns the empty house again only once the steps are over (on casa1, 9 October, the
                          # light fell below half: 8% steps took 70 s to reach the end of the gain, and the empty house
