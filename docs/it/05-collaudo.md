@@ -92,7 +92,7 @@ Ora in **Diagnostica**, alla riga *Webcam*, compaiono i fotogrammi al secondo (d
 
 1. **Personaggi → + Aggiungi.** Scrivi un nome, se vuoi scatta una foto, tocca **Avanti**.
 2. Metti il personaggio in un punto libero della casa. La casa lo trova e chiede che cos'è, proponendo un tipo; tocca quello giusto e **Salva**.
-3. Nella schermata **Casa** il personaggio compare con il suo nome. Spostalo in un'altra stanza: la luce di quella stanza si accende, e si spegne 3 secondi dopo che la stanza si è svuotata.
+3. Nella schermata **Casa** il personaggio compare con il suo nome. Spostalo in un'altra stanza: sulla piantina passa in quella stanza. Le luci che seguono le persone per ora sono spente di serie ([capitolo 9](09-regole.md#priorità-e-livelli-delle-luci)), quindi la luce della stanza resta com'è.
 4. Prendilo in mano e appoggialo in un'altra stanza: mantiene il suo nome.
 
 Il [capitolo 7](07-riconoscimento-e-identita.md) spiega nel dettaglio la registrazione e i suoi avvisi.
@@ -108,7 +108,7 @@ Poi chiedi qualcosa che le frasi fisse non coprono, per esempio "Quanta gente c'
 - Premi **Citofono**, di' il nome del personaggio registrato e, entro 60 secondi, porta quella statuina dal vialetto in soggiorno passando dalla porta d'ingresso: prende quel nome.
 - Metti due personaggi di tipo persona in bagno: dopo 2 secondi il bagno lampeggia di arancione e la casa dice "Il bagno è occupato! Aspetta il tuo turno."
 - Lascia un personaggio di tipo persona nel locale tecnico per più di 5 secondi: luci rosse di allarme in soggiorno e in garage, "Attenzione: il locale tecnico è riservato!", e una fascia rossa sui telefoni finché non esce.
-- Fai entrare l'auto dal portone del garage: "Bentornato a casa!" e la luce del garage. Lasciala ferma nell'area di parcheggio per 3 secondi: conta come parcheggiata e la luce del garage si spegne 10 secondi dopo.
+- Fai entrare l'auto dal portone del garage: "Bentornato a casa!". Lasciala ferma nell'area di parcheggio per 3 secondi: conta come parcheggiata, e la scheda **Auto** della schermata **Casa** lo dice. Con le luci che seguono le persone accese (sono spente di serie) si accende anche la luce del garage, che si spegne 10 secondi dopo il parcheggio.
 - **Comandi → Festa!**: "Si balla!", 20 secondi di musica e luci, "Festa finita!".
 
 ## 13. Hotspot e telefoni
@@ -123,6 +123,6 @@ La UNO Q non ha una batteria per l'orologio e, senza internet, non può rimetter
 
 ## Provare senza statuine
 
-**Altro → Simulazione** sostituisce la webcam con personaggi virtuali da trascinare sulla piantina, più sensori e tasti virtuali. Luci, voce e regole reagiscono come con le statuine vere. L'interruttore *Luci e voce vere in silenzio* tiene tranquilla la casa vera mentre fai le prove. Ricordati di spegnere la simulazione: finché è attiva, la casa ignora la webcam.
+La casa intera gira anche su un PC, in simulazione e senza nessun hardware: si avvia con `--simulate` (vedi il [capitolo 6](06-webapp.md#provare-la-webapp-su-un-pc)). Al posto della webcam ci sono statuine virtuali: toccando **Elemento non riconosciuto** e poi un punto della piantina se ne mette una lì. Luci, voce e regole reagiscono come con le statuine vere. Finché la simulazione è attiva la casa ignora la webcam; per tornare alla casa vera basta riavviarla normalmente, senza `--simulate`.
 
 Avanti: [la webapp](06-webapp.md).

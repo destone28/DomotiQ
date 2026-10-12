@@ -136,19 +136,19 @@ Each light has a stack of layers. The highest active layer decides what the ligh
 
 During a party the microcontroller runs the light show by itself, in time with the music; when the party ends the house redraws every light from its layers.
 
-**Follow-me lights.** A room with at least one person gets a warm white light at 60 % (of the house maximum); it goes off 3 seconds after the last person leaves. Animals do not turn lights on. In the garage the car counts too: the light stays on while the car arrives and until it has been parked for 10 seconds. The garden and the driveway have no light; the light of the utility room is the LED matrix of the UNO Q. Colour, brightness and delay are in the settings, and **Controls → Lights follow people** switches them off.
+**Follow-me lights.** For now they are off by default, and the web app has no switch to turn them on: their glow on the walls and the floor confused the webcam. When they are on, a room with at least one person gets a warm white light (`#fff2e0`) at 60 % (of the house maximum), one colour for everybody and not the favourite colour of who comes in; it goes off 3 seconds after the last person leaves. Animals do not turn lights on. In the garage the car counts too: the light stays on while the car arrives and until it has been parked for 10 seconds. The garden and the driveway have no light; the light of the utility room is the LED matrix of the UNO Q. Colour, brightness and delay are in the settings, together with **Light in the favourite colour of who comes in**, off by default.
 
 ## Scenes
 
 | Scene | Lights |
 |---|---|
-| **Normal** | the lights follow people, in their favourite colour if they told the house (at a start they wait 15 seconds after the first presence seen, while the webcam looks for the figurines) |
+| **Normal** | the lights follow people, off by default for now (see above); when they are on, at a start they wait 15 seconds after the first presence seen, while the webcam looks for the figurines |
 | **Cinema** | in the living room the flickering blue glow of a screen (*Sparkle*), every other room off, even where people are |
-| **Relax** | a fire in the living room (*Fire*), an orange light breathing in the bedroom; warm dim lights where people are |
-| **Night** | everything off but a small orange night light in the bathroom; whoever gets up finds a very dim orange courtesy light |
+| **Relax** | a fire in the living room (*Fire*), an orange light breathing in the bedroom; with the follow-me lights on, warm dim lights where people are |
+| **Night** | everything off but a small orange night light in the bathroom; with the follow-me lights on, whoever gets up finds a very dim orange courtesy light |
 | **Away** | the empty house looks lived in: one room at a time (kitchen, living room, bedroom or bathroom) lights up for 15-30 seconds, then another one. The default *Intruder while Away* rule watches the house |
 
-Scenes are chosen from **Controls**, by voice ("Scenario cinema", "Good night") or by a rule, and the house says the name of the new scene.
+Scenes are chosen by voice ("Scenario cinema", "Good night") or by a rule, and the house says the name of the new scene.
 
 ## The default rules
 
@@ -168,7 +168,7 @@ Scenes are chosen from **Controls**, by voice ("Scenario cinema", "Good night") 
 | **Living room party** | more than 3 people in the living room for 3 s | throws a party | off |
 | **Barbecue with friends** | more than 1 person in the garden for 10 s | lights the barbecue | off |
 
-Who counts: the default rules about people use the kind *person*, so pets never trigger the utility room or the bathroom alarm. The garage light for the car comes from the follow-me lights, not from a rule.
+Who counts: the default rules about people use the kind *person*, so pets never trigger the utility room or the bathroom alarm. The garage light for the car comes from the follow-me lights (off by default for now), not from a rule.
 
 ## Who can change the rules
 

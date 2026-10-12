@@ -146,9 +146,10 @@ FIGURE_LIKELY_P = 0.5    # the empty house learned again around what the network
 FIGURE_SCAN_P = 0.8      # at a start, what the network sees as a character this sure is taken, whatever its colours
 FIGURE_EVERY_S = 0.5
 CAR_MIN_MM2 = 6000.0     # a "hand" this big, away from the garage, may be the car too
+FIGURINE_STILL_S = 3.0   # a figurine-sized "hand" next to a hand, still this long, is shown to the network
 GLOW_LIT = 0.7           # a "hand" this much in rooms the house lit, appeared as they were lit, is their glow
 ROOM_FG_MAX = 0.3        # the light of the rooms is measured away from what differs, unless most of the house does
-CAR_MAX_MM2 = 20000.0    # the blob of the car, seen alone, is at most this big
+CAR_MAX_MM2 = 30000.0    # the blob of the car, seen alone, is at most this big (another house: 23 000)
 CAR_GARAGE = 0.6         # a "hand" this much in the garage may be the car parked against the back wall...
 CAR_SEEN_S = 3.0         # ...and what the network said of it counts this long
 FIGURE_RECHECK_S = 2.0   # ...and a track with a name, every so often: a name the colours gave may be wrong (12 October)
@@ -269,6 +270,7 @@ class Engine:
         self.looked = 0
         self._forget: list[tuple[float, float, float]] = []   # (x, y, until): somebody said nothing is there
         self._car_seen: tuple | None = None        # (bbox, what the network said, when) of a "hand" in the garage
+        self._seen_still: dict[tuple, tuple] = {}  # place -> (what the network said, when) of a still figurine by a hand
         self._shapes: dict[str, tuple[int, int, np.ndarray]] = {}   # track -> its blob when last seen alone (x, y, mask)
         self._fg_since: np.ndarray | None = None   # per pixel: since when it differs from the empty house
         self._session_at = float("-inf")          # when the hands now at work came
@@ -1469,6 +1471,7 @@ class Engine:
         obs = self._forget_dismissed(small, obs, now)
         self._car_not_hand(small, obs, now)
         self._glow_not_hand(obs, now)
+        self._figurines_not_hands(small, obs, now)
         self._still_hands(small, obs, now)
         hands = seg.hand_mask if seg.hand_mask is not None else np.zeros(fg.shape, bool)
         house = max(float(np.count_nonzero(seg.mask)), 1.0)
@@ -1632,6 +1635,42 @@ class Engine:
                 o.extra["edge_hand"] = False
                 o.extra["figure"] = seen
                 changed = True
+        if changed:
+            self.segmenter.rejoin_hands(obs)
+
+    def _figurines_not_hands(self, small: np.ndarray, obs: list[Observation], now: float) -> None:
+        """A blob the size of a figurine, a "hand" only because it is close to one, that has not moved for
+        FIGURINE_STILL_S and that the network is sure is a character: a figurine next to a hand, or next to light
+        taken for one (12 October, another house at a start: the driveway lit otherwise than in the empty house was a
+        "hand" along the front edge, Romeo and Rossellina next to it were "hands" too, and 8 s later they had joined the
+        empty house). Fingers move; a figurine stands still."""
+        since, labels = self._hand_since, self.segmenter.labels
+        if since is None or labels is None or since.shape != labels.shape or not self._figures_ready() \
+                or self.registering:
+            return
+        self._seen_still = {k: v for k, v in self._seen_still.items() if now - v[1] < CAR_SEEN_S}
+        changed = False
+        for o in obs:
+            if not o.hand or o.extra.get("edge_hand") or o.border or not 150 <= o.area_mm2 <= 6000:
+                continue
+            key = tuple(int(round(c / 8)) for c in o.bbox)
+            known = self._seen_still.get(key)
+            if known is None:
+                # not looked at here yet: only once it has stood still for a while (fingers move)
+                x, y, w, h = o.bbox
+                blob = labels[y:y + h, x:x + w] == o.extra["label"]
+                t0 = since[y:y + h, x:x + w][blob]
+                if not len(t0) or float(np.mean((t0 > 0) & (now - t0 >= FIGURINE_STILL_S))) <= 0.8:
+                    continue
+                known = (self._figures(small, [o.bbox])[0], now)
+            seen = known[0]
+            if seen[0] and seen[0] != NOTHING and seen[1] >= FIGURE_NOT_P:
+                self._seen_still[key] = (seen, now)          # still there: the decision holds on
+                o.extra["not_hand"] = True
+                o.extra["figure"] = seen
+                changed = True
+            else:
+                self._seen_still[key] = known
         if changed:
             self.segmenter.rejoin_hands(obs)
 

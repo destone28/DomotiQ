@@ -128,8 +128,7 @@ def _bare(text: str) -> str:
 class Voice:
     def __init__(self, ctx: "Context") -> None:
         self.ctx = ctx
-        self.speaker = Speaker(cache_dir=ctx.paths.var / "voice", seed_dir=ctx.paths.models / "voice-cache",
-                               voice=lambda: ctx.settings.get("voice.voice", "natural"))
+        self.speaker = Speaker(cache_dir=ctx.paths.var / "voice", seed_dir=ctx.paths.models / "voice-cache")
         self.listener = None if ctx.args.no_voice else Listener(ctx.paths.models)
         audio = ctx.audio
         device = audio.device if audio is not None and not audio.dry else None
@@ -267,7 +266,7 @@ class Voice:
     def status(self) -> dict[str, Any]:
         return {"ok": bool(self.listener and self.listener.ok) or self.speaker.ok,
                 "stt": "vosk" if self.listener and self.listener.ok else "",
-                "tts": self.speaker.ok, "voice": self.speaker.current(), "fast_voice": self.speaker.fast_ok,
+                "tts": self.speaker.ok,
                 "llm": self.llm_ok, "stories": self.stories.ok, "mic": self.mic.available,
                 "level": round(self.mic.last_level, 3)}
 
@@ -960,7 +959,9 @@ class Voice:
             await act.grill_stop()
             await self.reply("Barbecue spento.", "Barbecue off.")
         elif name == "climate":
-            heating, on = a.get("mode") == "warm", bool(a.get("on", True))
+            heating, on = a.get("mode") == "warm", a.get("on", True)
+            if on is None:      # only the name was heard: it switches it, off if it is on
+                on = not act.climate_running("warm" if heating else "cool")
             await act.climate("warm" if heating else "cool", on)
             if on:
                 await self.reply("Accendo il riscaldamento." if heating else "Accendo il climatizzatore.",

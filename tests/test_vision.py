@@ -2295,3 +2295,18 @@ def test_the_car_pointed_at_comes_back_whole(engine, renderer):
     run(engine, renderer, [([car], {})] * 20, t0=10.1)
     whole = [o for o in engine.observations if o.extra.get("track") == got["track"]]
     assert whole and whole[0].area_mm2 > 6000                         # the car, not a piece of it
+
+
+def test_a_figurine_next_to_a_still_hand_does_not_join_the_empty_house(engine, renderer):
+    """12 October, another house at a start: the driveway lit otherwise than in the empty house was a "hand" along the
+    front edge; the figurine next to it was a "hand" too, and 8 s later it had joined the empty house. Still, and sure
+    for the network, it is a figurine."""
+    red = Thing(300, 40, "#d03030")
+    engine.set_identities([Identity("id-rosa", "Rossana", signature=[0.0] * 64)])
+    engine.figures = _Figures("Rossana", 0.97)
+    strip = Hand(300, -60)                                   # something still on the front edge, as big as an arm
+    engine.rescan()
+    for i in range(150):
+        engine.feed(renderer.render([red], hands=[strip]), 1.0 + i * 0.1)
+    obs = [o for o in engine.observations if not o.hand]
+    assert any(abs(o.centroid_mm[0] - 300) < 30 and abs(o.centroid_mm[1] - 40) < 40 for o in obs)

@@ -2,7 +2,7 @@
 
 ![The DomotiQ diorama with the webcam pole](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/render/01_casa_completa.png)
 
-DomotiQ is a 1:20 scale smart house. A webcam on a pole looks down on the house and recognizes who is in which room: figurines, pets, a toy car and any object a visitor puts inside. The lights follow people from room to room, the house enforces its own rules (nobody in the utility room, one person at a time in the bathroom), reacts to a shower, a car coming home or a barbecue, plays a party with music it composes itself, and talks: visitors ask it questions in Italian or English, ring the intercom and introduce new characters with their voice.
+DomotiQ is a 1:20 scale smart house. A webcam on a pole looks down on the house and recognizes who is in which room: figurines, pets, a toy car and any object a visitor puts inside. The house enforces its own rules (nobody in the utility room, one person at a time in the bathroom), reacts to a shower, a car coming home or a barbecue, plays a party with music it composes itself, and talks: visitors ask it questions in Italian or English, ring the intercom and introduce new characters with their voice.
 
 Everything runs on one Arduino UNO Q 4GB, fully offline. Phones join the house's own Wi-Fi and become the remote control, the live camera view and the rule editor.
 
@@ -13,7 +13,7 @@ Italian version: [README.it.md](https://github.com/destone28/DomotiQ/blob/main/R
 # What it does
 
 - Tracks people, animals, the car and objects with computer vision: position in millimetres, room, counts, identity and history.
-- Lights that follow people, scenes (normal, relax, cinema, night, away) and effects drawn by the microcontroller.
+- Scenes (normal, relax, cinema, night, away), lights per room and effects drawn by the microcontroller; lights that follow people are there but off for now, because their glow confused the webcam.
 - When/If/Then rules that anyone can change from the web app, with a log of who changed what.
 - Built-in constraints: the utility room is off limits after 5 seconds, the bathroom takes one person at a time.
 - A virtual climate: a thermostat you can warm with a finger, and a bathroom whose humidity rises when someone "showers" (blow on the sensor).
@@ -81,7 +81,7 @@ git clone https://github.com/destone28/DomotiQ ~/domotiq
 cd ~/domotiq && bash scripts/install.sh
 ```
 
-No hardware at hand? The house runs in simulation on any PC, with virtual figurines you drag on the plan:
+No hardware at hand? The house runs in simulation on any PC, with virtual figurines you put on the plan:
 
 ```
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt

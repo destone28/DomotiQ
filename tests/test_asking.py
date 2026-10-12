@@ -106,6 +106,7 @@ def test_the_favourite_light_of_a_character(ctx):
 
 
 def test_the_light_of_a_room_takes_the_favourite_colour_of_who_is_in(ctx):
+    ctx.settings.set("lights", {**ctx.settings.get("lights"), "follow": True, "follow_favourite": True})
     marco = place(ctx, "Marco", BEDROOM)
     ctx.identities.update(marco.id, facts=["ha come colore preferito il viola"])
     ctx.house.update_tracks(ctx.sim.tracks(), time.time())

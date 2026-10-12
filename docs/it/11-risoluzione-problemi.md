@@ -120,14 +120,14 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### I tasti fanno la cosa sbagliata
 **Causa.** Il modulo Buttons è montato al contrario.
 
-**Soluzione.** **Impostazioni → Tasti montati al contrario**.
+**Soluzione.** Scrivi `"buttons": {"reversed": true}` in `var/config/settings.json` e riavvia `domotiq`.
 
 ## Luci, relè e ventola
 
 ### Le luci sono più deboli del previsto, e si abbassano quando se ne accendono di più
 **Causa.** Il firmware protegge la linea a 3,3 V del connettore Qwiic: la luminosità è limitata al 30 % e tutte le luci vengono ridotte quando la corrente stimata supera i 450 mA.
 
-**Soluzione.** È voluto. I valori si possono alzare in **Impostazioni** (*Luminosità massima (%)*, *Limite di corrente dei Pixels (mA)*), ma il connettore è dimensionato per 1 A e il regolatore della scheda è condiviso: prova i nuovi valori per 10 minuti prima di usarli (vedi il [capitolo 4](04-collegamenti.md#alimentazione-dei-pixels)).
+**Soluzione.** È voluto. I due valori sono fissi e non stanno nelle impostazioni: il connettore è dimensionato per 1 A e il regolatore della scheda è condiviso (vedi il [capitolo 4](04-collegamenti.md#alimentazione-dei-pixels)).
 
 ### Una luce accesa dal telefono si è spenta da sola
 **Causa.** Le luci manuali durano due minuti, poi la stanza torna alla casa (luci che seguono le persone, scenario, regole).
@@ -157,9 +157,9 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 **Soluzione.** Controlla il cavo USB e `ls /dev/v4l/by-id/`. Se la casa sceglie la webcam sbagliata, scrivi il percorso `by-id` in `var/config/settings.json` sotto `"camera": {"device": "…"}` e riavvia `domotiq`.
 
 ### La diretta mostra un disegno con la scritta *SIMULAZIONE - SIMULATION*
-**Causa.** La simulazione è attiva: la casa ignora la webcam.
+**Causa.** La casa è stata avviata in simulazione da un PC, con `--simulate`: ignora la webcam.
 
-**Soluzione.** **Altro → Simulazione** e spegnila.
+**Soluzione.** Riavvia la casa normalmente, senza `--simulate`.
 
 ### Non viene riconosciuto niente, oppure la *Diagnostica* dice *da calibrare*
 **Causa.** Mancano gli angoli o la casa vuota.
@@ -189,7 +189,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### La casa risponde con qualche secondo di ritardo
 **Causa.** Con la voce naturale ogni frase nuova va sintetizzata, e sulla scheda una frase di tre secondi e mezzo richiede circa 4,5 secondi. Le frasi fisse e quelle già dette partono subito.
 
-**Soluzione.** In **Impostazioni → Voce** scegli *Voce della casa*: **Veloce (meno naturale)**: le frasi sono pronte in un decimo di secondo, con una voce più artificiale. La parola di attivazione riceve il suo "Dimmi!" subito in entrambi i casi.
+**Soluzione.** È normale con la voce naturale, e la casa fa il possibile per accorciare l'attesa: le frasi frequenti sono già pronte in memoria e partono subito, una frase breve nuova si prepara in un paio di secondi, e una risposta lunga parte dalla prima frase mentre la casa prepara le altre. La parola di attivazione riceve il suo "Dimmi!" subito.
 
 ### In una sala molto buia la casa non vede alcune statuine
 **Causa.** La webcam è al massimo del guadagno e dell'esposizione e il suo rumore è alto: le statuine scure su un pavimento scuro non si distinguono più dal pavimento.
@@ -217,12 +217,11 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 **Soluzione.** Monta il totem e fissa i cavi lungo le pareti, poi a casa vuota **Altro → Calibrazione → Salva solo la casa vuota**.
 
 ### La casa vede personaggi che non ci sono, anche a casa vuota
-**Causa.** Quando cambia la luce (il sole nella stanza, le luci colorate della casa che seguono i personaggi) mobili, griglie e prati non somigliano più alla casa vuota, e la rete delle statuine, addestrata con altre luci o su un'altra casa, non è sicura che siano "niente". I colori poi danno loro il nome del personaggio più simile.
+**Causa.** Quando cambia la luce (il sole nella stanza, le luci colorate della casa) mobili, griglie e prati non somigliano più alla casa vuota, e la rete delle statuine, addestrata con altre luci o su un'altra casa, non è sicura che siano "niente". I colori poi danno loro il nome del personaggio più simile.
 
-**Soluzione.** Una presenza nuova a cui la rete risponde "niente" per prima aspetta finché non vede una statuina, anche se la rete non è sicura: quasi tutte queste presenze non vengono più annunciate. Se succede ancora:
+**Soluzione.** Una presenza nuova viene annunciata solo quando la rete vi ha visto una statuina, due volte di fila: quasi tutte queste presenze non vengono più annunciate. Se succede ancora:
 - a casa vuota, con la luce di tutti i giorni, **Altro → Calibrazione → Aggiungi la luce di adesso**, una volta per ogni luce della stanza (mattina, sera, lampada accesa);
-- accendi **Raccolta continua di immagini per la rete**, nel **Registro della visione** segna "niente" le presenze false, e addestra di nuovo la rete con queste immagini e con le foto della casa vuota ([capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine));
-- per non avere nessun annuncio dubbio, **Solo presenze riconosciute dalla rete**.
+- accendi **Raccolta continua di immagini per la rete**, in **Addestramento immagini** segna "niente" le presenze false, e addestra di nuovo la rete con queste immagini e con le foto della casa vuota ([capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine)).
 
 ### Una casa resa uguale a un'altra non riconosce le sue statuine, o le scambia
 **Causa.** Il backup porta i colori delle statuine dell'altra casa, viste sotto la sua luce. Se la casa ha statuine sue, anche dello stesso modello, li cerca invano: le sue diventano nuovi arrivati, prendono il nome sbagliato, o restano ammucchiate dove una mano le ha prese.
@@ -230,7 +229,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 **Soluzione.** Nella scheda di ogni personaggio tocca **Impara di nuovo l'aspetto**, poi di' alla casa chi è ogni statuina: toccandola sulla piantina, rispondendo alle sue domande o a voce. Basta una volta per statuina.
 
 ### Un personaggio eliminato compare ancora
-**Causa.** Il nome resta dove racconta qualcosa che è successo: gli eventi passati e le voci del registro della visione, segnate *(eliminato)*. La rete delle statuine continua a conoscerlo finché non viene addestrata di nuovo, e il registro mostra ancora quello che dice.
+**Causa.** Il nome resta dove racconta qualcosa che è successo: gli eventi passati e le voci di **Addestramento immagini**, segnate *(eliminato)*. La rete delle statuine continua a conoscerlo finché non viene addestrata di nuovo, e **Addestramento immagini** mostra ancora quello che dice.
 
 **Soluzione.** Non serve fare niente: dalle presenze in casa, dalle domande aperte e dalle etichette per la rete sparisce subito. Una regola che lo nominava resta, segnata con ⚠️ *personaggio eliminato*: modificala o eliminala.
 

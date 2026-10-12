@@ -1,6 +1,6 @@
 # DomotiQ guide
 
-DomotiQ is a 1:20 scale smart house that runs entirely offline on a single **Arduino UNO Q 4GB**. A webcam on a pole looks down on the house and follows figurines, pets, a toy car and objects with computer vision. Room lights follow people, rules react to what happens, a voice interface answers questions in Italian and English, and any phone can open the house's own web app over the board's Wi-Fi hotspot.
+DomotiQ is a 1:20 scale smart house that runs entirely offline on a single **Arduino UNO Q 4GB**. A webcam on a pole looks down on the house and follows figurines, pets, a toy car and objects with computer vision. Rules react to what happens with lights, sounds and warnings, a voice interface answers questions in Italian and English, and any phone can open the house's own web app over the board's Wi-Fi hotspot.
 
 This guide covers the whole project, from a factory-new board to a working house. The chapters follow the order in which you build a house.
 

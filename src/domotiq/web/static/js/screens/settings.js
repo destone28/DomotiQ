@@ -6,10 +6,6 @@ import { api, ask, esc, pageHead, toast } from "../app.js";
 import { t, tr } from "../i18n.js";
 
 const NUMBERS = [
-  ["lights.max_brightness", "set.max_brightness", 5, 100],
-  ["lights.current_budget_ma", "set.budget", 100, 1000],
-  ["lights.follow_brightness", "set.follow_brightness", 5, 100],
-  ["lights.follow_off_delay_s", "set.follow_delay", 0, 60],
   ["party.duration_s", "set.party_duration", 10, 60],
   ["grill.duration_s", "set.grill_duration", 5, 120],
   ["climate.hot_delta", "set.hot_delta", 0.3, 5],
@@ -28,28 +24,17 @@ export function mount(root) {
       <div class="card"><h3 class="card-title">🏠 ${t("set.house")}</h3>
         <label class="field"><span>${t("set.house_name")} (IT)</span><input type="text" id="hn-it" value="${esc(tr({ it: s.house.name.it }))}"></label>
         <label class="field"><span>${t("set.house_name")} (EN)</span><input type="text" id="hn-en" value="${esc(s.house.name.en)}"></label>
-        <label class="row spread"><span>${t("set.buttons_reversed")}</span><span class="switch"><input type="checkbox" id="rev" ${s.buttons.reversed ? "checked" : ""}><span></span></span></label>
         <label class="row spread"><span>${t("set.blur_bathroom")}</span><span class="switch"><input type="checkbox" id="blur" ${s.camera.blur_bathroom !== false ? "checked" : ""}><span></span></span></label>
-        <label class="row spread"><span>${t("set.figures")}</span><span class="switch"><input type="checkbox" id="figs" ${s.camera.figures !== false ? "checked" : ""}><span></span></span></label>
-        <p class="muted small">${t("set.figures_hint")}</p>
-        <label class="row spread"><span>${t("set.figures_consent")}</span><span class="switch"><input type="checkbox" id="figc" ${s.camera.figures_consent ? "checked" : ""}><span></span></span></label>
-        <p class="muted small">${t("set.figures_consent_hint")}</p>
         <label class="row spread"><span>${t("set.collect")}</span><span class="switch"><input type="checkbox" id="coll" ${s.camera.collect ? "checked" : ""}><span></span></span></label>
         <label class="field"><span>${t("set.collect_mb")}</span><input type="number" id="collmb" min="50" max="5000" step="50" value="${s.camera.collect_mb || 500}"></label>
         <p class="muted small">${t("set.collect_hint")}</p>
       </div>
-      <div class="card"><h3 class="card-title">💡 ${t("set.lights")} · ${t("set.party")} · ${t("set.grill")} · ${t("set.climate")}</h3>
+      <div class="card"><h3 class="card-title">🎉 ${t("set.party")} · ${t("set.grill")} · ${t("set.climate")}</h3>
         ${NUMBERS.map(([path, label, min, max]) => `<label class="field"><span>${t(label)}</span>
           <input type="number" data-path="${path}" min="${min}" max="${max}" step="any" value="${get(s, path)}"></label>`).join("")}
-        <label class="field"><span>${t("set.follow_color")}</span><input type="color" id="fcol" value="${esc(s.lights.follow_color)}"></label>
-        <label class="row spread"><span>${t("set.follow_favourite")}</span><span class="switch"><input type="checkbox" id="ffav" ${s.lights.follow_favourite !== false ? "checked" : ""}><span></span></span></label>
         <button class="btn primary block" id="save">${t("common.save")}</button>
       </div>
       <div class="card"><h3 class="card-title">🔊 ${t("set.voice")}</h3>
-        <label class="field"><span>${t("set.voice_kind")}</span><select id="voice-kind">
-          <option value="natural" ${s.voice.voice !== "fast" ? "selected" : ""}>${t("set.voice_natural")}</option>
-          <option value="fast" ${s.voice.voice === "fast" ? "selected" : ""}>${t("set.voice_fast")}</option></select></label>
-        <p class="muted small">${t("set.voice_kind_hint")}</p>
         <label class="row spread"><span>${t("set.greet_phones")}</span><span class="switch"><input type="checkbox" id="greet" ${s.voice.greet_phones ? "checked" : ""}><span></span></span></label>
         <label class="row spread"><span>${t("set.chatty_questions")}</span><span class="switch"><input type="checkbox" id="chatq" ${s.voice.chatty_questions ? "checked" : ""}><span></span></span></label>
         <label class="field"><span>${t("set.question_every")}</span>
@@ -86,10 +71,10 @@ export function mount(root) {
       </div>`;
     const $ = (q) => root.querySelector(q);
     $("#save").onclick = $("#save-voice").onclick = async () => {
-      const body = { house: { name: { it: $("#hn-it").value, en: $("#hn-en").value } }, buttons: { reversed: $("#rev").checked },
-        lights: { follow_color: $("#fcol").value, follow_favourite: $("#ffav").checked }, camera: { blur_bathroom: $("#blur").checked, figures: $("#figs").checked, figures_consent: $("#figc").checked,
+      const body = { house: { name: { it: $("#hn-it").value, en: $("#hn-en").value } },
+        camera: { blur_bathroom: $("#blur").checked,
           collect: $("#coll").checked, collect_mb: Math.max(50, Number($("#collmb").value) || 500) },
-        voice: { greet_phones: $("#greet").checked, chatty_questions: $("#chatq").checked, voice: $("#voice-kind").value,
+        voice: { greet_phones: $("#greet").checked, chatty_questions: $("#chatq").checked,
                  wake_enabled: $("#wake").checked, wake_word: $("#wake-word").value.trim() } };
       root.querySelectorAll("[data-path]").forEach(inp => {
         const [a, b] = inp.dataset.path.split(".");

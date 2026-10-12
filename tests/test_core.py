@@ -143,6 +143,7 @@ def test_a_name_given_in_the_web_app_waits_for_the_vision(env):
 
 
 def test_follow_lights_with_delay(env):
+    env.house.settings.set("lights.follow", True)          # off by default for now
     env.house.update_tracks([T("t1", 80, 100, category="person")], now=100)
     assert env.lights.resolve("kitchen", now=100).source == "follow"
     env.house.update_tracks([], now=101)
@@ -154,6 +155,7 @@ def test_follow_lights_with_delay(env):
 def test_at_a_start_the_lights_wait_for_the_vision(env):
     """12 October: lit for the first figurine found at a start, a light of its favourite colour cast a glow that looked
     like other characters while the vision was still looking."""
+    env.house.settings.set("lights.follow", True)
     env.house.follow_after_start()
     env.house.update_tracks([T("t1", 80, 100, category="person")], now=100)
     assert env.lights.resolve("kitchen", now=100).effect == "off"
@@ -565,39 +567,9 @@ def test_sentences_are_kept_on_disk_and_read_back_after_a_restart(tmp_path, monk
     asyncio.run(scenario())
 
 
-def test_the_fast_voice_is_chosen_in_the_settings_and_the_natural_one_stands_in_for_it(tmp_path, monkeypatch):
-    """Two voices (Settings -> Voice): the natural one (Piper) and the fast one (SVOX Pico, a program that writes a
-    WAV file). Each sentence is kept per voice; without the fast program the natural voice speaks."""
-    import sys
+def test_phrases_are_given_to_piper_as_phonemes():
     from domotiq.voice import tts
-    pico = tmp_path / "pico2wave"
-    pico.write_text("#!" + sys.executable + "\n"
-                    "import sys, wave\n"
-                    "out = sys.argv[sys.argv.index('-w') + 1]\n"
-                    "open(sys.argv[0] + '.args', 'w').write(' '.join(sys.argv[1:]))\n"
-                    "w = wave.open(out, 'wb'); w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000)\n"
-                    "w.writeframes(b'\\x10\\x00' * 1600); w.close()\n")
-    pico.chmod(0o755)
-    monkeypatch.setattr(tts, "PICO", str(pico))
-    chosen = {"voice": "fast"}
-
-    async def scenario():
-        sp = tts.Speaker(url="http://127.0.0.1:9/none", cache_dir=tmp_path / "voice", voice=lambda: chosen["voice"])
-        x = await sp.synth("Come si chiama?", "it")
-        assert x is not None and sp.fast_ok and sp.current() == "fast"
-        args = (tmp_path / "pico2wave.args").read_text()
-        assert args.startswith("-l it-IT -w ") and args.endswith('<speed level="140">Come si chiama?</speed>')
-        assert (tmp_path / "voice" / tts.Speaker._name("it", "Come si chiama?", "pico-it-IT")).exists()
-        chosen["voice"] = "natural"
-        assert await sp.synth("Come si chiama?", "it") is None       # another voice: Piper is asked (not there)
-        monkeypatch.setattr(tts, "PICO", str(tmp_path / "missing"))
-        chosen["voice"] = "fast"
-        sp2 = tts.Speaker(url="http://127.0.0.1:9/none", voice=lambda: chosen["voice"])
-        assert await sp2.synth("Vediamo...", "it") is None and sp2.fast_ok is False and sp2.current() == "natural"
-    asyncio.run(scenario())
-    assert tts.normalize("Come si chiama?", "it", phonemes=False) == "Come si chiama?"
     assert "[[" in tts.normalize("Come si chiama?", "it")
-
 
 def test_sentences_prepared_ahead_of_time_are_read_from_their_folder(tmp_path):
     import io

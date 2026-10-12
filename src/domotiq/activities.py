@@ -321,6 +321,14 @@ class Actions:
             lights.clear_prefix("rule:r-climate-")
         await lights.refresh()
 
+    def climate_running(self, mode: str) -> bool:
+        """Whether the wave of the air conditioning ("cool") or of the heating ("warm") is on, asked aloud or
+        started by the thermostat."""
+        now = time.time()
+        return any(r.effect == mode and (not r.expires or r.expires > now)
+                   and (name == "climate" or name.startswith("rule:r-climate-"))
+                   for stack in self.ctx.lights.layers.values() for name, r in stack.items())
+
     async def lights_auto(self, room: str = "all") -> None:
         self.ctx.lights.clear(room, "manual")
         await self.ctx.lights.refresh()

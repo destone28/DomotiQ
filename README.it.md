@@ -2,7 +2,7 @@
 
 ![Il diorama DomotiQ con il palo della webcam](https://raw.githubusercontent.com/destone28/DomotiQ/main/docs/images/render/01_casa_completa.png)
 
-DomotiQ è una casa intelligente in scala 1:20. Una webcam su un palo guarda la casa dall'alto e riconosce chi c'è e in quale stanza: personaggi, animali, un'auto giocattolo e qualsiasi oggetto un visitatore ci metta dentro. Le luci seguono le persone di stanza in stanza, la casa fa rispettare le sue regole (nessuno nel locale tecnico, in bagno uno alla volta), reagisce alla doccia, all'auto che torna a casa o al barbecue, fa partire una festa con musica composta da sé, e parla: i visitatori le fanno domande in italiano o in inglese, suonano il citofono e presentano personaggi nuovi a voce.
+DomotiQ è una casa intelligente in scala 1:20. Una webcam su un palo guarda la casa dall'alto e riconosce chi c'è e in quale stanza: personaggi, animali, un'auto giocattolo e qualsiasi oggetto un visitatore ci metta dentro. La casa fa rispettare le sue regole (nessuno nel locale tecnico, in bagno uno alla volta), reagisce alla doccia, all'auto che torna a casa o al barbecue, fa partire una festa con musica composta da sé, e parla: i visitatori le fanno domande in italiano o in inglese, suonano il citofono e presentano personaggi nuovi a voce.
 
 Tutto gira su una Arduino UNO Q 4GB, senza internet. I telefoni entrano nel Wi-Fi della casa e diventano telecomando, finestra sulla webcam e strumento per scrivere le regole.
 
@@ -13,7 +13,7 @@ English version: [README.md](https://github.com/destone28/DomotiQ/blob/main/READ
 # Cosa fa
 
 - Segue persone, animali, l'auto e gli oggetti con la visione artificiale: posizione in millimetri, stanza, conteggi, identità e storico.
-- Luci che seguono le persone, scenari (normale, relax, cinema, notte, via) ed effetti disegnati dal microcontrollore.
+- Scenari (normale, relax, cinema, notte, via), luci per stanza ed effetti disegnati dal microcontrollore; le luci che seguono le persone ci sono ma per ora sono spente, perché il loro bagliore confondeva la webcam.
 - Regole Quando/Se/Allora che chiunque può cambiare dalla webapp, con il registro di chi ha cambiato cosa.
 - Vincoli di partenza: locale tecnico vietato dopo 5 secondi, bagno per una persona alla volta.
 - Un clima virtuale: un termostato che si scalda con un dito e un bagno la cui umidità sale quando qualcuno "fa la doccia" (basta soffiare sul sensore).
@@ -81,7 +81,7 @@ git clone https://github.com/destone28/DomotiQ ~/domotiq
 cd ~/domotiq && bash scripts/install.sh
 ```
 
-Niente hardware a portata di mano? La casa gira in simulazione su qualsiasi PC, con personaggi virtuali da trascinare sulla piantina:
+Niente hardware a portata di mano? La casa gira in simulazione su qualsiasi PC, con personaggi virtuali da mettere sulla piantina:
 
 ```
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt

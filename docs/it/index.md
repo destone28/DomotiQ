@@ -1,6 +1,6 @@
 # Guida di DomotiQ
 
-DomotiQ è una casa intelligente in scala 1:20 che funziona interamente offline su una sola **Arduino UNO Q 4GB**. Una webcam su un palo guarda la casa dall'alto e, con la visione artificiale, segue personaggi, animali, un'auto giocattolo e oggetti. Le luci delle stanze seguono le persone, le regole reagiscono a quello che succede, un'interfaccia vocale risponde alle domande in italiano e in inglese, e qualsiasi telefono può aprire la webapp della casa attraverso l'hotspot Wi-Fi della scheda.
+DomotiQ è una casa intelligente in scala 1:20 che funziona interamente offline su una sola **Arduino UNO Q 4GB**. Una webcam su un palo guarda la casa dall'alto e, con la visione artificiale, segue personaggi, animali, un'auto giocattolo e oggetti. Le regole reagiscono a quello che succede con luci, suoni e avvisi, un'interfaccia vocale risponde alle domande in italiano e in inglese, e qualsiasi telefono può aprire la webapp della casa attraverso l'hotspot Wi-Fi della scheda.
 
 Questa guida copre tutto il progetto, da una scheda nuova di fabbrica fino a una casa che funziona. I capitoli seguono l'ordine in cui si costruisce una casa.
 

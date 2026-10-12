@@ -683,7 +683,7 @@ class Segmenter:
         """The hands again, after some blobs taken for hands at the edge turned out to be something else: only the
         blobs that are hands by themselves count, and the blobs close to them."""
         for o in obs:
-            o.hand = bool(o.extra.get("edge_hand", o.hand))
+            o.hand = bool(o.extra.get("edge_hand", o.hand)) and not o.extra.get("not_hand")
         self.hand_mask = self._join_hands(obs, self.labels)
         return self.hand_mask
 
@@ -701,8 +701,8 @@ class Segmenter:
             near_hand = cv2.dilate(np.isin(labels, hands).astype(np.uint8), kernel) > 0
             changed = False
             for o in obs:
-                if o.hand:
-                    continue
+                if o.hand or o.extra.get("not_hand"):
+                    continue                     # a hand, or a figurine the network is sure of (Engine)
                 x, y, w, h = o.bbox
                 if (near_hand[y:y + h, x:x + w] & (labels[y:y + h, x:x + w] == o.extra["label"])).any():
                     o.hand = True

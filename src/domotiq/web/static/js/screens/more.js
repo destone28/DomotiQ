@@ -14,11 +14,8 @@ export function mount(root) {
     ${pageHead(t("more.title"), t("more.lead"))}
     <h2>${t("more.house")}</h2>
     <div class="card menu"><ul class="list">
-      ${item("events", "📜", t("more.events"), t("more.events_sub"))}
       ${item("rules", "📏", t("more.rules"), t("more.rules_sub"))}
       ${item("knowledge", "🧠", t("more.knowledge"), t("more.knowledge_sub"))}
-      ${item("sim", "🕹️", t("more.sim"), t("more.sim_sub"))}
-      ${item("about", "ℹ️", t("more.about"))}
     </ul></div>
     <h2>${t("more.setup")}</h2>
     <div class="card menu"><ul class="list">
@@ -26,6 +23,10 @@ export function mount(root) {
       ${item("diagnostics", "🩺", t("more.diagnostics"), t("more.diagnostics_sub"))}
       ${item("journal", "🔎", t("more.journal"), t("more.journal_sub"))}
       ${item("settings", "⚙️", t("more.settings"), t("more.settings_sub"))}
+    </ul></div>
+    <div class="card menu"><ul class="list">
+      ${item("events", "📜", t("more.events"), t("more.events_sub"))}
+      ${item("about", "ℹ️", t("more.about"))}
     </ul></div>
     <h2>${t("more.you")}</h2>
     <div class="card">

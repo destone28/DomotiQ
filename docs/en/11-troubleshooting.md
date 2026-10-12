@@ -120,14 +120,14 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### The buttons do the wrong thing
 **Cause.** The Buttons module is mounted the other way round.
 
-**Fix.** **Settings → Buttons mounted upside down**.
+**Fix.** Write `"buttons": {"reversed": true}` in `var/config/settings.json` and restart `domotiq`.
 
 ## Lights, relay and fan
 
 ### Lights are dimmer than expected, and get dimmer with more rooms on
 **Cause.** The firmware protects the 3.3 V line of the Qwiic connector: brightness is capped at 30 % and all lights are scaled down when the estimated current goes above 450 mA.
 
-**Fix.** This is intended. The values can be raised in **Settings** (*Maximum brightness (%)*, *Pixels current limit (mA)*), but the connector is rated 1 A and the regulator of the board is shared: test at the new values for 10 minutes before using them (see [chapter 4](04-wiring.md#power-of-the-pixels)).
+**Fix.** This is intended. The two values are fixed and are not in the settings: the connector is rated 1 A and the regulator of the board is shared (see [chapter 4](04-wiring.md#power-of-the-pixels)).
 
 ### A light switched on from the phone went off by itself
 **Cause.** Manual lights last two minutes, then the room goes back to the house (follow-me lights, scene, rules).
@@ -157,9 +157,9 @@ The installer (which needs internet) reloads the firmware when needed; without i
 **Fix.** Check the USB cable and `ls /dev/v4l/by-id/`. If the house picks the wrong camera, write the `by-id` path in `var/config/settings.json` under `"camera": {"device": "…"}` and restart `domotiq`.
 
 ### The live view shows a drawing marked *SIMULAZIONE - SIMULATION*
-**Cause.** The simulation is on: the house ignores the webcam.
+**Cause.** The house was started in simulation from a PC, with `--simulate`: it ignores the webcam.
 
-**Fix.** **More → Simulation** and switch it off.
+**Fix.** Restart the house normally, without `--simulate`.
 
 ### Nothing is recognized, or *Diagnostics* says *not calibrated*
 **Cause.** The corners or the empty house are missing.
@@ -189,7 +189,7 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### The house answers a few seconds late
 **Cause.** With the natural voice every new sentence must be synthesized, and on the board a sentence of three and a half seconds takes about 4.5 seconds. Fixed sentences and those already said start at once.
 
-**Solution.** In **Settings → Voice** choose *Voice of the house*: **Fast (less natural)**: sentences are ready in a tenth of a second, with a more artificial voice. The keyword gets its "Yes?" at once either way.
+**Solution.** This is normal with the natural voice, and the house does what it can to shorten the wait: the frequent sentences are already in memory and start at once, a short new sentence takes a couple of seconds, and a long answer starts from the first sentence while the house prepares the others. The keyword gets its "Yes?" at once.
 
 ### In a very dark hall the house does not see some figurines
 **Cause.** The webcam is at its highest gain and exposure and its noise is high: dark figurines on a dark floor no longer stand out from the floor.
@@ -217,12 +217,11 @@ The installer (which needs internet) reloads the firmware when needed; without i
 **Fix.** Mount the totem and run the cables along the walls, then with the house empty **More → Calibration → Save the empty house only**.
 
 ### The house sees characters that are not there, even with the house empty
-**Cause.** When the light changes (the sun in the room, the coloured lights of the house following the characters) furniture, grilles and lawns no longer look like the empty house, and the network of the figurines, trained under other lights or on another house, is not sure they are "niente". The colours then give them the name of the most alike character.
+**Cause.** When the light changes (the sun in the room, the coloured lights of the house) furniture, grilles and lawns no longer look like the empty house, and the network of the figurines, trained under other lights or on another house, is not sure they are "niente". The colours then give them the name of the most alike character.
 
-**Solution.** A new presence the network answers "niente" first for waits until it sees a figurine, even when the network is not sure: almost all these presences are no longer announced. If it still happens:
+**Solution.** A new presence is announced only when the network has seen a figurine in it, twice in a row: almost all these presences are no longer announced. If it still happens:
 - with the house empty, in the everyday light, **More → Calibration → Add the light of now**, once for every light of the room (morning, evening, lamp on);
-- switch on **Continuous collection of pictures for the network**, mark the false presences "nothing" in the **Vision journal**, and train the network again with these pictures and the photos of the empty house ([chapter 7](07-recognition-and-identities.md#the-network-that-knows-the-figurines));
-- to have no doubtful announcement at all, **Only presences the network recognizes**.
+- switch on **Continuous collection of pictures for the network**, mark the false presences "nothing" in **Image training**, and train the network again with these pictures and the photos of the empty house ([chapter 7](07-recognition-and-identities.md#the-network-that-knows-the-figurines)).
 
 ### A house made like another one does not recognize its figurines, or mixes them up
 **Cause.** The backup brings the colours of the figurines of the other house, seen under its light. If the house has its own figurines, even of the same model, it looks for those colours in vain: its own become newcomers, take the wrong name, or stay piled up where a hand took them.
@@ -230,7 +229,7 @@ The installer (which needs internet) reloads the firmware when needed; without i
 **Solution.** On the card of every character tap **Learn the look again**, then tell the house who every figurine is: by tapping it on the plan, answering its questions, or aloud. Once per figurine is enough.
 
 ### A deleted character still shows up
-**Cause.** The name stays where it tells something that happened: the past events and the entries of the vision journal, marked *(deleted)*. The network of the figurines keeps knowing it until it is trained again, and the journal still shows what it says.
+**Cause.** The name stays where it tells something that happened: the past events and the entries of **Image training**, marked *(deleted)*. The network of the figurines keeps knowing it until it is trained again, and **Image training** still shows what it says.
 
 **Solution.** Nothing to do: it leaves at once the presences in the house, the open questions and the labels for the network. A rule that named it stays, marked ⚠️ *deleted character*: change it or delete it.
 

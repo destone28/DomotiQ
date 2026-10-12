@@ -1045,3 +1045,20 @@ Mentre scaricava le immagini di App Lab, la scheda non rispondeva in rete per un
 **Scelta:** quando si indica nella webapp qualcosa che la casa non segue, la casa vuota torna com'era salvata su tutta la macchia diversa da essa in quel punto, non più solo in un cerchio di 28 pixel intorno al punto.
 
 **Perché:** una luce della sala salita del 37% aveva fatto reimparare più volte la casa vuota mentre l'auto, contro il muro di fondo del garage, non era seguita, e l'auto vi era entrata. Indicata, tornava solo il cerchio intorno al punto: un pezzo d'auto di 55×51 pixel invece di 132×69, poi perso anche quello.
+
+### D-91 — Una webapp più semplice (12/10)
+**Scelta:**
+- **Comandi.** Tolti gli scenari e l'interruttore delle luci che seguono le persone. Sotto *Loquacità* un suggerimento spiega le tre voci della casa.
+- **Altro.** *Eventi* e *Informazioni* sono le ultime due voci. *Simulazione* non è più nel menu. *Registro della visione* si chiama *Addestramento immagini*, con la spiegazione che serve ad addestrare la rete neurale a riconoscere meglio presenze e assenze.
+- **Impostazioni.** Tolti *Tasti montati al contrario*, *Luminosità massima*, *Limite di corrente dei Pixels* (restano i valori di serie, 30% e 450 mA) e la scelta della voce. Tolte anche le regolazioni delle luci che seguono (luminosità, spegnimento, colore, colore preferito): restano salvate e torneranno con loro.
+- **La rete, sempre.** Non si sceglie più se usarla come secondo parere o per annunciare solo ciò che riconosce: la casa la usa sempre, ed è sempre lei a dare il consenso prima che una presenza nuova venga annunciata.
+- **Una voce sola.** La voce veloce (SVOX Pico) è tolta, anche dall'installazione: la casa parla con la voce naturale (Piper), frase per frase.
+- **Le luci che seguono** sono spente di serie e, quando torneranno, in un bianco caldo quasi neutro (`#fff2e0`), senza il colore preferito di chi entra.
+- **Il climatizzatore a voce.** "Puoi spegnere il climatizzatore", "climatizzatore spento" e il plurale ("spegni i climatizzatori") ora spengono. Il nome da solo ("climatizzatore", "riscaldamento") fa da interruttore: spegne se è acceso, anche quando l'ha acceso il termostato, e accende se è spento. "Spendi" e "segni" davanti al nome valgono "spegni".
+
+**Perché:** richieste di Emilio dopo le prove del 12 ottobre. Le luci e i loro bagliori confondevano la visione; le scelte tolte erano messe a punto da tecnico, che chi usa la casa non deve toccare. Il comando del climatizzatore riconosceva solo "spegni": con "spegnere" e "spento" accendeva, e con il plurale ("climatizzatori") la frase diventava un comando delle luci. I registri della casa mostrano però anche un'altra causa: il riconoscimento vocale perde spesso un "spegni" detto in fretta. Nelle prove del 10 e del 12 ottobre lo spegnimento è riuscito solo quando la frase è arrivata intera ("spegni climatizzatore", e con poca sicurezza); altre volte sono arrivati "climatizzatore" o "condizionatore" da soli, "spendi climatizzatore" e "segni climatizzatore", e la casa ha acceso. Chi dice il nome del climatizzatore acceso vuole quasi sempre spegnerlo.
+
+### D-92 — Le statuine vicino a una "mano" (12/10)
+**Scelta:** una macchia della grandezza di una statuina, che è "mano" solo perché vicina a una mano, ferma da 3 secondi e che la rete riconosce almeno al 90%, non è una mano. La decisione resta legata a quel punto finché la statuina non si sposta. L'auto, per la regola di D-88, può essere grande fino a 30 000 mm².
+
+**Perché:** nell'altra casa, a un avvio, il prato del vialetto illuminato in modo diverso dalla casa vuota era una "mano" lungo il bordo anteriore. Romeo e Rossellina, vicini, erano diventati "mano" anche loro, e dopo 8 secondi erano entrati nella casa vuota. L'auto, con il bagliore del garage, faceva una macchia di 23 000 mm², oltre il limite di 20 000, e non veniva riconosciuta come auto. Dopo la correzione, al riavvio la casa ha riconosciuto tutti gli undici personaggi. Le dita si muovono, una statuina sta ferma: per questo serve che la macchia resti ferma prima di chiedere alla rete.

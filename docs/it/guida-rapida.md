@@ -63,7 +63,7 @@ Sul telefono scegli la rete `DomotiQ-Casa1`, scrivi la password del Wi-Fi e apri
 - **Calibrazione**: togli statuine e auto → tocca i 4 angoli della base (davanti a sinistra, davanti a destra, dietro a destra, dietro a sinistra; davanti = vialetto) → **Usa questi angoli**: la casa regola da sola la luce e salva la casa vuota (circa 15 secondi, con una rotellina; non toccare la casa) → controlla che le pareti disegnate coincidano con quelle vere. Calibra prima di far usare la casa ad altri: fino ad allora la sfocatura può solo indovinare dove si trova il bagno.
 - **Diagnostica**: moduli, scansione I2C, **Prova audio**, **Prova microfono (3 s)**, registri.
 - **Impostazioni**: luminosità e durate, password del Wi-Fi, **Usa l'ora di questo telefono**, backup, cestino, riavvio dell'app, riavvio e spegnimento della scheda.
-- **Comandi → Fai dire alla casa**; **Comandi → Fai una domanda** (la casa chiede qualcosa a un personaggio e se lo segna); **Simulazione** accesa e spenta.
+- **Comandi → Fai dire alla casa**; **Comandi → Fai una domanda** (la casa chiede qualcosa a un personaggio e se lo segna).
 - **Impostazioni → Voce → Attivazione con la parola chiave**: detta la parola (per esempio *Casa*), i LED lampeggiano subito e, se non continui, la casa risponde "Dimmi!" e ascolta come con Parla. Si può anche dire tutto di fila: "Casa, accendi la luce in cucina".
 - **Allarme**: riquadro in fondo alla pagina **Casa**, **Inserisci** / **Disinserisci**.
 

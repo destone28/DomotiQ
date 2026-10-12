@@ -100,9 +100,6 @@ fi
 sudo NEEDRESTART_SUSPEND=1 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     python3-venv python3-dev build-essential cmake git curl rsync unzip \
     alsa-utils v4l-utils iw sqlite3 avahi-daemon dnsmasq-base libgomp1 >/dev/null
-# the fast voice of Settings -> Voice: SVOX Pico, in the non-free component of Debian (on in the factory image)
-sudo NEEDRESTART_SUSPEND=1 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    libttspico-utils >/dev/null && ok "fast voice (SVOX Pico)" || echo "    SVOX Pico not installed: only the natural voice"
 sudo systemctl enable --now avahi-daemon >/dev/null 2>&1 || true
 # the factory image does not start ssh at boot: after a restart the board would answer only over USB
 sudo systemctl enable --now ssh >/dev/null 2>&1 || true

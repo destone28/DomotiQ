@@ -7,7 +7,7 @@ La catena vocale ha quattro parti:
 - **Riconoscimento vocale**: Vosk, con i modelli piccoli italiano e inglese, sulla scheda.
 - **Comprensione**: un analizzatore a regole, veloce, per le frasi più comuni; le frasi che non capisce passano a un piccolo modello linguistico, Qwen2.5-0.5B-Instruct su llama.cpp, che sceglie soltanto cosa fare.
 - **Risposte**: sempre composte dal codice a partire dallo stato reale della casa.
-- **Sintesi vocale**: due voci a scelta, per l'italiano e per l'inglese: quella naturale (Piper) e quella veloce (SVOX Pico).
+- **Sintesi vocale**: Piper, con una voce naturale per l'italiano e una per l'inglese.
 
 ## I tasti
 
@@ -90,7 +90,7 @@ Gli esempi qui sotto vengono capiti direttamente dall'analizzatore a regole. Tol
 | Scenari | Scenario cinema · Scenario relax · Modalità via · Buonanotte · Buongiorno | Cinema mode · Relax scene · Away mode · Good night · Good morning |
 | Festa | Fai festa · Balliamo | Let's dance · Party |
 | Barbecue | Accendi il barbecue · Spegni il barbecue | Light the barbecue · Turn off the barbecue |
-| Climatizzatore e riscaldamento | Accendi il condizionatore · Accendi il clima · Accendi il riscaldamento · Spegni il climatizzatore | Turn on the air conditioning · Turn off the heating |
+| Climatizzatore e riscaldamento | Accendi il condizionatore · Accendi il clima · Accendi il riscaldamento · Spegni il climatizzatore · Spegni i climatizzatori | Turn on the air conditioning · Turn off the heating |
 | L'auto | Dov'è la macchina? | Where is the car? |
 | Tutta la casa | Com'è la casa? · Cosa succede? | How is the house? · What's happening? |
 | Aiuto | Cosa sai fare? | What can you do? |
@@ -122,7 +122,7 @@ Qualche dettaglio:
 - Subito dopo una domanda su una stanza (chi c'è, quanti, temperatura, umidità, luci), per un minuto e mezzo basta dire un'altra stanza: "E in bagno?" fa la stessa domanda per il bagno.
 - A una domanda su un personaggio senza nome, se poco prima non si è parlato di nessuno ("che lavoro fa?"), la casa chiede "Di chi?" e ascolta la risposta senza Parla.
 - "Dov'è Emilio?" con un nome che la casa non conosce risponde "Non conosco nessuno che si chiama Emilio."
-- "Accendi il condizionatore" (o il climatizzatore, il clima) fa quello che fa il termostato quando sente caldo: "Accendo il climatizzatore." e un'onda azzurra in tutte le stanze per due minuti. "Accendi il riscaldamento" fa un'onda arancione, "spegni il climatizzatore" la ferma. La casa non ha un climatizzatore vero: la ventola del plastico è quella del barbecue.
+- "Accendi il condizionatore" (o il climatizzatore, il clima) fa quello che fa il termostato quando sente caldo: "Accendo il climatizzatore." e un'onda azzurra in tutte le stanze per due minuti. "Accendi il riscaldamento" fa un'onda arancione, "spegni il climatizzatore" la ferma. Se la casa sente solo il nome ("climatizzatore", "riscaldamento"), perché un "spegni" detto in fretta si perde facilmente, fa da interruttore: spegne l'onda se c'è, anche quella del termostato, e la accende se non c'è. La casa non ha un climatizzatore vero: la ventola del plastico è quella del barbecue.
 - Un'informazione su un personaggio detta così com'è, senza "ricorda che", si aggiunge a quelle che la casa sa di lui: "il colore preferito di Mister Blu è l'azzurro" → "Me lo ricorderò: Mister Blu ha come colore preferito l'azzurro." Per il colore prende il posto di quello detto prima, e la luce preferita lo segue. Detta come domanda ("qual è il colore preferito di Mister Blu?") resta una domanda.
 - Una o due parole che la casa non capisce ricevono "Non ho capito", non una risposta inventata.
 - Alcune frasi che il riconoscimento sbagliava al banco sono capite come erano state dette: "fai presto" e "let's body" fanno festa.
@@ -162,7 +162,7 @@ La casa risponde poi alle domande su quello che sa, anche dette con altre parole
 
 **Cosa ne fa.** Tre risposte la casa le usa per agire:
 
-- **Il colore preferito** ("Marco, qual è il tuo colore preferito?"): nello scenario Normale la luce di una stanza prende il colore preferito di chi c'è (di chi è entrato per ultimo, tra quelli che l'hanno detto; si spegne con **Luce del colore preferito di chi entra** in **Impostazioni**), e "accendi la luce preferita di Marco" accende la stanza in cui si trova Marco, o quella detta ("...in cucina"), del suo colore. Se Marco non l'ha ancora detto e si trova in casa, la casa glielo chiede subito e la risposta accende la stanza.
+- **Il colore preferito** ("Marco, qual è il tuo colore preferito?"): "accendi la luce preferita di Marco" accende la stanza in cui si trova Marco, o quella detta ("...in cucina"), del suo colore. Se Marco non l'ha ancora detto e si trova in casa, la casa glielo chiede subito e la risposta accende la stanza. Con le luci che seguono le persone accese (per ora sono spente di serie, vedi il [capitolo 9](09-regole.md#priorità-e-livelli-delle-luci)) e **Luce del colore preferito di chi entra** accesa in **Impostazioni** (spenta di serie), nello scenario Normale la luce di una stanza prende anche il colore preferito di chi c'è, di chi è entrato per ultimo tra quelli che l'hanno detto.
 - **Ama ballare** ("Marco, ti piace ballare?"): in modalità chiacchierona, quando Marco è in soggiorno con qualcun altro, la casa gli propone una festa ("Marco, tu che ami ballare: facciamo festa?").
 - **Ama le grigliate** ("Marco, ti piacciono le grigliate?"): quando Marco è in giardino, la casa gli propone il barbecue ("Marco, tu che adori le grigliate: accendo il barbecue?").
 
@@ -211,9 +211,7 @@ Il microfono è acceso solo mentre la casa ascolta, a 16 kHz mono: mentre Parla 
 
 ## Sintesi vocale
 
-**Due voci.** In **Impostazioni → Voce**, *Voce della casa*: **Naturale (più lenta)** è Piper, più piacevole; **Veloce (meno naturale)** è SVOX Pico, più artificiale ma pronta subito. Sulla scheda, con la casa accesa, una frase di tre secondi e mezzo richiede a Piper circa 4,5 secondi, a Pico circa un decimo di secondo. La scelta vale per l'italiano e per l'inglese; le frasi già dette restano pronte per entrambe le voci. Pico (`pico2wave`, pacchetto `libttspico-utils` di Debian) è un programma separato: senza di lui la casa usa la voce naturale. Parla un po' più in fretta del suo passo normale, che è lento.
-
-**Una frase alla volta.** Una risposta di più frasi si prepara frase per frase: la casa dice la prima mentre prepara la seconda. Con la voce naturale la prima frase si sente dopo il tempo che serve per lei sola, non per tutta la risposta.
+**Una frase alla volta.** Sulla scheda, con la casa accesa, una frase di tre secondi e mezzo richiede a Piper circa 4,5 secondi. Per questo una risposta di più frasi si prepara frase per frase: la casa dice la prima mentre prepara la seconda, e la prima frase si sente dopo il tempo che serve per lei sola, non per tutta la risposta.
 
 
 Piper (`piper1-gpl`, GPL-3.0) gira come programma separato nel servizio `domotiq-tts`, e la casa gli manda le frasi via HTTP sull'interfaccia di loopback. Le voci sono `it_IT-serena-medium` (CC BY 4.0) e `en_US-ljspeech-medium` (pubblico dominio). Numeri e unità di misura vengono pronunciati come si deve ("24.3 °C" diventa "24 virgola 3 gradi" in italiano e "24 point 3 degrees" in inglese). Le frasi frequenti ("Chi è?", "Vediamo…", "Si balla!"…) vengono preparate all'avvio e tenute in memoria, così partono subito anche quando il processore è impegnato. **Ogni frase sintetizzata si salva anche su disco**, in `var/voice/` (un file WAV per frase, con il nome ricavato dalla voce e dal testo): dopo un riavvio la casa la rilegge in un attimo invece di chiederla di nuovo a Piper, quindi le frasi frequenti sono pronte subito e Piper lavora solo per quelle mai dette. Restano al massimo 3000 frasi; quando sono di più si cancellano quelle non dette da più tempo. Se cambia la voce, le frasi si sintetizzano di nuovo. **Le frasi fisse** (oggi 239, quelle senza nomi né numeri: il campanello, le domande, le conferme, le risposte preparate) **si possono preparare in anticipo** con `scripts/voice_cache.py`, che le prende dal codice stesso della casa e le scrive in `models/voice-cache/`. La casa legge anche quella cartella, quindi una casa nuova le dice subito dal primo avvio. Lo script si può lanciare sulla scheda, con il suo Piper, oppure su un PC con la stessa versione di Piper e le stesse voci; `release.sh` copia la cartella dal PC alla scheda (vedi il [capitolo 2](02-installazione.md)). Sul PC servono 50 secondi; sulla scheda circa 13 minuti. Alcune frasi si passano a Piper già trascritte in fonemi, dove la voce italiana mangerebbe una vocale: "Come si chiama?" usciva come "Cme s chiama?", perché la trascrizione automatica legge "si" come una vocale ridotta. La casa non dice mai "Mmm" o "Hmm": le voci li leggono lettera per lettera ("emme emme emme"). Le frasi che li usavano ora dicono "Fammi pensare...", "Ah," o "Scusa,", e un "Mmm" rimasto in una frase scritta da qualcuno viene tolto prima della sintesi.

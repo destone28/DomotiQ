@@ -92,7 +92,7 @@ Later:
 
 1. **Characters → + Add.** Type a name, optionally take a photo, tap **Next**.
 2. Put the figurine on a free spot of the house. The house finds it and asks what it is, proposing a kind; tap the right one and **Save**.
-3. On the **House** screen the figurine appears with its name. Move it into another room: that room's light turns on, and turns off 3 seconds after the room is empty.
+3. On the **House** screen the figurine appears with its name. Move it into another room: on the plan it moves into that room. The follow-me lights are off by default for now ([chapter 9](09-rules.md#priorities-and-light-layers)), so the light of the room stays as it is.
 4. Pick it up with your hand and put it down in another room: it keeps its name.
 
 [Chapter 7](07-recognition-and-identities.md) explains the registration and its warnings in detail.
@@ -108,7 +108,7 @@ Then ask something the fixed phrases do not cover, such as "Quanta gente c'è in
 - Press **Intercom**, say the name of the registered character, and within 60 seconds move that figurine from the driveway through the front door into the living room: it takes that name.
 - Put two person figurines in the bathroom: after 2 seconds the bathroom blinks orange and the house says "The bathroom is taken! Please wait your turn."
 - Leave a person figurine in the utility room for more than 5 seconds: red alarm lights in living room and garage, "Warning: the utility room is off limits!", and a red banner on the phones until it leaves.
-- Drive the car through the garage gate: "Welcome home!" and the garage light. Leave it still in the parking area for 3 seconds: it counts as parked and the garage light goes off 10 seconds later.
+- Drive the car through the garage gate: "Welcome home!". Leave it still in the parking area for 3 seconds: it counts as parked, and the **Car** card of the **House** screen says so. With the follow-me lights on (they are off by default) the garage light turns on too, and goes off 10 seconds after parking.
 - **Controls → Party!**: "Let's dance!", 20 seconds of music and lights, "The party is over!".
 
 ## 13. Hotspot and phones
@@ -123,6 +123,6 @@ The UNO Q has no battery for its clock and, without internet, cannot set the tim
 
 ## Testing without figurines
 
-**More → Simulation** replaces the webcam with virtual characters you drag on the plan, plus virtual sensors and buttons. Lights, voice and rules react as they do to real figurines. The switch *Real lights and voice muted* keeps the real house quiet while you try things. Remember to switch the simulation off: while it is on, the house ignores the webcam.
+The whole house also runs on a PC, in simulation and without any hardware: start it with `--simulate` (see [chapter 6](06-web-app.md#trying-the-web-app-on-a-pc)). Instead of the webcam there are virtual figurines: tapping **Unrecognized item** and then a spot on the plan puts one there. Lights, voice and rules react as they do to real figurines. While the simulation is on the house ignores the webcam; to go back to the real house, just restart it normally, without `--simulate`.
 
 Next: [the web app](06-web-app.md).

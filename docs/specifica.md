@@ -488,7 +488,7 @@ Se dopo 2 minuti dall'avvio l'ora è ancora sconosciuta, la casa lo chiede una v
 - **Chiunque** può fare tutto (D-26): casa virtuale, diretta, comandi, eventi, regole, identità, simulazione, allarme, calibrazione, dataset, diagnostica, impostazioni (ora compresa), ripristino dal cestino. Le azioni che non si annullano chiedono conferma; ogni modifica va nel registro.
 
 ### 15.3 Schermate
-Barra in basso: **Casa**, **Diretta**, **Comandi**, **Personaggi**, **Altro**. Ogni pagina comincia con titolo, una riga che dice a cosa serve e l'azione principale a destra del titolo. **Altro** è diviso in due gruppi: *La casa* (Eventi, Regole, Simulazione, Informazioni) e *Messa a punto* (Calibrazione, Diagnostica, Impostazioni), più il soprannome. Il Tabellone non è nel menu: si apre scrivendo `/board`.
+Barra in basso: **Casa**, **Diretta**, **Comandi**, **Personaggi**, **Altro**. Ogni pagina comincia con titolo, una riga che dice a cosa serve e l'azione principale a destra del titolo. **Altro** è diviso in gruppi: *La casa* (Regole, Cosa ha imparato), *Messa a punto* (Calibrazione, Diagnostica, Addestramento immagini, Impostazioni), poi Eventi e Informazioni, più il soprannome. Il Tabellone non è nel menu: si apre scrivendo `/board`; lo stesso vale per la Simulazione (`#/sim`), che serve solo su un PC avviato con `--simulate`.
 
 Notifiche in cima, un colore per tipo: rosso un allarme (con **Disinserisci**), ambra un avviso, grigio la connessione persa, scheda bianca con bordo verde acqua una domanda della casa (con **Tutti e due** quando i nomi proposti sono più di uno).
 
@@ -501,9 +501,9 @@ Notifiche in cima, un colore per tipo: rosso un allarme (con **Disinserisci**), 
 3. **Regole**: elenco con interruttori; editor Quando/Se/Allora a moduli; scenari; cestino.
 4. **Identità**: elenco con foto o sagoma; "Aggiungi" guidato (§9.2); rinomina, cancella.
 5. **Eventi**: eventi e notifiche, frasi dette dalla casa, registro delle modifiche, storico per identità.
-6. **Comandi**: party, grigliata, scenari, luci per stanza (colore ed effetto), lingua, loquacità, volume.
+6. **Comandi**: party, grigliata, luci per stanza (colore ed effetto), lingua, loquacità (con una riga che spiega i tre livelli), volume. Gli scenari si cambiano a voce o dalle regole.
 7. **Calibrazione**: quattro angoli, verifica delle sovrapposizioni, casa vuota, "regola di nuovo".
-8. **Simulazione**: personaggi virtuali da trascinare, sensori virtuali (temperature, umidità, tasti), interruttore per silenziare luci e voce vere. Sul PC gira senza alcun hardware.
+8. **Simulazione** (fuori dal menu, `#/sim`): personaggi virtuali da trascinare, sensori virtuali (temperature, umidità, tasti), interruttore per silenziare luci e voce vere. Sul PC gira senza alcun hardware.
 9. **Diagnostica**:
    - Modulino per canale dell'Hub e scansione I2C;
    - webcam, audio (suono di prova, registrazione di 3 s), Wi-Fi e client collegati;

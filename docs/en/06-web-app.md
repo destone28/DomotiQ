@@ -74,10 +74,9 @@ When the camera is missing for more than a few seconds the screen says *The webc
 
 - **Party!**: 20 seconds of dance music composed by the house's own code, with a light show on every Pixels. There is a 30-second pause before the next party.
 - **Barbecue** / **Stop the barbecue**: starts or stops the fan of the barbecue.
-- **Scenes**: Normal, Cinema, Relax, Night, Away (see [chapter 9](09-rules.md#scenes)).
-- **Lights**: choose a room or *All rooms*; every choice reaches the house at once, with no other button. One of ten colours turns the light on, **A** gives it back to the house, the crossed circle turns it off; the effect (*Steady*, *Breathe*, *Blink*, *Wave*, *Rainbow*, *Sparkle*, *Fire*) and the brightness change the light already on. Choosing a room shows how its light is right now. A light turned on here lasts two minutes, turned off it stays dark for one minute, then the room goes back to the house. The switch **Lights follow people** turns the follow-me lights on or off for the whole house.
-- **Voice of the house**: **Language of the house** (Italiano, English), **Talkativeness** (Silent, Normal, Chatty), **Volume**, **Ring the doorbell** (starts the intercom conversation as if the button of the totem had been pressed).
-- **Questions to the characters**: **Ask a question** makes the house ask, right away, a question to a character picked at random among those in the house, preferring what it does not know about it yet (the favourite colour, whether it loves dancing or barbecues, the favourite dish, where it comes from...). The answer is heard without Talk and kept among its facts; then the house uses it: the light in its favourite colour when it comes into a room or with "turn on Marco's favourite colour", a party if it loves dancing, the barbecue if it loves barbecues (see [chapter 8](08-voice.md#what-the-house-knows-about-the-characters)). The same button, for one character, is on its card in **Characters**. It works outside chatty mode too, but not in silent mode.
+- **Lights**: choose a room or *All rooms*; every choice reaches the house at once, with no other button. One of ten colours turns the light on, **A** gives it back to the house, the crossed circle turns it off; the effect (*Steady*, *Breathe*, *Blink*, *Wave*, *Rainbow*, *Sparkle*, *Fire*) and the brightness change the light already on. Choosing a room shows how its light is right now. A light turned on here lasts two minutes, turned off it stays dark for one minute, then the room goes back to the house.
+- **Voice of the house**: **Language of the house** (Italiano, English), **Talkativeness** (Silent, Normal, Chatty), **Volume**, **Ring the doorbell** (starts the intercom conversation as if the button of the totem had been pressed). Under **Talkativeness** a line explains the three levels: *Silent: the house never speaks, its answers only show as captions on the phones. Normal: it answers, gives the warnings and tells who comes in, goes out or changes room. Chatty: like Normal, plus offers, comments and questions to the characters.*
+- **Questions to the characters**: **Ask a question** makes the house ask, right away, a question to a character picked at random among those in the house, preferring what it does not know about it yet (the favourite colour, whether it loves dancing or barbecues, the favourite dish, where it comes from...). The answer is heard without Talk and kept among its facts; then the house uses it: the light in its favourite colour with "turn on Marco's favourite colour", a party if it loves dancing, the barbecue if it loves barbecues (see [chapter 8](08-voice.md#what-the-house-knows-about-the-characters)). The same button, for one character, is on its card in **Characters**. It works outside chatty mode too, but not in silent mode.
 - **Make the house say**: type a sentence and tap **Make it speak**: the house says it.
 
 When a command cannot run right now (a party is already on, or resting), a message says *Already running or resting, try again in a moment*.
@@ -97,10 +96,11 @@ The house keeps events for 7 days and positions for 24 hours.
 
 ## More
 
-Every other page, in two groups, plus your nickname:
+Every other page, in three groups, plus your nickname:
 
-- **The house**: **Events**, **Rules**, **What it learned**, **Simulation**, **About**;
-- **Setting up**: **Calibration**, **Diagnostics**, **Vision journal**, **Settings**;
+- **The house**: **Rules**, **What it learned**;
+- **Setting up**: **Calibration**, **Diagnostics**, **Image training** (*Teaches the neural network to recognize presences and absences in the house better*), **Settings**;
+- in a group with no title, the last two items of the menu: **Events** and **About**;
 - **You**: **Your nickname**, shown in the change log.
 
 ### Rules
@@ -127,13 +127,7 @@ Every change goes into the change log.
 
 <img src="../images/screens/en/identities.png" alt="Characters and objects" width="260">
 
-The list of registered characters, pets, cars and objects, with photo or silhouette, kind, and where they are now (*Now: Kitchen*, or *Not in sight*). **+ Add** starts the guided registration; tapping one opens its card, where you can change **Name**, **Kind**, **English pronunciation (optional)** and **Who they are (for the stories)** (one thing per line, as it would follow the name: *is a doctor*, *loves jazz*, *is afraid of spiders*; the house uses them in stories and answers, see [chapter 8](08-voice.md#stories-memories-and-free-questions)), or **Delete** it (it stays in the bin for 24 hours). A deleted character also leaves at once the presences in the house, the open questions and the labels of the vision journal; a rule that named it stays, marked ⚠️ *deleted character*. **Learn the look again** makes the house forget the colours, poses and size of the character, which it learns again the first time somebody says who it is: useful when the figurine is another one, for example in a house made like another one but with its own figurines. See [chapter 7](07-recognition-and-identities.md).
-
-### Simulation
-
-<img src="../images/screens/en/sim.png" alt="Simulation" width="260">
-
-Virtual characters dragged on the plan instead of real figurines, virtual sensors (thermostat and bathroom temperature and humidity) and the three buttons of the totem (**Talk** is held down as on the totem). Anyone can turn it on or off. **Real lights and voice muted** keeps the real house quiet while you try. While the simulation is on, the house ignores the webcam. Drag a virtual character out of the house to remove it.
+The list of registered characters, pets, cars and objects, with photo or silhouette, kind, and where they are now (*Now: Kitchen*, or *Not in sight*). **+ Add** starts the guided registration; tapping one opens its card, where you can change **Name**, **Kind**, **English pronunciation (optional)** and **Who they are (for the stories)** (one thing per line, as it would follow the name: *is a doctor*, *loves jazz*, *is afraid of spiders*; the house uses them in stories and answers, see [chapter 8](08-voice.md#stories-memories-and-free-questions)), or **Delete** it (it stays in the bin for 24 hours). A deleted character also leaves at once the presences in the house, the open questions and the labels of **Image training**; a rule that named it stays, marked ⚠️ *deleted character*. **Learn the look again** makes the house forget the colours, poses and size of the character, which it learns again the first time somebody says who it is: useful when the figurine is another one, for example in a house made like another one but with its own figurines. See [chapter 7](07-recognition-and-identities.md).
 
 ### Calibration
 
@@ -149,17 +143,17 @@ Refreshed every few seconds:
 - **Modulino**: the state of the link with the microcontroller, the firmware protocol version, and a green or red dot for each module.
 - Buttons: **I2C scan** (addresses answering on each Hub channel), **Audio test**, **Microphone test (3 s)**, **Download the logs** (shows the last 500 lines of the application log and saves them as a file).
 
-### Vision journal
+### Image training
 
-Every new presence announced, every name given and every blob refused by the network of the figurines, with its picture, the latest first (the last 600). For each one: **Right**, or **It was…** with the right character or "nothing (not a figurine)". The name of a character deleted since stays in the entry, marked *(deleted)*, but has no **Right** any more: it can only be corrected. The answers become verified examples for the next training of the network (see [chapter 7](07-recognition-and-identities.md#the-network-that-knows-the-figurines)). The pictures keep the blur of what is outside the house and, if on, of the bathroom.
+Teaches the neural network to recognize presences and absences in the house better. It shows every new presence announced, every name given and every blob refused by the network of the figurines, with its picture, the latest first (the last 600). For each one: **Right**, or **It was…** with the right character or "nothing (not a figurine)". The name of a character deleted since stays in the entry, marked *(deleted)*, but has no **Right** any more: it can only be corrected. The answers become verified examples for the next training of the network (see [chapter 7](07-recognition-and-identities.md#the-network-that-knows-the-figurines)). The pictures keep the blur of what is outside the house and, if on, of the bathroom.
 
 ### Settings
 
 <img src="../images/screens/en/settings.png" alt="Settings" width="260">
 
-- **House**: the name of the house in Italian and English; **Buttons mounted upside down**, for a totem assembled the other way round; **Bathroom blurred in the live view**, on by default.
-- **Lights · Party · Barbecue · Climate**: *Maximum brightness (%)*, *Pixels current limit (mA)*, *Brightness of the follow-me lights*, *Off after (s)*, *Colour of the follow-me lights*, **Light in the favourite colour of who comes in** (in the Normal scene the light of a room takes the favourite colour of whoever is in, if it told the house), party *Duration (s)* (10–60), *Fan duration (s)* (5–120), *Hot: rise over the baseline (°C)*, *Shower: humidity rise (%)*. Then **Save**. Brightness and current limit go to the microcontroller at once.
-- **Voice**: *Voice of the house*, **Natural (slower)** or **Fast (less natural)**: the first is nicer but takes a few seconds for every new sentence, the second answers at once but sounds more artificial (see [chapter 8](08-voice.md#speech-synthesis)); **Greet new phones**, **Questions to the characters (chatty mode)** and *One question every (s)* (see [chapter 8](08-voice.md#talking-without-pressing-talk)); **Wake up with a keyword** and *Keyword* (for example *Casa*): once the word is said, the house does what the Talk button does (see [chapter 8](08-voice.md#the-word-of-activation)). On saving, below appears how the house will hear the word (*Robot 3* becomes *robot tre*; *Domotiq*, which the speech recognizer does not know, is heard as “domotica”). Any words the recognizer cannot hear in any way are listed too.
+- **House**: the name of the house in Italian and English; **Bathroom blurred in the live view**, on by default.
+- **Party · Barbecue · Climate**: party *Duration (s)* (10–60), *Fan duration (s)* (5–120), *Hot: rise over the baseline (°C)*, *Shower: humidity rise (%)*. Then **Save**. The lights that follow people are off for now and their settings are not shown (see [chapter 9](09-rules.md#priorities-and-light-layers)); the maximum brightness and the current limit of the Pixels are fixed values (see [chapter 4](04-wiring.md#power-of-the-pixels)).
+- **Voice**: **Greet new phones**, **Questions to the characters (chatty mode)** and *One question every (s)* (see [chapter 8](08-voice.md#talking-without-pressing-talk)); **Wake up with a keyword** and *Keyword* (for example *Casa*): once the word is said, the house does what the Talk button does (see [chapter 8](08-voice.md#the-word-of-activation)). On saving, below appears how the house will hear the word (*Robot 3* becomes *robot tre*; *Domotiq*, which the speech recognizer does not know, is heard as “domotica”). Any words the recognizer cannot hear in any way are listed too.
 - **Time**: the time of the phone and **Use this phone's time**, which sets the clock of the house.
 - **Wi-Fi of the house**: the network name and *Wi-Fi password* (8 to 63 characters). **Save**, after *Are you sure?*, writes it into the hotspot; if the hotspot is on, it restarts after a couple of seconds and every phone, yours included, must join again with the new password. Write it down: every phone that joins the network needs it.
 - **Backup**: **Download the backup** (a zip with rules, characters with their photos, and settings; never the network, the house name or the camera calibration), **Restore from a backup** (replaces rules, characters and settings), **Default rules** (replaces all rules with the ones the house started with).

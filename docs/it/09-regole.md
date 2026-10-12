@@ -136,19 +136,19 @@ Ogni luce ha una pila di livelli. Il livello attivo più alto decide cosa mostra
 
 Durante una festa il microcontrollore gestisce da solo lo spettacolo di luci, a tempo con la musica; quando la festa finisce la casa ridisegna ogni luce a partire dai suoi livelli.
 
-**Luci che seguono le persone.** Una stanza con almeno una persona riceve una luce bianca calda al 60 % (del massimo della casa); si spegne 3 secondi dopo che l'ultima persona è uscita. Gli animali non accendono le luci. In garage conta anche l'auto: la luce resta accesa mentre l'auto arriva e finché non è parcheggiata da 10 secondi. Il giardino e il vialetto non hanno luce; la luce del locale tecnico è la matrice LED della UNO Q. Colore, luminosità e ritardo sono nelle impostazioni, e **Comandi → Luci che seguono le persone** le spegne.
+**Luci che seguono le persone.** Per ora sono spente di serie, e la webapp non ha un interruttore per accenderle: il loro bagliore sui muri e sul pavimento confondeva la webcam. Quando sono accese, una stanza con almeno una persona riceve una luce bianca calda (`#fff2e0`) al 60 % (del massimo della casa), un solo colore per tutti e non il colore preferito di chi entra; si spegne 3 secondi dopo che l'ultima persona è uscita. Gli animali non accendono le luci. In garage conta anche l'auto: la luce resta accesa mentre l'auto arriva e finché non è parcheggiata da 10 secondi. Il giardino e il vialetto non hanno luce; la luce del locale tecnico è la matrice LED della UNO Q. Colore, luminosità e ritardo sono nelle impostazioni, insieme a **Luce del colore preferito di chi entra**, spenta di serie.
 
 ## Scenari
 
 | Scenario | Luci |
 |---|---|
-| **Normale** | le luci seguono le persone, nel loro colore preferito se l'hanno detto alla casa (all'accensione aspettano 15 secondi dopo la prima presenza vista, mentre la webcam cerca le statuine) |
+| **Normale** | le luci seguono le persone, per ora spente di serie (vedi sopra); quando sono accese, all'avvio aspettano 15 secondi dopo la prima presenza vista, mentre la webcam cerca le statuine |
 | **Cinema** | in soggiorno il bagliore azzurro e tremolante di uno schermo (*Scintille*), tutte le altre stanze spente, anche dove c'è gente |
-| **Relax** | in soggiorno un caminetto (*Fuoco*), in camera una luce arancione che respira; dove c'è gente luci calde e tenui |
-| **Notte** | tutto spento tranne una lucina arancione in bagno; chi si alza trova una luce di cortesia arancione molto tenue |
+| **Relax** | in soggiorno un caminetto (*Fuoco*), in camera una luce arancione che respira; con le luci che seguono le persone accese, dove c'è gente luci calde e tenui |
+| **Notte** | tutto spento tranne una lucina arancione in bagno; con le luci che seguono le persone accese, chi si alza trova una luce di cortesia arancione molto tenue |
 | **Via** | la casa vuota sembra abitata: una stanza alla volta (cucina, soggiorno, camera o bagno) si accende per 15-30 secondi, poi un'altra. La regola di partenza *Intruso con la casa in modalità Via* sorveglia la casa |
 
-Gli scenari si scelgono da **Comandi**, a voce ("Scenario cinema", "Good night") o con una regola, e la casa dice il nome del nuovo scenario.
+Gli scenari si scelgono a voce ("Scenario cinema", "Good night") o con una regola, e la casa dice il nome del nuovo scenario.
 
 ## Le regole di partenza
 
@@ -168,7 +168,7 @@ Gli scenari si scelgono da **Comandi**, a voce ("Scenario cinema", "Good night")
 | **Festa in soggiorno** | più di 3 persone in soggiorno per 3 s | avvia una festa | disattivata |
 | **Grigliata in compagnia** | più di 1 persona in giardino per 10 s | accende il barbecue | disattivata |
 
-Chi conta: le regole di partenza che riguardano le persone usano il tipo *persona*, quindi gli animali non fanno mai scattare l'allarme del locale tecnico o del bagno. La luce del garage per l'auto viene dalle luci che seguono le persone, non da una regola.
+Chi conta: le regole di partenza che riguardano le persone usano il tipo *persona*, quindi gli animali non fanno mai scattare l'allarme del locale tecnico o del bagno. La luce del garage per l'auto viene dalle luci che seguono le persone (per ora spente di serie), non da una regola.
 
 ## Chi può cambiare le regole
 

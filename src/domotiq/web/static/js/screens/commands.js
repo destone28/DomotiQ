@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
 // SPDX-License-Identifier: MIT
-// Quick controls: party, barbecue, scenes, lights, language and voice.
+// Quick controls: party, barbecue, lights, language and voice.
 
 import { api, esc, pageHead, store, toast } from "../app.js";
 import { t, tr } from "../i18n.js";
@@ -40,8 +40,6 @@ export function mount(root) {
       <button class="btn big accent" id="party"><span class="ico">🎉</span>${t("cmd.party")}</button>
       <button class="btn big" id="grill"><span class="ico">🔥</span><span id="grill-label"></span></button>
     </div>
-    <h2>${t("cmd.scenes")}</h2>
-    <div class="pill-list" id="scenes"></div>
     <h2>${t("cmd.lights")}</h2>
     <div class="card">
       <label class="field"><span>${t("cmd.room")}</span><select id="room">
@@ -53,8 +51,6 @@ export function mount(root) {
       <label class="field"><span>${t("cmd.effect")}</span><select id="effect">
         ${EFFECTS.map(e => `<option value="${e}">${t("effect." + e)}</option>`).join("")}</select></label>
       <label class="field"><span>${t("cmd.brightness")}</span><input type="range" min="5" max="100" value="60" id="bri"></label>
-      <label class="row spread" style="margin-top:12px"><span>${t("cmd.follow")}</span>
-        <span class="switch"><input type="checkbox" id="follow" ${store.state.follow !== false ? "checked" : ""}><span></span></span></label>
     </div>
     <h2>${t("askq.title")}</h2>
     <div class="card">
@@ -66,7 +62,8 @@ export function mount(root) {
       <div class="field"><span class="muted small">${t("cmd.language")}</span>
         <div class="pill-list"><button class="chip" data-lang="it">Italiano</button><button class="chip" data-lang="en">English</button></div></div>
       <div class="field"><span class="muted small">${t("cmd.verbosity")}</span>
-        <div class="pill-list">${["silent", "normal", "chatty"].map(v => `<button class="chip" data-verb="${v}">${t("cmd." + v)}</button>`).join("")}</div></div>
+        <div class="pill-list">${["silent", "normal", "chatty"].map(v => `<button class="chip" data-verb="${v}">${t("cmd." + v)}</button>`).join("")}</div>
+        <p class="muted small">${t("cmd.verbosity_hint")}</p></div>
       <label class="field"><span>${t("cmd.volume")}</span><input type="range" min="0" max="100" id="vol"></label>
       <button class="btn block" id="bell">🔔 ${t("cmd.intercom")}</button>
       <div id="say-box" style="margin-top:12px">
@@ -115,7 +112,6 @@ export function mount(root) {
     clearTimeout(briTimer);
     if (lit()) briTimer = setTimeout(apply, 250);
   };
-  $("#follow").onchange = (e) => cmd("follow", { on: e.target.checked });
   $("#party").onclick = () => cmd("party");
   $("#grill").onclick = () => cmd(store.state.grill ? "grill_stop" : "grill");
   $("#bell").onclick = () => cmd("intercom");
@@ -130,9 +126,6 @@ export function mount(root) {
     const st = store.state;
     $("#grill-label").textContent = st.grill ? t("cmd.grill_stop") : t("cmd.grill");
     $("#party").disabled = !!st.party;
-    $("#scenes").innerHTML = (st.scene_order || Object.keys(st.scenes)).map(id =>
-      `<button class="chip ${st.scene === id ? "on" : ""}" data-scene="${id}">${esc(tr(st.scenes[id].name))}</button>`).join("");
-    $("#scenes").querySelectorAll("[data-scene]").forEach(b => { b.onclick = () => cmd("scene", { scene: b.dataset.scene }); });
     const b = st.brief || {};
     root.querySelectorAll("[data-lang]").forEach(x => x.classList.toggle("on", x.dataset.lang === b.language));
     root.querySelectorAll("[data-verb]").forEach(x => x.classList.toggle("on", x.dataset.verb === b.verbosity));

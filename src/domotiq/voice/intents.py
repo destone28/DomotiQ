@@ -178,10 +178,10 @@ PATTERNS: list[tuple[str, list[str]]] = [
                r"\bserie tv\b", r"\bla tv\b", r"\bwatch tv\b", r"\brilassiam\w*\b", r"\brelax\w*\b"]),
     # the air conditioning and the heating: the house has neither, and shows them with a wave of light, as the
     # thermostat does ("accendi il condizionatore" turned on the lights before)
-    ("climate", [r"\b(condizionatore|climatizzatore|aria condizionata|riscaldamento|termosifon\w*|stufa|"
-                 r"air conditioning|air conditioner|aircon|heating|heater)\b",
-                 r"\b(accendi|spegni|spengi|spegne|metti|attiva|disattiva|turn on|turn off|switch on|switch off)\b"
-                 r".*\bclima\b"]),
+    ("climate", [r"\b(condizionator[ei]|climatizzator[ei]|aria condizionata|riscaldament[oi]|termosifon\w*|stuf[ae]|"
+                 r"air conditioning|air conditioners?|aircon|heating|heaters?)\b",
+                 r"\b(accend\w*|spegn\w*|speng\w*|spent[oaie]|spend\w*|metti|attiv\w*|disattiv\w*|turn on|turn off|"
+                 r"switch on|switch off)\b.*\bclima\b", r"\bclima\b.*\b(acces[oaie]|spent[oaie])\b"]),
     ("lights_off", [r"\b(spegni|spengi|spegne|turn off|switch off|lights off)\b", r"\bswitch (\w+ )?off\b", r"\bbuio\b",
                     r"\bspendi (la|le|il|i|tutte|tutto)\b",
                     r"\bturn (\w+ )?off\b", r"\btoo bright\b", r"\btroppa luce\b", r"\btogli la luce\b"]),
@@ -692,8 +692,14 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
                 continue
             args["scene"] = scene
         elif intent == "climate":
-            args["mode"] = "warm" if re.search(r"riscald|termosif|stufa|heat", t) else "cool"
-            args["on"] = not re.search(r"\b(spegni|spengi|spegne|disattiva|ferma|basta|stop|turn off|switch off)\b", t)
+            args["mode"] = "warm" if re.search(r"riscald|termosif|stuf[ae]|heat", t) else "cool"
+            # every form of switching off: "spegni", "puoi spegnere", "spengilo", "climatizzatore spento" (12 October:
+            # "spegnere" and "spento" turned it on), and "spegni" as the recognizer hears it, "spendi" and "segni"
+            off = re.search(r"\b(spegn\w*|speng\w*|spent[oaie]|spend\w*|segni|disattiv\w*|ferm\w*|basta|stop|"
+                            r"turn (it )?off|switch (it )?off|off)\b", t)
+            on = re.search(r"\b(accend\w*|acces[oaie]|attiv\w*|metti|turn (it )?on|switch (it )?on|on)\b", t)
+            # the name alone switches it (None): the recognizer often loses a short "spegni" and keeps the name
+            args["on"] = False if off else True if on else None
         elif intent == "language":
             args["language"] = "en" if re.search(r"inglese|english", t) else "it"
         elif intent == "verbosity":

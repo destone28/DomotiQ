@@ -12,6 +12,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from domotiq.lights import LightRequest
 from domotiq.model import Track
 from domotiq.voice import facts, who
 from domotiq.voice import manager as manager_mod
@@ -27,10 +28,19 @@ def ev(kind, **data):
 
 # ------------------------------------------------------------------ the air conditioning and the heating
 @pytest.mark.parametrize("text,mode,on", [
-    ("accendi condizionatore", "cool", True), ("condizionatore", "cool", True),
+    ("accendi condizionatore", "cool", True), ("condizionatore", "cool", None),
     ("accendi il climatizzatore", "cool", True), ("spegni il climatizzatore", "cool", False),
     ("accendi il riscaldamento", "warm", True), ("accendi il clima", "cool", True),
     ("turn on the air conditioning", "cool", True), ("turn off the heating", "warm", False),
+    # 12 October: "spegnere" and "spento" turned it on, the plural turned the lights on and off
+    ("puoi spegnere il climatizzatore", "cool", False), ("climatizzatore spento", "cool", False),
+    ("spegni i climatizzatori", "cool", False), ("accendi i climatizzatori", "cool", True),
+    ("spegnere i condizionatori", "cool", False), ("puoi spegnere il riscaldamento", "warm", False),
+    ("spengilo il climatizzatore", "cool", False), ("clima spento", "cool", False),
+    ("turn the air conditioners off", "cool", False),
+    # "spegni" as the recognizer of the house heard it: the name alone switches it (None)
+    ("spendi climatizzatore", "cool", False), ("segni climatizzatore", "cool", False),
+    ("climatizzatore", "cool", None), ("climatizzatori", "cool", None), ("riscaldamento", "warm", None),
 ])
 def test_the_air_conditioning_and_the_heating_are_no_lights(text, mode, on):
     i = parse(text, NAMES)
@@ -48,6 +58,23 @@ def test_the_air_conditioning_is_a_wave_of_light_in_every_room(ctx):
         await ctx.voice.execute(parse("accendi il riscaldamento", []))
         assert ctx.said[-1] == "Accendo il riscaldamento."
         assert all(stack["climate"].effect == "warm" for stack in ctx.lights.layers.values())
+    asyncio.run(scenario())
+
+
+def test_the_name_alone_switches_the_air_conditioning(ctx):
+    """"Spegni il climatizzatore" was heard as "climatizzatore" and turned it on again."""
+    async def scenario():
+        await ctx.voice.execute(parse("climatizzatore", []))
+        assert ctx.said[-1] == "Accendo il climatizzatore."
+        await ctx.voice.execute(parse("climatizzatore", []))
+        assert ctx.said[-1] == "Climatizzatore spento."
+        assert not any("climate" in stack for stack in ctx.lights.layers.values())
+        ctx.lights.set("all", "rule:r-climate-hot", LightRequest("cool", "#20d0ff", 60), duration_s=120)
+        await ctx.voice.execute(parse("condizionatore", []))      # the wave the thermostat started
+        assert ctx.said[-1] == "Climatizzatore spento."
+        assert not any("rule:r-climate-hot" in stack for stack in ctx.lights.layers.values())
+        await ctx.voice.execute(parse("riscaldamento", []))       # the other one is off: it turns it on
+        assert ctx.said[-1] == "Accendo il riscaldamento."
     asyncio.run(scenario())
 
 

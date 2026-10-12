@@ -7,7 +7,7 @@ The voice chain has four parts:
 - **Speech recognition**: Vosk, with the small Italian and English models, on the board.
 - **Understanding**: a fast rule-based parser for the common phrases; the sentences it does not understand go to a small language model, Qwen2.5-0.5B-Instruct running in llama.cpp, which only chooses what to do.
 - **Answers**: always composed by the code from the real state of the house.
-- **Speech synthesis**: two voices to choose from, for Italian and English: the natural one (Piper) and the fast one (SVOX Pico).
+- **Speech synthesis**: Piper, with a natural voice for Italian and one for English.
 
 ## The buttons
 
@@ -90,7 +90,7 @@ The examples below are understood directly by the rule-based parser. It tolerate
 | Scenes | Scenario cinema · Scenario relax · Modalità via · Buonanotte · Buongiorno | Cinema mode · Relax scene · Away mode · Good night · Good morning |
 | Party | Fai festa · Balliamo | Let's dance · Party |
 | Barbecue | Accendi il barbecue · Spegni il barbecue | Light the barbecue · Turn off the barbecue |
-| Air conditioning and heating | Accendi il condizionatore · Accendi il riscaldamento · Spegni il climatizzatore | Turn on the air conditioning · Turn off the heating |
+| Air conditioning and heating | Accendi il condizionatore · Accendi il riscaldamento · Spegni il climatizzatore · Spegni i climatizzatori | Turn on the air conditioning · Turn off the heating |
 | The car | Dov'è la macchina? | Where is the car? |
 | The whole house | Com'è la casa? · Cosa succede? | How is the house? · What's happening? |
 | Help | Cosa sai fare? | What can you do? |
@@ -122,7 +122,7 @@ A few details:
 - Right after a question about a room (who is there, how many, temperature, humidity, lights), for a minute and a half another room is enough: "And in the bathroom?" asks the same about the bathroom.
 - To a question about a character with no name, when nobody was talked about just before ("what's his job?"), the house asks "Who do you mean?" and listens for the answer with no Talk.
 - "Where is Emilio?" with a name the house does not know gets "I don't know anyone called Emilio."
-- "Turn on the air conditioning" does what the thermostat does when it feels hot: "Turning on the air conditioning." and a light blue wave in every room for two minutes. "Turn on the heating" makes an orange wave, "turn off the air conditioning" stops it. The house has no real air conditioning: the fan of the model is the barbecue's.
+- "Turn on the air conditioning" does what the thermostat does when it feels hot: "Turning on the air conditioning." and a light blue wave in every room for two minutes. "Turn on the heating" makes an orange wave, "turn off the air conditioning" stops it. If the house hears only the name ("climatizzatore", "riscaldamento"), because a quick "spegni" is easily lost, it works as a switch: it stops the wave if there is one, the thermostat's too, and starts it if there is none. The house has no real air conditioning: the fan of the model is the barbecue's.
 - A fact about a character told as it is, with no "remember that", joins what the house knows about it: "Marco's favourite colour is red" → "I'll remember: Marco loves the colour red." A colour takes the place of the one told before, and the favourite light follows it. Asked as a question ("what is Marco's favourite colour?") it stays a question.
 - One or two words the house does not understand get "I didn't get that", not a made-up answer.
 - A few sentences the recognizer got wrong at the bench are understood as they were meant: "fai presto" and "let's body" start the party.
@@ -162,7 +162,7 @@ The house then answers questions about what it knows, however they are put: "Cos
 
 **What it does with them.** Three answers the house acts on:
 
-- **The favourite colour** ("Marco, what's your favourite colour?"): in the Normal scene the light of a room takes the favourite colour of whoever is in (the last one to come in, among those who told it; switched off with **Light in the favourite colour of who comes in** in **Settings**), and "turn on Marco's favourite colour" lights the room Marco is in, or the one said ("...in the kitchen"), in that colour. If Marco has not told it yet and is in the house, the house asks at once and the answer lights the room.
+- **The favourite colour** ("Marco, what's your favourite colour?"): "turn on Marco's favourite colour" lights the room Marco is in, or the one said ("...in the kitchen"), in that colour. If Marco has not told it yet and is in the house, the house asks at once and the answer lights the room. With the follow-me lights on (for now they are off by default, see [chapter 9](09-rules.md#priorities-and-light-layers)) and **Light in the favourite colour of who comes in** on in **Settings** (off by default), in the Normal scene the light of a room also takes the favourite colour of whoever is in, the last one to come in among those who told it.
 - **Loves dancing** ("Marco, do you like dancing?"): in chatty mode, when Marco is in the living room with somebody else, the house offers a party ("Marco, you love dancing: shall we party?").
 - **Loves barbecues** ("Marco, do you like barbecues?"): when Marco is in the garden, the house offers the barbecue ("Marco, you love barbecues: shall I light it?").
 
@@ -211,9 +211,7 @@ The microphone is on only while the house listens, at 16 kHz mono: while Talk is
 
 ## Speech synthesis
 
-**Two voices.** In **Settings → Voice**, *Voice of the house*: **Natural (slower)** is Piper, nicer; **Fast (less natural)** is SVOX Pico, more artificial but ready at once. On the board, with the house on, a sentence of three and a half seconds takes Piper about 4.5 seconds, Pico about a tenth of a second. The choice applies to Italian and English; the sentences already said stay ready for both voices. Pico (`pico2wave`, Debian package `libttspico-utils`) is a separate program: without it the house uses the natural voice. It speaks a little faster than its own pace, which is slow.
-
-**One sentence at a time.** An answer of several sentences is prepared sentence by sentence: the house says the first while it prepares the second. With the natural voice the first sentence is heard after the time it needs alone, not the whole answer.
+**One sentence at a time.** On the board, with the house on, a sentence of three and a half seconds takes Piper about 4.5 seconds. So an answer of several sentences is prepared sentence by sentence: the house says the first while it prepares the second, and the first sentence is heard after the time it needs alone, not the whole answer.
 
 
 Piper (`piper1-gpl`, GPL-3.0) runs as a separate program in the `domotiq-tts` service, and the house sends it sentences over HTTP on the loopback interface. The voices are `it_IT-serena-medium` (CC BY 4.0) and `en_US-ljspeech-medium` (public domain). Numbers and units are spoken properly ("24.3 °C" becomes "24 point 3 degrees"). The frequent sentences ("Who is it?", "Let me see…", "Let's dance!"…) are made ready at start-up and kept in memory, so they play at once even when the processor is busy. **Every sentence synthesized is also saved on disk**, in `var/voice/` (one WAV file per sentence, named after the voice and the text): after a restart the house reads it back in a moment instead of asking Piper again, so the frequent sentences are ready at once and Piper only works on those never said before. At most 3000 sentences are kept; beyond that, the ones not said for the longest time are deleted. If the voice changes, the sentences are synthesized again. **The fixed sentences** (239 today, those with no name or number: the doorbell, the questions, the confirmations, the prepared answers) **can be prepared ahead of time** with `scripts/voice_cache.py`, which takes them from the code of the house itself and writes them to `models/voice-cache/`. The house reads that folder too, so a new house says them at once from its first start. The script runs on the board, with its own Piper, or on a PC with the same version of Piper and the same voices; `release.sh` copies the folder from the PC to the board (see [chapter 2](02-install.md)). It takes 50 seconds on the PC and about 13 minutes on the board. A few phrases are given to Piper already written as phonemes, where the Italian voice would swallow a vowel: "Come si chiama?" came out as "Cme s chiama?", because the automatic transcription reads "si" as a reduced vowel. The house never says "Mmm" or "Hmm": the voices read them letter by letter ("emme emme emme" in Italian). The sentences that used them now say "Let me think...", "Oh," or "Sorry,", and an "Mmm" left in a sentence somebody typed is removed before the synthesis.

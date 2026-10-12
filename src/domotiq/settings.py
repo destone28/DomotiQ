@@ -25,7 +25,6 @@ DEFAULTS: dict[str, Any] = {
     "voice": {
         "language": "it",            # language the house speaks and listens in
         "verbosity": "normal",       # silent | normal | chatty
-        "voice": "natural",          # natural (Piper: more natural, slower) | fast (SVOX Pico: plainer, at once)
         "volume": 70,                # master, 0-100
         "voice_gain": 100,
         "music_gain": 80,
@@ -40,9 +39,9 @@ DEFAULTS: dict[str, Any] = {
     "lights": {
         "max_brightness": 30,        # cap applied by the firmware, 0-100
         "current_budget_ma": 450,    # firmware power limiter
-        "follow": True,
-        "follow_color": "#ffaa5a",
-        "follow_favourite": True,    # in the normal scene, the light of a room takes the favourite colour of who is in
+        "follow": False,             # off for now: the glow of the lights confused the webcam (12 October)
+        "follow_color": "#fff2e0",   # one warm white, the colour of no character
+        "follow_favourite": False,   # in the normal scene, the light of a room takes the favourite colour of who is in
         "follow_brightness": 60,
         "follow_off_delay_s": 3,
     },
@@ -65,8 +64,8 @@ DEFAULTS: dict[str, Any] = {
     "network": {"ssid": "", "password": "", "channel": 1, "address": "", "hostname": ""},
     "camera": {"device": None,            # a /dev/v4l/by-id path, if the webcam is not found by itself
                "blur_bathroom": True,     # the bathroom blurred in the live view and the images that leave
-               "figures": True,           # the network that knows the figurines gives its second opinion
-               "figures_consent": False,  # ...and nothing new is told before it sees a figurine there
+               "figures": True,           # the network that knows the figurines: always on (no switch)
+               "figures_consent": True,   # ...and nothing new is told before it sees a figurine there (always)
                "collect": False,          # what the webcam sees is kept to teach the network (var/collect)
                "collect_mb": 500,         # ...at most this much, the oldest goes
                "follow_light": True},     # the gain of the webcam follows the light of the hall step by step

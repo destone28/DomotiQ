@@ -407,8 +407,9 @@ class VisionProcess(VisionLink):
             "device": device or settings.get("camera.device"),
             "blur_private": settings.get("camera.blur_bathroom", True),
             "models": str(paths.models),
-            "figures": settings.get("camera.figures", True),
-            "figures_consent": settings.get("camera.figures_consent", False),
+            # the strongest the house has, always: the network on, and nothing new told before it sees a figurine
+            "figures": True,
+            "figures_consent": True,
             "log_level": logging.getLogger().level or logging.INFO,
         }
         self._mp = mp.get_context("spawn")
