@@ -1062,3 +1062,11 @@ Mentre scaricava le immagini di App Lab, la scheda non rispondeva in rete per un
 **Scelta:** una macchia della grandezza di una statuina, che è "mano" solo perché vicina a una mano, ferma da 3 secondi e che la rete riconosce almeno al 90%, non è una mano. La decisione resta legata a quel punto finché la statuina non si sposta. L'auto, per la regola di D-88, può essere grande fino a 30 000 mm².
 
 **Perché:** nell'altra casa, a un avvio, il prato del vialetto illuminato in modo diverso dalla casa vuota era una "mano" lungo il bordo anteriore. Romeo e Rossellina, vicini, erano diventati "mano" anche loro, e dopo 8 secondi erano entrati nella casa vuota. L'auto, con il bagliore del garage, faceva una macchia di 23 000 mm², oltre il limite di 20 000, e non veniva riconosciuta come auto. Dopo la correzione, al riavvio la casa ha riconosciuto tutti gli undici personaggi. Le dita si muovono, una statuina sta ferma: per questo serve che la macchia resti ferma prima di chiedere alla rete.
+
+### D-93 — Una cosa alla volta (12/10)
+**Scelta:**
+- **Addestramento immagini.** Non più un elenco: le immagini ancora da valutare compaiono una alla volta, a 240 pixel, dalla più recente, con quante ne restano. **Giusto** o la correzione scelta salvano e fanno comparire la successiva. **Salta (non sono sicuro)** passa oltre senza rispondere, e l'immagine resta da valutare. Le immagini già valutate non si vedono più.
+- **Le domande della casa.** Nei telefoni si vede una domanda sola, la più recente, con quante ne restano dopo. Risposta o chiusa quella, compare la precedente. Un nome che si sta scrivendo resta se la pagina si ridisegna per un'altra notifica.
+
+**Perché:** richiesta di Emilio. Nell'elenco l'immagine valutata cambiava e quella sotto saliva al suo posto, e le domande si impilavano l'una sull'altra. Una cosa alla volta è più semplice da seguire su un telefono, e con centinaia di immagini da valutare (595 su una casa) si va avanti più in fretta. La più recente è quella che riguarda la casa com'è adesso.
+

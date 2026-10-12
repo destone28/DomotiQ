@@ -375,12 +375,15 @@ export function renderBanners() {
   }
   const others = (c) => [...(s.identities || [])].filter(i => !c.options.some(o => o.value === i.id))
     .sort((a, b) => a.name.localeCompare(b.name));
-  for (const c of s.confirmations || []) {
+  // the questions of the house one at a time: the latest, and the one before it once this is answered or closed
+  const asks = s.confirmations || [];
+  for (const c of asks.slice(-1)) {
     // a question of the house: a registered one, all of them together, a new name with what it really is,
     // or nothing there at all
     const cats = ["person", "dog", "cat", "animal", "car", "object"];
+    const more = asks.length > 1 ? ` · ${esc(t(asks.length === 2 ? "ask.more_one" : "ask.more", { n: asks.length - 1 }))}` : "";
     html += `<div class="banner ask" data-cid="${c.id}"><div class="head"><span class="ico">❓</span>` +
-      `<span class="grow"><span class="kicker">${esc(t("ask.title"))}</span>${esc(tr(c.question))}</span>${close}</div>` +
+      `<span class="grow"><span class="kicker">${esc(t("ask.title"))}${more}</span>${esc(tr(c.question))}</span>${close}</div>` +
       `<div class="opts">` +
       c.options.map((o, i) => `<button class="pri" data-i="${i}">${esc(tr(o.label))}</button>`).join("") +
       // two figurines touching are one blob: "both of them" is an answer too
@@ -396,7 +399,20 @@ export function renderBanners() {
         `<button class="pri" data-new="1">${esc(t("ask.add"))}</button></div>` : "") +
       `</div>`;
   }
+  // a name being written is kept when the banners are drawn again, if its question is still the one shown
+  const typed = {};
+  el.querySelectorAll(".banner[data-cid]").forEach(b => {
+    const fields = [...b.querySelectorAll("input, select")];
+    typed[b.dataset.cid] = { values: fields.map(x => x.value), focus: fields.indexOf(document.activeElement) };
+  });
   el.innerHTML = html;
+  el.querySelectorAll(".banner[data-cid]").forEach(b => {
+    const kept = typed[b.dataset.cid];
+    if (!kept) return;
+    const fields = [...b.querySelectorAll("input, select")];
+    fields.forEach((x, i) => { if (kept.values[i] !== undefined) x.value = kept.values[i]; });
+    if (kept.focus >= 0 && fields[kept.focus]) fields[kept.focus].focus();
+  });
   el.querySelectorAll("button[data-reg]").forEach(b => { b.onclick = () => go("identities", { reg: b.dataset.reg }); });
   // an alarm closed on one phone disappears on all of them
   el.querySelectorAll("button[data-alert]").forEach(b => {
