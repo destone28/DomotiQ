@@ -1070,3 +1070,33 @@ Mentre scaricava le immagini di App Lab, la scheda non rispondeva in rete per un
 
 **Perché:** richiesta di Emilio. Nell'elenco l'immagine valutata cambiava e quella sotto saliva al suo posto, e le domande si impilavano l'una sull'altra. Una cosa alla volta è più semplice da seguire su un telefono, e con centinaia di immagini da valutare (595 su una casa) si va avanti più in fretta. La più recente è quella che riguarda la casa com'è adesso.
 
+### D-94 — L'auto, i doppioni e il nome che può avere uno solo (12/10)
+**Scelta:**
+- **L'auto con l'alone.** Quando la rete non è sicura dell'auto nella macchia intera, guarda anche il suo centro, più piccolo del 15% e del 30%, e vale la risposta più sicura che è l'auto. Così all'avvio, e poi nei controlli di ogni presenza grande come l'auto. L'auto riconosciuta così non è una mano nemmeno se una "mano" le sta accanto.
+- **I doppioni.** Una presenza senza nome che la casa non vede più (o crede in una mano), a meno di 4 cm da una presenza con nome vista adesso, è la stessa statuina ritrovata, e sparisce subito.
+- **Il nome che può avere uno solo.** Una presenza senza nome che la rete vede come un personaggio almeno al 75%, tre volte di fila, prende quel nome se nessun altro può esserlo: quel personaggio non è altrove in casa, non è confuso dalla rete con un altro che manca, e nessun'altra presenza senza nome è presa dalla rete per lui.
+- **Le registrazioni** tengono anche cosa ha detto la rete di ogni presenza, per capire dopo perché un nome è arrivato o no.
+- **Regole spente sull'altra casa:** *Festa in soggiorno*, *Grigliata in compagnia* e *Controllo della casa* (un arcobaleno in tutte le stanze con più di tre persone in camera), finché il riconoscimento non è senza intoppi.
+
+**Perché:** sull'altra casa, dopo ogni riavvio:
+- **L'auto spariva.** La casa vuota era stata salvata alle 20:15, e alle 22:40 il garage era illuminato in un altro modo. L'auto aveva un alone di pavimento e pareti: la rete la vedeva al 65-78% nella macchia intera, al 92-94% nel suo centro. Restava una "mano" e dopo 8 secondi entrava nella casa vuota. Riconosciuta, tornava "mano" perché un bagliore sulla testata del letto, sotto il garage, era preso per un braccio. Poi, seguita, restava senza nome ("un'auto nuova in garage?").
+- **Romeo, accanto al prato** illuminato diversamente e preso per una mano lungo il bordo, è stato nascosto e ritrovato quattro volte. Ogni presenza nuova prendeva il nome dalla rete, e le vecchie restavano senza nome dove era lui: contate come quattro animali in più. Quella vecchia dell'auto era chiesta come "un gatto nuovo in garage".
+- **Mister Blu, in un bagno** che sull'altra casa è sfocato nelle registrazioni e che quindi la rete non ha mai visto, era visto al 77-82%, con Viola già riconosciuta nel locale tecnico accanto: la casa chiedeva chi fosse a ogni avvio.
+- **Le presenze finte in soggiorno** hanno fatto partire da sole la festa, e le sue luci altre presenze finte.
+
+Rigiocando sul PC l'avvio registrato, con la rete e i personaggi veri, l'auto nasce al quinto fotogramma e resta intera. Dopo il riavvio la casa ha riconosciuto da sola tutti gli undici personaggi, senza doppioni né domande.
+
+### D-95 — Gli allarmi e le luci della casa, i nomi della rete (13/10)
+**Scelta:**
+- **Le luci che si muovono.** Mentre una luce della casa è animata (allarme, lampeggio, onda del climatizzatore, scenari con fuoco o respiro) la visione non cambia idea. Nessun nome passa da una presenza a un'altra, la rete non viene interrogata, i personaggi non visti restano dove erano (va via solo ciò che una mano ha preso), e conta solo una macchia dove c'è già una presenza o dove una mano ha posato qualcosa: quest'ultima prende il nome quando le luci si fermano. Nemmeno la luce della sala si adatta. Nelle stanze accese e animate il bagliore non è mai una mano, per tutta la durata dell'animazione: un braccio vero arriva dal bordo.
+- **Due risposte di fila** della rete contano se arrivano a meno di 10 secondi, non più 3.
+- **Il nome che la rete vede resta**: almeno all'80%, i colori non lo tolgono per 10 secondi dall'ultima risposta.
+- **Un nome conteso** passa alla presenza in cui la rete vede quel personaggio al 90% due volte di fila, se nessun altro ce l'ha, o se chi ce l'ha è in vista e la rete lì non lo vede.
+
+**Perché:** la prova degli allarmi sull'altra casa, con due persone in bagno e una nel locale tecnico. Gli allarmi scattavano subito, ma:
+- dopo 20 secondi il rosso dell'allarme in soggiorno era una macchia che la rete prendeva per Viola (0,94), e il suo nome passava lì: Viola "usciva" dal locale tecnico e l'allarme finiva da solo;
+- il lampeggio del bagno era una "mano" sopra Rossana e Mister Blu, che venivano portati fuori casa;
+- dopo un minuto il rosso riflesso nelle stanze vicine era "la luce della sala", e la casa vuota veniva imparata di nuovo con l'allarme dentro: quasi tutte le statuine sparivano.
+
+Con le correzioni, 70 secondi delle stesse luci non hanno spostato né un nome né una presenza. Sullo stesso avvio, i nomi sbagliati dati dai colori non tornavano mai giusti: a casa ferma una presenza con un nome era riguardata ogni 4-5 secondi e le risposte non erano mai "di fila", e Mister Blu, sicuro al 98% per la rete, tornava "Mister Brown" a ogni risposta invecchiata, perché i suoi colori non erano ancora noti.
+

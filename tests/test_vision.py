@@ -913,6 +913,93 @@ def test_names_do_not_swap_with_no_hand(layout):
     assert {round(t.x): t.identity for t in tr.tracks.values()} == names
 
 
+def test_a_hidden_nameless_double_of_a_named_figurine_goes(layout):
+    """12 October, another house at a start: Romeo, hidden and found again four times next to a lawn taken for a hand,
+    left four nameless tracks where he stood, counted as four more animals."""
+    from domotiq.vision.tracker import VTrack
+    a = _look(45, 50, 30)
+    tr = _tracker(layout, [Identity("id-a", "A", category="cat", signature=list(a))])
+    for k in range(6):
+        tr.update([_blob(200, 60, a)], now=100 + 0.1 * k, quiet_s=100)
+    (named,) = tr.tracks.values()
+    assert named.identity == "id-a"
+    for i, (dx, dy) in enumerate([(12.0, 8.0), (-20.0, 10.0), (200.0, 150.0)]):
+        old = VTrack(f"t-old{i}", named.x + dx, named.y + dy, None, np.array(a, np.float32), "cat")
+        old.since, old.last_seen, old.shown, old.frame = 50.0, 99.0, True, 1
+        old.carried, old.carried_since = i == 1, 99.0               # "in a hand" at the start: still a double
+        tr.tracks[old.id] = old
+    tr.update([_blob(200, 60, a)], now=100.7, quiet_s=100)
+    assert sorted(t.id for t in tr.tracks.values() if not t.identity) == ["t-old2"]    # far away: not a double
+
+
+@pytest.mark.parametrize("case,named", [("only one", True), ("unsure", False), ("held", False), ("twice", False),
+                                        ("mixed up", False)])
+def test_a_nameless_track_takes_the_only_name_it_can_have(layout, case, named):
+    """12 October, another house: Mister Blu in a bathroom the network had never seen (0.77-0.82), with Viola named in
+    the next room; the house asked who he was at every start. Nobody else could be him."""
+    a, b, c = _look(45, 50, 30), _look(70, 20, 60), _look(30, 60, 70)
+    held = case == "held"                                     # another figurine is Mister Blu by its colours
+    ids = [Identity("id-viola", "Viola", signature=list(a)),
+           Identity("id-blu", "Mister Blu", signature=list(c) if held else []), Identity("id-x", "X")]
+    tr = _tracker(layout, ids)
+    if case == "mixed up":
+        tr.confused = {frozenset({"mister blu", "x"})}
+    blobs = [_blob(200, 60, a), _blob(450, 60, b)] + ([_blob(450, 300, b)] if case == "twice" else []) \
+        + ([_blob(150, 300, c)] if held else [])
+    for k in range(6):
+        tr.update(blobs, now=100 + 0.1 * k, quiet_s=100)
+    others = {t.id for t in tr.tracks.values() if t.identity}
+    for k in range(3):
+        now = 100.7 + 0.1 * k
+        for t in tr.tracks.values():
+            if not t.identity:
+                t.figure = ("Mister Blu", 0.6 if case == "unsure" else 0.8, now, 3)
+        tr.update(blobs, now=now, quiet_s=100)
+    blu = [t for t in tr.tracks.values() if t.identity == "id-blu" and t.id not in others]
+    assert bool(blu) == named
+
+
+@pytest.mark.parametrize("case,moved", [("swapped", True), ("unsure", False), ("seen there too", False), ("free", True)])
+def test_a_sure_network_takes_a_name_its_holder_does_not_show(layout, case, moved):
+    """12 October, another house: Viola and Mister Brown moved, and each took the name of the other by the colours; the
+    network saw Viola at 0.90 in one and "Nerone" at 0.52 in the other: the names stayed swapped."""
+    a, b = _look(45, 50, 30), _look(70, 20, 60)
+    tr = _tracker(layout, [Identity("id-viola", "Viola"), Identity("id-brown", "Mister Brown"),
+                           Identity("id-nerone", "Nerone", category="dog")])
+    blobs = [_blob(200, 60, a), _blob(450, 60, b)]
+    for k in range(6):
+        tr.update(blobs, now=100 + 0.1 * k, quiet_s=100)
+    left, right = sorted(tr.tracks.values(), key=lambda t: t.x)
+    tr.assign(left.id, "id-brown")                            # by the colours: wrong
+    tr.assign(right.id, None if case == "free" else "id-viola")   # "free": nobody has the name of Viola
+    left.locked = right.locked = False
+    for k in range(3):
+        now = 100.7 + 0.1 * k
+        left.figure = ("Viola", 0.85 if case == "unsure" else 0.92, now, 2)
+        right.figure = ("Viola", 0.85, now, 2) if case == "seen there too" else ("Nerone", 0.52, now, 2)
+        tr.update(blobs, now=now, quiet_s=100)
+    assert (left.identity, right.identity) == (("id-viola", None) if moved else ("id-brown", "id-viola"))
+    assert case != "free" or tr._contested(left, 100.9) is None    # with the name now, nothing more to take
+
+
+def test_the_colours_do_not_take_a_name_the_network_is_sure_of(layout):
+    """13 October, another house: Mister Blu, whose colours the house had not learned, was named by the network (0.98)
+    and named back "Mister Brown" by the colours at every frame, the one dark character with colours learned."""
+    dark = _look(25, 30, 20)
+    tr = _tracker(layout, [Identity("id-brown", "Mister Brown", signature=list(dark)), Identity("id-blu", "Mister Blu")])
+    for k in range(6):
+        tr.update([_blob(200, 60, dark)], now=100 + 0.1 * k, quiet_s=100)
+    (t,) = tr.tracks.values()
+    assert t.identity == "id-brown"                           # by the colours
+    for k in range(20):                                       # at rest: a frame a second, the network every 5 s
+        now = 101.0 + k
+        if k % 5 == 0:
+            t.figure = ("Mister Blu", 0.98, now, 2 + k // 5)
+        tr.update([_blob(200, 60, dark)], now=now, quiet_s=100)
+        if k >= 1:
+            assert t.identity == "id-blu", k                  # the network, sure, and the colours do not take it back
+
+
 def test_a_name_does_not_jump_far_without_a_hand(layout):
     a = _look(45, 50, 30)
     tr = _tracker(layout, [Identity("id-a", "A", signature=list(a))])
@@ -1809,6 +1896,16 @@ def _put_down(engine, renderer, placed, thing, t0):
     return run(engine, renderer, [(placed + [thing], {})] * 35, t0=t0 + 0.5)
 
 
+def test_answers_of_the_network_seconds_apart_are_in_a_row(engine, renderer):
+    """13 October: at rest a frame a second is looked at, a few tracks at a time; a track with a name was looked at every
+    4-5 s and its answers were never "in a row": the network could not take back a name the colours gave wrong."""
+    red = Thing(300, 100, "#d03030")
+    (track,) = bring(engine, renderer, [red])
+    engine.figures = _Figures("Rosso", 0.97)
+    run(engine, renderer, [([red], {})] * 4, t0=20.0, dt=4.5)
+    assert engine.tracker.tracks[track.id].figure[3] >= 3
+
+
 def test_a_blob_the_network_sees_as_nothing_is_not_born(engine, renderer):
     run(engine, renderer, [([], {})] * 40)
     engine.figures = _Figures("niente")
@@ -1999,9 +2096,10 @@ def test_a_newcomer_waits_while_the_network_says_niente_even_unsure(engine, rend
     yellow = Thing(300, 100, "#e0c020")
     assert _put_down(engine, renderer, [], yellow, 4.0) == []
     assert engine.status()["figures"]["held"] > 0 and engine.status()["figures"]["blocked"] == 0
-    engine.figures.label, engine.figures.p = "Fido", 0.9     # a figurine, not sure enough to name it
+    engine.figures.label, engine.figures.p = "Fido", 0.9     # a figurine, not sure enough to name it by itself...
     tracks = run(engine, renderer, [([yellow], {})] * 20, t0=8.5)
-    assert len(tracks) == 1 and tracks[0].identity is None and tracks[0].category == "dog"
+    # ...but nobody else can be Fido, so it takes the name (Tracker._free_names), and its kind
+    assert len(tracks) == 1 and tracks[0].identity == "id-fido" and tracks[0].category == "dog"
 
 
 def test_a_character_the_network_does_not_know_is_not_held_by_its_niente(engine, renderer):
@@ -2091,6 +2189,54 @@ def test_the_car_parked_against_the_back_wall_is_no_hand(engine, renderer):
     tracks = run(engine, renderer, [([car], {})] * 120, t0=2.0)
     assert not engine.status()["hand"]
     assert len(tracks) == 1 and tracks[0].room == "garage"
+
+
+def test_while_the_lights_of_the_house_move_names_stay(engine, renderer):
+    """12 October, another house: with the alarm on, the red light in the living room made blobs of glow; the network
+    took one for Viola (0.94), her name went to it, and the alarm of the utility room stopped by itself."""
+    fig, glow = Thing(300, 100, "#8040c0"), Thing(380, 160, "#c04070")
+    obs, _, _ = engine.segmenter.process(renderer.render([fig]), 0.5)
+    engine.set_identities([Identity("id-viola", "Viola", signature=list(obs[0].sig))])
+    tracks = bring(engine, renderer, [fig])
+    assert [t.identity for t in tracks] == ["id-viola"]
+    x, y = tracks[0].x, tracks[0].y
+    engine.figures = _Figures("Viola", 0.97)                  # the glow looks like her to the network
+    rooms = sorted({engine.layout.locate(fig.x, fig.y), engine.layout.locate(glow.x, glow.y)} - {None})
+    engine.lights_changed(rooms, 20.0, animated=rooms)
+    # she is lost in the glow; the glow is first a "hand", then a blob where the hand was
+    run(engine, renderer, [([], {"hands": [Hand(glow.x, glow.y)]})] * 5, t0=20.0)
+    tracks = run(engine, renderer, [([glow], {})] * 55, t0=20.5)
+    # her name stays with her, where she was; what the "hand" put down has no name while the lights move
+    assert [(t.identity, round(t.x), round(t.y)) for t in tracks if t.identity] == [("id-viola", round(x), round(y))]
+    engine.lights_changed(rooms, 26.5, animated=[])
+    tracks = run(engine, renderer, [([fig], {})] * 60, t0=26.5)
+    assert [(t.identity, round(t.x / 10), round(t.y / 10)) for t in tracks if t.identity] == \
+        [("id-viola", round(x / 10), round(y / 10))]
+
+
+class _Halo:
+    """The network unsure of the car with a halo of floor around it, sure of its middle."""
+
+    def __init__(self, width):
+        self.width = width
+
+    def classify(self, img, bboxes):
+        return [("Honda Civic", 0.65 if b[2] >= self.width else 0.93) for b in bboxes]
+
+
+def test_the_car_with_a_halo_at_a_start_is_no_hand(engine, renderer):
+    """12 October, another house: at a start the garage, lit otherwise than in the empty house, gave the car a halo of
+    floor and walls. The network saw the car in the whole blob at 0.65-0.78 only: a "hand", and 8 s later part of the
+    empty house; then, followed, nameless ("a new car in the garage?"). In the middle of the blob it is the car, sure."""
+    car = Thing(560, 330, "#2aa0b0", kind="car", length=150, width=60, height=70)
+    engine.set_identities([Identity("id-car", "Honda Civic", category="car", signature=[0.0] * 64)])
+    obs, _, _ = engine.segmenter.process(renderer.render([car]), 1.0)
+    assert [o.hand for o in obs] == [True]
+    engine.figures = _Halo(obs[0].bbox[2])
+    engine.rescan()
+    tracks = run(engine, renderer, [([car], {})] * 120, t0=2.0)
+    assert not engine.status()["hand"]
+    assert [(t.room, t.identity) for t in tracks] == [("garage", "id-car")]
 
 
 def test_an_arm_in_the_garage_is_still_a_hand(engine, renderer):
@@ -2227,6 +2373,34 @@ def test_a_figurine_inside_a_flickering_glow_is_never_lost(engine, renderer):
         t += 0.1
     assert not engine.status()["hand"]
     assert [(tr.room, tr.identity) for tr in tracks] == [("bathroom", "id-giallo")]
+
+
+def test_two_figurines_in_a_blinking_bathroom_stay_for_as_long_as_it_blinks(engine, renderer):
+    """12 October, another house: the alarm "bathroom for one" made the bathroom blink; its glow, again at every flash,
+    was a hand over the two figurines in it, which were taken out of the house: the alarm stopped by itself."""
+    yellow, blue = Thing(200, 335, "#e0c020"), Thing(262, 250, "#3050d0")
+    tracks = bring(engine, renderer, [yellow, blue])
+    near = {name: min(tracks, key=lambda tr: np.hypot(tr.x - th.x, tr.y - th.y))
+            for name, th in (("Giallo", yellow), ("Blu", blue))}
+    ids = [Identity(f"id-{name.lower()}", name, signature=engine.track_signature(tr.id)[0]) for name, tr in near.items()]
+    engine.set_identities(ids)
+    for (name, tr), ident in zip(near.items(), ids):
+        engine.tracker.assign(tr.id, ident.id)
+    run(engine, renderer, [([yellow, blue], {})] * 10, t0=12.0)
+    room = renderer.calib.image_of(np.array([[175, 230], [285, 230], [285, 360], [175, 360]], np.float64), 0.0)
+    poly = np.round(room).astype(np.int32)
+    area = cv2.dilate(cv2.fillPoly(np.zeros(ANALYSIS[::-1], np.uint8), [poly], 255), np.ones((15, 15), np.uint8)) > 0
+    x0, x1 = poly[:, 0].min(), poly[:, 0].max()
+    a = (area * (np.clip((np.arange(ANALYSIS[0]) - x0) / (x1 - x0), 0, 1) * 0.7 + 0.15))[..., None]   # uneven, as a lamp
+    engine.lights_changed(["bathroom"], 13.0, animated=["bathroom"], lit=["bathroom"])
+    t = 13.0
+    for i in range(400):                                      # 40 s of blinking, half a second on, half off
+        frame = renderer.render([yellow, blue])
+        if (i // 5) % 2 == 0:
+            frame = (frame * (1 - a) + np.array([60, 150, 255]) * a).astype(np.uint8)
+        tracks = engine.feed(frame, t)
+        t += 0.1
+    assert sorted((tr.room or "", tr.identity or "") for tr in tracks) == [("bathroom", "id-blu"), ("bathroom", "id-giallo")]
 
 
 @pytest.mark.parametrize("network", [False, True])

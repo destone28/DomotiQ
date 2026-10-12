@@ -45,7 +45,7 @@ from .scene import StaticScene
 from .signature import SIG_LEN, distance, signature, to_hex
 from .exposure import CAP, CAP_ADAPT, EXPOSURES, GAIN_MAX, NOISE_EXP, CameraStep, GainRegulator
 from .figures import NOTHING, square_crop
-from .tracker import CONSENT_P, ID_ACCEPT, Tracker
+from .tracker import CONSENT_P, FIGURE_NAME_P, ID_ACCEPT, Tracker
 
 log = logging.getLogger(__name__)
 
@@ -152,8 +152,10 @@ ROOM_FG_MAX = 0.3        # the light of the rooms is measured away from what dif
 CAR_MAX_MM2 = 30000.0    # the blob of the car, seen alone, is at most this big (another house: 23 000)
 CAR_GARAGE = 0.6         # a "hand" this much in the garage may be the car parked against the back wall...
 CAR_SEEN_S = 3.0         # ...and what the network said of it counts this long
+CAR_CORE = (0.15, 0.3)   # ...and if it is not sure of the whole blob, it looks at its middle, this much smaller
 FIGURE_RECHECK_S = 2.0   # ...and a track with a name, every so often: a name the colours gave may be wrong (12 October)
 FIGURE_MAX = 4
+FIGURE_ROW_S = 10.0      # two answers this close are "in a row" (a track with a name is looked at only every few seconds)
 # The light of the webcam followed in small steps of the gain (exposure.py). What it brings back to the empty house in
 # use, as it was photographed, is the light of the rooms: in every region the median of how much brighter each point
 # of its free floor is (away from the presences and the hands), then the median over the regions. A light of the
@@ -516,7 +518,10 @@ class Engine:
         levels.append((now, ratio / self._camera_factor))   # the steps of the webcam are no change of the hall
         while len(levels) > 2 and now - levels[1][0] > ADAPT_WINDOW_S:
             levels.popleft()
-        if any(now - t < LIGHT_BLOCK_S for t in self._light_at.values()) or now < self._scan_until:
+        if any(now - t < LIGHT_BLOCK_S for t in self._light_at.values()) or now < self._scan_until or self._animated:
+            # nor while a light of the house is animated: its glow reaches the rooms next to it (12 October, another
+            # house: the flashing red of the alarm was "the light of the hall", the empty house was learned again
+            # with it, and the figurines in sight were lost)
             self._drift_since = 0.0
             return None
         lo, hi = min(r for _, r in levels), max(r for _, r in levels)
@@ -631,6 +636,8 @@ class Engine:
         FIGURE_RECHECK_S, so that a name the colours gave wrongly is corrected (Tracker._network_names). What it says
         waits in the track."""
         tr = self.tracker
+        if self._animated:
+            return                             # the glow of the lights of the house says nothing (Tracker.update)
 
         def doubtful(vt):
             return not vt.identity or vt.misses or vt.uncertain or ((tr.consent or tr.veto) and not vt.shown)
@@ -640,9 +647,16 @@ class Engine:
         want = sorted(want, key=lambda vt: (not doubtful(vt), vt.figure[2] if vt.figure else 0.0))[:FIGURE_MAX]
         if not want:
             return
+        cars = {i.name.strip().lower() for i in self.identities if i.category == "car"}
         for vt, (label, p) in zip(want, self._figures(small, [vt.obs.bbox for vt in want])):
+            if cars and p < FIGURE_NAME_P and vt.obs.area_mm2 >= CAR_MIN_MM2:
+                # as big as the car: unsure of the whole blob, it looks at its middle too (_car_core)
+                label, p = self._car_core(small, vt.obs.bbox, cars, (label, p))
             prev = vt.figure
-            row = prev[3] + 1 if prev and prev[0] == label and now - prev[2] <= 3.0 else 1
+            # 13 October: at rest a frame a second is looked at, FIGURE_MAX tracks at a time, nameless ones first; a
+            # track with a name was looked at every 4-5 s, its answers were never "in a row", and the network could
+            # never take back a name the colours gave wrong (Mister Blu, 0.97, stayed "Mister Brown")
+            row = prev[3] + 1 if prev and prev[0] == label and now - prev[2] <= FIGURE_ROW_S else 1
             vt.figure = (label, p, now, row)
             vt.consent = vt.consent + 1 if label and label != NOTHING and p >= CONSENT_P else 0
 
@@ -1629,14 +1643,31 @@ class Engine:
                     and _overlap(self._car_seen[0], o.bbox) >= 0.7:
                 seen = self._car_seen[1]
             else:
-                seen = self._figures(small, [o.bbox])[0]
+                seen = self._car_core(small, o.bbox, cars)
                 self._car_seen = (o.bbox, seen, now)
             if seen[0] and seen[0].strip().lower() in cars and seen[1] >= FIGURE_NOT_P:
-                o.extra["edge_hand"] = False
+                # no hand, even close to one (12 October, another house at a start: a glow on the headboard of the
+                # bed under the garage was a "hand", and the car next to it was a hand again with it)
+                o.extra["edge_hand"], o.extra["not_hand"] = False, True
                 o.extra["figure"] = seen
                 changed = True
         if changed:
             self.segmenter.rejoin_hands(obs)
+
+    def _car_core(self, small: np.ndarray, bbox, cars: set[str],
+                  whole: tuple[str, float] | None = None) -> tuple[str, float]:
+        """What the network sees in the blob of a possible car: the whole blob, and its middle if it is not sure of the
+        whole (12 October, another house at a start: the garage lit otherwise than in the empty house gave the car a
+        halo of floor and walls; the whole blob was the car at 0.78, under FIGURE_NOT_P, a "hand" for 8 s and then part
+        of the empty house; its middle was the car at 0.92-0.94). The surest answer that is a car wins."""
+        whole = whole or self._figures(small, [bbox])[0]
+        if whole[1] >= FIGURE_NOT_P:
+            return whole
+        x, y, w, h = bbox
+        inner = [[int(round(x + w * f / 2)), int(round(y + h * f / 2)), max(1, int(round(w * (1 - f)))),
+                  max(1, int(round(h * (1 - f))))] for f in CAR_CORE]
+        car = [s for s in [whole] + self._figures(small, inner) if s[0] and s[0].strip().lower() in cars]
+        return max(car, key=lambda s: s[1]) if car else whole
 
     def _figurines_not_hands(self, small: np.ndarray, obs: list[Observation], now: float) -> None:
         """A blob the size of a figurine, a "hand" only because it is close to one, that has not moved for
@@ -1675,8 +1706,8 @@ class Engine:
             self.segmenter.rejoin_hands(obs)
 
     def _glow_not_hand(self, obs: list[Observation], now: float) -> None:
-        """A "hand" almost all in a room whose light the house keeps on, that appeared as the light came on: the glow
-        of that light on walls and floor, no hand (12 October: the glow of the bathroom lamp, a "hand" for 30 s, froze
+        """A "hand" almost all in a room whose light the house keeps on, that appeared as the light came on (or while
+        the light is animated): the glow of that light on walls and floor, no hand (12 October: the glow of the bathroom lamp, a "hand" for 30 s, froze
         the house and took two figurines into the empty house). It joins the empty house as any glow does, and the
         figurines in it are spared."""
         if not self._lit or self.segmenter.labels is None:
@@ -1694,7 +1725,10 @@ class Engine:
                 continue
             appeared = self._appeared(o) or now      # not known yet: it appeared now
             on_at = max(self._light_at.get(n, float("-inf")) for n in lit)
-            if on_at - 1.0 <= appeared <= on_at + 2 * LIGHT_BLOCK_S:
+            # an animated light (the blinking of an alarm) makes its glow again at every flash, for as long as it
+            # lasts (12 October, another house: the blinking bathroom of the alarm "for one" was a hand that took the
+            # two figurines in it out of the house, and the alarm stopped by itself); an arm comes over the edge
+            if on_at - 1.0 <= appeared <= on_at + 2 * LIGHT_BLOCK_S or any(n in self._animated for n in lit):
                 o.extra["edge_hand"] = False
                 changed = True
                 # the figurines it was taken to carry are where they were, under the glow
@@ -2285,4 +2319,9 @@ class Engine:
         vt = self.tracker.tracks.get(track_id) if self.tracker else None
         if vt is None or vt.obs is None or vt.carried or vt.frame != self.tracker.frame:
             return {}
-        return {"bbox": [int(v) for v in vt.obs.bbox]}
+        out: dict[str, Any] = {"bbox": [int(v) for v in vt.obs.bbox]}
+        if vt.figure is not None:          # what the network said of it last, to see later why a name came or not
+            out["figure"] = [vt.figure[0], round(float(vt.figure[1]), 3), int(vt.figure[3])]
+        if vt.locked:
+            out["locked"] = True
+        return out

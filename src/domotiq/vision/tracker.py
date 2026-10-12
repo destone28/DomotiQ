@@ -42,6 +42,8 @@ LOST_S = 1.5                # a young track unseen for longer was noise
 YOUNG_S = 2.5               # ...young: followed for less than this, with no identity
 HIDDEN_S = 120.0            # a track followed for longer stays where it was, unseen, up to this
 HIDDEN_KNOWN_S = 900.0      # ...a known character (behind another one it touches) much longer: it moves only by hand
+DOUBLE_MM = 40.0            # an unseen track with no name this close to a named one seen now is the same figurine
+HOLD_MM = 25.0              # while the lights of the house move, a blob counts only this close to a track
 CARRIED_GONE_S = 2.5        # carried and not put down this long after the hands left: out of the house
 CARRIED_MAX_S = 120.0       # carried this long, hands or not: dropped
 ID_ACCEPT = 0.30            # colour distance under which an identity is recognized
@@ -85,6 +87,9 @@ SIZE_ODD = 4.0              # a blob more than this many times bigger or smaller
 # block of the recording of 7 October left out of the training, 972 figurines were named at 0.95 or more, none wrongly
 # (Mister Blu and Viola, alike in colour, were mixed up only below that), and 97% were at least 0.8 their own name
 FIGURE_KEEP_P, FIGURE_NAME_P, FIGURE_FRESH_S = 0.8, 0.95, 3.0
+FIGURE_FREE_P, FIGURE_FREE_ROW = 0.75, 3    # less sure, but three times in a row and nobody else can be that one
+FIGURE_TAKE_P = 0.9         # sure enough to take a name from a track in which the network does not see that one
+FIGURE_HOLD_S = 10.0        # a name the network saw stays this long after its last look, whatever the colours say
 FIGURE_WAIT_S = 2.0      # a doubt between two characters waits this long for the network before asking
 # With its consent required (a switch in the settings), nothing new is told to the house until the network has seen
 # a figurine there CONSENT_ROW times in a row, at least CONSENT_P sure: no false presence, while a new figurine (one
@@ -329,6 +334,17 @@ class Tracker:
         self._suppressed = [s for s in self._suppressed if s[2] > now]
         hands = [o for o in observations if o.hand]
         things = [o for o in observations if not o.hand]
+        # the lights of the house are moving (an alarm, the wave of the air conditioning, a scene): their glow takes
+        # the colours of the characters (12 October, another house: with the alarm on, the names of Viola and Mister
+        # Blu went to the red glow in the living room, and the alarm stopped by itself). Until they stand still no
+        # name moves, nobody is asked about, the characters stay where they were, and a blob counts only where a
+        # track already stands, or where a hand put it down (its glow is no hand: Engine._glow_not_hand); what a hand
+        # takes is followed as always, and what it puts down is named once the lights stand still
+        hold = bool(self._animated)
+        if hold:
+            things = [o for o in things if o.extra.get("birth") or any(
+                not t.carried and float(np.hypot(*np.subtract(self._position(o, t.category), (t.x, t.y)))) < HOLD_MM
+                for t in self.tracks.values())]
         self.hands = hands
         self._hands_near(hand_mask, now)
         self._associate(things, now, births=not frozen)
@@ -336,12 +352,16 @@ class Tracker:
         self._remember(hands, now)
         self._drop_jittery(now)
         self._drop_fragments()
-        self._drop_lost(now, frozen, quiet_s)
-        self._recognize(now)
-        self._network_names(now)
-        self._settle_doubts(now)
-        self._learn_poses(now)
-        self._ask_unknown(now)
+        self._drop_lost(now, frozen, quiet_s, hold)
+        if not hold:
+            self._recognize(now)
+            self._network_names(now)
+            self._free_names(now)
+        self._drop_doubles()
+        if not hold:
+            self._settle_doubts(now)
+            self._learn_poses(now)
+            self._ask_unknown(now)
         out = []
         for t in self.tracks.values():
             if not t.shown and not t.identity and not self._confirmed(t, now):
@@ -617,7 +637,7 @@ class Tracker:
         for t in list(self.tracks.values()):
             if t.locked or t.carried or t.obs is None:
                 continue
-            seen = self._figure_name(t, now)
+            seen = self._figure_name(t, now) or self._contested(t, now)
             ident = self.identities.get(seen or "")
             if ident is None or seen == t.identity or (t.identity and self._mixed_up(seen, t.identity)):
                 continue
@@ -693,6 +713,68 @@ class Tracker:
                     del self.tracks[tid]
                     self._rooms.pop(tid, None)
                     break
+
+    def _contested(self, t: VTrack, now: float) -> str | None:
+        """The character the network sees in the track at least FIGURE_TAKE_P sure, twice in a row, when nobody has
+        that name, or the track that has it is seen and the network sees another one there (12 October, another house:
+        Viola and Mister Brown moved, each took the name of the other by the colours; the network saw Viola at 0.90 in
+        one and "Nerone" at 0.52 in the other, and the names stayed swapped)."""
+        f = t.figure
+        if f is None or now - f[2] > FIGURE_FRESH_S or f[1] < FIGURE_TAKE_P or f[3] < 2:
+            return None
+        seen = self._by_name.get(f[0].strip().lower())
+        holder = next((u for u in self.tracks.values() if u is not t and u.identity == seen), None)
+        if seen is None or seen == t.identity:
+            return None
+        if holder is None:
+            return seen
+        if holder.locked or holder.obs is None or holder.frame != self.frame:
+            return None
+        g = holder.figure
+        if g is None or now - g[2] > FIGURE_FRESH_S or self._by_name.get(g[0].strip().lower()) == seen:
+            return None                        # not looked at lately, or it sees that one there too
+        return seen
+
+    def _free_names(self, now: float) -> None:
+        """A track with no name that the network sees as a character fairly sure (FIGURE_FREE_P, FIGURE_FREE_ROW times
+        in a row) takes that name when nobody else can be it: that character is nowhere else in the house, is not
+        mixed up with another one out of it, and the network sees it in no other nameless track (12 October, another
+        house: Mister Blu in a bathroom the network had never seen, 0.77-0.82, with Viola named in the next room;
+        the house asked who he was at every start)."""
+        held = {t.identity for t in self.tracks.values() if t.identity and not self._gone_from(t)}
+        free = {i for i in self.identities if i not in held}
+        for t in list(self.tracks.values()):
+            f = t.figure
+            if t.identity or t.carried or t.obs is None or t.frame != self.frame or f is None \
+                    or now - f[2] > FIGURE_FRESH_S or f[1] < FIGURE_FREE_P or f[3] < FIGURE_FREE_ROW:
+                continue
+            seen = self._by_name.get(f[0].strip().lower())
+            if seen is None or seen not in free or not self.fits_size(self.identities[seen], t.obs.area_mm2) \
+                    or any(self._mixed_up(seen, i) for i in free if i != seen):
+                continue
+            if any(u is not t and not u.identity and u.figure and u.figure[0] == f[0]
+                   and now - u.figure[2] <= FIGURE_FRESH_S for u in self.tracks.values()):
+                continue                       # two nameless ones the network takes for the same: it does not choose
+            self.assign(t.id, seen)
+            t.locked = False
+            free.discard(seen)
+            self.figure_named += 1
+
+    def _drop_doubles(self) -> None:
+        """An unseen track with no name where a named track is seen now: the same figurine, found again as a new track
+        while the old one was hidden (12 October, another house at a start: Romeo, next to a lawn lit otherwise than in
+        the empty house and taken for a hand along the front edge, was hidden and found again four times; each new
+        track took his name from the network, and the old ones stayed nameless where he stood, counted as four more
+        animals; the old track of the car was asked about as "a new cat in the garage"; Giallo Galli, "in a hand" at the
+        start, left his old track nameless in a hand for two minutes)."""
+        seen = [u for u in self.tracks.values()
+                if u.identity and u.obs is not None and u.frame == self.frame and not u.carried]
+        for tid, t in list(self.tracks.items()):
+            if t.identity or t.locked or (t.obs is not None and t.frame == self.frame):
+                continue                       # in a hand too: with no name it carries nothing to put down
+            if any(np.hypot(u.x - t.x, u.y - t.y) < DOUBLE_MM for u in seen):
+                del self.tracks[tid]
+                self._rooms.pop(tid, None)
 
     def _remember(self, hands: list[Observation], now: float) -> None:
         """Keep the history of where each character was; a hand over a place may have taken what stood there."""
@@ -831,7 +913,8 @@ class Tracker:
             t.obs.extra.pop("track", None)
             self.jittery += 1
 
-    def _drop_lost(self, now: float, frozen: bool = False, quiet_s: float = float("inf")) -> None:
+    def _drop_lost(self, now: float, frozen: bool = False, quiet_s: float = float("inf"), hold: bool = False) -> None:
+        """`hold`: the lights of the house are moving; only what a hand took may go."""
         for tid, t in list(self.tracks.items()):
             if t.carried:
                 # the hands left without putting it down: taken out of the house, unless it was put down against
@@ -847,7 +930,7 @@ class Tracker:
                     self._rooms.pop(tid, None)
                 continue
             unseen = now - t.last_seen
-            if unseen <= LOST_S or frozen:
+            if unseen <= LOST_S or frozen or hold:
                 continue
             # never told to the house, or followed only for a moment (even if it took a name): it was noise
             young = (t.last_seen - t.since < YOUNG_S or not t.shown and not t.identity) and not t.locked
@@ -1044,6 +1127,12 @@ class Tracker:
                     cost[i, j] = 1e6          # last seen somewhere else, and no hand has been there since
         best_of = dict(zip(*linear_sum_assignment(cost))) if cands else {}
         for i, t in enumerate(free_tracks):
+            if self._network_holds(t, now):
+                t.misses = 0
+                j = best_of.get(i)
+                if j is None or cands[j].id != t.identity or cost[i, j] >= ID_ACCEPT_LOOSE:
+                    self.figure_kept += 1     # the colours would have said otherwise
+                continue                      # the network sees this one: the colours do not take its name
             j = best_of.get(i)
             d = cost[i, j] if j is not None else 1.0
             if d >= 1e6:
@@ -1151,6 +1240,15 @@ class Tracker:
         if f is None or now - f[2] > FIGURE_FRESH_S or f[1] < at_least:
             return None
         return self.identities.get(self._by_name.get(f[0].strip().lower(), ""))
+
+    def _network_holds(self, t: VTrack, now: float) -> bool:
+        """The network saw the character the track is named after, at least FIGURE_KEEP_P sure, in its last look, less
+        than FIGURE_HOLD_S ago (a track with a name is looked at only every few seconds): the colours do not take that
+        name (13 October, another house: Mister Blu, 0.98, whose colours the house had not learned, was named back
+        "Mister Brown", the one dark character with colours learned, every time the answer of the network got old)."""
+        f = t.figure
+        return bool(t.identity) and f is not None and now - f[2] <= FIGURE_HOLD_S and f[1] >= FIGURE_KEEP_P \
+            and self._by_name.get(f[0].strip().lower()) == t.identity
 
     def _mixed_up(self, a: str, b: str) -> bool:
         """Two characters the network mixes up even when sure (measured when it was trained): it does not choose."""

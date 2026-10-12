@@ -121,6 +121,8 @@ Questo si adatta a **resta in una stanza** e a **in una stanza sono più di / me
 
 **Inserito e disinserito.** L'allarme della casa si inserisce e si disinserisce come un antifurto, dal riquadro **Allarme** della pagina **Casa** o dal pulsante **Disinserisci** della notifica rossa (capitolo 6). Disinserito, nessuna regola d'allarme scatta e quelle in corso si spengono subito, con le loro luci; le altre regole vanno avanti. Reinserito, chi è già in un posto sorvegliato viene notato di nuovo, come se fosse appena entrato. Lo stato resta anche dopo un riavvio.
 
+**Con le luci dell'allarme.** Le luci di un allarme lampeggiano, e il loro bagliore cambia i colori delle stanze vicine. Mentre una luce della casa è animata (un allarme, l'onda del climatizzatore, uno scenario), la visione non cambia idea: i personaggi restano dove erano e con il loro nome, nessun nome passa a un bagliore, e la casa non si adatta a una "luce della sala" che è solo quella dell'allarme. Così l'allarme resta finché la statuina è nel posto sorvegliato, e finisce quando una mano la porta via. In modalità *Silenziosa* le frasi dell'allarme compaiono solo scritte; sirena, luci e notifiche ci sono sempre.
+
 ## Priorità e livelli delle luci
 
 Ogni luce ha una pila di livelli. Il livello attivo più alto decide cosa mostra la luce; quando scade o viene tolto, torna visibile il livello sottostante. Dal basso:

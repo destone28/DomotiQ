@@ -121,6 +121,8 @@ This fits **stays in a room** and **a room has more than / fewer than**, whose s
 
 **On and off.** The alarm of the house is switched on and off like a burglar alarm, from the **Alarm** box on the **House** page or with the **Switch off** button of the red notice (chapter 6). Off, no alarm rule fires and those going off stop at once, with their lights; the other rules go on. Switched on again, whoever is already in a watched place is noticed again, as if they had just come in. The state survives a restart.
 
+**With the lights of the alarm.** The lights of an alarm flash, and their glow changes the colours of the rooms next to them. While a light of the house is animated (an alarm, the wave of the air conditioning, a scene), the vision does not change its mind: the characters stay where they were and keep their names, no name goes to a glow, and the house does not adapt to a "light of the hall" that is only the alarm's. So the alarm lasts as long as the figurine is in the guarded place, and ends when a hand takes it away. In *Silent* mode the sentences of the alarm are only shown as text; siren, lights and notifications are always there.
+
 ## Priorities and light layers
 
 Each light has a stack of layers. The highest active layer decides what the light shows; when it expires or is removed, the layer below shows again. From the bottom:
