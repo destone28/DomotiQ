@@ -1032,3 +1032,16 @@ Mentre scaricava le immagini di App Lab, la scheda non rispondeva in rete per un
 - **Il bagliore del bagno tremolava**: non era mai fermo abbastanza per la regola della mano ferma. È rimasto una "mano" per 30 secondi, con la casa ferma, poi è entrato nella casa vuota con le due statuine.
 - **Le luci del colore preferito** rendevano i bagliori del colore dei personaggi. Anche in un colore unico, la lampada a parete del bagno illuminava la stanza in modo disuguale e creava presenze finte in giardino: con due presenze finte la regola "Grigliata in compagnia" accendeva il barbecue.
 - **L'auto sul vialetto** contro il bordo anteriore era una "mano". Sul prato la rete la vedeva come "niente" (0,77), perché i suoi ritagli dell'auto erano quasi tutti in garage: servono ritagli dell'auto sul vialetto.
+
+### D-89 — La rete con le posizioni nuove (12/10)
+**Scelta:** la rete delle statuine è addestrata anche con il pomeriggio del 12 ottobre: le statuine in stanze nuove, con le luci della casa ferme (11 710 ritagli), gli ultimi minuti con tutti i nomi dati, compresi Viola e Mister Blu in bagno (1915), e l'auto ferma sul vialetto, ritagliata dai fotogrammi (184, contati tre volte). Le soste del pomeriggio hanno preso in automatico il nome della rete di prima solo dove era sicura al 95% su gran parte della sosta, oppure dove casa e rete erano d'accordo; le 166 dubbie sono state viste a occhio. Le soste "niente" grandi sono state viste tutte: l'auto sul vialetto era "niente" sia per la casa sia per la rete di prima. I ritagli del bagno valgono perché su questa casa il bagno non è sfocato.
+
+**Perché:**
+- **Le posizioni nuove.** La rete di prima riconosceva i personaggi soprattutto dove li aveva visti: gli animali sul vialetto, l'auto in garage. Nerone in camera era sicuro al 46%, l'auto sul vialetto era "niente" (61%), e sotto il 95% la casa non dà nomi e non corregge quelli dei colori.
+- **I numeri**, sui blocchi lasciati fuori: a 0,95 la rete nuova è sicura sul 67% dei ritagli delle statuine, ne sbaglia 3 (tutti presi per "niente", nessun personaggio per un altro) e nessun ritaglio "niente" diventa una statuina. Sulla scena della casa al momento dell'installazione: Nerone 0,99, l'auto sul vialetto 0,94, gli altri tra 0,95 e 0,99. Dopo il riavvio la casa ha riconosciuto da sola tutti gli undici personaggi.
+- **Da tenere d'occhio:** l'auto sul vialetto ha pochi ritagli, tutti di un posto solo; nell'altra casa gli arredi sono arancioni (divano, letto, albero).
+
+### D-90 — Indicare l'auto (12/10)
+**Scelta:** quando si indica nella webapp qualcosa che la casa non segue, la casa vuota torna com'era salvata su tutta la macchia diversa da essa in quel punto, non più solo in un cerchio di 28 pixel intorno al punto.
+
+**Perché:** una luce della sala salita del 37% aveva fatto reimparare più volte la casa vuota mentre l'auto, contro il muro di fondo del garage, non era seguita, e l'auto vi era entrata. Indicata, tornava solo il cerchio intorno al punto: un pezzo d'auto di 55×51 pixel invece di 132×69, poi perso anche quello.

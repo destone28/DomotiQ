@@ -862,9 +862,12 @@ class Engine:
             if t.obs is not None and not t.carried and under(t.obs, 6):
                 return {"ok": True, "track": t.id, "existing": True}
         if self._empty0 is not None:
-            region = np.zeros(seg.reference_bgr.shape[:2], np.uint8)
-            cv2.circle(region, (int(round(px)), int(round(py))), ADOPT_PX, 1, -1)
-            region = (region > 0) & (seg.mask > 0)
+            region = self._saved_differs_at(px, py, now)
+            if region is None:
+                region = np.zeros(seg.reference_bgr.shape[:2], np.uint8)
+                cv2.circle(region, (int(round(px)), int(round(py))), ADOPT_PX, 1, -1)
+                region = region > 0
+            region &= seg.mask > 0
             if region.any():
                 seg.reference_bgr[region] = self._empty0[region]
                 ys, xs = np.nonzero(region)
@@ -881,6 +884,31 @@ class Engine:
         if t is None:
             return {"ok": False, "error": "nothing"}
         return {"ok": True, "track": t.id, "existing": False}
+
+    def _saved_differs_at(self, px: float, py: float, now: float) -> np.ndarray | None:
+        """What differs from the empty house as it was saved, where somebody pointed: the whole blob there, however big
+        (12 October: the car, taken into the empty house by a change of the light, came back only as the circle
+        around the point, a piece of it). None if nothing differs there."""
+        seg = self.segmenter
+        live, prev_g, prev_gains = seg.reference_bgr, seg._g, seg._prev_gains
+        try:
+            seg.reference_bgr = self._empty0.astype(np.float32)
+            seg._reference_changed()
+            seg._g, seg._prev_gains = None, None
+            fg, _lab = seg.foreground(seg._fit(self.frame), now)
+        finally:
+            seg.reference_bgr = live
+            seg._reference_changed()
+            seg._g, seg._prev_gains = prev_g, prev_gains
+        n, labels = cv2.connectedComponents(fg)
+        x, y = int(round(px)), int(round(py))
+        h, w = labels.shape
+        near = labels[max(0, y - 12):min(h, y + 13), max(0, x - 12):min(w, x + 13)]
+        found = [k for k in np.unique(near) if k]
+        if not found:
+            return None
+        k = max(found, key=lambda k: int(np.count_nonzero(near == k)))
+        return cv2.dilate((labels == k).astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
 
     def together(self, track_id: str, identities: list[str], now: float | None = None) -> None:
         """Somebody said that what the house sees there is these characters, touching: all of them are there."""

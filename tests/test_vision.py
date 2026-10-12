@@ -2280,3 +2280,18 @@ def test_a_bright_car_just_put_down_does_not_move_the_webcam(engine, renderer):
     for i in range(200):
         cam.feed(things + [car], 23.5 + i * 0.1)
     assert cam.steps == [], cam.steps
+
+
+def test_the_car_pointed_at_comes_back_whole(engine, renderer):
+    """12 October: the car, taken into the empty house by a change of the light, pointed at in the web app came back
+    only as the circle around the point, a piece of it. The whole blob that differs from the saved empty house comes
+    back."""
+    run(engine, renderer, [([], {})] * 40)
+    car = Thing(540, 280, "#2aa0b0", kind="car", length=150, width=60, height=50)
+    tracks = run(engine, renderer, [([car], {})] * 60, t0=4.0)     # appeared by itself: absorbed
+    assert tracks == []
+    got = engine.adopt_at(x_mm=540, y_mm=280, now=10.0)
+    assert got["ok"]
+    run(engine, renderer, [([car], {})] * 20, t0=10.1)
+    whole = [o for o in engine.observations if o.extra.get("track") == got["track"]]
+    assert whole and whole[0].area_mm2 > 6000                         # the car, not a piece of it
