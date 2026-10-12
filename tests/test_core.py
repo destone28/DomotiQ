@@ -151,6 +151,18 @@ def test_follow_lights_with_delay(env):
     assert env.lights.resolve("kitchen", now=104.5).effect == "off"
 
 
+def test_at_a_start_the_lights_wait_for_the_vision(env):
+    """12 October: lit for the first figurine found at a start, a light of its favourite colour cast a glow that looked
+    like other characters while the vision was still looking."""
+    env.house.follow_after_start()
+    env.house.update_tracks([T("t1", 80, 100, category="person")], now=100)
+    assert env.lights.resolve("kitchen", now=100).effect == "off"
+    env.house.update_tracks([T("t1", 80, 100, category="person")], now=110)
+    assert env.lights.resolve("kitchen", now=110).effect == "off"
+    env.house.update_tracks([T("t1", 80, 100, category="person")], now=115.5)
+    assert env.lights.resolve("kitchen", now=115.5).source == "follow"
+
+
 def test_pets_do_not_switch_lights_on(env):
     env.house.update_tracks([T("d1", 80, 100, category="dog")], now=100)
     assert env.lights.resolve("kitchen", now=100).effect == "off"

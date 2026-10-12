@@ -51,7 +51,7 @@ class VisionLink:
         """Warnings about how well this track can be recognized, as {"it": ..., "en": ...}."""
         return []
 
-    def lights_changed(self, rooms: list[str], animated: list[str] | None = None) -> None:
+    def lights_changed(self, rooms: list[str], animated: list[str] | None = None, lit: list[str] | None = None) -> None:
         """The house changed the light of these rooms (the pipeline measures them again); `animated`: the
         rooms whose light is animated now, where figurines may seem to shake."""
 

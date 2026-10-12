@@ -142,7 +142,7 @@ During a party the microcontroller runs the light show by itself, in time with t
 
 | Scene | Lights |
 |---|---|
-| **Normal** | the lights follow people, in their favourite colour if they told the house |
+| **Normal** | the lights follow people, in their favourite colour if they told the house (at a start they wait 15 seconds after the first presence seen, while the webcam looks for the figurines) |
 | **Cinema** | in the living room the flickering blue glow of a screen (*Sparkle*), every other room off, even where people are |
 | **Relax** | a fire in the living room (*Fire*), an orange light breathing in the bedroom; warm dim lights where people are |
 | **Night** | everything off but a small orange night light in the bathroom; whoever gets up finds a very dim orange courtesy light |

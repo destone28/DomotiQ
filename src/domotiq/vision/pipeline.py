@@ -47,6 +47,10 @@ NOT_SURFACES = ("shower", "totem", "pole", "tree")
 NOISE_MIN, NOISE_START, NOISE_SLOW = 8, 20, 50
 NOISE_FADE = 1.0 - 1.0 / NOISE_SLOW
 NOISE_KNOWN = 1.0 - NOISE_FADE ** NOISE_MIN       # the faded count of NOISE_MIN samples
+# a shadow makes the floor darker, a black figurine much darker: below DEEP_NUM / DEEP_DEN of the lightness of the
+# empty house it is no shadow (the shadow of a lamp at the side, the RGB at 55%, keeps 0.65 of it)
+DEEP_NUM, DEEP_DEN = 2, 5
+DEEP_AROUND_PX = 25   # ...and below half the lightness of the picture around it, this wide
 
 
 def spread(frames: list[np.ndarray], center: np.ndarray) -> np.ndarray:
@@ -536,14 +540,21 @@ class Segmenter:
         dc = cv2.magnitude(lab8[..., 1].astype(np.float32) - self._ref_a, lab8[..., 2].astype(np.float32) - self._ref_b)
         dl_limit = int(p["dl"] * 2.55)              # dl is an integer: dl > 30.6 is dl > 30, without converting dl
         chroma = dc > p["dc"]
-        light = (dl > dl_limit) | ((dl < -dl_limit) & (dc >= p["shadow_dc"]))    # darker with the same colour: a shadow
+        # darker with the same colour is a shadow, unless far darker than a shadow makes the floor: something black
+        # (12 October: Nerone, a black dog, made the grey floor of the living room 7 from 69, and was never seen)
+        lum = lab8[..., 0].astype(np.int16)
+        # ...and much darker than what is around it in the picture itself: in a hall too dark for the webcam the
+        # whole picture is far darker than the empty house, evenly
+        deep = (lum * DEEP_DEN < self._ref_l * DEEP_NUM) \
+            & (lum * 2 < cv2.blur(lab8[..., 0], (DEEP_AROUND_PX, DEEP_AROUND_PX)).astype(np.int16))
+        light = (dl > dl_limit) | ((dl < -dl_limit) & ((dc >= p["shadow_dc"]) | deep))
         fg = np.bitwise_or(chroma, light).view(np.uint8) * np.uint8(255)
         fg = cv2.bitwise_and(fg, self.mask)
         fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
         fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
-        return self._above_noise(fg, dl, dc), lab8
+        return self._above_noise(fg, dl, dc, deep), lab8
 
-    def _above_noise(self, fg: np.ndarray, dl: np.ndarray, dc: np.ndarray) -> np.ndarray:
+    def _above_noise(self, fg: np.ndarray, dl: np.ndarray, dc: np.ndarray, deep: np.ndarray | None = None) -> np.ndarray:
         """Only the blobs that somewhere differ from the empty house by more than noise_k times the noise of their
         pixels (a 3x3 block at least) count, and they count whole, as the fixed thresholds see them: a figurine on a
         flickering lawn keeps its shape, a blob made of flicker alone goes."""
@@ -562,8 +573,8 @@ class Segmenter:
             xs = slice(max(x - 1, 0), min(x + w + 1, self.w))
             own = labels[ys, xs] == i
             d, c = dl[ys, xs], dc[ys, xs]
-            strong = own & ((c > color[ys, xs]) | (d > light_max[ys, xs])
-                            | ((d < light_min[ys, xs]) & (c >= shadow[ys, xs])))
+            dark = (c >= shadow[ys, xs]) if deep is None else ((c >= shadow[ys, xs]) | deep[ys, xs])
+            strong = own & ((c > color[ys, xs]) | (d > light_max[ys, xs]) | ((d < light_min[ys, xs]) & dark))
             if not cv2.countNonZero(cv2.erode(strong.view(np.uint8), np.ones((3, 3), np.uint8))):
                 fg[ys, xs][own] = 0
                 labels[ys, xs][own] = 0
@@ -654,6 +665,10 @@ class Segmenter:
                             border, hand, int(area), h_est, guess)
             o.extra["label"] = i
             o.extra["contrast"] = (chroma_d, light_d)
+            if hand and not border:
+                # an arm on the edge of the base, or the car parked against the back wall of the garage: the
+                # engine may ask the network (Engine._car_not_hand)
+                o.extra["garage"] = float(np.mean(self.garage[y:y + h, x:x + w][blob]))
             # how much of it is seen over the floor or the furniture: something standing in the house always
             # hides some floor, a reflection on a wall is all on the wall
             kinds = self.scene.kind[y:y + h, x:x + w][blob]
@@ -664,10 +679,20 @@ class Segmenter:
 
     HAND_REACH_PX = 41          # pieces of an arm cut by wall tops and masked zones, fingers, its shadow
 
+    def rejoin_hands(self, obs: list[Observation]) -> np.ndarray:
+        """The hands again, after some blobs taken for hands at the edge turned out to be something else: only the
+        blobs that are hands by themselves count, and the blobs close to them."""
+        for o in obs:
+            o.hand = bool(o.extra.get("edge_hand", o.hand))
+        self.hand_mask = self._join_hands(obs, self.labels)
+        return self.hand_mask
+
     def _join_hands(self, obs: list[Observation], labels: np.ndarray) -> np.ndarray:
         """An arm crossing wall tops and wall lights is cut in pieces, and its fingers and shadow make small
         blobs around it: every blob close to a hand is the same hand, whatever its size. Returns the region
         of the hands, a little larger than the blobs."""
+        for o in obs:
+            o.extra.setdefault("edge_hand", o.hand)
         kernel = np.ones((self.HAND_REACH_PX, self.HAND_REACH_PX), np.uint8)
         for _ in range(4):
             hands = [o.extra["label"] for o in obs if o.hand]

@@ -974,3 +974,61 @@ Mentre scaricava le immagini di App Lab, la scheda non rispondeva in rete per un
 **Perché:**
 - **La voce naturale è lenta sulla scheda.** Misurata sulla scheda con la casa accesa, per la stessa frase di tre secondi e mezzo: Piper con la voce Serena 4,5-4,8 secondi, Pico 0,11-0,12. La rete leggera di Piper per l'italiano esiste solo con una voce maschile, mentre la casa parla di sé al femminile ("mi ero sbagliata"). Le voci inglesi "low" hanno la stessa rete delle "medium" e sul PC non erano più veloci. Le reti quantizzate a 8 bit erano quattro volte più lente e cambiavano la voce. Emilio ha chiesto di poter scegliere tra le due voci, dicendo nella webapp che la prima è più naturale ma più lenta e la seconda più veloce ma meno naturale.
 - **Il ritardo del "Dimmi!".** Non dipendeva dalla sintesi, perché "Dimmi!" è già pronto in memoria. "Domotiq" non è nel vocabolario del riconoscimento, quindi la casa aspettava sempre la trascrizione completa del riconoscimento libero, e intanto spegneva i LED. La verifica serve: in quaranta minuti, su una casa, ha scartato 15 frasi dette vicino alla casa ("soli al mondo", "è semplice").
+
+### D-84 — Le statuine dentro il bagliore di una lampada (12/10)
+**Scelta:** la casa ricorda la forma di ogni presenza vista da sola, grande come una statuina. Quando una "mano" ferma da 8 secondi entra nella casa vuota (D-20), quelle forme, allargate di un pixel, restano fuori.
+
+**Perché:**
+- **Cosa era successo.** Su una casa, durante una sessione di spostamenti, la casa ha visto Giallo Galli in bagno e ha acceso la luce del bagno. La lampada a parete illumina la stanza in modo disuguale: un bagliore che la correzione della luce per stanza non può annullare, e che è diventato una sola grande "mano" con dentro Giallo Galli e Mister Brown. Dopo 8 secondi ferma è entrata nella casa vuota, statuine comprese. Spenta la luce, le due statuine non c'erano più per la casa, e indicarle nella webapp rispondeva "niente".
+- **La prova.** Una prova con la casa simulata riproduce la stessa sequenza: statuina in bagno, bagliore disuguale, "mano" per 9 secondi, statuina persa, e persa anche a luce spenta. Con le forme tenute fuori, la statuina resta vista per quattro accensioni e spegnimenti di fila, con la macchia sempre della stessa grandezza. Un margine di tre pixel invece di uno la faceva crescere a ogni ciclo.
+
+### D-85 — La rete con gli undici personaggi (12/10)
+**Scelta:** la rete delle statuine riconosce gli undici personaggi: le sette persone, l'Honda Civic e i tre animali (Romeo, Giba, Nerone). È addestrata con i ritagli di prima e con quelli della sessione del 12 ottobre, rivisti a occhio e contati due volte, perché i tre animali ci sono solo lì. Il "niente" pesa il doppio, come in D-81. La soglia del "niente" è 0,95.
+
+**Perché:**
+- **Gli animali.** Con la regola di D-81 una presenza nuova nasce solo quando la rete non dice "niente". La rete di prima non aveva gatti né cani, quindi per lei gli animali erano "niente" e non nascevano mai da soli.
+- **I numeri, sui ritagli del 12 ottobre lasciati fuori dall'addestramento:**
+  - rete di prima: statuine col nome giusto 68%, statuine vere chiamate "niente" 1024 su 4925 (Giba, l'auto vista da vicino, Mister Brown);
+  - rete nuova: statuine col nome giusto 97%, statuine vere chiamate "niente" 4;
+  - ritagli "niente" con una statuina come prima risposta: 10,5% per la rete di prima, 10,8% per la nuova, nessuno sopra 0,9 per entrambe. Quei ritagli sono pareti, moduli e griglie nella luce di quel giorno, più difficili di quelli vecchi.
+- **Le confusioni rimaste**, sui blocchi lasciati fuori: Romeo preso per Giallo Galli, Nerone per Mister Brown, Mister Blu per Viola. Nessuna coppia è confusa con certezza, quindi la rete sceglie da sola.
+
+### D-86 — Il parere della rete prima dei colori (12/10)
+**Scelta:**
+- **I nomi.** La rete riguarda ogni 2 secondi anche le presenze che hanno un nome; prima guardava solo quelle senza nome o in dubbio. Quando è sicura al 95% due volte di fila che una presenza è un altro personaggio, il nome passa a quella presenza, anche da un'altra che lo teneva. Non succede se quel nome l'ha dato qualcuno, o se la rete vede quel personaggio anche nell'altra presenza. Un personaggio non impara un aspetto nuovo quando la rete, almeno all'80%, ci vede un altro personaggio.
+- **L'auto contro il muro di fondo.** Una "mano" quasi tutta nel garage la guarda la rete: se vi riconosce l'auto, almeno al 90%, non è una mano.
+- **L'avvio.** Se mentre cerca le statuine la casa cambia una luce, da quel momento prende solo quello che la rete riconosce almeno all'80%.
+
+**Perché:** dopo il riavvio con la rete nuova (D-85), su una casa:
+- **I nomi dei colori erano sbagliati.** Mister Brown, in bagno, era "Nerone"; Rossellina era "Rossana", con la rete sicura che fosse Rossellina (0,97). Con i nomi presi, la vera Rossana restava senza nome e il vero Nerone, che la rete riconosceva a 0,96, non veniva seguito. Durante la sessione di spostamenti la casa aveva sbagliato molti nomi e ne aveva imparato i colori: per esempio i colori di Nerone erano stati presi da Mister Brown. A 0,95 la rete ha sbagliato 5 statuine su 4089 dei blocchi lasciati fuori, e mai tra due personaggi diversi da Mister Blu e Viola. A 0,9 sbagliava 85 volte su quei due.
+- **L'auto spariva.** Parcheggiata in diagonale, con il tetto sopra il bordo della base dietro il garage, all'avvio era una "mano". Ferma per 8 secondi, è entrata nella casa vuota (D-20). La rete la riconosce a 0,97. Un braccio che entra nel garage resta una mano: la rete non ci vede l'auto.
+- **Un fantasma all'avvio.** La casa aveva trovato Giallo Galli in bagno e acceso la luce del bagno. Il bagliore della lampada sulla cima del muro somigliava a Rossellina, e la ricerca dell'avvio l'ha presa per lei, con la rete incerta (Mister Brown, 0,41).
+
+### D-87 — Il nero, il bianco e le luci all'avvio (12/10)
+**Scelta:**
+- **Il nero.** Più scuro con lo stesso colore resta un'ombra, tranne quando la luminosità scende sotto i due quinti di quella della casa vuota: lì c'è qualcosa di nero.
+- **Il bianco.** All'avvio, e per le statuine prese in ritardo, una macchia più chiara del pavimento o poco colorata si prende solo se la rete vi vede un personaggio almeno all'80%. Prima si scartava sempre.
+- **La forma.** All'avvio la rete basta solo per una macchia con la forma di una statuina: non una striscia quattro volte più lunga che larga.
+- **La luce che segue all'avvio.** Quando parte la webcam, le luci che seguono i personaggi aspettano 15 secondi dopo la prima presenza vista.
+- **Sotto le statuine risparmiate (D-84)** il pavimento della casa vuota si porta alla luce nuova, misurata sul pavimento intorno. Una presenza mai vista da sola (nata a stanza già illuminata) viene risparmiata nel suo riquadro.
+
+**Perché:** sulla stessa casa, dopo i riavvii con le correzioni di D-86:
+- **Nerone, il cane nero, sul pavimento grigio del soggiorno non era mai visto.** Lo portava da 69 a 7 di luminosità, ma senza cambiare colore, quindi per la casa era un'ombra. L'ombra di una lampada di lato, con il colore al 55%, tiene circa i due terzi della luminosità.
+- **Giba, il gatto bianco, entrava nella casa vuota a ogni avvio**, perché era più chiaro del pavimento e quasi senza colore. La rete lo riconosce a 0,97.
+- **Una striscia di bagliore era "Rossellina" per la rete (0,95).** Aveva i colori di Rossellina, quindi saltava il controllo della forma.
+- **La luce che segue usa il colore preferito di chi è nella stanza.** All'avvio si accendeva per la prima statuina trovata, mentre la casa cercava le altre: il suo bagliore sui muri aveva i colori dei personaggi, e una stanza illuminata è diventata una "mano" che ha portato nella casa vuota Giallo Galli e Mister Blu, nati a luce già accesa.
+- **Mister Brown tolto dal bagno illuminato** aveva lasciato al suo posto il pavimento a luce spenta: una macchia scura, nata come "Nerone".
+
+### D-88 — Le luci della casa e la webcam (12/10)
+**Scelta:**
+- **Le stanze accese.** La casa dice alla visione quali stanze tiene accese. Il regolatore della webcam le lascia fuori dalla sua misura finché restano accese, e misura la luce solo sul pavimento libero, lontano da ciò che è diverso dalla casa vuota.
+- **Il bagliore non è una mano.** Una "mano" quasi tutta in stanze che la casa ha acceso, comparsa insieme alla luce, è il bagliore di quella luce. Entra nella casa vuota come ogni bagliore, e le statuine che copre restano dove erano, anche quelle che la casa aveva preso per "in mano". Anche le "mani che non se ne vanno mai" (HAND_STUCK_S) risparmiano le statuine che coprono.
+- **L'auto fuori dal garage.** Una "mano" grande come l'auto, ovunque sul bordo della base, la guarda la rete: se vi riconosce l'auto, non è una mano.
+- **Il bianco posato a mano.** Una macchia tenue portata da una mano la guarda la rete prima di scartarla come chiazza di luce.
+- **Le luci che seguono, spente.** Per la taratura le luci che seguono i personaggi sono spente sulle due case (*Impostazioni → Luci*). Da riaccendere, in un colore unico (`#fff2e0`, un bianco caldo quasi neutro, senza il colore preferito di chi entra), quando il riconoscimento non avrà più intoppi.
+
+**Perché:** sulla stessa casa, nel pomeriggio:
+- **La webcam seguiva le luci della casa.** Le luci che seguono, accese in tre stanze, hanno reso la casa più luminosa del 14%. Il regolatore l'ha presa per la luce della sala e ha abbassato il guadagno. Dopo il passo la casa ha reimparato la casa vuota e ha perso Giallo Galli e Mister Blu. Più tardi l'auto, appena posata in garage e chiara, ha fatto fare un passo da sola, ed è entrata nella casa vuota prima di nascere.
+- **Il bagliore del bagno tremolava**: non era mai fermo abbastanza per la regola della mano ferma. È rimasto una "mano" per 30 secondi, con la casa ferma, poi è entrato nella casa vuota con le due statuine.
+- **Le luci del colore preferito** rendevano i bagliori del colore dei personaggi. Anche in un colore unico, la lampada a parete del bagno illuminava la stanza in modo disuguale e creava presenze finte in giardino: con due presenze finte la regola "Grigliata in compagnia" accendeva il barbecue.
+- **L'auto sul vialetto** contro il bordo anteriore era una "mano". Sul prato la rete la vedeva come "niente" (0,77), perché i suoi ritagli dell'auto erano quasi tutti in garage: servono ritagli dell'auto sul vialetto.

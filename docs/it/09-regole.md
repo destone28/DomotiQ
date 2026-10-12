@@ -142,7 +142,7 @@ Durante una festa il microcontrollore gestisce da solo lo spettacolo di luci, a 
 
 | Scenario | Luci |
 |---|---|
-| **Normale** | le luci seguono le persone, nel loro colore preferito se l'hanno detto alla casa |
+| **Normale** | le luci seguono le persone, nel loro colore preferito se l'hanno detto alla casa (all'accensione aspettano 15 secondi dopo la prima presenza vista, mentre la webcam cerca le statuine) |
 | **Cinema** | in soggiorno il bagliore azzurro e tremolante di uno schermo (*Scintille*), tutte le altre stanze spente, anche dove c'è gente |
 | **Relax** | in soggiorno un caminetto (*Fuoco*), in camera una luce arancione che respira; dove c'è gente luci calde e tenui |
 | **Notte** | tutto spento tranne una lucina arancione in bagno; chi si alza trova una luce di cortesia arancione molto tenue |

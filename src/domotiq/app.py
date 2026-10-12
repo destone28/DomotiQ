@@ -118,6 +118,7 @@ def _optional_parts(ctx: Context) -> None:
         try:
             from .vision.worker import VisionProcess
             ctx.vision = VisionProcess(ctx.paths, ctx.layout, ctx.settings, ctx.identities, device=args.camera)
+            ctx.house.follow_after_start()
             ctx.house.status["camera"] = True
         except Exception as e:  # noqa: BLE001
             log.warning("vision not available: %s", e)
@@ -271,17 +272,19 @@ def _wire_vision(ctx: Context) -> None:
 
     def lights(ev: Event) -> None:
         state = ev.get("lights") or {}
-        rooms, animated = [], []
+        rooms, animated, lit = [], [], []
         for lid, st in state.items():
             light = ctx.layout.lights.get(lid)
             if light and (st.get("party") or st.get("effect") not in ("solid", "off", None)):
                 animated.append(light.room)
+            if light and st.get("effect") not in ("off", None) and st.get("brightness", 1) != 0:
+                lit.append(light.room)
             if last.get(lid) != st:
                 if light:
                     rooms.append(light.room)
             last[lid] = st
         if rooms:
-            ctx.vision.lights_changed(rooms, animated)
+            ctx.vision.lights_changed(rooms, animated, lit)
 
     def gone(ev: Event) -> None:
         # a "who is it?" about something that has disappeared (a reflection, taken away) is withdrawn

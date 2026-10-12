@@ -266,7 +266,8 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                 elif kind == "forget" and engine.tracker:
                     engine.tracker.forget(msg[1])
                 elif kind == "lights":
-                    engine.lights_changed(msg[1], time.time(), msg[2] if len(msg) > 2 else None)
+                    engine.lights_changed(msg[1], time.time(), msg[2] if len(msg) > 2 else None,
+                                          msg[3] if len(msg) > 3 else None)
                 elif kind == "pause":
                     engine.pause(bool(msg[1]), time.time())
                 elif kind == "privacy":
@@ -591,8 +592,8 @@ class VisionProcess(VisionLink):
     def together(self, track_id: str, identities: list[str]) -> None:
         self._send("together", track_id, list(identities))
 
-    def lights_changed(self, rooms: list[str], animated: list[str] | None = None) -> None:
-        self._send("lights", rooms, animated)
+    def lights_changed(self, rooms: list[str], animated: list[str] | None = None, lit: list[str] | None = None) -> None:
+        self._send("lights", rooms, animated, lit)
 
     def pause(self, on: bool) -> None:
         self._send("pause", bool(on))

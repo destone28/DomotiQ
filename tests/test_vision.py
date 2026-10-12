@@ -626,6 +626,46 @@ def test_something_lying_on_the_edge_is_not_a_hand_for_ever(engine, renderer):
     assert len(tracks) == 1 and tracks[0].room == "living"  # and the figurine put down meanwhile is seen
 
 
+@pytest.mark.parametrize("seen_alone", [True, False])
+def test_a_figurine_inside_the_glow_of_its_room_light_is_never_lost(engine, renderer, seen_alone):
+    # the house lights the bathroom for the figurine standing there: the lamp on the wall lights the room unevenly,
+    # one big still "hand" with the figurine inside, which after 8 s joins the empty house; the figurine must not
+    yellow = Thing(215, 300, "#e0c020")
+    assert [t.room for t in bring(engine, renderer, [yellow])] == ["bathroom"]
+    room = renderer.calib.image_of(np.array([[175, 230], [285, 230], [285, 360], [175, 360]], np.float64), 0.0)
+    poly = np.round(room).astype(np.int32)
+    area = cv2.dilate(cv2.fillPoly(np.zeros(ANALYSIS[::-1], np.uint8), [poly], 255), np.ones((15, 15), np.uint8)) > 0
+    x0, x1 = poly[:, 0].min(), poly[:, 0].max()
+    a = (area * (np.clip((np.arange(ANALYSIS[0]) - x0) / (x1 - x0), 0, 1) * 0.7 + 0.15))[..., None]
+
+    def lamp(frame):
+        return (frame * (1 - a) + np.array([60, 150, 255]) * a).astype(np.uint8)
+    if not seen_alone:
+        engine._shapes.clear()           # born when its room was already lit: never seen alone (12 October, at a start)
+    t = 9.0
+    for lit in (True, False):
+        engine.lights_changed(["bathroom"], t)
+        for _ in range(150):
+            frame = renderer.render([yellow])
+            tracks = engine.feed(lamp(frame) if lit else frame, t)
+            t += 0.1
+        assert not engine.status()["hand"]                   # the glow joined the empty house...
+        assert [tr.room for tr in tracks] == ["bathroom"]    # ...and the figurine is still there, lit or not
+        assert any(not o.hand and o.extra.get("track") for o in engine.observations)
+    # lit again, and the figurine taken away: its place is no presence (12 October: Mister Brown taken away from the
+    # lit bathroom left a dark place, born as "Nerone")
+    engine.lights_changed(["bathroom"], t)
+    for _ in range(150):
+        tracks = engine.feed(lamp(renderer.render([yellow])), t)
+        t += 0.1
+    hand = {"hands": [Hand(215, 300)]}
+    for frame in [renderer.render([yellow], **hand)] * 3 + [renderer.render([], **hand)] * 3 + [renderer.render([])] * 60:
+        tracks = engine.feed(lamp(frame), t)
+        t += 0.1
+    # at most a sliver where the glow changes fastest, much smaller than the figurine, and no presence
+    assert tracks == [] and not any(not o.hand and o.area_mm2 >= 500 for o in engine.observations)
+
+
 def test_the_glow_of_a_house_light_is_never_taken_late(engine, renderer):
     settle(engine, renderer, [], 0)
     # a hand passes, then the house turns on the living room light: its glow stays on the wall
@@ -1509,17 +1549,21 @@ class _Webcam:
         self.pending, self.steps = None, []
         engine.set_camera(gain, 625, lock)
 
-    def feed(self, things, now, hall=1.0, strip=1.0, **kw):
-        """`strip`: how much of its light the driveway and the strip around the house keep (the window)."""
+    def feed(self, things, now, hall=1.0, strip=1.0, rooms=None, **kw):
+        """`strip`: how much of its light the driveway and the strip around the house keep (the window); `rooms`:
+        rooms made brighter by their own light, {room: factor}."""
         self.seq += 1
         if self.pending and self.seq >= self.pending[0]:
             self.gain, self.pending = self.pending[1], None
         bright = hall * self.light(self.gain) / self.light(32)
         frame = self.renderer.render(things, brightness=bright, **kw)
+        seg = self.engine.segmenter
         if strip != 1.0:
-            seg = self.engine.segmenter
             where = np.isin(seg.label, [seg.region_names.index(n) for n in ("driveway", "outside")]) & (seg.mask > 0)
             frame[where] = np.clip(frame[where].astype(np.float32) * strip, 0, 255).astype(np.uint8)
+        for room, factor in (rooms or {}).items():
+            where = (seg.label == seg.region_names.index(room)) & (seg.mask > 0)
+            frame[where] = np.clip(frame[where].astype(np.float32) * factor, 0, 255).astype(np.uint8)
         tracks = self.engine.feed(frame, now, self.seq)
         step = self.engine.camera_request
         if step is not None:
@@ -1576,6 +1620,23 @@ def test_the_lights_of_the_house_do_not_move_the_webcam(engine, renderer):
             engine.lights_changed(["kitchen", "living"], now)
         cam.feed(things, now, lights=lit)
     assert cam.steps == [], cam.steps
+
+
+@pytest.mark.parametrize("told", [True, False])
+def test_many_lights_of_the_house_on_do_not_move_the_webcam(engine, renderer, told):
+    """12 October: the lights that follow the characters lit three rooms and their glow the next ones; the webcam went
+    darker, the empty house was learned again and two figurines were lost. Told which rooms are lit, the house leaves
+    them out for as long as they are on."""
+    things = [Thing(300, 100, "#d03030")]
+    _named(engine, renderer, things)
+    cam = _Webcam(engine, renderer)
+    rooms = ["kitchen", "living", "bedroom", "bathroom", "garage"]
+    for i in range(400):
+        now = 20.0 + i * 0.1
+        if i == 50:
+            engine.lights_changed(rooms, now, lit=rooms if told else None)
+        cam.feed(things, now, rooms={r: 1.35 for r in rooms} if i >= 50 else None)
+    assert (cam.steps == []) == told, cam.steps
 
 
 def test_the_strip_around_the_house_alone_does_not_move_the_webcam(engine, renderer):
@@ -1834,6 +1895,39 @@ def test_the_network_tells_apart_two_characters_of_alike_colours(engine, rendere
     assert not any(t.uncertain for t in tracks) and asked == []
 
 
+def test_the_network_sure_takes_back_names_the_colours_gave_wrong(engine, renderer):
+    """12 October: after a session in which the house learned the colours of the characters from its own mistakes, a
+    start named the figurines by those colours, two of them swapped, while the network saw each one rightly."""
+    red, green = Thing(250, 100, "#d03030"), Thing(560, 100, "#30a040")
+    bring(engine, renderer, [red, green])
+    left = min(engine.tracks, key=lambda t: t.x)
+    right = max(engine.tracks, key=lambda t: t.x)
+    # the colours learned the wrong way round: Rosso looks like the green figurine, Verde like the red one
+    engine.set_identities([Identity("id-rosso", "Rosso", signature=engine.track_signature(right.id)[0]),
+                           Identity("id-verde", "Verde", signature=engine.track_signature(left.id)[0])])
+    tracks = run(engine, renderer, [([red, green], {})] * 20, t0=15)
+    assert {t.identity for t in tracks if t.x < 400} == {"id-verde"}      # wrong, by the colours
+    engine.figures = _ByPlace("Rosso", "Verde")              # the network: the red one is Rosso
+    tracks = run(engine, renderer, [([red, green], {})] * 60, t0=17)
+    names = {t.identity: t for t in tracks}
+    assert set(names) == {"id-rosso", "id-verde"} and names["id-rosso"].x < names["id-verde"].x
+    assert engine.status()["figures"]["renamed"] >= 1
+    # and they stay so
+    tracks = run(engine, renderer, [([red, green], {})] * 30, t0=23)
+    assert {t.identity for t in tracks if t.x < 400} == {"id-rosso"}
+
+
+def test_a_name_somebody_gave_is_not_taken_by_the_network(engine, renderer):
+    red = Thing(250, 100, "#d03030")
+    tracks = bring(engine, renderer, [red])
+    engine.set_identities([Identity("id-rosso", "Rosso", signature=engine.track_signature(tracks[0].id)[0]),
+                           Identity("id-verde", "Verde", signature=[0.0] * 64)])
+    engine.tracker.assign(tracks[0].id, "id-rosso")          # said in the web app
+    engine.figures = _Figures("Verde", 0.99)
+    tracks = run(engine, renderer, [([red], {})] * 30, t0=15)
+    assert [t.identity for t in tracks] == ["id-rosso"]
+
+
 def test_the_network_does_not_choose_between_characters_it_mixes_up(engine, renderer):
     """casa1, 7 October at 20:43: the network called Viola "Mister Blu" 34 times, sure; measured when it was trained,
     the pair comes with it, and between those two the colours choose, or the house asks."""
@@ -1983,3 +2077,206 @@ def test_the_network_stops_what_was_born_before_it_looked(engine, renderer):
     engine.figures = _Figures("niente")
     tracks = run(engine, renderer, [([red], {})] * 30, t0=4.8)
     assert tracks == []
+
+
+def test_the_car_parked_against_the_back_wall_is_no_hand(engine, renderer):
+    """12 October: the car parked against the back wall of the garage, its roof over the edge of the base, was a
+    "hand" at a start, and 8 s later part of the empty house. The network that knows it says it is the car."""
+    car = Thing(560, 330, "#2aa0b0", kind="car", length=150, width=60, height=70)
+    engine.set_identities([Identity("id-car", "Honda Civic", category="car", signature=[0.0] * 64)])
+    obs, _, _ = engine.segmenter.process(renderer.render([car]), 1.0)
+    assert [o.hand for o in obs] == [True]                   # by its size and place alone: a hand
+    engine.figures = _Figures("Honda Civic", 0.97)
+    engine.rescan()
+    tracks = run(engine, renderer, [([car], {})] * 120, t0=2.0)
+    assert not engine.status()["hand"]
+    assert len(tracks) == 1 and tracks[0].room == "garage"
+
+
+def test_an_arm_in_the_garage_is_still_a_hand(engine, renderer):
+    engine.set_identities([Identity("id-car", "Honda Civic", category="car", signature=[0.0] * 64)])
+    engine.figures = _Figures("niente", 0.9)
+    seen = [engine.feed(renderer.render([], hands=[Hand(540, 300, side="top")]), 1.0 + i * 0.1) for i in range(20)]
+    assert engine.status()["hand"] and not any(seen)
+
+
+@pytest.mark.parametrize("lit", [False, True])
+def test_at_a_start_a_glow_lit_meanwhile_is_taken_only_if_the_network_is_sure(engine, renderer, lit):
+    """12 October: at a start the house lit the bathroom for Giallo Galli, just found; the glow of the lamp on the
+    wall looked like Rossellina, and was taken as her, the network unsure (Mister Brown, 0.41)."""
+    pink = Thing(390, 160, "#e08080")
+    obs, _, _ = engine.segmenter.process(renderer.render([pink]), 0.5)
+    engine.set_identities([Identity("id-rosa", "Rosa", signature=list(obs[0].sig))])
+    engine.figures = _Figures("Mister Brown", 0.41)
+    engine.rescan()
+    run(engine, renderer, [([], {})] * 3, t0=1.0)            # the search has begun
+    if lit:
+        engine.lights_changed(["utility"], 1.3)
+    tracks = run(engine, renderer, [([pink], {})] * 30, t0=1.4)
+    assert len(tracks) == (0 if lit else 1)
+
+
+@pytest.mark.parametrize("network", [False, True])
+def test_at_a_start_a_white_figurine_is_taken_if_the_network_knows_it(engine, renderer, network):
+    """12 October: Giba, a white cat on the grey floor, lighter than it and with no colour, joined the empty house at a
+    start: what is lighter is taken for a reflection. The network that knows Giba is sure."""
+    white = Thing(300, 100, "#f2f0ea")
+    seen = engine.segmenter.process
+
+    def as_giba(frame, now=None):
+        obs, fg, lab = seen(frame, now)
+        for o in obs:
+            o.extra["contrast"] = (5.0, 30.0)                # lighter than the floor and with no colour, as Giba
+        return obs, fg, lab
+    engine.segmenter.process = as_giba
+    if network:
+        engine.figures = _Figures("Giba", 0.95)
+    engine.rescan()
+    tracks = run(engine, renderer, [([white], {})] * 30, t0=1.0)
+    assert len(tracks) == (1 if network else 0)
+
+
+def test_a_black_figurine_on_the_grey_floor_is_no_shadow(engine, renderer):
+    """12 October: Nerone, a black dog, on the grey floor of the living room was never seen: darker with the same
+    colour is a shadow. Seen on the green lawn, he was."""
+    u, v = renderer.calib.image_of(np.array([[300.0, 100.0]]), 15.0)[0].astype(int)
+    rug = cv2.circle(np.zeros(ANALYSIS[::-1], np.uint8), (int(u), int(v)), 40, 255, -1) > 0
+    dog = cv2.ellipse(np.zeros(ANALYSIS[::-1], np.uint8), (int(u), int(v)), (14, 9), 0, 0, 360, 255, -1) > 0
+
+    empty = renderer.render().astype(np.int16)
+
+    def grey(frame, black=False):
+        floor = rug & (np.abs(frame.astype(np.int16) - empty).sum(axis=2) < 40)    # not where the hand is
+        frame = frame.copy()
+        frame[floor] = 105                                    # a neutral grey floor, as in a living room
+        if black:
+            frame[dog & floor] = 12                           # far darker, and with no colour of its own
+        return frame
+    assert engine.take_empty([grey(renderer.render()) for _ in range(5)])["ok"]
+    run(engine, renderer, [([], {})] * 40)
+    hand = {"hands": [Hand(300, 100)]}
+    frames = [grey(renderer.render([], **hand))] * 3 + [grey(renderer.render([], **hand), True)] * 2 + \
+        [grey(renderer.render([]), True)] * 40
+    tracks = [engine.feed(f, 4.0 + i * 0.1) for i, f in enumerate(frames)][-1]
+    assert len(tracks) == 1 and tracks[0].room == "living"
+
+
+def test_at_a_start_a_strip_of_glow_is_no_figurine_whatever_the_network_says(engine, renderer):
+    """12 October: a strip of glow on the floor by a lit bathroom, four times longer than wide, was "Rossellina" for the
+    network (0.95), and was taken at a start."""
+    u, v = renderer.calib.image_of(np.array([[300.0, 100.0]]), 0.0)[0].astype(int)
+    strip = np.zeros(ANALYSIS[::-1], bool)
+    strip[v - 5:v + 5, u - 22:u + 22] = True
+
+    def glow(frame):
+        frame = frame.copy()
+        frame[strip] = (frame[strip] * 0.82 + np.array([60, 140, 255]) * 0.18).astype(np.uint8)
+        return frame
+    # its colours were those of Rossellina, so that it passed for something that could stand in the house
+    obs, _, _ = engine.segmenter.process(glow(renderer.render()), 0.5)
+    engine.set_identities([Identity("id-rosa", "Rossellina", signature=list(obs[0].sig))])
+    engine.figures = _Figures("Rossellina", 0.95)
+    engine.rescan()
+    tracks = [engine.feed(glow(renderer.render()), 1.0 + i * 0.1) for i in range(30)][-1]
+    assert tracks == []
+
+
+def test_the_car_inside_the_glow_of_the_garage_light_is_never_lost(engine, renderer):
+    """12 October: the garage light lit for the car, its glow one big still "hand" with the car inside; the car,
+    bigger than a figurine, was not kept out of the empty house."""
+    car = Thing(540, 280, "#2aa0b0", kind="car", length=150, width=60, height=50)
+    engine.set_identities([Identity("id-car", "Honda Civic", category="car", signature=[0.0] * 64)])
+    engine.figures = _Figures("Honda Civic", 0.97)
+    engine.rescan()
+    tracks = run(engine, renderer, [([car], {})] * 40, t0=1.0)
+    assert [t.room for t in tracks] == ["garage"]
+    room = renderer.calib.image_of(np.array([[435, 230], [640, 230], [640, 360], [435, 360]], np.float64), 0.0)
+    poly = np.round(room).astype(np.int32)
+    area = cv2.dilate(cv2.fillPoly(np.zeros(ANALYSIS[::-1], np.uint8), [poly], 255), np.ones((15, 15), np.uint8)) > 0
+    x0, x1 = poly[:, 0].min(), poly[:, 0].max()
+    a = (area * (np.clip((np.arange(ANALYSIS[0]) - x0) / (x1 - x0), 0, 1) * 0.6 + 0.15))[..., None]
+    engine.lights_changed(["garage"], 5.0)
+    t = 5.0
+    for _ in range(150):
+        tracks = engine.feed((renderer.render([car]) * (1 - a) + np.array([90, 170, 255]) * a).astype(np.uint8), t)
+        t += 0.1
+    assert not engine.status()["hand"] and [tr.room for tr in tracks] == ["garage"]
+    assert any(not o.hand and o.extra.get("track") for o in engine.observations)
+
+
+def test_a_figurine_inside_a_flickering_glow_is_never_lost(engine, renderer):
+    """12 October: the glow of the bathroom lamp flickered, never still enough for a still "hand": after HAND_STUCK_S
+    the "hands that never leave" joined the empty house with Giallo Galli and Mister Blu inside. Told that the house
+    lit the bathroom, its glow is no hand at all, and joins the empty house around the figurine."""
+    from domotiq.vision.engine import HAND_STUCK_S
+    yellow = Thing(215, 300, "#e0c020")
+    tracks = bring(engine, renderer, [yellow])
+    engine.set_identities([Identity("id-giallo", "Giallo Galli", signature=engine.track_signature(tracks[0].id)[0])])
+    engine.tracker.assign(tracks[0].id, "id-giallo")
+    run(engine, renderer, [([yellow], {})] * 10, t0=8.0)
+    room = renderer.calib.image_of(np.array([[175, 230], [285, 230], [285, 360], [175, 360]], np.float64), 0.0)
+    poly = np.round(room).astype(np.int32)
+    area = cv2.dilate(cv2.fillPoly(np.zeros(ANALYSIS[::-1], np.uint8), [poly], 255), np.ones((15, 15), np.uint8)) > 0
+    x0, x1 = poly[:, 0].min(), poly[:, 0].max()
+    ramp = np.clip((np.arange(ANALYSIS[0]) - x0) / (x1 - x0), 0, 1)
+    engine.lights_changed(["bathroom"], 9.0, lit=["bathroom"])
+    t = 9.0
+    for i in range(int((HAND_STUCK_S + 15) * 10)):
+        a = (area * (ramp * (0.6 + 0.02 * (i % 3)) + 0.15))[..., None]       # it flickers a little
+        tracks = engine.feed((renderer.render([yellow]) * (1 - a) + np.array([60, 150, 255]) * a).astype(np.uint8), t)
+        t += 0.1
+    assert not engine.status()["hand"]
+    assert [(tr.room, tr.identity) for tr in tracks] == [("bathroom", "id-giallo")]
+
+
+@pytest.mark.parametrize("network", [False, True])
+def test_a_white_figurine_put_down_by_hand_is_taken_if_the_network_knows_it(engine, renderer, network):
+    """12 October: Giba, a white cat, put down on the grey floor of the living room, lighter than it and with no colour:
+    a faint patch, never born. The network that knows Giba is sure."""
+    run(engine, renderer, [([], {})] * 40)
+    white = Thing(300, 100, "#f2f0ea")
+    seen = engine.segmenter.process
+
+    def as_giba(frame, now=None):
+        obs, fg, lab = seen(frame, now)
+        for o in obs:
+            if not o.hand:
+                o.extra["contrast"] = (5.0, 18.0)            # lighter than the floor and with no colour, as Giba
+        return obs, fg, lab
+    engine.segmenter.process = as_giba
+    engine.set_identities([Identity("id-giba", "Giba", category="cat", signature=[0.0] * 64)])
+    if network:
+        engine.figures = _Figures("Giba", 0.95)
+    tracks = _put_down(engine, renderer, [], white, 4.0)
+    assert len(tracks) == (1 if network else 0)
+
+
+def test_the_car_on_the_driveway_against_the_edge_is_no_hand(engine, renderer):
+    """12 October: the car put on the driveway against the front edge of the base was a "hand", and 8 s later part of
+    the empty house. The network that knows it says it is the car."""
+    car = Thing(540, -52, "#2aa0b0", kind="car", length=150, width=60, height=50)
+    engine.set_identities([Identity("id-car", "Honda Civic", category="car", signature=[0.0] * 64)])
+    obs, _, _ = engine.segmenter.process(renderer.render([car]), 1.0)
+    assert any(o.hand for o in obs)                          # by its size and place alone: a hand
+    engine.figures = _Figures("Honda Civic", 0.97)
+    engine.rescan()
+    tracks = run(engine, renderer, [([car], {})] * 120, t0=2.0)
+    assert not engine.status()["hand"]
+    assert len(tracks) == 1 and tracks[0].room == "driveway"
+
+
+def test_a_bright_car_just_put_down_does_not_move_the_webcam(engine, renderer):
+    """12 October: the car, bright, put in the garage by hand moved the gain before it was born; the empty house learned
+    again after the step took it in, and it was never seen."""
+    things = [Thing(300, 100, "#d03030")]
+    _named(engine, renderer, things)
+    cam = _Webcam(engine, renderer)
+    car = Thing(540, 290, "#7fe0ff", kind="car", length=150, width=60, height=50)
+    for i in range(30):
+        cam.feed(things, 20.0 + i * 0.1)
+    hand = {"hands": [Hand(540, 290, side="right")]}
+    for i in range(5):
+        cam.feed(things + ([car] if i >= 3 else []), 23.0 + i * 0.1, **hand)
+    for i in range(200):
+        cam.feed(things + [car], 23.5 + i * 0.1)
+    assert cam.steps == [], cam.steps

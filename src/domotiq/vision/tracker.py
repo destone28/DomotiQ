@@ -208,6 +208,7 @@ class Tracker:
         self.jittery = 0                 # false presences found by their jumps (for the diagnostics)
         self.figure_kept = 0             # frames a name was kept because the network still saw that character
         self.figure_named = 0            # newcomers named by the network instead of being asked about
+        self.figure_renamed = 0          # names the colours gave, corrected by the network
         self.consent = False             # set by the engine: the network must see a figurine before it is told
         self.veto, self.veto_p = False, 1.0   # set by the engine: what the network is this sure is "niente" is not told
         self.confused: set[frozenset] = set()  # set by the engine: names the network mixes up even when sure
@@ -337,6 +338,7 @@ class Tracker:
         self._drop_fragments()
         self._drop_lost(now, frozen, quiet_s)
         self._recognize(now)
+        self._network_names(now)
         self._settle_doubts(now)
         self._learn_poses(now)
         self._ask_unknown(now)
@@ -393,6 +395,8 @@ class Tracker:
         f_still = min(1.0, max(0.0, 1.0 - jumps / JITTER_COUNT))
         chroma_d, light_d = o.extra.get("contrast", (0.0, 0.0))
         f_contrast = min(1.0, max(chroma_d / 30.0, -light_d / 25.0, light_d / 40.0, 0.0) / 0.6)
+        if self._figure_character(t, now, FIGURE_KEEP_P) is not None:
+            f_contrast = 1.0                   # faint, but the network sees a character (a white cat on a grey floor)
         longest = 6.5 if chroma_d >= 20.0 or light_d <= -15.0 else 3.5     # lying down, if the colour is vivid
         f_shape = 1.0 if o.area_mm2 >= 6000 else min(1.0, max(0.0, (longest + 0.5 - o.elongation) / 1.5))
         return f_seen * f_still * f_contrast * f_shape
@@ -602,6 +606,40 @@ class Tracker:
                         self._touched.add(t.identity)      # in a hand: it may be put down anywhere
                     break
 
+    def _network_names(self, now: float) -> None:
+        """A name the colours gave that the network contradicts: when the network that knows the figurines is sure
+        (FIGURE_NAME_P, twice in a row) that a track is another character, the track takes that name, from whoever
+        holds it, unless somebody said who that one is or the network sees that character there too. On 12 October,
+        after a session in which a house got many names wrong and learned the colours of the characters from its
+        mistakes, a start named Mister Brown "Nerone" and Rossellina "Rossana" by their colours, while the network
+        saw Mister Brown and Rossellina (0.97); with their names taken, the real Nerone and Rossana stayed nameless.
+        On the blocks left out of its training the network was wrong on 5 figurines out of 4089 at that certainty."""
+        for t in list(self.tracks.values()):
+            if t.locked or t.carried or t.obs is None:
+                continue
+            seen = self._figure_name(t, now)
+            ident = self.identities.get(seen or "")
+            if ident is None or seen == t.identity or (t.identity and self._mixed_up(seen, t.identity)):
+                continue
+            if not self.fits_size(ident, t.obs.area_mm2):
+                continue
+            holder = next((u for u in self.tracks.values() if u is not t and u.identity == seen), None)
+            if holder is not None and (holder.locked or self._figure_is(holder, seen, now, FIGURE_KEEP_P)):
+                continue
+            if holder is not None:
+                holder.identity, holder.confidence, holder.uncertain, holder.candidates = None, 0.0, False, []
+                holder.votes.clear()
+                holder.misses = 0
+            had = t.identity
+            t.identity, t.confidence, t.uncertain, t.candidates = seen, 0.9, False, []
+            t.category = ident.category
+            t.votes = {seen: CONFIRM_FRAMES}
+            t.misses = 0
+            if had:
+                self.figure_renamed += 1
+            else:
+                self.figure_named += 1
+
     def _learn_poses(self, now: float) -> None:
         """A character the house is sure of (confirmed, or recognized with confidence), still, with no hand around
         and seen whole, that looks unlike every pose it knows: this look is one more pose of it."""
@@ -614,6 +652,9 @@ class Tracker:
                 continue
             if t.area and o.area_mm2 > 1.5 * t.area:
                 continue                       # against another figurine: not its own look
+            seen = self._figure_character(t, now, FIGURE_KEEP_P)
+            if seen is not None and seen.id != ident.id:
+                continue                       # the network sees another character: the name may be wrong
             if self._unlike_of(t.sig, o.area_mm2, ident, o.elongation) <= NEW_POSE:
                 continue
             self.add_pose(ident, t.sig, o.area_mm2, o.elongation)

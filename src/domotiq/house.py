@@ -29,6 +29,7 @@ from .store import Store
 BUTTONS = ("talk", "intercom", "language")
 MOVE_MM = 6.0
 NAMED_S = 3.0      # a name somebody gave stays on its presence this long, while the vision (another process) catches up
+FOLLOW_START_S = 15.0   # at a start the lights that follow the characters wait this long after the first presence
 
 
 @dataclass
@@ -75,6 +76,8 @@ class House:
         self.status = {"mcu": False, "camera": False, "audio": False, "llm": False,
                        "simulation": False, "modules": {}}
         self._follow_off_at: dict[str, float] = {}
+        self._start_hold = False                  # the lights that follow wait for the vision at a start (follow_after_start)
+        self._seen_since: float | None = None     # when the vision first told of presences
         self._dropped: dict[str, float] = {}     # presences said not real: until when they are left out
         self._named: dict[str, tuple[str, float]] = {}   # presence -> (name somebody just gave it, until when)
         self._last_sample = 0.0
@@ -91,6 +94,8 @@ class House:
     def update_tracks(self, tracks: list[Track], now: float | None = None) -> None:
         now = now or time.time()
         self._now = now
+        if tracks and self._seen_since is None:
+            self._seen_since = now
         self._dropped = {k: until for k, until in self._dropped.items() if until > now}
         self._named = {k: v for k, v in self._named.items() if v[1] > now}
         named = {tid: ident for tid, (ident, _) in self._named.items()}
@@ -318,9 +323,12 @@ class House:
         brightness = scene.get("follow_brightness", cfg["follow_brightness"])
         gcfg = self.settings.get("garage")
         favourite = cfg.get("follow_favourite", True) and "follow_color" not in scene
+        # at a start the lights wait for the vision to find the figurines: the glow of a light lit for the first one
+        # found, of its favourite colour, looked like other characters and hid figurines (12 October)
+        settling = self._start_hold and (self._seen_since is None or now - self._seen_since < FOLLOW_START_S)
         for lid, light in self.layout.lights.items():
-            wanted = follow and self.count(light.room, PERSON) > 0
-            if follow and light.room == "garage":
+            wanted = follow and not settling and self.count(light.room, PERSON) > 0
+            if follow and not settling and light.room == "garage":
                 for car in self.cars.values():
                     if car.room != "garage":
                         continue
@@ -335,6 +343,11 @@ class House:
                 if now >= off_at or not follow:
                     self.lights.clear(lid, "follow")
                     self._follow_off_at.pop(lid, None)
+
+    def follow_after_start(self) -> None:
+        """The webcam is starting: the lights that follow the characters wait until FOLLOW_START_S after the vision
+        first tells of presences, so that their glow does not change what the vision is looking at as it starts."""
+        self._start_hold, self._seen_since = True, None
 
     def _favourite_in(self, room: str) -> str | None:
         """The favourite colour of the person who came into this room last, among those who told the house theirs."""
