@@ -8,6 +8,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from ..model import ANIMALS, CAR, CATEGORY_NAMES, PERSON, category_matches
+from . import variants as V
 
 if TYPE_CHECKING:
     from ..app import Context
@@ -236,8 +237,9 @@ def who_are_you(lang: str) -> str:
 
 
 def not_understood(lang: str) -> str:
-    return ("Non ho capito. Prova a chiedermi: dov'è Marco? Oppure: fai festa!" if lang == "it"
-            else "I didn't get that. Try asking: where is Marco? Or: let's party!")
+    """"Non ho capito", with every time another request to try: all of them once before any comes again."""
+    it, en = V.deal("not_understood", V.NOT_UNDERSTOOD)
+    return it if lang == "it" else en
 
 
 JOKES = {

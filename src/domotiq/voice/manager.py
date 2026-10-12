@@ -103,7 +103,7 @@ FREQUENT = {
 for _i, _lang in enumerate(("it", "en")):
     FREQUENT[_lang].append(WELCOME[_lang])
     FREQUENT[_lang] += V.fixed_lines(V.THINKING, V.GIVE_UP, V.LATER, V.NOTHING, V.WAITING, V.WHAT_IS_IT,
-                                     V.NAME_AGAIN, V.CAR_PARKED, V.WHICH_ONES, V.WAKE_PROMPT)[_lang]
+                                     V.NAME_AGAIN, V.CAR_PARKED, V.WHICH_ONES, V.WAKE_PROMPT, V.NOT_UNDERSTOOD)[_lang]
 
 
 def _sounding(phrase: str, words: list[str]) -> list[tuple[int, int]]:

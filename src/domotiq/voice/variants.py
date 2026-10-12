@@ -21,6 +21,7 @@ class Variety:
     def __init__(self, seed: int | None = None) -> None:
         self.rng = random.Random(seed)
         self._last: dict[str, int] = {}
+        self._decks: dict[str, list[int]] = {}
 
     def pick(self, key: str, options: list[Pair]) -> Pair:
         if len(options) == 1:
@@ -30,12 +31,30 @@ class Variety:
         self._last[key] = i
         return options[i]
 
+    def deal(self, key: str, options: list[Pair]) -> Pair:
+        """Like a deck of cards: every option once, in a random order, before any comes again (and the first of a
+        new round is never the last of the round before)."""
+        deck = self._decks.get(key)
+        if not deck:
+            deck = list(range(len(options)))
+            self.rng.shuffle(deck)
+            if len(deck) > 1 and deck[-1] == self._last.get(key):
+                deck[0], deck[-1] = deck[-1], deck[0]
+            self._decks[key] = deck
+        i = deck.pop()
+        self._last[key] = i
+        return options[i]
+
 
 VARIETY = Variety()
 
 
 def pick(key: str, options: list[Pair]) -> Pair:
     return VARIETY.pick(key, options)
+
+
+def deal(key: str, options: list[Pair]) -> Pair:
+    return VARIETY.deal(key, options)
 
 
 def fill(pair: Pair, **values: str) -> Pair:
@@ -177,6 +196,27 @@ KIND_ASK = [("Ah, {noun}! {ask}", "Oh, {noun}! {ask}"), ("Capito, {noun}. {ask}"
 NONE_OF_ASK = [("Va bene. {ask}", "All right. {ask}"), ("D'accordo. {ask}", "OK. {ask}"), ("Allora: {ask}", "Then: {ask}")]
 THINKING = [("Fammi pensare...", "Let me think..."), ("Vediamo...", "Let me see..."), ("Un attimo...", "One moment...")]
 WAKE_PROMPT = [("Dimmi!", "Yes?"), ("Sì, dimmi!", "Yes, tell me!"), ("Eccomi!", "I'm here!")]   # said at once
+# a request not understood: every time another one to try, among the requests the recognizer of the house hears
+# best (said by three voices, and heard on the houses)
+NOT_UNDERSTOOD = [
+    ("Non ho capito. Prova a dirmi: facciamo festa!", "I didn't get that. Try saying: let's party!"),
+    ("Non ho capito. Prova a chiedermi una grigliata: facciamo una bella grigliata!",
+     "I didn't get that. Try asking me for a barbecue."),
+    ("Non ho capito. Chiedimi dov'è un personaggio, chiamandolo per nome.",
+     "I didn't get that. Ask me where a character is, calling them by name."),
+    ("Non ho capito. Prova a chiedermi di accendere il climatizzatore.",
+     "I didn't get that. Try asking me to turn on the air conditioning."),
+    ("Non ho capito. Prova a chiedermi che ore sono.", "I didn't get that. Try asking me what time it is."),
+    ("Non ho capito. Prova a chiedermi chi c'è in cucina.", "I didn't get that. Try asking me who is in the kitchen."),
+    ("Non ho capito. Prova a chiedermi che temperatura c'è.", "I didn't get that. Try asking me the temperature."),
+    ("Non ho capito. Prova a chiedermi una barzelletta.", "I didn't get that. Try asking me for a joke."),
+    ("Non ho capito. Prova a chiedermi dov'è la macchina.", "I didn't get that. Try asking me where the car is."),
+    ("Non ho capito. Prova a chiedermi quante persone ci sono in casa.",
+     "I didn't get that. Try asking me how many people are in the house."),
+    ("Non ho capito. Prova a chiedermi di accendere la luce in cucina.",
+     "I didn't get that. Try asking me to turn on the light in the kitchen."),
+    ("Non ho capito. Prova a chiedermi cosa so fare.", "I didn't get that. Try asking me what I can do."),
+]
 
 # what the house does not know: it asks, and learns (knowledge.py)
 TEACH_ASK = [("Tu lo sai? Dimmelo e me lo ricorderò.", "Do you know? Tell me and I'll remember it."),

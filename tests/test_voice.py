@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import pytest
 
+from domotiq.voice import answers
+from domotiq.voice import variants as V
 from domotiq.voice.intents import name_from_speech, parse, parse_time
 from domotiq.voice.tts import normalize as tts_normalize
 
@@ -96,6 +98,45 @@ def test_nonsense_is_not_understood():
     assert parse("non serve a nulla", NAMES) is None
     assert parse("chi ha costruito questa casa", NAMES) is None
     assert parse("quanti anni hai", NAMES) is None                  # an age, not a head count
+
+
+# the request each hint of "non ho capito" proposes, and what the house does with it
+HINTED = {"facciamo festa": "party", "facciamo una bella grigliata": "grill", "dov'è Marco": "where_is",
+          "accendi il climatizzatore": "climate", "che ore sono": "time_now", "chi c'è in cucina": "who_in",
+          "che temperatura c'è": "temperature", "racconta una barzelletta": "joke", "dov'è la macchina": "car_where",
+          "quante persone ci sono in casa": "count", "accendi la luce in cucina": "lights_on",
+          "cosa sai fare": "help", "let's party": "party", "barbecue": "grill", "where is Marco": "where_is",
+          "turn on the air conditioning": "climate", "what time is it": "time_now",
+          "who is in the kitchen": "who_in", "what's the temperature": "temperature", "tell me a joke": "joke",
+          "where is the car": "car_where", "how many people are in the house": "count",
+          "turn on the light in the kitchen": "lights_on", "what can you do": "help"}
+
+
+def test_not_understood_proposes_every_time_another_request():
+    n = len(V.NOT_UNDERSTOOD)
+    said = [answers.not_understood("it") for _ in range(5 * n)]
+    assert all(a != b for a, b in zip(said, said[1:]))
+    assert all(len(set(said[i:i + 2 * n])) == n for i in range(3 * n))     # all of them in any two rounds
+    assert all(s.startswith("Non ho capito. ") for s in said)
+    assert answers.not_understood("en").startswith("I didn't get that. ")
+
+
+def test_the_requests_the_hints_propose_are_understood():
+    for text, intent in HINTED.items():
+        i = parse(text, NAMES)
+        assert i is not None and i.name == intent, text
+    assert len(V.NOT_UNDERSTOOD) == len(HINTED) // 2
+
+
+def test_barbecue_and_garage_as_the_recognizer_hears_them():
+    """"Accendi il barbecue" was heard "accendi il barbe più" and turned on a light."""
+    for heard in ("accendi il barbe più", "accendi il bar ben più", "barba più", "barbie più", "accendi il bar bici",
+                  "accedi barrow", "barlow"):
+        assert parse(heard, NAMES).name == "grill", heard
+    assert parse("chi c'è nel gara", NAMES).args == {"room": "garage"}
+    assert parse("chi c'è in cugino", NAMES).args == {"room": "kitchen"}
+    assert parse("accendi la luce in garage", NAMES).args.get("room") == "garage"
+    assert parse("accenni climatizzatore", NAMES).args == {"mode": "cool", "on": True}
 
 
 def test_whole_names():

@@ -37,12 +37,12 @@ def normalize(text: str) -> str:
 
 
 ROOMS = {
-    "kitchen": ["cucina", "kitchen", "cucinino"],
+    "kitchen": ["cucina", "kitchen", "cucinino", "cugino"],      # "cugino": "cucina" as the recognizer heard it
     "living": ["soggiorno", "salotto", "sala", "living room", "living", "lounge", "sitting room", "salone"],
     "bedroom": ["camera da letto", "camera", "stanza da letto", "bedroom", "bed room", "letto"],
     "bathroom": ["bagno", "bathroom", "toilet", "toilette", "restroom"],
     "utility": ["locale tecnico", "tecnico", "ripostiglio", "utility room", "utility", "technical room"],
-    "garage": ["garage", "box", "autorimessa"],
+    "garage": ["garage", "box", "autorimessa", "gara"],      # "gara": "garage" as the recognizer often hears it
     "garden": ["giardino", "garden", "yard", "backyard", "cortile"],
     "driveway": ["vialetto", "ingresso", "entrata", "driveway", "front door", "entrance"],
 }
@@ -168,7 +168,10 @@ PATTERNS: list[tuple[str, list[str]]] = [
     # "fai presto", "let's body": "fai festa" and "let's party" as the recognizer heard them at the bench
     ("party", [r"\b(festa|feste|party|balliamo|ballare|musica|let s dance|dance)\b", r"\b(festeggia|celebr)\w*\b",
                r"\b(fai|facciamo|famo) presto\b", r"\blet s (body|bodies|potty)\b"]),
-    ("grill", [r"\b(barbecue|grigliata|griglia|grill|bbq|grigliare|salsicce|braciole|sausages)\b"]),
+    # "barbe più", "bar ben più", "barrow": "barbecue" as the recognizer heard it on the houses ("accendi il barbe più"
+    # lit a light)
+    ("grill", [r"\b(barbecue|grigliata|griglia|grill|bbq|grigliare|salsicce|braciole|sausages)\b",
+               r"\bbarb[aeiy]\w* (piu|ecc)\b", r"\bbar (ben|be|bi) piu\b", r"\bbar bici\b", r"\bbar(row|low)\b"]),
     ("scene", [r"\bscenari[oa]\b", r"\bmodalita\b", r"\bscene\b", r"\bmode\b", r"\bcinema\b", r"\brelax\b",
                r"\bbuonanotte\b", r"\bbuona notte\b", r"\bgood night\b", r"\bbuongiorno\b", r"\bbuon giorno\b",
                r"\bgood morning\b",
@@ -697,7 +700,7 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
             # "spegnere" and "spento" turned it on), and "spegni" as the recognizer hears it, "spendi" and "segni"
             off = re.search(r"\b(spegn\w*|speng\w*|spent[oaie]|spend\w*|segni|disattiv\w*|ferm\w*|basta|stop|"
                             r"turn (it )?off|switch (it )?off|off)\b", t)
-            on = re.search(r"\b(accend\w*|acces[oaie]|attiv\w*|metti|turn (it )?on|switch (it )?on|on)\b", t)
+            on = re.search(r"\b(accend\w*|accenn\w*|acces[oaie]|attiv\w*|metti|turn (it )?on|switch (it )?on|on)\b", t)
             # the name alone switches it (None): the recognizer often loses a short "spegni" and keeps the name
             args["on"] = False if off else True if on else None
         elif intent == "language":
