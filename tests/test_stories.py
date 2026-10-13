@@ -368,7 +368,10 @@ def test_a_chatty_question_is_answered_and_remembered(ctx):
 # ------------------------------------------------------------------ memories of the day
 def test_what_a_character_did_today(ctx):
     marco = ctx.identities.add("Marco", "person")
-    t0 = time.time() - 1800
+    now = time.time()
+    lt = time.localtime(now)
+    midnight = time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday, 0, 0, 0, 0, 0, -1))
+    t0 = max(now - 1800, midnight + 60)            # all of it today, whatever the time the test runs at
     rows = [(t0 + s, "v1", marco.id, 80, 100, "kitchen") for s in range(0, 600, 5)]
     rows += [(t0 + 600 + s, "v1", marco.id, 300, 100, "living") for s in range(0, 300, 5)]
     rows += [(t0 + 900 + s, "v1", marco.id, 500, 100, "bedroom") for s in range(0, 100, 5)]
