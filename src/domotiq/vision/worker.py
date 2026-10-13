@@ -340,8 +340,8 @@ def child_main(conn, cfg: dict[str, Any]) -> None:
                             conn.send(("jpeg", overlay, jpg))
                             last_jpeg = now
         elif camera.controls is not None and now - last_frame_at > CAMERA_SILENT_S and engine.regulator is not None:
-            # no frames for a while: back to the values of the calibration (on casa1 no value ever stopped the C270,
-            # but a camera that stops with a long exposure is not woken by opening it again with the same one)
+            # no frames for a while: back to the values of the calibration (a camera that stops with a long exposure
+            # is not woken by opening it again with the same one)
             back = back_to_calibration(read_json(lock_file), engine.regulator.gain, engine.regulator.exposure)
             if back is not None:
                 logging.warning("no frames from the webcam for %.0f s: back to gain %s, exposure %s",
@@ -479,8 +479,8 @@ class VisionProcess(VisionLink):
             if kind == "tuning":
                 self._tuning_at = time.time() if msg[1] else 0.0
                 if not msg[1]:
-                    # the presences held meanwhile stay until the first frame: with no tracks for 10 s they were
-                    # all taken away for an instant, and came back ("everybody out and in" on casa1 at 17:45)
+                    # the presences held meanwhile stay until the first frame: otherwise, after seconds with no
+                    # tracks, they would all be taken away for an instant and come back
                     self._tracks_at = time.time()
             elif kind == "tracks":
                 self._tracks = [Track(**d) for d in msg[1]]
@@ -554,7 +554,7 @@ class VisionProcess(VisionLink):
     def tracks(self) -> list[Track]:
         now = time.time()
         # while the webcam is set again (about ten seconds) no frame comes: the presences stay where they were,
-        # instead of all leaving the house and coming back ("arrivederci Viola, a presto Mister Brown")
+        # instead of all leaving the house and coming back
         tuning = self._tuning_at and now - self._tuning_at < TUNING_HOLD_S
         if now - self._tracks_at > 2.0 and not tuning:
             return []

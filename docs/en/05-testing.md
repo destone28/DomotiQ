@@ -27,8 +27,8 @@ Open the address of the house in a browser. At the top right, next to the house 
 Open **More → Diagnostics**.
 
 - The **Modulino** card shows a green dot and `v1`, the protocol version of the firmware. A red dot means Linux cannot talk to the microcontroller.
-- Below it, every module has a green or red dot: Hub, Latch Relay, the five Pixels (garage, bedroom, kitchen, living room, bathroom), the two Thermo (bathroom, sideboard) and Buttons.
-- **I2C scan** lists the addresses that answer on each Hub channel. Expected, besides the Hub (0x70–0x77) and the Latch Relay (0x02, 0x15 or 0x10), which sit on the main bus and answer on every channel:
+- Below it, *I2C bus free* says that the two lines of the bus are fine (otherwise it shows which line is stuck: see [troubleshooting](11-troubleshooting.md#every-module-is-red-and-the-alert-the-modulino-bus-is-stuck-is-shown)), and every module has a green or red dot: Hub, Latch Relay, the five Pixels (garage, bedroom, kitchen, living room, bathroom), the two Thermo (bathroom, sideboard) and Buttons.
+- **I2C scan** lists the addresses that answer. The first line, *main bus*, shows what sits before the Hub: the Latch Relay (0x02, 0x15 or 0x10) and the Hub itself (between 0x70 and 0x77). The channel lines show only what is behind each Hub channel, and you should see:
 
   | Channel | Expected |
   |---|---|
@@ -79,10 +79,11 @@ Open **More → Calibration**.
 2. **Tap the 4 corners of the base, in the order shown**: front left, front right, back right, back left. Front is the driveway edge; left is the kitchen and garden side. A chip shows which corner is next; ↶ removes the last one. Tap **Use these corners**. If the four points are not a plausible outline of the base, the house refuses them: tap them again, in order.
 3. **Check the overlay.** With *Overlay* on, the image shows the outline of the base, the rooms, the doors in green, the walls drawn at their real height and the excluded zones darkened (wall lights, the tree canopy, the pole). The drawn walls must sit on the walls in the image. If they do not, tap the corners again.
 4. **The light and the empty house.** Right after the corners the house sets the light of the camera by itself and saves the empty house; a box with a spinner shows it is working, and the buttons stay locked until the message *Empty house saved*. Do not touch the house during those 15 seconds. For a few seconds the camera adjusts exposure and white balance on its own, and the house measures the brightness and colours it reaches. It then looks for the manual values that give the same picture, a quarter darker (so the floor under the coloured house lights does not saturate), and locks them. Under some lights, like some warm, greenish lamps, no colour temperature of the camera gives neutral colours: the house corrects what is left with a fixed gain on each colour. Finally it saves the empty house, the median of 20 frames. It takes about 15 seconds, and the house must be empty.
+5. **The empty house in the other lights.** Still with the house empty, tap **Photograph in every light of the house**: for about a minute the house photographs itself in each of its lights, and you must not touch it. Then switch on one at a time the lights of the hall the house does not command (lamps, LEDs, the light of the window) and for each one tap **Add the light of now**. Below the buttons the page says how many empty houses per light it saved and which one is in use. When the light changes, the house compares with the most similar picture (see [chapter 7](07-recognition-and-identities.md#the-light-of-the-hall)).
 
 Later:
 
-- **Save the empty house only** takes a new reference without touching the camera settings, for example after moving a piece of furniture.
+- **Save the empty house only** takes a new reference without touching the camera settings, for example after moving a piece of furniture; in that case also tap **Clear (after moving the furniture)** and do step 5 again.
 - **Set the light and save the empty house** is for when the light of the hall changes a lot. Slow changes are followed automatically on the free floor.
 - If the camera gets bumped, the web app shows *The webcam has moved: calibrate again*: repeat the whole procedure.
 
@@ -107,8 +108,8 @@ Then ask something the fixed phrases do not cover, such as "Quanta gente c'è in
 
 - Press **Intercom**, say the name of the registered character, and within 60 seconds move that figurine from the driveway through the front door into the living room: it takes that name.
 - Put two person figurines in the bathroom: after 2 seconds the bathroom blinks orange and the house says "The bathroom is taken! Please wait your turn."
-- Leave a person figurine in the utility room for more than 5 seconds: red alarm lights in living room and garage, "Warning: the utility room is off limits!", and a red banner on the phones until it leaves.
-- Drive the car through the garage gate: "Welcome home!". Leave it still in the parking area for 3 seconds: it counts as parked, and the **Car** card of the **House** screen says so. With the follow-me lights on (they are off by default) the garage light turns on too, and goes off 10 seconds after parking.
+- With the alarm on, as it is by default, leave a person figurine in the utility room for more than 5 seconds: red alarm lights in living room and garage, "Warning: the utility room is off limits!", and a red banner on the phones until it leaves. **Switch off** on the banner turns the alarm off; switch it on again from the **Alarm** box of the **House** screen.
+- Drive the car through the garage gate: "Welcome home!". Leave it still in the parking area for 3 seconds: it counts as parked, and the **Car** card of the **House** screen says so. The garage light stays as it is: it is turned on by the follow-me lights, off by default ([chapter 9](09-rules.md#priorities-and-light-layers)).
 - **Controls → Party!**: "Let's dance!", 20 seconds of music and lights, "The party is over!".
 
 ## 13. Hotspot and phones
@@ -123,6 +124,6 @@ The UNO Q has no battery for its clock and, without internet, cannot set the tim
 
 ## Testing without figurines
 
-The whole house also runs on a PC, in simulation and without any hardware: start it with `--simulate` (see [chapter 6](06-web-app.md#trying-the-web-app-on-a-pc)). Instead of the webcam there are virtual figurines: tapping **Unrecognized item** and then a spot on the plan puts one there. Lights, voice and rules react as they do to real figurines. While the simulation is on the house ignores the webcam; to go back to the real house, just restart it normally, without `--simulate`.
+The whole house also runs on a PC, in simulation and without any hardware: start it with `--simulate` (see [chapter 6](06-web-app.md#trying-the-web-app-on-a-pc)). Instead of the webcam there are virtual figurines: tapping **Unrecognized item** and then a spot on the plan puts one there. The simulation page, which is not in the menu, opens with `#/sim` after the address (`http://localhost:8080/#/sim`): there you drag the figurines, add new ones or a registered character, move the virtual sensors and press the virtual buttons. Lights, voice and rules react as they do to real figurines. While the simulation is on the house ignores the webcam; to go back to the real house, just restart it normally, without `--simulate`.
 
 Next: [the web app](06-web-app.md).

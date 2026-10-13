@@ -41,7 +41,7 @@ SPEEDS = (1.0, 1.15)
 # reverberation time (s), signal to noise ratio (dB), level
 CONDITIONS = {"clean": None, "room": (0.35, 18, 0.35), "far": (0.6, 9, 0.2)}
 NAMES = ["Mister Brown", "Mr Brown", "Viola", "Violet", "Rossana", "Honda Civic", "Mister Green", "Mister Blu",
-         "Rossellina", "Giallo Galli"]                                   # the characters of casa1
+         "Rossellina", "Giallo Galli"]                                   # the characters of a house
 GROUPS = {
     "it": {
         "commands": [

@@ -118,7 +118,7 @@ def test_signature_distance():
 
 # ------------------------------------------------------------ segmentation
 def test_the_analysed_area_is_the_house_with_real_calibrations(layout):
-    # the corners tapped on casa1 on 4 October: the pole, raised to the camera, used to cover everything
+    # corners tapped at real calibrations: the pole, raised to the camera, does not cover the house
     for corners in ([[72.0, 434.7], [560.0, 430.7], [584.0, 72.7], [58.0, 96.7]],
                     [[44.0, 419.8], [590.0, 413.8], [608.0, 35.8], [42.0, 45.8]]):
         cal = Calibration.from_corners([[u / 640, v / 480] for u, v in corners], 640, 480, layout.camera)
@@ -481,8 +481,8 @@ def test_a_change_with_no_hand_is_not_a_presence(engine, renderer):
 
 def test_the_place_of_a_figurine_taken_into_the_empty_house_is_no_presence(engine, renderer):
     settle(engine, renderer, [], 0)
-    # an unrecognized figurine that had joined the empty house (as before this rule, or after the light
-    # changed beyond the correction): a hand takes it away, and its place matches the empty house as saved
+    # an unrecognized figurine that has joined the empty house (after the light changed beyond the correction,
+    # for instance): a hand takes it away, and its place matches the empty house as saved
     red = Thing(300, 100, "#d03030")
     frame = renderer.render([red])
     engine.segmenter.absorb(frame, np.ones(engine.segmenter.mask.shape, bool) & (engine.segmenter.mask > 0))
@@ -629,7 +629,7 @@ def test_something_lying_on_the_edge_is_not_a_hand_for_ever(engine, renderer):
 @pytest.mark.parametrize("seen_alone", [True, False])
 def test_a_figurine_inside_the_glow_of_its_room_light_is_never_lost(engine, renderer, seen_alone):
     # the house lights the bathroom for the figurine standing there: the lamp on the wall lights the room unevenly,
-    # one big still "hand" with the figurine inside, which after 8 s joins the empty house; the figurine must not
+    # one big still "hand" with the figurine inside, which after 8 s joins the empty house; the figurine must stay
     yellow = Thing(215, 300, "#e0c020")
     assert [t.room for t in bring(engine, renderer, [yellow])] == ["bathroom"]
     room = renderer.calib.image_of(np.array([[175, 230], [285, 230], [285, 360], [175, 360]], np.float64), 0.0)
@@ -641,7 +641,7 @@ def test_a_figurine_inside_the_glow_of_its_room_light_is_never_lost(engine, rend
     def lamp(frame):
         return (frame * (1 - a) + np.array([60, 150, 255]) * a).astype(np.uint8)
     if not seen_alone:
-        engine._shapes.clear()           # born when its room was already lit: never seen alone (12 October, at a start)
+        engine._shapes.clear()           # born when its room was already lit: never seen alone (as at a start)
     t = 9.0
     for lit in (True, False):
         engine.lights_changed(["bathroom"], t)
@@ -652,8 +652,8 @@ def test_a_figurine_inside_the_glow_of_its_room_light_is_never_lost(engine, rend
         assert not engine.status()["hand"]                   # the glow joined the empty house...
         assert [tr.room for tr in tracks] == ["bathroom"]    # ...and the figurine is still there, lit or not
         assert any(not o.hand and o.extra.get("track") for o in engine.observations)
-    # lit again, and the figurine taken away: its place is no presence (12 October: Mister Brown taken away from the
-    # lit bathroom left a dark place, born as "Nerone")
+    # lit again, and the figurine taken away: its place is no presence (the dark place it leaves in the lit room is
+    # no new character)
     engine.lights_changed(["bathroom"], t)
     for _ in range(150):
         tracks = engine.feed(lamp(renderer.render([yellow])), t)
@@ -914,8 +914,8 @@ def test_names_do_not_swap_with_no_hand(layout):
 
 
 def test_a_hidden_nameless_double_of_a_named_figurine_goes(layout):
-    """12 October, another house at a start: Romeo, hidden and found again four times next to a lawn taken for a hand,
-    left four nameless tracks where he stood, counted as four more animals."""
+    """A nameless track left where a named figurine was hidden and found again (next to something taken for a hand)
+    is a double of it, and goes; one far away stays."""
     from domotiq.vision.tracker import VTrack
     a = _look(45, 50, 30)
     tr = _tracker(layout, [Identity("id-a", "A", category="cat", signature=list(a))])
@@ -935,8 +935,9 @@ def test_a_hidden_nameless_double_of_a_named_figurine_goes(layout):
 @pytest.mark.parametrize("case,named", [("only one", True), ("unsure", False), ("held", False), ("twice", False),
                                         ("mixed up", False)])
 def test_a_nameless_track_takes_the_only_name_it_can_have(layout, case, named):
-    """12 October, another house: Mister Blu in a bathroom the network had never seen (0.77-0.82), with Viola named in
-    the next room; the house asked who he was at every start. Nobody else could be him."""
+    """A nameless track the network sees fairly sure as a character nobody else could be takes that name; not when
+    the network is unsure, another figurine is that character by its colours, two tracks could be it, or the network
+    mixes that name up with another."""
     a, b, c = _look(45, 50, 30), _look(70, 20, 60), _look(30, 60, 70)
     held = case == "held"                                     # another figurine is Mister Blu by its colours
     ids = [Identity("id-viola", "Viola", signature=list(a)),
@@ -961,8 +962,8 @@ def test_a_nameless_track_takes_the_only_name_it_can_have(layout, case, named):
 
 @pytest.mark.parametrize("case,moved", [("swapped", True), ("unsure", False), ("seen there too", False), ("free", True)])
 def test_a_sure_network_takes_a_name_its_holder_does_not_show(layout, case, moved):
-    """12 October, another house: Viola and Mister Brown moved, and each took the name of the other by the colours; the
-    network saw Viola at 0.90 in one and "Nerone" at 0.52 in the other: the names stayed swapped."""
+    """A network sure of a character takes its name from a track that holds it by the colours but does not show it to
+    the network; not when the network is unsure, or sees that character in the holder too."""
     a, b = _look(45, 50, 30), _look(70, 20, 60)
     tr = _tracker(layout, [Identity("id-viola", "Viola"), Identity("id-brown", "Mister Brown"),
                            Identity("id-nerone", "Nerone", category="dog")])
@@ -983,8 +984,8 @@ def test_a_sure_network_takes_a_name_its_holder_does_not_show(layout, case, move
 
 
 def test_the_colours_do_not_take_a_name_the_network_is_sure_of(layout):
-    """13 October, another house: Mister Blu, whose colours the house had not learned, was named by the network (0.98)
-    and named back "Mister Brown" by the colours at every frame, the one dark character with colours learned."""
+    """A name the network is sure of is not taken back by the colours at every frame, even when they match another
+    character whose colours were learned (and those of this one were not)."""
     dark = _look(25, 30, 20)
     tr = _tracker(layout, [Identity("id-brown", "Mister Brown", signature=list(dark)), Identity("id-blu", "Mister Blu")])
     for k in range(6):
@@ -1259,10 +1260,9 @@ def test_something_pointed_at_in_the_web_app_becomes_a_presence(engine, renderer
 
 
 def test_hands_that_never_leave_are_the_light_of_the_hall(engine, renderer):
-    """The room light switched off (0.57 of the empty house on casa1): the walls, lit another way, are big blobs that
-    look like hands, and their edges flicker, so they never stand still. They blocked the webcam for 30 s, and then
-    became places where things were born. Now the change of the light is noticed at once: the webcam is asked for at
-    once, hands or not, and once it is set the empty house is learned again in the new light."""
+    """When the room light goes off, the walls, lit another way, are big blobs that look like hands, and their edges
+    flicker, so they never stand still. The change of the light is noticed at once: the webcam is asked for at once,
+    hands or not, and once it is set the empty house is learned again in the new light."""
     run(engine, renderer, [([], {})] * 40)
 
     def flickering(i):
@@ -1290,8 +1290,8 @@ def _hand_at(tr, x, y):
 
 
 def test_a_figurine_moves_only_with_a_hand_close_and_settles_on_the_median(layout):
-    """On casa1 the middle of Viola's blob jumped by 15 mm back and forth while nobody touched her, and her place
-    on the map followed it."""
+    """The middle of a blob may jump back and forth while nobody touches the figurine: its place on the map moves
+    only with a hand close, and settles on the median of what is seen."""
     from domotiq.vision import tracker as T
     a = _look(45, 50, 30)
     tr = _tracker(layout, [Identity("id-a", "A", signature=list(a))])
@@ -1325,7 +1325,7 @@ def test_a_figurine_moves_only_with_a_hand_close_and_settles_on_the_median(layou
 
 
 def test_a_figurine_does_not_climb_on_furniture_by_itself(layout):
-    """"Mister Brown, scendi dalla fioriera" was said again and again: his blob touched the planter now and then."""
+    """A blob that reaches over a piece of furniture now and then does not put the figurine on it: only a hand does."""
     from domotiq.vision import tracker as T
     from domotiq.vision.pipeline import surfaces
     a = _look(45, 50, 30)
@@ -1352,7 +1352,7 @@ def test_a_figurine_does_not_climb_on_furniture_by_itself(layout):
 
 
 def test_the_presences_stay_while_the_webcam_is_set_again():
-    """Every 70 s the webcam was set again for 9 s with no frame, and every presence left the house and came back."""
+    """While the webcam is set again, with no frame for some seconds, the presences stay in the house."""
     import time
     from domotiq.model import Track
     from domotiq.vision.worker import VisionProcess
@@ -1365,8 +1365,7 @@ def test_the_presences_stay_while_the_webcam_is_set_again():
 
 def test_the_vision_process_sends_the_live_view_while_somebody_watches(tmp_path, monkeypatch):
     """The whole loop of the vision process on the synthetic webcam: asked for the live view, it sends pictures
-    every few frames. On casa1 (9 October) they had ended up inside the saving of the webcam values: one every 5
-    minutes."""
+    every few frames, besides the tracks and the status."""
     import os
     import signal
     import threading
@@ -1433,10 +1432,9 @@ def _same(tracks, before):
 
 
 def test_the_hall_light_changes_and_every_presence_stays_as_it_was(engine, renderer):
-    """casa1, 6 October at 17:45: the evening came and the webcam was set again. Everybody went out and came back,
-    three characters jumped to other rooms and fifteen cars and animals were born in the living room: the walls, lit
-    another way than in the empty house, were "hands". Through a change of the light the presences stay as they were
-    just before; the webcam is asked for at once, and the empty house is learned again in the new light."""
+    """Through a change of the hall light the presences stay as they were just before: nobody goes out and back,
+    jumps to another room or is born where the walls, lit another way than in the empty house, look like hands. The
+    webcam is asked for at once, and the empty house is learned again in the new light."""
     things = [Thing(300, 100, "#d03030"), Thing(480, 280, "#30a040")]
     before = _named(engine, renderer, things)
     t, retuned, level = 20.0, None, 1.0
@@ -1492,8 +1490,8 @@ def test_a_covered_camera_is_never_learned_as_the_empty_house(engine, renderer):
 
 
 def test_the_presences_stay_until_the_first_frame_after_the_webcam_is_set():
-    """At the end of the ten seconds the webcam was being set, the presences were dropped for an instant (the last
-    frame was ten seconds old) and came back: everybody went out of the house and in again."""
+    """Until the first frame after the webcam is set, the presences stay, even when the last frame is ten seconds old:
+    nobody goes out of the house and in again."""
     import time
     from domotiq.model import Track
     from domotiq.vision.worker import VisionProcess
@@ -1530,9 +1528,9 @@ def test_a_knocked_webcam_is_never_learned_as_a_change_of_the_light(engine, rend
 
 
 def test_after_the_dark_the_house_looks_again_at_what_is_in_sight(engine, renderer):
-    """casa1 at 19:00: the hall went dark and the webcam saw 9-17 out of 50. A figurine moved meanwhile was not seen;
-    when the light comes back the house takes what is in sight as at a start (the characters it knows closely,
-    wherever they are now), instead of learning the figurine as part of the empty house."""
+    """A figurine moved while the hall is dark is not seen; when the light comes back the house takes what is in
+    sight as at a start (the characters it knows closely, wherever they are now), instead of learning the figurine as
+    part of the empty house."""
     red = Thing(300, 100, "#d03030")
     tracks = bring(engine, renderer, [red])
     sig = engine.track_signature(tracks[0].id)[0]
@@ -1549,10 +1547,8 @@ def test_after_the_dark_the_house_looks_again_at_what_is_in_sight(engine, render
 
 
 def test_a_start_in_another_light_does_not_learn_the_figurines_as_the_empty_house(engine, renderer):
-    """casa1, 7 October at 14:45 and 15:10: started again in another light than that of the empty house, the house
-    found nobody (the whole picture differed from it), learned the empty house again in the new light with every
-    figurine in it, and saw them no more; moved, they left presences where they had been. Knowing nobody, the house
-    looks again at what is in sight, as after the dark."""
+    """Started in another light than that of the empty house, the house does not learn the empty house again with
+    every figurine in it: knowing nobody, it looks again at what is in sight, as after the dark."""
     things = [Thing(300, 100, "#d03030"), Thing(480, 280, "#30a040"), Thing(150, 250, "#3050d0")]
     # registered with colours the webcam does not see in this light; the network knows them in every light
     engine.set_identities([Identity(f"id-{k}", name, category="person", signature=[0.0] * 64)
@@ -1577,8 +1573,8 @@ def test_a_start_in_another_light_does_not_learn_the_figurines_as_the_empty_hous
 
 
 def test_at_a_start_the_network_has_the_last_word(engine, renderer):
-    """casa1, 7 October at 16:16: the house started empty in another light than that of the empty house; blobs of
-    the colours of Mister Green, Mister Brown and Viola were taken as they were, the network saying "niente"."""
+    """At a start in another light than that of the empty house, blobs of the colours of known characters are taken
+    only if the network sees a figurine there, not while it says "niente"."""
     red = Thing(300, 100, "#d03030")
     tracks = bring(engine, renderer, [red])
     sig = engine.track_signature(tracks[0].id)[0]
@@ -1711,9 +1707,8 @@ def test_the_lights_of_the_house_do_not_move_the_webcam(engine, renderer):
 
 @pytest.mark.parametrize("told", [True, False])
 def test_many_lights_of_the_house_on_do_not_move_the_webcam(engine, renderer, told):
-    """12 October: the lights that follow the characters lit three rooms and their glow the next ones; the webcam went
-    darker, the empty house was learned again and two figurines were lost. Told which rooms are lit, the house leaves
-    them out for as long as they are on."""
+    """Many rooms lit by the house (the lights that follow the characters, and their glow in the next rooms) do not
+    move the webcam: told which rooms are lit, the house leaves them out for as long as they are on."""
     things = [Thing(300, 100, "#d03030")]
     _named(engine, renderer, things)
     cam = _Webcam(engine, renderer)
@@ -1727,8 +1722,7 @@ def test_many_lights_of_the_house_on_do_not_move_the_webcam(engine, renderer, to
 
 
 def test_the_strip_around_the_house_alone_does_not_move_the_webcam(engine, renderer):
-    """The lights of the hall do not light the driveway and the strip around the house as they light the rooms (the
-    empty houses of casa1 on 7 October: the strip at 0.29-0.38 from one light to another, the rooms at 0.84-1.49). A
+    """The lights of the hall do not light the driveway and the strip around the house as they light the rooms. A
     light that leaves the strip at a third and the rooms as they were must not move the gain."""
     things = [Thing(300, 100, "#d03030")]
     before = _named(engine, renderer, things)
@@ -1741,9 +1735,9 @@ def test_the_strip_around_the_house_alone_does_not_move_the_webcam(engine, rende
 
 
 def test_the_empty_house_is_learned_again_after_the_steps_of_the_webcam(engine, renderer, monkeypatch):
-    """casa1, 9 October: the light of the hall changed and the empty house was learned again between two steps of the
-    gain, in neither the old light nor the new one. Now the house holds the presences while the gain brings the light
-    back, in larger steps, and learns the empty house after them."""
+    """After a change of the hall light the empty house is never learned between two steps of the gain, in neither
+    the old light nor the new one: the house holds the presences while the gain brings the light back, in larger
+    steps, and learns the empty house after them."""
     from domotiq.vision.exposure import BAND
     things = [Thing(300, 100, "#d03030"), Thing(480, 280, "#30a040")]
     before = _named(engine, renderer, things)
@@ -1766,9 +1760,9 @@ def test_the_empty_house_is_learned_again_after_the_steps_of_the_webcam(engine, 
 
 
 def test_in_a_dark_hall_the_webcam_goes_on_towards_the_light_while_it_can(engine, renderer):
-    """10 October at 14:58: the light of the room went down to a fifth or less, and with the gain at 28 of 255 the picture
-    was "almost dark". The gain waited for the light to come back, and the house stayed blind. A picture too dark
-    to be learned is still brought towards the empty house, upwards only, as long as the webcam can."""
+    """The light of the room goes down to a fifth or less: the gain does not wait for it to come back, leaving the
+    house blind. A picture too dark to be learned is still brought towards the empty house, upwards only, as long as
+    the webcam can."""
     things = [Thing(150, 250, "#3050d0"), Thing(300, 100, "#d03030")]
     before = _named(engine, renderer, things)
     cam = _Webcam(engine, renderer, gain=28)
@@ -1786,8 +1780,8 @@ def test_in_a_dark_hall_the_webcam_goes_on_towards_the_light_while_it_can(engine
 
 
 def test_at_the_dark_end_hands_do_not_stop_the_noise_from_being_learned(engine, renderer, monkeypatch):
-    """At gain 255 in a dark hall the noise made "hands" everywhere; the noise is learned only on calm pictures, so it
-    was never learned again and the "hands" never went. At the dark end of the webcam it is learned anyway."""
+    """At gain 255 in a dark hall the noise makes "hands" everywhere, and the noise is learned only on calm pictures:
+    at the dark end of the webcam it is learned anyway, so the "hands" go."""
     red = Thing(300, 100, "#d03030")
     _named(engine, renderer, [red])
     learned = []
@@ -1803,9 +1797,8 @@ def test_at_the_dark_end_hands_do_not_stop_the_noise_from_being_learned(engine, 
 
 
 def test_hands_that_never_leave_do_not_stop_the_light_of_the_webcam(engine, renderer):
-    """casa1, 9 October in the evening: the tops of the walls, lit another way than in the empty house, were "hands"
-    for minutes. The gain waited for them to leave, never reached its limit, and so the full setting never came
-    either. Hands seen without a break for HAND_STUCK_S are no hands, for the gain too."""
+    """Hands seen without a break for HAND_STUCK_S (the tops of the walls, lit another way than in the empty house)
+    are no hands for the gain either: it does not wait for them to leave."""
     red = Thing(300, 100, "#d03030")
     _named(engine, renderer, [red])
     engine.set_camera(32, 625)
@@ -1838,7 +1831,7 @@ def test_at_the_dark_end_the_webcam_is_set_again_only_if_that_gives_more(engine,
 
 
 def test_a_dark_picture_is_never_saved_as_the_empty_house(engine, renderer):
-    """casa1, 6 October at 21:00: "Set the light and save the empty house" with the room in the dark."""
+    """"Set the light and save the empty house" with the room in the dark is refused: the house asks for light."""
     reference = engine.segmenter.reference_bgr.copy()
     r = engine.take_empty([renderer.render(brightness=0.1) for _ in range(5)])
     assert not r["ok"] and r["error"] == "dark" and "accendi la luce" in r["message"]
@@ -1847,9 +1840,9 @@ def test_a_dark_picture_is_never_saved_as_the_empty_house(engine, renderer):
 
 
 def test_an_empty_house_saved_in_the_dark_does_not_stop_the_house(engine, renderer):
-    """The empty house saved in the dark before the save was refused: compared with it the lit room looked 3.5 times
-    brighter, the house took it for a dazzled webcam and waited for hours without looking. Now it adapts, asks for
-    the empty house to be saved again, and does not set the webcam again for a light it cannot follow."""
+    """An empty house saved in the dark (by a version that did not refuse it): the lit room looks far brighter, and the
+    house does not take it for a dazzled webcam and wait. It adapts, asks for the empty house to be saved again, and
+    does not set the webcam again for a light it cannot follow."""
     red = Thing(300, 100, "#d03030")
     before = _named(engine, renderer, [red])
     engine._empty0 = engine._empty0 * 0.09                   # as saved in the dark
@@ -1897,8 +1890,8 @@ def _put_down(engine, renderer, placed, thing, t0):
 
 
 def test_answers_of_the_network_seconds_apart_are_in_a_row(engine, renderer):
-    """13 October: at rest a frame a second is looked at, a few tracks at a time; a track with a name was looked at every
-    4-5 s and its answers were never "in a row": the network could not take back a name the colours gave wrong."""
+    """At rest a frame a second is looked at, a few tracks at a time: answers of the network seconds apart still count
+    as "in a row", so the network can take back a name the colours gave wrong."""
     red = Thing(300, 100, "#d03030")
     (track,) = bring(engine, renderer, [red])
     engine.figures = _Figures("Rosso", 0.97)
@@ -1926,7 +1919,7 @@ def test_a_blob_the_network_sees_as_nothing_is_not_born(engine, renderer):
 @pytest.mark.parametrize("network", [True, False])
 def test_the_network_keeps_a_name_the_colours_no_longer_match(engine, renderer, network):
     """Another light, other colours: the name stays while the network still sees that character. Without it, the
-    name went for most of the time (it came back only because nothing moves by itself)."""
+    name is lost for most of the time."""
     red = Thing(300, 100, "#d03030")
     tracks = bring(engine, renderer, [red])
     sig = engine.track_signature(tracks[0].id)[0]
@@ -1966,9 +1959,8 @@ class _ByPlace:
 
 
 def test_the_network_tells_apart_two_characters_of_alike_colours(engine, renderer):
-    """casa1, 7 October at 16:41: Rossellina put down by hand was named Rossana by her colours, the network sure it
-    was Rossellina (96%). Two characters of the same colours, both taken and put down: without the network each
-    could be either of them and the house asks; with it, each has its name."""
+    """Two characters of the same colours, both taken and put down: without the network each could be either of them
+    and the house asks; with it, each has its name."""
     a, b = Thing(250, 100, "#e0c020"), Thing(560, 100, "#e0c020")
     bring(engine, renderer, [a, b])
     left = min(engine.tracks, key=lambda t: t.x)
@@ -1993,8 +1985,8 @@ def test_the_network_tells_apart_two_characters_of_alike_colours(engine, rendere
 
 
 def test_the_network_sure_takes_back_names_the_colours_gave_wrong(engine, renderer):
-    """12 October: after a session in which the house learned the colours of the characters from its own mistakes, a
-    start named the figurines by those colours, two of them swapped, while the network saw each one rightly."""
+    """Names the colours gave wrong (two figurines swapped, colours learned from the house's own mistakes) are taken
+    back by the network when it is sure of each one, and they stay so."""
     red, green = Thing(250, 100, "#d03030"), Thing(560, 100, "#30a040")
     bring(engine, renderer, [red, green])
     left = min(engine.tracks, key=lambda t: t.x)
@@ -2026,8 +2018,8 @@ def test_a_name_somebody_gave_is_not_taken_by_the_network(engine, renderer):
 
 
 def test_the_network_does_not_choose_between_characters_it_mixes_up(engine, renderer):
-    """casa1, 7 October at 20:43: the network called Viola "Mister Blu" 34 times, sure; measured when it was trained,
-    the pair comes with it, and between those two the colours choose, or the house asks."""
+    """Between two characters the network mixes up (a pair measured when it was trained, that comes with it) the
+    network does not choose: the colours choose, or the house asks."""
     a, b = Thing(250, 100, "#e0c020"), Thing(560, 100, "#e0c020")
     bring(engine, renderer, [a, b])
     left = min(engine.tracks, key=lambda t: t.x)
@@ -2087,9 +2079,9 @@ def test_with_consent_nothing_is_told_before_the_network_sees_a_figurine(engine,
 
 
 def test_a_newcomer_waits_while_the_network_says_niente_even_unsure(engine, renderer):
-    """Both houses, 7-10 October: two false presences in three were "niente" first for the network, however unsure,
-    and no real figurine was. Told once the network sees a figurine there; nameless, it is what the character the
-    network is sure of is (the small round figurines of a house were asked about as "a new animal")."""
+    """A newcomer waits while the network says "niente", however unsure: false presences often start so, real
+    figurines do not. It is told once the network sees a figurine there; nameless, it takes the name and the kind of
+    the character the network sees, if nobody else can be it."""
     run(engine, renderer, [([], {})] * 40)
     engine.set_identities([Identity("id-fido", "Fido", category="dog")])     # no colours learned yet
     engine.figures = _Figures("niente", 0.4)
@@ -2178,8 +2170,8 @@ def test_the_network_stops_what_was_born_before_it_looked(engine, renderer):
 
 
 def test_the_car_parked_against_the_back_wall_is_no_hand(engine, renderer):
-    """12 October: the car parked against the back wall of the garage, its roof over the edge of the base, was a
-    "hand" at a start, and 8 s later part of the empty house. The network that knows it says it is the car."""
+    """The car parked against the back wall of the garage, its roof over the edge of the base, is a "hand" by its
+    size and place alone; the network that knows it says it is the car, and it does not join the empty house."""
     car = Thing(560, 330, "#2aa0b0", kind="car", length=150, width=60, height=70)
     engine.set_identities([Identity("id-car", "Honda Civic", category="car", signature=[0.0] * 64)])
     obs, _, _ = engine.segmenter.process(renderer.render([car]), 1.0)
@@ -2192,8 +2184,8 @@ def test_the_car_parked_against_the_back_wall_is_no_hand(engine, renderer):
 
 
 def test_while_the_lights_of_the_house_move_names_stay(engine, renderer):
-    """12 October, another house: with the alarm on, the red light in the living room made blobs of glow; the network
-    took one for Viola (0.94), her name went to it, and the alarm of the utility room stopped by itself."""
+    """While the lights of the house move (an alarm), a blob of glow the network takes for a character does not take
+    that name: the name stays with the figurine, where it was."""
     fig, glow = Thing(300, 100, "#8040c0"), Thing(380, 160, "#c04070")
     obs, _, _ = engine.segmenter.process(renderer.render([fig]), 0.5)
     engine.set_identities([Identity("id-viola", "Viola", signature=list(obs[0].sig))])
@@ -2225,9 +2217,8 @@ class _Halo:
 
 
 def test_the_car_with_a_halo_at_a_start_is_no_hand(engine, renderer):
-    """12 October, another house: at a start the garage, lit otherwise than in the empty house, gave the car a halo of
-    floor and walls. The network saw the car in the whole blob at 0.65-0.78 only: a "hand", and 8 s later part of the
-    empty house; then, followed, nameless ("a new car in the garage?"). In the middle of the blob it is the car, sure."""
+    """At a start the car with a halo of floor and walls around it (the garage lit otherwise than in the empty house)
+    is a "hand", and the network is unsure of the whole blob: sure of its middle, it is the car, with its name."""
     car = Thing(560, 330, "#2aa0b0", kind="car", length=150, width=60, height=70)
     engine.set_identities([Identity("id-car", "Honda Civic", category="car", signature=[0.0] * 64)])
     obs, _, _ = engine.segmenter.process(renderer.render([car]), 1.0)
@@ -2248,8 +2239,8 @@ def test_an_arm_in_the_garage_is_still_a_hand(engine, renderer):
 
 @pytest.mark.parametrize("lit", [False, True])
 def test_at_a_start_a_glow_lit_meanwhile_is_taken_only_if_the_network_is_sure(engine, renderer, lit):
-    """12 October: at a start the house lit the bathroom for Giallo Galli, just found; the glow of the lamp on the
-    wall looked like Rossellina, and was taken as her, the network unsure (Mister Brown, 0.41)."""
+    """At a start, the glow of a lamp the house lit meanwhile may look like a character by its colours: it is taken
+    as a figurine only if the network is sure."""
     pink = Thing(390, 160, "#e08080")
     obs, _, _ = engine.segmenter.process(renderer.render([pink]), 0.5)
     engine.set_identities([Identity("id-rosa", "Rosa", signature=list(obs[0].sig))])
@@ -2264,8 +2255,8 @@ def test_at_a_start_a_glow_lit_meanwhile_is_taken_only_if_the_network_is_sure(en
 
 @pytest.mark.parametrize("network", [False, True])
 def test_at_a_start_a_white_figurine_is_taken_if_the_network_knows_it(engine, renderer, network):
-    """12 October: Giba, a white cat on the grey floor, lighter than it and with no colour, joined the empty house at a
-    start: what is lighter is taken for a reflection. The network that knows Giba is sure."""
+    """At a start a white figurine on a grey floor, lighter than it and with no colour, would be taken for a
+    reflection: it is taken if the network knows it and is sure."""
     white = Thing(300, 100, "#f2f0ea")
     seen = engine.segmenter.process
 
@@ -2283,8 +2274,7 @@ def test_at_a_start_a_white_figurine_is_taken_if_the_network_knows_it(engine, re
 
 
 def test_a_black_figurine_on_the_grey_floor_is_no_shadow(engine, renderer):
-    """12 October: Nerone, a black dog, on the grey floor of the living room was never seen: darker with the same
-    colour is a shadow. Seen on the green lawn, he was."""
+    """A black figurine on a grey floor, far darker and with no colour of its own, is no shadow: it is seen."""
     u, v = renderer.calib.image_of(np.array([[300.0, 100.0]]), 15.0)[0].astype(int)
     rug = cv2.circle(np.zeros(ANALYSIS[::-1], np.uint8), (int(u), int(v)), 40, 255, -1) > 0
     dog = cv2.ellipse(np.zeros(ANALYSIS[::-1], np.uint8), (int(u), int(v)), (14, 9), 0, 0, 360, 255, -1) > 0
@@ -2308,8 +2298,8 @@ def test_a_black_figurine_on_the_grey_floor_is_no_shadow(engine, renderer):
 
 
 def test_at_a_start_a_strip_of_glow_is_no_figurine_whatever_the_network_says(engine, renderer):
-    """12 October: a strip of glow on the floor by a lit bathroom, four times longer than wide, was "Rossellina" for the
-    network (0.95), and was taken at a start."""
+    """At a start a strip of glow on the floor, four times longer than wide, is no figurine, whatever the network
+    says about it."""
     u, v = renderer.calib.image_of(np.array([[300.0, 100.0]]), 0.0)[0].astype(int)
     strip = np.zeros(ANALYSIS[::-1], bool)
     strip[v - 5:v + 5, u - 22:u + 22] = True
@@ -2318,7 +2308,7 @@ def test_at_a_start_a_strip_of_glow_is_no_figurine_whatever_the_network_says(eng
         frame = frame.copy()
         frame[strip] = (frame[strip] * 0.82 + np.array([60, 140, 255]) * 0.18).astype(np.uint8)
         return frame
-    # its colours were those of Rossellina, so that it passed for something that could stand in the house
+    # a character with its colours, so that it may pass for something that could stand in the house
     obs, _, _ = engine.segmenter.process(glow(renderer.render()), 0.5)
     engine.set_identities([Identity("id-rosa", "Rossellina", signature=list(obs[0].sig))])
     engine.figures = _Figures("Rossellina", 0.95)
@@ -2328,8 +2318,8 @@ def test_at_a_start_a_strip_of_glow_is_no_figurine_whatever_the_network_says(eng
 
 
 def test_the_car_inside_the_glow_of_the_garage_light_is_never_lost(engine, renderer):
-    """12 October: the garage light lit for the car, its glow one big still "hand" with the car inside; the car,
-    bigger than a figurine, was not kept out of the empty house."""
+    """The car inside the glow of the garage light (one big still "hand" with the car inside) is never lost: bigger
+    than a figurine, it is still kept out of the empty house."""
     car = Thing(540, 280, "#2aa0b0", kind="car", length=150, width=60, height=50)
     engine.set_identities([Identity("id-car", "Honda Civic", category="car", signature=[0.0] * 64)])
     engine.figures = _Figures("Honda Civic", 0.97)
@@ -2351,9 +2341,9 @@ def test_the_car_inside_the_glow_of_the_garage_light_is_never_lost(engine, rende
 
 
 def test_a_figurine_inside_a_flickering_glow_is_never_lost(engine, renderer):
-    """12 October: the glow of the bathroom lamp flickered, never still enough for a still "hand": after HAND_STUCK_S
-    the "hands that never leave" joined the empty house with Giallo Galli and Mister Blu inside. Told that the house
-    lit the bathroom, its glow is no hand at all, and joins the empty house around the figurine."""
+    """A flickering glow is never still enough for a still "hand", and after HAND_STUCK_S the "hands that never
+    leave" would join the empty house with the figurine inside. Told that the house lit the room, its glow is no hand
+    at all, and joins the empty house around the figurine."""
     from domotiq.vision.engine import HAND_STUCK_S
     yellow = Thing(215, 300, "#e0c020")
     tracks = bring(engine, renderer, [yellow])
@@ -2376,8 +2366,7 @@ def test_a_figurine_inside_a_flickering_glow_is_never_lost(engine, renderer):
 
 
 def test_two_figurines_in_a_blinking_bathroom_stay_for_as_long_as_it_blinks(engine, renderer):
-    """12 October, another house: the alarm "bathroom for one" made the bathroom blink; its glow, again at every flash,
-    was a hand over the two figurines in it, which were taken out of the house: the alarm stopped by itself."""
+    """While a room blinks (an alarm), its glow is no hand over the figurines in it: they stay, and the alarm lasts."""
     yellow, blue = Thing(200, 335, "#e0c020"), Thing(262, 250, "#3050d0")
     tracks = bring(engine, renderer, [yellow, blue])
     near = {name: min(tracks, key=lambda tr: np.hypot(tr.x - th.x, tr.y - th.y))
@@ -2405,8 +2394,8 @@ def test_two_figurines_in_a_blinking_bathroom_stay_for_as_long_as_it_blinks(engi
 
 @pytest.mark.parametrize("network", [False, True])
 def test_a_white_figurine_put_down_by_hand_is_taken_if_the_network_knows_it(engine, renderer, network):
-    """12 October: Giba, a white cat, put down on the grey floor of the living room, lighter than it and with no colour:
-    a faint patch, never born. The network that knows Giba is sure."""
+    """A white figurine put down by hand on a grey floor, lighter than it and with no colour, is a faint patch: it is
+    taken if the network knows it and is sure."""
     run(engine, renderer, [([], {})] * 40)
     white = Thing(300, 100, "#f2f0ea")
     seen = engine.segmenter.process
@@ -2426,8 +2415,8 @@ def test_a_white_figurine_put_down_by_hand_is_taken_if_the_network_knows_it(engi
 
 
 def test_the_car_on_the_driveway_against_the_edge_is_no_hand(engine, renderer):
-    """12 October: the car put on the driveway against the front edge of the base was a "hand", and 8 s later part of
-    the empty house. The network that knows it says it is the car."""
+    """The car on the driveway against the front edge of the base is a "hand" by its size and place alone; the network
+    that knows it says it is the car, and it does not join the empty house."""
     car = Thing(540, -52, "#2aa0b0", kind="car", length=150, width=60, height=50)
     engine.set_identities([Identity("id-car", "Honda Civic", category="car", signature=[0.0] * 64)])
     obs, _, _ = engine.segmenter.process(renderer.render([car]), 1.0)
@@ -2440,8 +2429,8 @@ def test_the_car_on_the_driveway_against_the_edge_is_no_hand(engine, renderer):
 
 
 def test_a_bright_car_just_put_down_does_not_move_the_webcam(engine, renderer):
-    """12 October: the car, bright, put in the garage by hand moved the gain before it was born; the empty house learned
-    again after the step took it in, and it was never seen."""
+    """A bright car just put down by hand does not move the gain before it is born, so the empty house is not learned
+    again with the car in it."""
     things = [Thing(300, 100, "#d03030")]
     _named(engine, renderer, things)
     cam = _Webcam(engine, renderer)
@@ -2457,9 +2446,8 @@ def test_a_bright_car_just_put_down_does_not_move_the_webcam(engine, renderer):
 
 
 def test_the_car_pointed_at_comes_back_whole(engine, renderer):
-    """12 October: the car, taken into the empty house by a change of the light, pointed at in the web app came back
-    only as the circle around the point, a piece of it. The whole blob that differs from the saved empty house comes
-    back."""
+    """The car, taken into the empty house (by a change of the light), pointed at in the web app comes back whole:
+    the whole blob that differs from the saved empty house, not only the circle around the point."""
     run(engine, renderer, [([], {})] * 40)
     car = Thing(540, 280, "#2aa0b0", kind="car", length=150, width=60, height=50)
     tracks = run(engine, renderer, [([car], {})] * 60, t0=4.0)     # appeared by itself: absorbed
@@ -2472,9 +2460,8 @@ def test_the_car_pointed_at_comes_back_whole(engine, renderer):
 
 
 def test_a_figurine_next_to_a_still_hand_does_not_join_the_empty_house(engine, renderer):
-    """12 October, another house at a start: the driveway lit otherwise than in the empty house was a "hand" along the
-    front edge; the figurine next to it was a "hand" too, and 8 s later it had joined the empty house. Still, and sure
-    for the network, it is a figurine."""
+    """A figurine next to a still "hand" along the front edge (the driveway lit otherwise than in the empty house) does
+    not join the empty house with it: still, and sure for the network, it is a figurine."""
     red = Thing(300, 40, "#d03030")
     engine.set_identities([Identity("id-rosa", "Rossana", signature=[0.0] * 64)])
     engine.figures = _Figures("Rossana", 0.97)

@@ -12,9 +12,9 @@ Questa guida copre tutto il progetto, da una scheda nuova di fabbrica fino a una
 4. [Collegamenti](04-collegamenti.md): la catena Qwiic attraverso il Modulino Hub, l'alimentazione, relè e ventola, l'audio, la webcam.
 5. [Collaudo e messa in servizio](05-collaudo.md): la verifica di ogni parte, la calibrazione della webcam, il primo personaggio, la voce, i telefoni.
 6. [La webapp](06-webapp.md): come aprirla, tutte le schermate, chi può fare cosa, le notifiche e le domande.
-7. [Riconoscimento e identità](07-riconoscimento-e-identita.md): come vede la casa, la registrazione dei personaggi, la privacy, i dataset.
+7. [Riconoscimento e identità](07-riconoscimento-e-identita.md): come vede la casa, la registrazione dei personaggi, la rete che conosce le statuine, la privacy, i dataset.
 8. [Voce](08-voce.md): i tasti, le lingue, la loquacità, frasi di esempio, il modello linguistico.
-9. [Regole](09-regole.md): Quando / Se / Allora, tutti gli eventi, le condizioni e le azioni, le regole di partenza, i livelli delle luci.
+9. [Regole](09-regole.md): Quando / Se / Allora, tutti gli eventi, le condizioni e le azioni, le regole di partenza, i livelli delle luci, gli scenari.
 10. [Attribuzioni](10-attribuzioni.md): le licenze del progetto e di ogni componente di terze parti.
 11. [Risoluzione dei problemi](11-risoluzione-problemi.md): sintomo, causa e soluzione.
 

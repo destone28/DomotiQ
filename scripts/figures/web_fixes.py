@@ -8,7 +8,7 @@ character all the time it stood there, also while the house had another name for
 database of the house (var/domotiq.db, copied from the board): the commands of the web app, and the positions of
 every track (once a second) to know which track it was and for how long it stood in that place.
 
-    python scripts/figures/web_fixes.py <domotiq.db> <identities.json> <out fixes.json> [--since "2026-10-07 00:00"]
+    python scripts/figures/web_fixes.py <domotiq.db> <identities.json> <out fixes.json> [--since "YYYY-MM-DD HH:MM"]
 
 The result goes to build_crops.py --fixes.
 """
@@ -59,7 +59,7 @@ def main() -> None:
         if c.get("name") not in ("dismiss", "identity"):
             continue
         tid, k = body.get("track"), None
-        if tid in pos:                          # recorded since 7 October: the track itself
+        if tid in pos:                          # the command recorded its track: that one
             h = pos[tid]
             k = min(range(len(h)), key=lambda i: abs(h[i][0] - ts))
         elif c["name"] == "dismiss":

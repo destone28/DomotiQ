@@ -8,17 +8,17 @@ house in use, as it was photographed (engine._room_light), and outside the band 
 most of the way. The white balance is not touched, and the full setting of the webcam (9-10 s without pictures) is
 left for when this cannot follow.
 
-Measured on the C270 of casa1 (9 October), which the numbers below come from:
+Measured on the C270 webcam, which the numbers below come from:
 - the exposure goes in steps: the longest real one is 350-675 (0.1 ms; 625 is used), and beyond the time of a frame
   (67 ms at 15 fps) the picture is only multiplied, x2 x3 x4, at the same 15 fps. Even with every light of the hall
   on, 625 with no gain gives 16 of 255: shorter exposures are of no use there. So the gain moves, and the exposure
   only goes one real step down (x0.32-0.40) when the gain is at its floor and the picture still too bright;
 - the gain does nothing from 0 to 8, jumps x2.2 at 12, and from there rises smoothly: one unit is +8-14% of light on
-  the probe below 24, +3% from 24 to 48, +1% from 48 to 96, +0.2-0.4% above 128. As light ∝ gain^k, k went from 0.25
+  the probe below 24, +3% from 24 to 48, +1% from 48 to 96, +0.2-0.4% above 128. As light ∝ gain^k, k goes from 0.25
   to 1.8 depending on the gain and the scene: k is measured on the last two points, the table only starts it;
 - a new gain shows in the next frame, a new exposure two frames later;
-- still for a minute, the probe moves by 0.2-0.7% (deviation), 0.9-2.9% at most; daylight went down 14% in a quarter
-  of an hour: the band is BAND around the empty house, the steps at most CAP each.
+- still for a minute, the probe moves by 0.2-0.7% (deviation), 0.9-2.9% at most; daylight can fall by more than 10%
+  in a quarter of an hour: the band is BAND around the empty house, the steps at most CAP each.
 """
 
 from __future__ import annotations
@@ -34,19 +34,19 @@ DAMP = 0.8               # each step goes this share of the way: the response of
 CAP = 0.08               # and changes the light by at most 8%: the light changing by 12% in 2 s is a change of the
                          # hall for the house, the steps of the webcam must not look like one
 CAP_ADAPT = 0.25         # ...unless the house is already following a change of the hall: then it looks at nothing,
-                         # and learns the empty house again only once the steps are over (on casa1, 9 October, the
-                         # light fell below half: 8% steps took 70 s to reach the end of the gain, and the empty house
-                         # was learned again twice in between)
+                         # and learns the empty house again only once the steps are over (when the light falls below
+                         # half, 8% steps take over a minute to reach the end of the gain, and the empty house would
+                         # be learned again in between)
 K_MIN, K_MAX = 0.25, 2.5           # where the measured response is believed (1.8 measured on the probe at the lowest
                                    # gains, steeper scenes can be); beyond, the scene changed between the two looks
 GAIN_FLOOR, GAIN_MAX = 12, 255     # below 12 the gain of the C270 does nothing
 GAIN_OFF = 0.129                   # the light of gain 0-8 (and of 9-11, never asked), relative to gain 32
 EXPOSURES = (625, 312, 156, 78)    # the real steps of the exposure, longest first
 EXPOSURE_STEP = 0.36               # one of them down gives this much of the light (measured 0.32-0.40)
-# Beyond 625 the C270 multiplies the picture digitally, in plateaus, still at 15 frames a second (measured on 9 October
-# with the light of the hall at most: 700-1250 x1.7, 1600-2047 x2.3, 3000 x2.9). The noise grows with the light, and
-# the gain gives a cleaner picture: these come only at the highest gain, for a hall darker than the gain can make up
-# (10 October: brightness 22 of 50 at gain 255), and go first on the way back. One digital plateau each.
+# Beyond 625 the C270 multiplies the picture digitally, in plateaus, still at 15 frames a second (measured with the
+# light of the hall at its brightest: 700-1250 x1.7, 1600-2047 x2.3, 3000 x2.9). The noise grows with the light, and
+# the gain gives a cleaner picture: these come only at the highest gain, for a hall darker than the gain can make up,
+# and go first on the way back. One digital plateau each.
 DIGITAL = (3000, 1600, 700)
 EXPOSURE_LIGHT = {3000: 2.9, 1600: 2.3, 700: 1.7, 625: 1.0, 312: EXPOSURE_STEP, 156: EXPOSURE_STEP ** 2,
                   78: EXPOSURE_STEP ** 3}
@@ -55,8 +55,8 @@ NOISE_EXP = 0.6                    # the noise of a pixel grows as its brightnes
 HOUR_S = 3600.0
 
 
-# the light of the probe against the gain, at the longest exposure, relative to gain 32: casa1 with the light of the
-# hall at half and at most (9 October), their geometric mean. Only a start: k is measured on the scene
+# the light of the probe against the gain, at the longest exposure, relative to gain 32: measured with the light of
+# the hall at half and at its brightest, their geometric mean. Only a start: k is measured on the scene
 GAIN_LIGHT = ((12, 0.288), (16, 0.444), (24, 0.769), (32, 1.0), (40, 1.257), (48, 1.501), (64, 1.839), (80, 2.159),
               (96, 2.386), (128, 2.852), (160, 3.183), (192, 3.445), (255, 3.846))
 
@@ -174,8 +174,8 @@ class GainRegulator:
         off = abs(math.log(max(ratio, 1e-3)))
         self.settled = False
         if off <= math.log(1.0 + BAND):
-            # the step landed: what comes next, either way, is another change of the light, no seesaw (on casa1, 9
-            # October, a 7% drift of the evening was held for minutes against a step made the other way before it)
+            # the step landed: what comes next, either way, is another change of the light, no seesaw (otherwise a slow
+            # drift of the evening light can be held off for minutes by a step made the other way before it)
             self.at_limit, self._way = False, 0
             return None
         way = 1 if ratio < 1.0 else -1

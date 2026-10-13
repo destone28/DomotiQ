@@ -48,7 +48,7 @@ NOISE_MIN, NOISE_START, NOISE_SLOW = 8, 20, 50
 NOISE_FADE = 1.0 - 1.0 / NOISE_SLOW
 NOISE_KNOWN = 1.0 - NOISE_FADE ** NOISE_MIN       # the faded count of NOISE_MIN samples
 # a shadow makes the floor darker, a black figurine much darker: below DEEP_NUM / DEEP_DEN of the lightness of the
-# empty house it is no shadow (the shadow of a lamp at the side, the RGB at 55%, keeps 0.65 of it)
+# empty house it is no shadow (the shadow of a lamp at the side keeps about 0.65 of it)
 DEEP_NUM, DEEP_DEN = 2, 5
 DEEP_AROUND_PX = 25   # ...and below half the lightness of the picture around it, this wide
 
@@ -177,13 +177,13 @@ class Segmenter:
         # house changes (the measure is the most expensive step on the board)
         self.gain_period = 1.0
         self._crowded: dict[int, float] = {}          # region -> since when it is all foreground
-        # measured on casa1 in the dim light of the lab: a dark brown figurine on the grey floor is 14 points
-        # darker and 8.5 apart in colour, the empty house stays well below these. What differs with no hand
-        # around never becomes a presence (engine), so the comparison can be this sensitive.
-        # A blob must also stand out somewhere by more than noise_k times the noise of its pixels. On casa1
-        # (4 October) most pixels flicker by 0.6-0.9 points of lightness and about 1 of colour, so the fixed
-        # thresholds decide almost everywhere; with two or three times that noise (a darker hall, more gain on the
-        # webcam) 5 times the noise takes away most of the flicker they let through (60-95%), and no figurine.
+        # in dim light a dark brown figurine on the grey floor is about 14 points darker and 8.5 apart in colour,
+        # the empty house stays well below these. What differs with no hand around never becomes a presence
+        # (engine), so the comparison can be this sensitive.
+        # A blob must also stand out somewhere by more than noise_k times the noise of its pixels. Most pixels
+        # flicker by under 1 point of lightness and about 1 of colour, so the fixed thresholds decide almost
+        # everywhere; with two or three times that noise (a darker hall, more gain on the webcam) 5 times the noise
+        # takes away most of the flicker they let through, and no figurine.
         self.params = {"dc": 8.0, "dl": 12.0, "shadow_dc": 4.0, "min_px": 120, "hand_mm2": 2500.0,
                        "hand_near_px": 60, "noise_k": 5.0}
         # the noise of each pixel, as a mean of its samples that fades slowly: the faded sums of the samples of L
@@ -541,7 +541,7 @@ class Segmenter:
         dl_limit = int(p["dl"] * 2.55)              # dl is an integer: dl > 30.6 is dl > 30, without converting dl
         chroma = dc > p["dc"]
         # darker with the same colour is a shadow, unless far darker than a shadow makes the floor: something black
-        # (12 October: Nerone, a black dog, made the grey floor of the living room 7 from 69, and was never seen)
+        # (a black figurine makes the grey floor almost black, with too little colour to tell it from a shadow)
         lum = lab8[..., 0].astype(np.int16)
         # ...and much darker than what is around it in the picture itself: in a hall too dark for the webcam the
         # whole picture is far darker than the empty house, evenly

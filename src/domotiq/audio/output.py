@@ -12,9 +12,9 @@ Writes are paced on the wall clock with a small lead, and the pipe towards
 aplay is shrunk, so what the mixer decides is heard within a fifth of a
 second: a pipe left at its default size would queue more than a second.
 
-The USB sound card can reset by itself (the US205 on casa1 did it several
-times a day, reappearing within the same second with its levels back to the
-factory ones). aplay does not always notice: it may stay alive on the card
+The USB sound card can reset by itself (a US205 may do it several times a
+day, reappearing within the same second with its levels back to the factory
+ones). aplay does not always notice: it may stay alive on the card
 that is gone, and a blocking write towards it would stop the mixer, and with
 it every sentence of the house. So the writes never block, a stream that
 stops taking sound for a second is started again, a card that comes back as
@@ -22,13 +22,11 @@ a new USB device is opened again with its levels set, and while there is no
 card the sound is consumed on the clock all the same, so the house never
 waits for a sentence that cannot be heard.
 
-On a new board, on 10 October, the stream took sound for minutes after the
-start and nothing was heard, until the guard opened it again: both times the
-webcam, on the same USB hub, had reset just after the stream was opened (the
-C270 of that house resets when it is opened, the one of casa1 does not). So
-the stream is opened again once the webcam is open (reopen()), and the levels
-of the card are read back every LEVELS_CHECK_S and set again if somebody
-changed them.
+A webcam on the same USB hub may reset as it is opened (some C270 do, others
+do not), and a stream opened just before can then go on taking sound while
+nothing is heard. So the stream is opened again once the webcam is open
+(reopen()), and the levels of the card are read back every LEVELS_CHECK_S and
+set again if somebody changed them.
 """
 
 from __future__ import annotations

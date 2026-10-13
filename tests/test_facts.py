@@ -510,7 +510,8 @@ def test_a_sentence_typed_in_the_other_language_is_said_in_its_own(ctx):
 
 
 def test_rules_from_the_sentences_heard_at_the_bench():
-    """Sentences casa1 sent to the language model: now the rules understand them at once."""
+    """Everyday sentences, also as the recognizer may mishear them, are understood by the rules at once, with no
+    language model."""
     assert parse("fai presto", NAMES).name == "party" and parse("facciamo presto", NAMES).name == "party"
     assert parse("let's body", NAMES).name == "party"
     assert parse("cosa posso chiederti", NAMES).name == "help"

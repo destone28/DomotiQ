@@ -73,7 +73,7 @@ Notes:
 
 ### The totem
 
-The totem holds the **Buttons** module; the lavalier microphone sits in the cap. Seen by the visitor, the buttons are, from the left: **Talk**, **Intercom**, **Language**. The yellow LEDs of the Buttons module sit next to the buttons, and the totem has a window for them. If the module ends up mounted the other way round, you do not need to rewire it: write `"buttons": {"reversed": true}` in `var/config/settings.json` and restart `domotiq`.
+The totem holds the **Buttons** module; the lavalier microphone sits in the cap. Seen by the visitor, the buttons are, from the left: **Talk**, **Intercom**, **Language**. The yellow LEDs of the Buttons module sit next to the buttons, and the totem has a window for them. If the module ends up mounted the other way round, you do not need to rewire it: in `var/config/settings.json`, in the `"buttons"` section, set `"reversed": true` and restart `domotiq` (`sudo systemctl restart domotiq`). The house then swaps the left and the right button, together with their LEDs.
 
 ## Power of the Pixels
 
@@ -83,7 +83,7 @@ Each Pixels at full white can draw up to 264 mA from the 3.3 V line of the Qwiic
 - when the estimate goes above the **budget, 450 mA by default**, it scales all the lights down in proportion;
 - on top of that, it limits every light to a **maximum brightness of 30 %** by default.
 
-They are fixed values, which the settings do not change: the house sends them to the firmware as they are. They are deliberately cautious, since the real draw has not been measured with a current meter.
+The web app does not show them: they are in the `"lights"` section of `var/config/settings.json` (`max_brightness` and `current_budget_ma`), and the house sends them to the firmware every time it connects to the microcontroller. They are deliberately cautious, since the real draw has not been measured with a current meter.
 
 ## Relay and fan
 

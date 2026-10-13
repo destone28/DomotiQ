@@ -14,7 +14,8 @@ from test_offers import KITCHEN, ctx  # noqa: F401 - the fixture
 
 
 def test_what_the_house_does_not_know_about_a_character_it_asks_and_keeps(ctx):
-    """"Cosa ama Rossellina?" got "di Rossellina questo non lo so ancora", and that was all."""
+    """What the house does not know about a character it asks aloud, keeps the answer, and gives it again to the
+    same question in other words."""
     async def scenario():
         marco = place(ctx, "Marco", KITCHEN, ["fa il medico"])
         hear(ctx, ["le piace il gelato"])
@@ -75,7 +76,7 @@ def test_about_itself_it_imagines_and_says_it_is_what_it_thinks(ctx):
 
 
 def test_a_question_heard_without_its_subject_finds_it_in_an_alternative(ctx):
-    """"Cosa ama Rossellina" was heard "cosa ma rossellino": the second likeliest sentence had the subject."""
+    """A question heard without its subject finds it in the next likeliest sentence of the recognizer."""
     async def scenario():
         place(ctx, "Rossellina", KITCHEN, ["ama ballare", "fa la maestra"])
         await ctx.voice.handle("cosa ma rossellino", alternatives=["cosa ama rossellina"])
@@ -116,7 +117,8 @@ class _Chat:
 
 
 def test_waiting_for_the_free_answer_and_asked_again(ctx):
-    """"Come si fa la pizza?" got "Di chi?", and then "Non ho capito"."""
+    """A question about the world is not taken for one about a character ("Di chi?"): the house offers to think,
+    waits for the free answer, and the next time answers at once."""
     async def scenario():
         chat = ctx.voice.chat = _Chat()
         hear(ctx, ["aspetto"])
@@ -182,7 +184,7 @@ def test_a_free_answer_is_tidied_before_it_is_said():
     assert tidy("<think>hmm</think>Parigi.") == "Parigi." and tidy("ciao") is None
 
 
-# ------------------------------------------------------------------ what somebody tells wins (casa1, 6 October)
+# ------------------------------------------------------------------ what somebody tells wins
 WRONG_PIZZA = "C'è un po' di tempo per preparare le uova."
 RIGHT_PIZZA = "per fare la pizza ci vuole acqua farina lievito e sale"
 
@@ -199,7 +201,7 @@ def test_what_somebody_tells_takes_the_place_of_what_the_house_thought(tmp_path)
 
 
 def test_a_word_or_two_do_not_repeat_what_the_house_thought(ctx):
-    """After "come si fa la pizza", "la pizza" and "pizza" got the same (wrong) answer again."""
+    """After a question the free model answered, a word or two of it ("la pizza", "pizza") do not repeat that answer."""
     async def scenario():
         ctx.voice.chat = _Chat(WRONG_PIZZA)
         hear(ctx, ["aspetto"])
@@ -211,7 +213,7 @@ def test_a_word_or_two_do_not_repeat_what_the_house_thought(ctx):
 
 
 def test_te_lo_dico_io_with_the_question_corrects_what_it_thought(ctx):
-    """"Lo dico io come si fa la pizza" was taken for a new question, and its answer kept apart from the wrong one."""
+    """"Lo dico io" with the question corrects what the house thought: no new question, and one answer kept."""
     async def scenario():
         chat = ctx.voice.chat = _Chat(WRONG_PIZZA)
         hear(ctx, ["aspetto"])

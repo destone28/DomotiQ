@@ -70,7 +70,7 @@ MIN_FLOOR = 0.35         # share of a new thing seen over floor or furniture: a 
 EDGE_MM, EDGE_MM2 = 12.0, 600.0   # small things right on the edge of the base are cables and sleeves
 FORGET_S, FORGET_MM = 3.0, 30.0   # "there is nothing there": what is seen there now joins the empty house
 # What a hand brings: something that was not there before the hand came, compact, and clearly standing out from
-# the floor. Measured on casa1, the figurines stand out by 16-53 in colour (or are 15-20 darker) and are at most
+# the floor. The figurines typically stand out by 16-53 in colour (or are 15-20 darker) and are at most
 # 2.2 times longer than wide; what the light does to the foot of a wall or the edge of the sofa is a thin strip
 # (4.5-19 times longer than wide) or a faint patch (9-12 in colour).
 BIRTH_ELONGATION = 3.5
@@ -82,7 +82,7 @@ HOLE_DIFF = 30.0         # as close as this to the empty house as it was saved (
 # The light of the hall: the webcam is set again on what it sees when the picture stays this much darker or
 # brighter than the empty house as it was saved for RETUNE_S, with no hand and no light of the house just changed.
 # The empty house and the presences stay as they are: nothing moved, so nothing is born and nothing leaves.
-# Measured on casa1: the room light switched off gives 0.45-0.57; the scenes of the house (cinema, night) 0.95.
+# Switching off the room light gives a ratio of about 0.5; the scenes of the house (cinema, night) about 0.95.
 RETUNE_DARK, RETUNE_BRIGHT = 0.70, 1.43
 # "hands" seen without a break for this long are no hands: the walls, lit in another way than in the empty house.
 # They do not stop the webcam from being set again, and if the light is close enough they join the empty house
@@ -97,8 +97,8 @@ RETUNE_S = 5.0
 ADOPT_PX = 28            # pointing at something in the web app: the empty house comes back this far around
 RETUNE_EVERY_S = 60.0
 RETUNE_MAX_S = 900.0     # a retune that did not bring the picture back near the empty house (a hall darker than the
-                         # webcam can follow) waits twice as long before the next one, up to this: on casa1 the
-                         # webcam was set again every 70 s with the same values, and the presences went every time
+                         # webcam can follow) waits twice as long before the next one, up to this: otherwise the
+                         # webcam is set again every minute or so with the same values, for nothing
 NO_HAND_S = 1.0          # a difference that appeared this long after the last hand is light, never a presence
 # A change of the light of the hall: noticed by the brightness of the picture changing by ADAPT_JUMP within
 # ADAPT_WINDOW_S, by much of the house changing with no hand, by "hands" over more than ADAPT_HANDS of the house (the
@@ -106,8 +106,8 @@ NO_HAND_S = 1.0          # a difference that appeared this long after the last h
 # Then the presences stay as they were just before, nothing is looked at, and once the brightness stands still (within
 # ADAPT_STILL for ADAPT_STILL_S, at least ADAPT_MIN_S after the change) the empty house is learned again from the median
 # of the last ADAPT_FRAMES frames, everywhere but around the presences; ADAPT_SETTLE_S later things may be born again.
-# On casa1 at 17:45 of 6 October the evening came and the webcam was set again: in the picture taken with daylight the
-# walls were "hands" for 30 s, then three characters jumped to other rooms and fifteen cars and animals were born.
+# Without this, when the evening comes the walls lit another way look like hands, and once the webcam is set again
+# characters jump to other rooms and things that are not there are born.
 ADAPT_JUMP = 0.12
 ADAPT_WINDOW_S = 2.0
 # ...and by the brightness staying ADAPT_DRIFT away from the light the empty house was last learned in for
@@ -128,19 +128,18 @@ ADAPT_MARGIN_PX = 12     # around every presence the empty house stays as it was
 TIGHT_PX = 10            # ...half the width of a figurine, in the picture, where it is not seen now
 # What the webcam sees at all, whatever the empty house it is compared with: a mean grey below DARK_LEVEL is a hall
 # too dark or a covered webcam, above DAZZLED_LEVEL a dazzled one. Such a picture is never learned, nor saved, as the
-# empty house. On casa1: room light on 55-65, at night with the gain at its highest 9-17. On 6 October at 21:00 the
-# empty house was saved in the dark (13): compared with it the lit room looked 3.5 times brighter, "dazzled", and the
-# house waited for hours without learning anything
+# empty house. With the room light on the mean grey is about 55-65, at night with the gain at its highest about 9-17.
+# Compared with an empty house saved in the dark, a lit room would look several times brighter, "dazzled", and the
+# house would wait without learning anything
 DARK_LEVEL, DAZZLED_LEVEL = 25.0, 235.0
 # The network that knows the figurines of this house (figures.py), when it is there and on: a new blob it is
-# FIGURE_NOT_P sure is "niente" (a light, a shadow, a module) is not born. Measured on a block of the recording of
-# 7 October left out of the training: no real figurine of 1313 was more than 0.84 "niente" (a dark blue one in low
-# light came closest), while 80% of the real "niente" were at least 0.9; the network is never much more than 0.95
-# sure (it is trained not to be). Every network is sure in its own measure: the threshold measured with it on the
-# block left out (the highest "niente" of a real figurine, and a margin) comes in figures.json ("not_p"), FIGURE_NOT_P
-# without it. Tracks with no name, or whose colours no longer match their name, are shown to it at most every
-# FIGURE_EVERY_S, FIGURE_MAX at a time (some 10 ms each on the board, one thread); the tracker weighs what it says
-# (tracker.FIGURE_*)
+# FIGURE_NOT_P sure is "niente" (a light, a shadow, a module) is not born. On recordings left out of the training,
+# real figurines stay below that (dark ones in low light come closest), while most of the real "niente" are at least
+# 0.9; the network is never much more than 0.95 sure (it is trained not to be). Every network is sure in its own
+# measure: the threshold measured with it on the recordings left out (the highest "niente" of a real figurine, and a
+# margin) comes in figures.json ("not_p"), FIGURE_NOT_P without it. Tracks with no name, or whose colours no longer
+# match their name, are shown to it at most every FIGURE_EVERY_S, FIGURE_MAX at a time (some 10 ms each on the board,
+# one thread); the tracker weighs what it says (tracker.FIGURE_*)
 FIGURE_NOT_P = 0.9
 FIGURE_LIKELY_P = 0.5    # the empty house learned again around what the network takes for a figurine this sure
 FIGURE_SCAN_P = 0.8      # at a start, what the network sees as a character this sure is taken, whatever its colours
@@ -149,22 +148,21 @@ CAR_MIN_MM2 = 6000.0     # a "hand" this big, away from the garage, may be the c
 FIGURINE_STILL_S = 3.0   # a figurine-sized "hand" next to a hand, still this long, is shown to the network
 GLOW_LIT = 0.7           # a "hand" this much in rooms the house lit, appeared as they were lit, is their glow
 ROOM_FG_MAX = 0.3        # the light of the rooms is measured away from what differs, unless most of the house does
-CAR_MAX_MM2 = 30000.0    # the blob of the car, seen alone, is at most this big (another house: 23 000)
+CAR_MAX_MM2 = 30000.0    # the blob of the car, seen alone, is at most this big
 CAR_GARAGE = 0.6         # a "hand" this much in the garage may be the car parked against the back wall...
 CAR_SEEN_S = 3.0         # ...and what the network said of it counts this long
 CAR_CORE = (0.15, 0.3)   # ...and if it is not sure of the whole blob, it looks at its middle, this much smaller
-FIGURE_RECHECK_S = 2.0   # ...and a track with a name, every so often: a name the colours gave may be wrong (12 October)
+FIGURE_RECHECK_S = 2.0   # ...and a track with a name, every so often: a name the colours gave may be wrong
 FIGURE_MAX = 4
 FIGURE_ROW_S = 10.0      # two answers this close are "in a row" (a track with a name is looked at only every few seconds)
 # The light of the webcam followed in small steps of the gain (exposure.py). What it brings back to the empty house in
 # use, as it was photographed, is the light of the rooms: in every region the median of how much brighter each point
 # of its free floor is (away from the presences and the hands), then the median over the regions. A light of the
-# house changes its own room (casa1, the stored empty houses: 4-40% there, 0% on the median), all of them together 8%,
-# the Cinema scene 10%; a room whose light the house has just changed or animates is left out while it settles. The
-# driveway and the strip around the house were used first, where the lights of the house do not reach: but the lights
-# of the hall do not light them as they light the house. In the empty houses of 7 October at 17:52 and 21:10 they are
-# 0.29-0.38 of those of 18:35, the rooms 0.84-1.49: bringing the strip back does not bring the house back. The empty
-# house is the photograph, not the copy the house compares with, which every new light changes. No step with hands
+# house changes its own room a lot and the median hardly at all, all of them together or a scene (Cinema) about 10%;
+# a room whose light the house has just changed or animates is left out while it settles. The driveway and the strip
+# around the house, where the lights of the house do not reach, are no use: the lights of the hall do not light them
+# as they light the house, so bringing the strip back does not bring the house back. The empty house is the
+# photograph, not the copy the house compares with, which every new light changes. No step with hands
 # over the house (hands that never leave are the walls, lit another way), while the house looks for its characters at
 # a start, in the dark, during a party. Its steps are taken out of the brightness the house watches for a change of
 # the hall; while it follows one, the steps may be larger and the empty house is learned again only after them.
@@ -337,7 +335,7 @@ class Engine:
             return False
         # the light of the webcam followed step by step: the full setting only when that is at its limit, and never
         # for more light when it was already made in the dark (it would find the same values, 9-10 s without
-        # pictures each time: on casa1 the full setting and the steps both end at gain 255, exposure 625)
+        # pictures each time: in the dark the full setting and the steps both end at gain 255, exposure 625)
         if self._following() and (not self.regulator.at_limit or self._darkest()):
             return False
         # while the house follows a change of the hall light it asks at once, hands or not: they are the light
@@ -432,8 +430,8 @@ class Engine:
             why = "start"
         elif not DARK_LEVEL <= self._level <= DAZZLED_LEVEL:
             # too dark (or dazzled) to be learned, but the webcam still goes towards the empty house while it can,
-            # that way only: on 10 October the light of the room went down to a fifth, the gain stayed at 28 of 255
-            # and the house was blind until the light came back
+            # that way only: otherwise, with the light of the room down to a fifth, the gain would stay low and the
+            # house would be blind until the light came back
             dark = self._level < DARK_LEVEL
             ratio, why = self._room_light(small, now, hands=False)
             if not why and (ratio is None or (ratio >= 1.0) == dark):
@@ -481,14 +479,14 @@ class Engine:
             busy |= seg.hand_mask
         fg = seg.fg_prev
         if fg is not None and fg.shape == busy.shape and cv2.countNonZero(fg) < ROOM_FG_MAX * fg.size:
-            # nor what differs from the empty house and is no presence yet (12 October: the car just put in the garage,
-            # bright, moved the gain; the empty house learned again after the step took it in)
+            # nor what differs from the empty house and is no presence yet (something bright just put down, the car
+            # in the garage, would move the gain, and the empty house learned again after the step would take it in)
             busy |= cv2.dilate(fg, np.ones((9, 9), np.uint8)) > 0
         busy = busy.ravel()
         flat = small.reshape(-1, 3)
-        # a room lit by the house is brighter for its own light, not for the light of the hall (12 October: the lights
-        # that follow the characters lit three rooms, the webcam went darker, the empty house was learned again and
-        # two figurines were lost)
+        # a room lit by the house is brighter for its own light, not for the light of the hall (rooms lit by the
+        # lights that follow the characters would make the webcam darker, the empty house would be learned again
+        # and figurines lost)
         glowing = {room for room, t in self._light_at.items() if now - t < LIGHT_GLOW_S} | self._animated | self._lit
         ratios, seen, total = [], 0, 0
         for name, idx, ref in self._target_px:
@@ -519,9 +517,9 @@ class Engine:
         while len(levels) > 2 and now - levels[1][0] > ADAPT_WINDOW_S:
             levels.popleft()
         if any(now - t < LIGHT_BLOCK_S for t in self._light_at.values()) or now < self._scan_until or self._animated:
-            # nor while a light of the house is animated: its glow reaches the rooms next to it (12 October, another
-            # house: the flashing red of the alarm was "the light of the hall", the empty house was learned again
-            # with it, and the figurines in sight were lost)
+            # nor while a light of the house is animated: its glow reaches the rooms next to it (the flashing red of
+            # the alarm would look like the light of the hall, the empty house would be learned again with it, and
+            # the figurines in sight lost)
             self._drift_since = 0.0
             return None
         lo, hi = min(r for _, r in levels), max(r for _, r in levels)
@@ -595,7 +593,7 @@ class Engine:
             and self._empty_level >= DARK_LEVEL and waited < ADAPT_RETUNE_S and not self._darkest() \
             and not (self._following() and not self.regulator.at_limit)
         # the light of the webcam brought back first: the empty house learned while the gain still moves would be
-        # neither the old light nor the new one (casa1, 9 October: learned again between two steps, three times)
+        # neither the old light nor the new one, and would be learned again after every step
         moving = self._camera_moving()
         if (still and waited >= ADAPT_MIN_S and not retune and not moving) \
                 or (waited >= ADAPT_MAX_S and len(levels) >= 3):
@@ -653,9 +651,9 @@ class Engine:
                 # as big as the car: unsure of the whole blob, it looks at its middle too (_car_core)
                 label, p = self._car_core(small, vt.obs.bbox, cars, (label, p))
             prev = vt.figure
-            # 13 October: at rest a frame a second is looked at, FIGURE_MAX tracks at a time, nameless ones first; a
-            # track with a name was looked at every 4-5 s, its answers were never "in a row", and the network could
-            # never take back a name the colours gave wrong (Mister Blu, 0.97, stayed "Mister Brown")
+            # at rest a frame a second is looked at, FIGURE_MAX tracks at a time, nameless ones first: a track with
+            # a name is looked at only every few seconds, so "in a row" spans FIGURE_ROW_S, or the network could
+            # never take back a name the colours gave wrong
             row = prev[3] + 1 if prev and prev[0] == label and now - prev[2] <= FIGURE_ROW_S else 1
             vt.figure = (label, p, now, row)
             vt.consent = vt.consent + 1 if label and label != NOTHING and p >= CONSENT_P else 0
@@ -663,8 +661,8 @@ class Engine:
     # ------------------------------------------------------------ the journal of the vision
     def _new_blob(self, o: Observation) -> bool:
         """No track already has this blob: the figurines followed stand still, so their blob of the last frame is
-        nearly the same box. A blob that only touches one (the corner of a wall next to a figurine lying down, born
-        fourteen times on casa1) is new, and shown to the network."""
+        nearly the same box. A blob that only touches one (the corner of a wall next to a figurine lying down, which
+        would otherwise be born again and again) is new, and shown to the network."""
         x, y, w, h = o.bbox
         for vt in self.tracker.tracks.values() if self.tracker else ():
             if vt.obs is None:
@@ -763,9 +761,9 @@ class Engine:
         seg = self.segmenter
         frames = list(self._adapt_frames)
         dark, self._adapt_dark = self._adapt_dark, False
-        # nobody known: a start in another light than that of the empty house (casa1, 7 October at 14:45 and 15:10:
-        # the walls were "hands", nothing was found, and every figurine was learned as the empty house). As after
-        # a dark spell, what is in sight may be the figurines
+        # nobody known: a start in another light than that of the empty house (the walls look like "hands", nothing
+        # is found, and every figurine would be learned as the empty house). As after a dark spell, what is in sight
+        # may be the figurines
         blind = dark or not any(t.shown for t in self.tracker.tracks.values())
         if frames:
             median = np.median(np.stack(frames), axis=0).astype(np.uint8) if len(frames) > 1 else frames[0]
@@ -777,7 +775,7 @@ class Engine:
             seg.corrected(median, update=True, now=now)
             if blind:
                 # what clearly stands out may be a figurine put down in the dark, or not found yet, and is not
-                # learned as the empty house. The network tells a figurine on what has its colour (Mister Green on
+                # learned as the empty house. The network tells a figurine on what has its colour (a green one on
                 # the lawn) from a glow it is sure of
                 obs, _fg, _lab = seg.process(median, now)
                 h, w = keep.shape
@@ -903,8 +901,8 @@ class Engine:
 
     def _saved_differs_at(self, px: float, py: float, now: float) -> np.ndarray | None:
         """What differs from the empty house as it was saved, where somebody pointed: the whole blob there, however big
-        (12 October: the car, taken into the empty house by a change of the light, came back only as the circle
-        around the point, a piece of it). None if nothing differs there."""
+        (a car taken into the empty house by a change of the light must come back whole, not only as the circle
+        around the point). None if nothing differs there."""
         seg = self.segmenter
         live, prev_g, prev_gains = seg.reference_bgr, seg._g, seg._prev_gains
         try:
@@ -1056,9 +1054,9 @@ class Engine:
             if t.obs is not None:
                 x, y, w, h = t.obs.bbox
                 keep[max(0, y - 8):y + h + 8, max(0, x - 8):x + w + 8] = True
-        # and the figurines the "hands" cover, where they were last seen alone (12 October: the flickering glow of
-        # the bathroom lamp, never still enough for a still "hand", joined the empty house after HAND_STUCK_S with
-        # Giallo Galli and Mister Blu inside)
+        # and the figurines the "hands" cover, where they were last seen alone (the flickering glow of a lamp, never
+        # still enough for a still "hand", joins the empty house after HAND_STUCK_S, and must not take the figurines
+        # inside it along)
         spared = hands & (seg.mask > 0) & ~keep & self._shape_mask(hands.shape)
         where = hands & (seg.mask > 0) & ~keep & ~spared
         if where.any():
@@ -1121,7 +1119,7 @@ class Engine:
         if (scan or (brought and faint)) and "figure" not in o.extra and small is not None and self._figures_ready() \
                 and not self.registering and o.area_mm2 >= 150 and self._new_blob(o):
             # at a start, or put down faint by a hand, the network looks first: what it is sure is a character is
-            # plausible even if faint or lighter than the floor (12 October: Giba, a white cat, on the grey floors)
+            # plausible even if faint or lighter than the floor (a white figurine on a grey floor)
             o.extra["figure"] = self._figures(small, [o.bbox])[0]
         if not self._plausible(o, now):
             return False
@@ -1137,18 +1135,17 @@ class Engine:
             if seen is not None:
                 if not seen[0] or seen[0] == NOTHING:
                     # the network sees no figurine there: an empty house saved in another light has blobs of
-                    # the colours of the characters (casa1 at 16:16: Mister Green, Mister Brown and Viola born
-                    # in an empty house, the network saying "niente")
+                    # the colours of the characters, which would be born in a house that is empty
                     return False
             if faint and (seen is None or seen[1] < FIGURE_SCAN_P):
                 # lighter than the floor, or faint: a reflection, unless the network is sure of a character there
-                # (12 October: Giba, a white cat on the grey floor, joined the empty house at a start)
+                # (a white figurine on a grey floor would otherwise join the empty house at a start)
                 return False
             if seen is not None and seen[1] < FIGURE_SCAN_P \
                     and any(t >= self._scan_until - SCAN_S for t in self._light_at.values()):
                 # the house changed a light while it was looking (the light that follows the characters, lit for
-                # one just found): its glow takes the colours of characters (12 October: "Rossellina" in the
-                # glow of the bathroom lamp, the network unsure). Then only what the network is sure of is taken
+                # one just found): its glow takes the colours of characters, and the network is unsure of it.
+                # Then only what the network is sure of is taken
                 return False
             if o.area_mm2 > 6000:
                 return True
@@ -1156,8 +1153,8 @@ class Engine:
                                                                                             strict=True):
                 return True
             # in another light the colours are not those registered: the network knows the figurines in every light,
-            # if it has the shape of one (12 October: a strip of glow on the floor by a lit bathroom, four times longer
-            # than wide, was "Rossellina" for the network, 0.95)
+            # if it has the shape of one (a long strip of glow on the floor by a lit room can look like a character
+            # to the network, even a sure one)
             return seen is not None and seen[1] >= FIGURE_SCAN_P and self._figurine_shaped(o)
         if not births_open or not self._zone[y:y + h, x:x + w].any():
             return False
@@ -1586,8 +1583,8 @@ class Engine:
         steady = not light_event and share <= 0.35 and self._seeing()
         self._absorb_ghosts(small, fg, obs, hands, frozen or scan or share > 0.35, now, steady)
         # the hall light drifts slowly: follow it on the free floor, when nothing moves. At the dark end of the webcam
-        # "hands" are no reason to wait: on 10 October its noise at gain 255 in a dark hall made "hands" everywhere,
-        # and the noise they came from was never learned again, so they never went (a real hand there only raises the
+        # "hands" are no reason to wait: its noise at gain 255 in a dark hall makes "hands" everywhere, and if the
+        # noise they come from were never learned again they would never go (a real hand there only raises the
         # noise for a moment, and it fades)
         calm = (self._darkest() and not light_event) or (not frozen and not any(o.hand for o in obs))
         drift = calm and now - self._last_ref_update > 5.0
@@ -1626,12 +1623,12 @@ class Engine:
 
     def _car_not_hand(self, small: np.ndarray, obs: list[Observation], now: float) -> None:
         """A blob as big as an arm on the edge of the base is a hand, but it may be the car: in the garage parked
-        against the back wall, its roof over the edge (12 October: taken for a hand at a start, and 8 s later part of
-        the empty house), or on the driveway against the front edge. The network decides: the car, sure, is no hand.
-        What it said of a place is kept for CAR_SEEN_S."""
+        against the back wall, its roof over the edge, or on the driveway against the front edge; taken for a hand,
+        it would become part of the empty house. The network decides: the car, sure, is no hand. What it said of a
+        place is kept for CAR_SEEN_S."""
         cars = {i.name.strip().lower() for i in self.identities if i.category == "car"}
-        # in the garage, or wherever the car may stand on the edge of the base (12 October: on the driveway, against
-        # the front edge, a "hand" for 8 s and then part of the empty house); an arm the network never takes for it
+        # in the garage, or wherever the car may stand on the edge of the base (on the driveway, against the front
+        # edge); an arm the network never takes for it
         maybe = [o for o in obs if o.extra.get("edge_hand") and not o.border
                  and (o.extra.get("garage", 0.0) >= CAR_GARAGE or CAR_MIN_MM2 <= o.area_mm2 <= CAR_MAX_MM2)]
         if not maybe or not cars or not self._figures_ready() or self.registering:
@@ -1646,8 +1643,8 @@ class Engine:
                 seen = self._car_core(small, o.bbox, cars)
                 self._car_seen = (o.bbox, seen, now)
             if seen[0] and seen[0].strip().lower() in cars and seen[1] >= FIGURE_NOT_P:
-                # no hand, even close to one (12 October, another house at a start: a glow on the headboard of the
-                # bed under the garage was a "hand", and the car next to it was a hand again with it)
+                # no hand, even close to one (a glow next to the garage taken for a hand would otherwise make the
+                # car a hand again with it)
                 o.extra["edge_hand"], o.extra["not_hand"] = False, True
                 o.extra["figure"] = seen
                 changed = True
@@ -1657,9 +1654,8 @@ class Engine:
     def _car_core(self, small: np.ndarray, bbox, cars: set[str],
                   whole: tuple[str, float] | None = None) -> tuple[str, float]:
         """What the network sees in the blob of a possible car: the whole blob, and its middle if it is not sure of the
-        whole (12 October, another house at a start: the garage lit otherwise than in the empty house gave the car a
-        halo of floor and walls; the whole blob was the car at 0.78, under FIGURE_NOT_P, a "hand" for 8 s and then part
-        of the empty house; its middle was the car at 0.92-0.94). The surest answer that is a car wins."""
+        whole (a garage lit otherwise than in the empty house gives the car a halo of floor and walls, and the network
+        is less sure of the whole blob than of its middle). The surest answer that is a car wins."""
         whole = whole or self._figures(small, [bbox])[0]
         if whole[1] >= FIGURE_NOT_P:
             return whole
@@ -1672,9 +1668,9 @@ class Engine:
     def _figurines_not_hands(self, small: np.ndarray, obs: list[Observation], now: float) -> None:
         """A blob the size of a figurine, a "hand" only because it is close to one, that has not moved for
         FIGURINE_STILL_S and that the network is sure is a character: a figurine next to a hand, or next to light
-        taken for one (12 October, another house at a start: the driveway lit otherwise than in the empty house was a
-        "hand" along the front edge, Romeo and Rossellina next to it were "hands" too, and 8 s later they had joined the
-        empty house). Fingers move; a figurine stands still."""
+        taken for one (a driveway lit otherwise than in the empty house looks like a "hand" along the front edge, and
+        the figurines next to it would be "hands" too and join the empty house). Fingers move; a figurine stands
+        still."""
         since, labels = self._hand_since, self.segmenter.labels
         if since is None or labels is None or since.shape != labels.shape or not self._figures_ready() \
                 or self.registering:
@@ -1707,8 +1703,8 @@ class Engine:
 
     def _glow_not_hand(self, obs: list[Observation], now: float) -> None:
         """A "hand" almost all in a room whose light the house keeps on, that appeared as the light came on (or while
-        the light is animated): the glow of that light on walls and floor, no hand (12 October: the glow of the bathroom lamp, a "hand" for 30 s, froze
-        the house and took two figurines into the empty house). It joins the empty house as any glow does, and the
+        the light is animated): the glow of that light on walls and floor, no hand (taken for one, it would freeze the
+        house and take the figurines in it into the empty house). It joins the empty house as any glow does, and the
         figurines in it are spared."""
         if not self._lit or self.segmenter.labels is None:
             return
@@ -1726,8 +1722,7 @@ class Engine:
             appeared = self._appeared(o) or now      # not known yet: it appeared now
             on_at = max(self._light_at.get(n, float("-inf")) for n in lit)
             # an animated light (the blinking of an alarm) makes its glow again at every flash, for as long as it
-            # lasts (12 October, another house: the blinking bathroom of the alarm "for one" was a hand that took the
-            # two figurines in it out of the house, and the alarm stopped by itself); an arm comes over the edge
+            # lasts (taken for a hand, it would take the figurines in it out of the house); an arm comes over the edge
             if on_at - 1.0 <= appeared <= on_at + 2 * LIGHT_BLOCK_S or any(n in self._animated for n in lit):
                 o.extra["edge_hand"] = False
                 changed = True
@@ -1775,9 +1770,9 @@ class Engine:
             o.hand = False
             absorb |= labels == o.extra["label"]
         absorb = cv2.dilate(absorb.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
-        # the figurines it swallowed stay out of it: on 12 October the house lit the bathroom for Giallo Galli, the
-        # glow of the lamp on the walls was one big still "hand" with him and Mister Brown inside, and with it they
-        # joined the empty house; once the light went off they were nowhere
+        # the figurines it swallowed stay out of it: the glow of a lamp the house lit for a character can be one big
+        # still "hand" with figurines inside, and with it they would join the empty house; once the light goes off
+        # they would be nowhere
         keep = absorb & self._shape_mask(labels.shape)
         before = seg.reference_bgr.copy() if keep.any() else None
         seg.absorb(small, absorb & ~keep)
@@ -1796,7 +1791,7 @@ class Engine:
     def _relight_under(self, keep: np.ndarray, before: np.ndarray) -> None:
         """Under the figurines a still "hand" swallowed, the floor of the empty house brought to the light the hand
         was made of, measured on the floor just around each of them: once a figurine goes, its place is no presence
-        (12 October: Mister Brown taken away from the lit bathroom left a dark place, born as "Nerone")."""
+        (otherwise a figurine taken away from a lit room leaves a dark place that is born as a character)."""
         seg = self.segmenter
         n, parts = cv2.connectedComponents(keep.astype(np.uint8))
         for k in range(1, n):
@@ -1869,8 +1864,8 @@ class Engine:
             explained |= lut[seg.labels]
         if self._zone is not None:
             explained |= self._zone
-        # the figurines where they were last seen alone: a glow merged with one (the garage light lit for the car,
-        # 12 October) joins the empty house, they do not
+        # the figurines where they were last seen alone: a glow merged with one (the garage light lit for the car)
+        # joins the empty house, they do not
         if self._shapes or (self.tracker is not None and self.tracker.tracks):
             explained |= self._shape_mask(fg.shape)
         unexplained = (fg > 0) & ~explained
@@ -2045,7 +2040,7 @@ class Engine:
             "hands": len(self.tracker.hands) if self.tracker else 0,
             "moved": self.moved,
             "flooded": bool(self._flooded_since and self.frame_at - self._flooded_since > 5.0),
-            # ...because it sees almost nothing: the hall is too dark (on casa1 at night: 9-17 of 50) or it is covered
+            # ...because it sees almost nothing: the hall is too dark or it is covered
             "dark": bool(self._flooded_since and self.frame_at - self._flooded_since > 5.0 and self._level < DARK_LEVEL),
             "empty_dark": self.ready and self._empty_level < DARK_LEVEL,   # the empty house was saved in the dark
             "light_ok": self.light_ok,

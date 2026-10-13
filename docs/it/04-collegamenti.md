@@ -73,7 +73,7 @@ Note:
 
 ### Il totem
 
-Il totem ospita il modulo **Buttons**; il microfono lavalier sta nel tappo. Visti dal visitatore, i tasti sono, da sinistra: **Parla**, **Citofono**, **Lingua**. I LED gialli del modulo Buttons sono accanto ai tasti, e il totem ha una finestrella per vederli. Se il modulo finisce montato al contrario non serve ricablarlo: scrivi `"buttons": {"reversed": true}` in `var/config/settings.json` e riavvia `domotiq`.
+Il totem ospita il modulo **Buttons**; il microfono lavalier sta nel tappo. Visti dal visitatore, i tasti sono, da sinistra: **Parla**, **Citofono**, **Lingua**. I LED gialli del modulo Buttons sono accanto ai tasti, e il totem ha una finestrella per vederli. Se il modulo finisce montato al contrario non serve ricablarlo: in `var/config/settings.json`, nella sezione `"buttons"`, metti `"reversed": true` e riavvia `domotiq` (`sudo systemctl restart domotiq`). La casa scambia allora il tasto di sinistra con quello di destra, insieme ai loro LED.
 
 ## Alimentazione dei Pixels
 
@@ -83,7 +83,7 @@ Ogni Pixels, a piena luce bianca, può assorbire fino a 264 mA dalla linea a 3,3
 - quando la stima supera il **budget, 450 mA di serie**, riduce tutte le luci in proporzione;
 - in più, limita ogni luce a una **luminosità massima del 30 %** di serie.
 
-Sono valori fissi, che non si cambiano dalle impostazioni: la casa li manda al firmware così come sono. Sono volutamente prudenti, perché l'assorbimento reale non è stato misurato con un amperometro.
+La webapp non li mostra: stanno nella sezione `"lights"` di `var/config/settings.json` (`max_brightness` e `current_budget_ma`), e la casa li manda al firmware ogni volta che si collega al microcontrollore. Sono volutamente prudenti, perché l'assorbimento reale non è stato misurato con un amperometro.
 
 ## Relè e ventola
 

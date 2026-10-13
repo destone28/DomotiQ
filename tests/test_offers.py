@@ -179,7 +179,7 @@ def test_the_model_form_and_how_sure_it_was():
 # ------------------------------------------------------------------ the speech recognizer
 def test_accented_words_stay_in_the_list_of_words(tmp_path, monkeypatch):
     """The small models have no word list: a word is known if building a grammar with it gives no warning.
-    "sì" written as "s\\u00ec" looked missing, and the list after a question lost "sì" and "perché no"."""
+    Accented words ("sì", "perché no") are written as they are, never as escapes the recognizer does not know."""
     fake = ModuleType("vosk")
     fake.SetLogLevel = lambda level: None
 

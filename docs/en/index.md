@@ -12,9 +12,9 @@ This guide covers the whole project, from a factory-new board to a working house
 4. [Wiring](04-wiring.md): the Qwiic chain through the Modulino Hub, power, relay and fan, audio, webcam.
 5. [Testing and commissioning](05-testing.md): checking every part, camera calibration, first figurine, voice, phones.
 6. [The web app](06-web-app.md): how to open it, every screen, who can do what, notifications and questions.
-7. [Recognition and identities](07-recognition-and-identities.md): how the house sees, registering characters, privacy, datasets.
+7. [Recognition and identities](07-recognition-and-identities.md): how the house sees, registering characters, the network that knows the figurines, privacy, datasets.
 8. [Voice](08-voice.md): the buttons, languages, talkativeness, example phrases, the language model.
-9. [Rules](09-rules.md): When / If / Then, every trigger, condition and action, the default rules, light layers.
+9. [Rules](09-rules.md): When / If / Then, every trigger, condition and action, the default rules, light layers, scenes.
 10. [Attributions](10-attributions.md): licences of the project and of every third-party component.
 11. [Troubleshooting](11-troubleshooting.md): symptom, cause and fix.
 

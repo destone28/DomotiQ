@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
 # SPDX-License-Identifier: MIT
-"""What the house does with what it heard at the bench (casa1, 5 and 6 October): the air conditioning asked
-aloud, a fact told as it is, the narrator at the edge of the picture, its own voice while it listens, newcomers
-nobody answers about, talk nearby taken for an answer, the summary of a full house."""
+"""What the house does with what it hears: the air conditioning asked aloud, a fact told as it is, the narrator at
+the edge of the picture, its own voice while it listens, newcomers nobody answers about, talk nearby taken for an
+answer, the summary of a full house."""
 
 from __future__ import annotations
 
@@ -32,13 +32,13 @@ def ev(kind, **data):
     ("accendi il climatizzatore", "cool", True), ("spegni il climatizzatore", "cool", False),
     ("accendi il riscaldamento", "warm", True), ("accendi il clima", "cool", True),
     ("turn on the air conditioning", "cool", True), ("turn off the heating", "warm", False),
-    # 12 October: "spegnere" and "spento" turned it on, the plural turned the lights on and off
+    # "spegnere", "spento" and the plural switch the climate, never the lights
     ("puoi spegnere il climatizzatore", "cool", False), ("climatizzatore spento", "cool", False),
     ("spegni i climatizzatori", "cool", False), ("accendi i climatizzatori", "cool", True),
     ("spegnere i condizionatori", "cool", False), ("puoi spegnere il riscaldamento", "warm", False),
     ("spengilo il climatizzatore", "cool", False), ("clima spento", "cool", False),
     ("turn the air conditioners off", "cool", False),
-    # "spegni" as the recognizer of the house heard it: the name alone switches it (None)
+    # "spegni" as the recognizer may hear it; the name alone switches it (None)
     ("spendi climatizzatore", "cool", False), ("segni climatizzatore", "cool", False),
     ("climatizzatore", "cool", None), ("climatizzatori", "cool", None), ("riscaldamento", "warm", None),
 ])
@@ -62,7 +62,7 @@ def test_the_air_conditioning_is_a_wave_of_light_in_every_room(ctx):
 
 
 def test_the_name_alone_switches_the_air_conditioning(ctx):
-    """"Spegni il climatizzatore" was heard as "climatizzatore" and turned it on again."""
+    """The name alone (as "spegni il climatizzatore" may be heard) switches it: on when it is off, off when it is on."""
     async def scenario():
         await ctx.voice.execute(parse("climatizzatore", []))
         assert ctx.said[-1] == "Accendo il climatizzatore."
@@ -80,7 +80,7 @@ def test_the_name_alone_switches_the_air_conditioning(ctx):
 
 # ------------------------------------------------------------------ a fact told as it is
 def test_a_fact_told_as_it_is_is_learned(ctx):
-    """"Il colore preferito di Mister Blu è l'azzurro" was answered "di Mister Blu questo non lo so ancora"."""
+    """A fact told as it is ("il colore preferito di ... è l'azzurro") is learned, in place of an older one."""
     async def scenario():
         blu = ctx.identities.add("Mister Blu", "person")
         ctx.identities.update(blu.id, facts=["ha come colore preferito il rosso"])      # an older answer
@@ -104,13 +104,14 @@ def test_questions_stay_questions():
 
 def test_a_restaurant_is_about_food_and_a_name_heard_by_one_word_is_no_colour():
     assert facts.question_topic("se devo andare al ristorante con rossellina", NAMES) == "food"
-    assert facts.question_topic("le misure brown", NAMES) is None                # "brown" was taken for a colour
+    assert facts.question_topic("le misure brown", NAMES) is None                # "brown", part of a name, is no colour
     assert facts.question_topic("che lavoro fa james brown", NAMES) == "job"
 
 
 # ------------------------------------------------------------------ the narrator at the edge of the picture
 def test_a_character_coming_and_going_is_not_told_every_minute(ctx, monkeypatch):
-    """"Mister Brown, scendi dalla fioriera" and "a presto Mister Brown" were said every minute."""
+    """A character coming and going at the edge of a place (on a table, out of sight, back) is told about once, not
+    every minute; a move from one room to another is always news."""
     n = ctx.voice.narrator
     monkeypatch.setattr(n, "_quiet", lambda: True)
     ctx.voice._spawn = lambda coro: (coro.close(), None)[1]
@@ -137,7 +138,7 @@ def test_a_character_coming_and_going_is_not_told_every_minute(ctx, monkeypatch)
 
 # ------------------------------------------------------------------ its own voice while it listens
 def test_the_house_does_not_take_its_own_voice_for_an_answer(ctx, monkeypatch):
-    """The narrator spoke while the house waited for an answer: "per favore" was heard from its own line."""
+    """What is heard while the house itself speaks (a line of the narrator) is never taken for an answer."""
     monkeypatch.setattr(manager_mod, "SELF_ECHO_S", 0.0)
     v = ctx.voice
     fed = []
@@ -207,7 +208,7 @@ def test_newcomers_nobody_answers_about_are_asked_on_the_phones_for_a_while(ctx,
 
 
 def test_talk_nearby_is_no_answer_to_who_is_it():
-    """"Si sta allenando per migliorare la velocità del modello" was taken for "it's a car"."""
+    """Talk nearby, heard unsure, is no answer to "who is it?": only a clear "è una macchina" says it is a car."""
     assert who.parse("kind car", "si sta allenando per migliorare la velocità del modello", [], 0.54).kind == "other"
     assert who.parse("kind car", "è una macchina", [], 0.9).kind == "kind"
 
@@ -223,7 +224,7 @@ def test_the_summary_tells_every_person(ctx):
 
 # ------------------------------------------------------------------ one word the rules do not understand
 def test_one_word_nobody_understands_is_not_answered_with_a_story(ctx):
-    """"Domani" got "Io so tutto di questa casa, ma del resto del mondo proprio niente"."""
+    """One word the rules do not understand gets "non ho capito", not a story about the house."""
     async def scenario():
         v = ctx.voice
 

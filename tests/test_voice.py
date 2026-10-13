@@ -129,7 +129,8 @@ def test_the_requests_the_hints_propose_are_understood():
 
 
 def test_barbecue_and_garage_as_the_recognizer_hears_them():
-    """"Accendi il barbecue" was heard "accendi il barbe più" and turned on a light."""
+    """The barbecue and the rooms as the recognizer may hear them are still understood: "accendi il barbe più"
+    lights the barbecue, never a light."""
     for heard in ("accendi il barbe più", "accendi il bar ben più", "barba più", "barbie più", "accendi il bar bici",
                   "accedi barrow", "barlow"):
         assert parse(heard, NAMES).name == "grill", heard

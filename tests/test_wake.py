@@ -233,7 +233,8 @@ def test_a_list_of_words_and_the_free_recognition_at_the_same_time(ctx):
 
 
 def test_a_name_the_free_recognition_gets_wrong_is_heard_by_the_list_of_names(ctx):
-    """"Dov'è l'Honda Civic?" heard as "dovevo music": the recognizer that knows only the names hears the car."""
+    """A name the free recognizer gets wrong (the car heard as "dovevo music") is heard by the recognizer that knows
+    only the names."""
     import time
 
     async def scenario():
@@ -259,8 +260,8 @@ def test_a_name_the_free_recognition_gets_wrong_is_heard_by_the_list_of_names(ct
 
 
 def test_a_request_is_understood_in_an_alternative_and_an_unknown_name_by_the_list(ctx):
-    """"Chi c'è in cucina?" heard as "di già in cucina": the second sentence the recognizer found likely is taken.
-    "Dov'è Mister Green?" heard as "dov'è misteri", a name the house does not know: the list of names heard it."""
+    """A request heard wrong is understood in the next likeliest sentence of the recognizer, and a name the free
+    recognizer turns into one the house does not know is heard by the list of names."""
     import time
 
     async def scenario():
@@ -336,7 +337,8 @@ class _SpelledSession(_Session):
 
 
 def test_a_word_the_recognizer_does_not_know_is_heard_by_a_spelling_it_knows(ctx):
-    """"Domotiq" as the word of activation was never heard: the recognizer does not know it, and left it out."""
+    """A word of activation the recognizer does not know ("domotiq") is listened for by a spelling it knows
+    ("domotica"), and heard."""
     async def scenario():
         v = ctx.voice
         made = []
@@ -368,9 +370,8 @@ def test_a_word_the_recognizer_does_not_know_is_heard_by_a_spelling_it_knows(ctx
 
 
 def test_a_word_the_recognizer_does_not_know_is_answered_as_soon_as_it_is_written(ctx):
-    """"Domotiq", known to the recognizer only as "domotica", was always checked on the whole decoding of the free
-    recognizer: "Dimmi!" came a second after the LEDs, which even went off meanwhile. Written in its partial
-    result, the word alone is answered 0.3 s after it, with the LEDs still on."""
+    """A word of activation known to the recognizer only by a spelling is answered as soon as its partial result
+    writes it, 0.3 s after it, with the LEDs still on: the whole decoding of the free recognizer is not waited for."""
     async def scenario():
         v = ctx.voice
         log = []

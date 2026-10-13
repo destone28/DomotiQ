@@ -5,7 +5,7 @@
 
     python3 e2e.py <label> <llama-server> <port> [server options...]
 
-The server gets the instructions of the commands first (as at a start of the house), then the sentences casa1
+The server gets the instructions of the commands first (as at a start of the house), then sentences a house
 really sent to the model; prompt and generation times come from the server itself. The results go to
 e2e-<label>.json."""
 import json

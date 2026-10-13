@@ -2,7 +2,7 @@
 
 Casa: `casa1` · Wi-Fi `DomotiQ-Casa1` · webapp `http://10.42.1.1/`
 
-La password del Wi-Fi è `domotica2026`, se all'installazione non ne hai scelta un'altra; la webapp la mostra in **Altro → Impostazioni → Wi-Fi della casa**.
+La password del Wi-Fi è quella dell'installazione (`domotica2026` se hai seguito il [capitolo 2](02-installazione.md); senza `--wifi` l'installer ne sceglie una a caso e la scrive nel riepilogo). La webapp la mostra in **Altro → Impostazioni → Wi-Fi della casa**.
 
 ## Alimentazione
 
@@ -14,7 +14,7 @@ La password del Wi-Fi è `domotica2026`, se all'installazione non ne hai scelta 
 
 1. **Luce**: accendi la luce della casa (la striscia sopra il diorama, se c'è) prima della scheda, e lasciala sempre accesa.
 2. **Accensione**: collega l'alimentatore della scheda e aspetta che le luci smettano di respirare.
-3. **Casa vuota**: solo la prima volta in un posto nuovo, o se hai spostato arredi o moduli. Togli tutte le statuine e fai **Altro → Calibrazione → Regola la luce e salva la casa vuota**. Se la casa vede ancora statuine, o se è troppo buio, non salva e dice perché.
+3. **Casa vuota**: solo la prima volta in un posto nuovo, o se hai spostato arredi o moduli. Togli tutte le statuine e fai **Altro → Calibrazione → Regola la luce e salva la casa vuota**. Se è troppo buio non salva e lo dice; se vede ancora statuine le nomina e chiede se salvare comunque.
    Subito dopo, sempre a casa vuota: **Fotografa con tutte le luci della casa** (un minuto), poi accendi una alla volta le luci della sala (lampade, LED, finestre) e per ognuna **Aggiungi la luce di adesso**. Così la casa riconosce da sola le luci già viste.
 4. **Statuine**: posale **a mano, una alla volta**, togliendo la mano ogni volta. La casa le annuncia per nome. Se chiede "chi è?", rispondi.
 5. **Controllo**: in **Personaggi** ogni statuina ha il suo nome e la sua stanza. In **Diagnostica** non ci sono avvisi (webcam, luce, casa vuota salvata al buio).
@@ -50,6 +50,7 @@ Sul telefono scegli la rete `DomotiQ-Casa1`, scrivi la password del Wi-Fi e apri
 | La casa chiede di qualcuno che non c'è | Rispondi "non c'è nessuno" o tocca **Non c'è niente**: la casa lo dimentica. Se è già sulla piantina, toccalo e scegli **Non c'è davvero: togli**. Se torna nello stesso punto, cerca un modulo, un LED o un cavo da fissare, poi **Salva solo la casa vuota** a casa vuota. |
 | Una notifica rossa di allarme | **Disinserisci** spegne l'allarme come un antifurto (si reinserisce dalla pagina **Casa**); la **✕** la chiude su tutti i telefoni e torna solo se l'allarme si ripresenta. Una notifica ambra è un avviso. |
 | La casa è muta | **Comandi**: Loquacità *Normale*, alza il Volume. Manopola delle casse al massimo. |
+| "Non ho capito." | Prova la richiesta che la casa propone subito dopo: ogni volta è un'altra, tra quelle che sente meglio. Controlla anche la lingua della casa (LED di Lingua acceso = inglese). |
 | "Non so che ore sono: che ore sono adesso?" | Rispondi a voce, senza Parla: "Sono le quindici e trenta". Oppure apri la webapp su un telefono. |
 | Le luci respirano debolmente e niente reagisce | Il software si sta (ri)avviando: aspetta un minuto. Poi **Impostazioni → Riavvia l'app**, poi **Riavvia la scheda**. |
 | Un pallino di stato rosso in alto | La **Diagnostica** mostra quale parte. |
@@ -62,7 +63,8 @@ Sul telefono scegli la rete `DomotiQ-Casa1`, scrivi la password del Wi-Fi e apri
 
 - **Calibrazione**: togli statuine e auto → tocca i 4 angoli della base (davanti a sinistra, davanti a destra, dietro a destra, dietro a sinistra; davanti = vialetto) → **Usa questi angoli**: la casa regola da sola la luce e salva la casa vuota (circa 15 secondi, con una rotellina; non toccare la casa) → controlla che le pareti disegnate coincidano con quelle vere. Calibra prima di usare la diretta: fino ad allora la sfocatura può solo indovinare dove si trova il bagno.
 - **Diagnostica**: moduli, scansione I2C, **Prova audio**, **Prova microfono (3 s)**, registri.
-- **Impostazioni**: luminosità e durate, password del Wi-Fi, **Usa l'ora di questo telefono**, backup, cestino, riavvio dell'app, riavvio e spegnimento della scheda.
+- **Addestramento immagini**: un'immagine alla volta, un tocco per rispondere (**Giusto**, **Non c'è niente** o il personaggio giusto; **Salta** se non sei sicuro, **Indietro** per cambiare una risposta). Le risposte servono al prossimo addestramento della rete.
+- **Impostazioni**: bagno sfocato, raccolta di immagini, durate di festa e barbecue, soglie del clima, voce e parola di attivazione, password del Wi-Fi, **Usa l'ora di questo telefono**, backup, cestino, riavvio dell'app, riavvio e spegnimento della scheda.
 - **Comandi → Fai dire alla casa**; **Comandi → Fai una domanda** (la casa chiede qualcosa a un personaggio e se lo segna).
 - **Impostazioni → Voce → Attivazione con la parola chiave**: detta la parola (per esempio *Casa*), i LED lampeggiano subito e, se non continui, la casa risponde "Dimmi!" e ascolta come con Parla. Si può anche dire tutto di fila: "Casa, accendi la luce in cucina".
 - **Allarme**: riquadro in fondo alla pagina **Casa**, **Inserisci** / **Disinserisci**.

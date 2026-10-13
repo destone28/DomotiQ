@@ -16,8 +16,8 @@ The fixed sentences can be prepared ahead of time in another folder that is
 only read (models/voice-cache, see scripts/voice_cache.py).
 
 A few phrases are given to Piper as phonemes, where the Italian voice would
-swallow a vowel: "Come si chiama?" came out as "Cme s chiama?", because
-the phonemizer reads "si" as a reduced vowel.
+swallow a vowel: "Come si chiama?" would come out as "Cme s chiama?",
+because the phonemizer reads "si" as a reduced vowel.
 """
 
 from __future__ import annotations

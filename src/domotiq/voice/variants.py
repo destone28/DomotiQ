@@ -197,7 +197,7 @@ NONE_OF_ASK = [("Va bene. {ask}", "All right. {ask}"), ("D'accordo. {ask}", "OK.
 THINKING = [("Fammi pensare...", "Let me think..."), ("Vediamo...", "Let me see..."), ("Un attimo...", "One moment...")]
 WAKE_PROMPT = [("Dimmi!", "Yes?"), ("Sì, dimmi!", "Yes, tell me!"), ("Eccomi!", "I'm here!")]   # said at once
 # a request not understood: every time another one to try, among the requests the recognizer of the house hears
-# best (said by three voices, and heard on the houses)
+# best (checked with several voices)
 NOT_UNDERSTOOD = [
     ("Non ho capito. Prova a dirmi: facciamo festa!", "I didn't get that. Try saying: let's party!"),
     ("Non ho capito. Prova a chiedermi una grigliata: facciamo una bella grigliata!",

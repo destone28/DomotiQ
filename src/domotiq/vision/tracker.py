@@ -52,9 +52,9 @@ CONFIRM_FRAMES = 2          # frames of agreement before an identity is given
 UNKNOWN_ASK_S = 1.0         # in sight this long and recognized as nobody: the house asks who it is
 NEW_S, NEW_HITS = 1.0, 6    # something new is told to the house once it has stood this long: a reflection
                             # of the arm that has just left lasts less
-# Figurines are moved by hand: with no hand around they stand still. Measured on casa1, the middle of the blob
-# of a figurine standing still moves 0.3-0.4 mm from a frame to the next (2 mm at most); a reflection or a
-# flickering LED jumps by 4-11 mm, or vanishes and comes back. Something that jumps more than JITTER_MM, or
+# Figurines are moved by hand: with no hand around they stand still. The middle of the blob of a figurine
+# standing still moves well under a millimetre from a frame to the next (a couple at most); a reflection or a
+# flickering LED jumps by several millimetres, or vanishes and comes back. Something that jumps more than JITTER_MM, or
 # blinks, at least JITTER_COUNT times within JITTER_WINDOW_S, with no hand around and no animated light in
 # its room, is no figurine.
 JITTER_MM = 4.0
@@ -83,9 +83,9 @@ SIZE_ODD = 4.0              # a blob more than this many times bigger or smaller
 # The second opinion of the network that knows the figurines of this house (figures.py), when it is on: a character
 # that no longer looks like itself in colour (another light) keeps its name while the network, at least FIGURE_KEEP_P
 # sure, still sees it; a newcomer takes the name of a character nobody else holds when the network is FIGURE_NAME_P
-# sure of it twice in a row, instead of being asked about. What the network said counts for FIGURE_FRESH_S. On a
-# block of the recording of 7 October left out of the training, 972 figurines were named at 0.95 or more, none wrongly
-# (Mister Blu and Viola, alike in colour, were mixed up only below that), and 97% were at least 0.8 their own name
+# sure of it twice in a row, instead of being asked about. What the network said counts for FIGURE_FRESH_S. At
+# FIGURE_NAME_P the network is very seldom wrong (characters alike in colour are mixed up only below it), and it sees
+# most figurines as themselves at least FIGURE_KEEP_P sure
 FIGURE_KEEP_P, FIGURE_NAME_P, FIGURE_FRESH_S = 0.8, 0.95, 3.0
 FIGURE_FREE_P, FIGURE_FREE_ROW = 0.75, 3    # less sure, but three times in a row and nobody else can be that one
 FIGURE_TAKE_P = 0.9         # sure enough to take a name from a track in which the network does not see that one
@@ -96,10 +96,9 @@ FIGURE_WAIT_S = 2.0      # a doubt between two characters waits this long for th
 # the network does not know) is born only while it is being registered
 CONSENT_P, CONSENT_ROW = 0.5, 2
 # Without it, something new whose latest answer of the network is "niente", however unsure, waits for an answer that
-# is a figurine. In the journals of both houses (7-10 October, 275 presences told, looked at one by one) none of the
-# 46 real figurines was told with "niente" as the first answer of the network, while 144 of the 227 false ones were
-# (the light of the hall or of a room on furniture, grilles, lawns): only "niente" sure at least veto_p stopped them,
-# 5 of them. A character registered after the network was trained is not judged by it (`known`).
+# is a figurine. A real figurine is hardly ever "niente" at the first answer of the network, while most false
+# presences are (the light of the hall or of a room on furniture, grilles, lawns), and only a few of them are "niente"
+# sure at least veto_p. A character registered after the network was trained is not judged by it (`known`).
 # The looks of each character, learned on the board: besides its registered colours, up to MAX_POSES poses (lying
 # down, on the bed, under another light), each with its colours, size and shape. A pose is added when a character
 # the house follows with confidence (or that somebody has just named) looks unlike all the poses it knows.
@@ -126,9 +125,9 @@ FROZEN_JUMP_MM = 30.0       # a figurine stays where it is unless a hand carries
 HAND_RECENT_S = 3.6         # for this long after the last hand a figurine may stand somewhere else (pushed, put down)
 # A figurine moves on the map only when a hand comes close to it (it may be pushed, taken, put down): with no hand
 # within HAND_NEAR_MM, a shadow, the light of the hall, its blob merging with something next to it do not move it,
-# not even by a few millimetres (on casa1 the middle of a blob jumped by 15 mm back and forth while nobody touched
-# the figurine). Once the hand has left it (HAND_NEAR_S), its place is the median of the next SETTLE_FRAMES places
-# seen (about a second), and there it stays.
+# not even by a few millimetres (the middle of a blob can jump by more than a centimetre back and forth while nobody
+# touches the figurine). Once the hand has left it (HAND_NEAR_S), its place is the median of the next SETTLE_FRAMES
+# places seen (about a second), and there it stays.
 HAND_NEAR_MM = 50.0
 HAND_NEAR_S = 0.6
 SETTLE_FRAMES = 10
@@ -335,11 +334,11 @@ class Tracker:
         hands = [o for o in observations if o.hand]
         things = [o for o in observations if not o.hand]
         # the lights of the house are moving (an alarm, the wave of the air conditioning, a scene): their glow takes
-        # the colours of the characters (12 October, another house: with the alarm on, the names of Viola and Mister
-        # Blu went to the red glow in the living room, and the alarm stopped by itself). Until they stand still no
-        # name moves, nobody is asked about, the characters stay where they were, and a blob counts only where a
-        # track already stands, or where a hand put it down (its glow is no hand: Engine._glow_not_hand); what a hand
-        # takes is followed as always, and what it puts down is named once the lights stand still
+        # the colours of the characters (the names of characters would go to the red glow of an alarm, and the alarm
+        # would stop by itself). Until they stand still no name moves, nobody is asked about, the characters stay
+        # where they were, and a blob counts only where a track already stands, or where a hand put it down (its glow
+        # is no hand: Engine._glow_not_hand); what a hand takes is followed as always, and what it puts down is named
+        # once the lights stand still
         hold = bool(self._animated)
         if hold:
             things = [o for o in things if o.extra.get("birth") or any(
@@ -378,8 +377,8 @@ class Tracker:
                 self.figure_held += 1
                 continue                   # "niente" first, even unsure: told only once it sees a figurine there
             if not t.identity:
-                # nameless: what it is, from the character the network is sure of (the small round figurines of a
-                # house were taken for animals by their shape, and asked about as "a new animal")
+                # nameless: what it is, from the character the network is sure of (small round figurines would be
+                # taken for animals by their shape, and asked about as "a new animal")
                 seen = self._figure_character(t, now, FIGURE_KEEP_P)
                 if seen is not None:
                     t.category = seen.category
@@ -629,11 +628,9 @@ class Tracker:
     def _network_names(self, now: float) -> None:
         """A name the colours gave that the network contradicts: when the network that knows the figurines is sure
         (FIGURE_NAME_P, twice in a row) that a track is another character, the track takes that name, from whoever
-        holds it, unless somebody said who that one is or the network sees that character there too. On 12 October,
-        after a session in which a house got many names wrong and learned the colours of the characters from its
-        mistakes, a start named Mister Brown "Nerone" and Rossellina "Rossana" by their colours, while the network
-        saw Mister Brown and Rossellina (0.97); with their names taken, the real Nerone and Rossana stayed nameless.
-        On the blocks left out of its training the network was wrong on 5 figurines out of 4089 at that certainty."""
+        holds it, unless somebody said who that one is or the network sees that character there too. A house that
+        learned the colours of the characters from its own mistakes would otherwise name characters after others
+        coloured alike, and leave the real ones nameless. At that certainty the network is very seldom wrong."""
         for t in list(self.tracks.values()):
             if t.locked or t.carried or t.obs is None:
                 continue
@@ -716,9 +713,8 @@ class Tracker:
 
     def _contested(self, t: VTrack, now: float) -> str | None:
         """The character the network sees in the track at least FIGURE_TAKE_P sure, twice in a row, when nobody has
-        that name, or the track that has it is seen and the network sees another one there (12 October, another house:
-        Viola and Mister Brown moved, each took the name of the other by the colours; the network saw Viola at 0.90 in
-        one and "Nerone" at 0.52 in the other, and the names stayed swapped)."""
+        that name, or the track that has it is seen and the network sees another one there (two characters moved
+        together may take each other's name by their colours, and the names would otherwise stay swapped)."""
         f = t.figure
         if f is None or now - f[2] > FIGURE_FRESH_S or f[1] < FIGURE_TAKE_P or f[3] < 2:
             return None
@@ -738,9 +734,8 @@ class Tracker:
     def _free_names(self, now: float) -> None:
         """A track with no name that the network sees as a character fairly sure (FIGURE_FREE_P, FIGURE_FREE_ROW times
         in a row) takes that name when nobody else can be it: that character is nowhere else in the house, is not
-        mixed up with another one out of it, and the network sees it in no other nameless track (12 October, another
-        house: Mister Blu in a bathroom the network had never seen, 0.77-0.82, with Viola named in the next room;
-        the house asked who he was at every start)."""
+        mixed up with another one out of it, and the network sees it in no other nameless track (a character in a
+        place the network has never seen is less sure for it, and would otherwise be asked about at every start)."""
         held = {t.identity for t in self.tracks.values() if t.identity and not self._gone_from(t)}
         free = {i for i in self.identities if i not in held}
         for t in list(self.tracks.values()):
@@ -762,11 +757,8 @@ class Tracker:
 
     def _drop_doubles(self) -> None:
         """An unseen track with no name where a named track is seen now: the same figurine, found again as a new track
-        while the old one was hidden (12 October, another house at a start: Romeo, next to a lawn lit otherwise than in
-        the empty house and taken for a hand along the front edge, was hidden and found again four times; each new
-        track took his name from the network, and the old ones stayed nameless where he stood, counted as four more
-        animals; the old track of the car was asked about as "a new cat in the garage"; Giallo Galli, "in a hand" at the
-        start, left his old track nameless in a hand for two minutes)."""
+        while the old one was hidden (a figurine hidden and found again several times would otherwise leave nameless
+        old tracks where it stands, counted as more characters and asked about, or left nameless in a hand)."""
         seen = [u for u in self.tracks.values()
                 if u.identity and u.obs is not None and u.frame == self.frame and not u.carried]
         for tid, t in list(self.tracks.items()):
@@ -851,8 +843,8 @@ class Tracker:
     def _put_down_as(self, t: VTrack, now: float) -> bool:
         """The hands took a character and left something new, not recognized: nothing moves by itself, so it is
         that character, lying down or on the bed looking a little different. With more new things, the one
-        coloured most like it. Not what the network has just seen is no figurine (a shadow by a wall, casa1 at
-        15:11: "Mister Blu" told on an empty floor)."""
+        coloured most like it. Not what the network has just seen is no figurine (a shadow by a wall would otherwise
+        be told as that character on an empty floor)."""
         if not t.identity:
             return False
         new = [u for u in self.tracks.values() if u is not t and not u.identity and not u.carried
@@ -1171,7 +1163,7 @@ class Tracker:
             if seen is not None and seen != ident.id and not self._mixed_up(seen, ident.id):
                 k = next((k for k, c in enumerate(cands) if c.id == seen), None)
                 if k is not None and cost[i, k] < 1e6 and seen in ok:
-                    # colours alike (casa1, 7 October: Rossellina named Rossana by her colours): the network that
+                    # colours alike (a character named after another one by its colours): the network that
                     # knows the figurines, sure twice, tells them apart better
                     j, ident, d = k, cands[k], raw[i, k]
             close = [cands[k].id for k in np.argsort(raw[i]) if raw[i, k] < ID_ACCEPT and cands[k].id in ok]
@@ -1244,8 +1236,8 @@ class Tracker:
     def _network_holds(self, t: VTrack, now: float) -> bool:
         """The network saw the character the track is named after, at least FIGURE_KEEP_P sure, in its last look, less
         than FIGURE_HOLD_S ago (a track with a name is looked at only every few seconds): the colours do not take that
-        name (13 October, another house: Mister Blu, 0.98, whose colours the house had not learned, was named back
-        "Mister Brown", the one dark character with colours learned, every time the answer of the network got old)."""
+        name (a character whose colours the house has not learned yet would otherwise be named again after the closest
+        character it knows, every time the answer of the network gets old)."""
         f = t.figure
         return bool(t.identity) and f is not None and now - f[2] <= FIGURE_HOLD_S and f[1] >= FIGURE_KEEP_P \
             and self._by_name.get(f[0].strip().lower()) == t.identity

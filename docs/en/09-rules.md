@@ -61,7 +61,7 @@ Many events and conditions have a **Who** field with two choices: the kind (*any
 | **the barbecue** | State: starts, ready | the fan starts, or the barbecue is ready (the fan has finished). |
 | **the party** | State: starts, over | a party starts or ends. |
 
-**The virtual climate.** The Thermo in the sideboard is a thermostat you warm with a finger. Its reference is the average of the last 5 minutes. It goes **hot** when the temperature rises 1 °C above the reference, or rises faster than 0.1 °C per second, or when the humidity jumps 10 points (someone breathes on it, which is quicker than a finger); **cold** when it falls 1 °C below the reference; **normal** again when it is back within 0.5 °C. The thresholds are in **More → Settings**, under **Lights · Party · Barbecue · Climate**.
+**The virtual climate.** The Thermo in the sideboard is a thermostat you warm with a finger. Its reference is the average of the last 5 minutes. It goes **hot** when the temperature rises 1 °C above the reference, or rises faster than 0.1 °C per second, or when the humidity jumps 10 points (someone breathes on it, which is quicker than a finger); **cold** when it falls 1 °C below the reference; **normal** again when it is back within 0.5 °C. The hot threshold and the humidity rise of the shower (below) are changed in **More → Settings**, in the **Party · Barbecue · Climate** box, and apply at once; the other thresholds are in the `"climate"` section of `var/config/settings.json`.
 
 ## If: the conditions
 
@@ -92,6 +92,8 @@ Many events and conditions have a **Who** field with two choices: the kind (*any
 | **throw a party** | | starts a party (if one is not running or resting) |
 | **light the barbecue** | | runs the barbecue fan for its set duration |
 | **wait** | Seconds | pauses before the next action (up to 10 minutes) |
+
+The rule format also accepts the action `{"type": "relay", "on": true, "duration_s": 20}`, which the editor does not show: it runs the fan like the barbecue (with the same time limits), but without announcing it and without the barbecue being ready.
 
 The texts can contain these fields in braces, filled in from the event:
 
@@ -133,20 +135,21 @@ Each light has a stack of layers. The highest active layer decides what the ligh
 | scene | 30 |
 | rules | the rule's own priority (1–98), 50 by default |
 | lights switched on or off from **Controls** or by voice | 55 |
+| the wave of the air conditioning or of the heating asked by voice | 60 |
 | alarm rules | 95 |
 | the language flash (green or red for a second) | 99 |
 
 During a party the microcontroller runs the light show by itself, in time with the music; when the party ends the house redraws every light from its layers.
 
-**Follow-me lights.** For now they are off by default, and the web app has no switch to turn them on: their glow on the walls and the floor confuses the webcam.
+**Follow-me lights.** They are off by default, and the web app has no switch to turn them on: their glow on the walls and the floor confuses the webcam. To switch them on, set `"follow": true` in the `"lights"` section of `var/config/settings.json` and restart `domotiq`.
 
-When they are on, a room with at least one person gets a warm white light (`#fff2e0`) at 60 % (of the house maximum), one colour for everybody and not the favourite colour of who comes in; it goes off 3 seconds after the last person leaves. Animals do not turn lights on. In the garage the car counts too: the light stays on while the car arrives and until it has been parked for 10 seconds. The garden and the driveway have no light; the light of the utility room is the LED matrix of the UNO Q. Colour, brightness and delay are in the settings, together with **Light in the favourite colour of who comes in**, off by default.
+When they are on, a room with at least one person gets a warm white light (`#fff2e0`) at 60 % (of the house maximum), one colour for everybody; it goes off 3 seconds after the last person leaves. Animals do not turn lights on. In the garage the car counts too: the light stays on while the car arrives and until it has been parked for 10 seconds. The garden and the driveway have no light; the light of the utility room is the LED matrix of the UNO Q. Colour, brightness and delay are in the same section (`follow_color`, `follow_brightness`, `follow_off_delay_s`), together with `follow_favourite`, off by default, which in the Normal scene gives the room the favourite colour of who comes in.
 
 ## Scenes
 
 | Scene | Lights |
 |---|---|
-| **Normal** | the lights follow people, off by default for now (see above); when they are on, at a start they wait 15 seconds after the first presence seen, while the webcam looks for the figurines |
+| **Normal** | the lights follow people, off by default (see above); when they are on, at a start they wait 15 seconds after the first presence seen, while the webcam looks for the figurines |
 | **Cinema** | in the living room the flickering blue glow of a screen (*Sparkle*), every other room off, even where people are |
 | **Relax** | a fire in the living room (*Fire*), an orange light breathing in the bedroom; with the follow-me lights on, warm dim lights where people are |
 | **Night** | everything off but a small orange night light in the bathroom; with the follow-me lights on, whoever gets up finds a very dim orange courtesy light |
@@ -172,7 +175,7 @@ Scenes are chosen by voice ("Scenario cinema", "Good night") or by a rule, and t
 | **Living room party** | more than 3 people in the living room for 3 s | throws a party | off |
 | **Barbecue with friends** | more than 1 person in the garden for 10 s | lights the barbecue | off |
 
-Who counts: the default rules about people use the kind *person*, so pets never trigger the utility room or the bathroom alarm. The garage light for the car comes from the follow-me lights (off by default for now), not from a rule.
+Who counts: the default rules about people use the kind *person*, so pets never trigger the utility room or the bathroom alarm. The garage light for the car comes from the follow-me lights (off by default), not from a rule.
 
 ## Who can change the rules
 

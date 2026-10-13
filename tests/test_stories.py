@@ -307,7 +307,7 @@ def test_free_questions_by_voice(ctx):
         ctx.said.clear()
         await ctx.voice.handle("quando scade l'assicurazione dell'auto")
         assert ctx.said and ctx.said[-1].startswith("L'assicurazione dell'auto scade ")
-        # never to the model of the commands, which took it for "where is Luca"
+        # never to the model of the commands, which could take it for "where is Luca"
         asked = []
 
         class Llm:

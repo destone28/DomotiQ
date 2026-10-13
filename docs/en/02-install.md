@@ -39,7 +39,7 @@ The script asks the `sudo` password (`domotiq2026`, the one of [chapter 1](01-pr
 | `--house N` | Number of the house, 1 to 254; without it the house is number 1. Sets the name (`casaN`), the Wi-Fi network (`DomotiQ-CasaN`), the channel (1, 11 or 6) and the address (`10.42.N.1`). Later runs read it from the saved settings. |
 | `--wifi PASSWORD` | The password of the Wi-Fi of the house, 8 to 63 characters. Without it the installer chooses one at random the first time and then keeps it. |
 | `--hotspot MODE` | `now`, `boot` or `no`. Default `boot`: the hotspot is configured and starts at the next boot. See [The hotspot](#the-hotspot). |
-| `--no-llm` | Skip llama.cpp and the language model. The house then understands only the phrases of its built-in parser. |
+| `--no-llm` | Skip llama.cpp and the two language models. The house then understands only the phrases of its built-in parser, and writes no answers to questions about the world (it asks whoever asked, [chapter 8](08-voice.md#when-it-does-not-know-it-asks-and-learns)). |
 | `--skip-firmware` | Do not rebuild or reload the microcontroller firmware. |
 
 ## What each step does
@@ -54,7 +54,7 @@ The script prints numbered steps. The numbers shift when a step is skipped by an
 6. **llama.cpp.** Fetches llama.cpp at the commit tested on the UNO Q (`74a7c897`), applies the kernels written for its processor, in the patch `scripts/llama/arm-nodot.patch`, and builds `llama-server` (about twenty minutes). Skipped when the same commit is already built with the same patch, or with `--no-llm`.
 7. **Microcontroller firmware.** Installs the core `arduino:zephyr` 1.0.0 and the library `Arduino_RouterBridge` 0.4.3, compiles `firmware/domotiq_mcu` in the "Immediate" start mode (`wait_linux_boot=no`) and loads it with the local `remoteocd`, which needs no password. It is reloaded only when the sketch, the core, the library or the board options change. Finally `arduino-app-cli properties set default none` makes sure no App Lab app replaces the firmware at boot. See `firmware/domotiq_mcu/README.md` to do the same by hand.
 8. **House settings.** Sets the host name `casaN` and the time zone Europe/Rome; creates the Wi-Fi password (if none exists yet); writes house number, names and network into `var/config/settings.json`.
-9. **Services.** Installs `domotiq`, `domotiq-tts`, `domotiq-llm` and `domotiq-chat` in `/etc/systemd/system`, a `sudoers` rule, and a journald limit (200 MB, 7 days of logs). It disables the automatic `apt` timers and holds `alsa-ucm-conf`, `libasound2t64` and the running kernel: nothing should update the system while the house is in use.
+9. **Services.** Installs `domotiq`, `domotiq-tts`, `domotiq-llm` and `domotiq-chat` in `/etc/systemd/system`, a `sudoers` rule, the script the web app uses to change the hotspot password (`/usr/local/sbin/domotiq-hotspot-psk`, which takes no arguments) and a journald limit (200 MB, 7 days of logs). It enables `domotiq-llm` and `domotiq-chat` only without `--no-llm`. It disables the automatic `apt` timers and holds `alsa-ucm-conf`, `libasound2t64` and the running kernel: nothing should update the system while the house is in use.
 10. **Hotspot.** Creates or updates the hotspot profile, then applies `--hotspot` (`now`, `boot` or `no`).
 11. **Start.** Restarts the services and prints a summary.
 
@@ -76,13 +76,16 @@ Everything is inside `/home/arduino/domotiq`:
 |---|---|
 | `venv/` | Python environment of the application |
 | `piper-venv/` | separate environment of Piper |
-| `models/` | Piper voices, Vosk models, YOLOX-Nano, Qwen2.5-0.5B, Qwen3.5-0.8B |
+| `models/` | Piper voices, Vosk models, YOLOX-Nano, Qwen2.5-0.5B, Qwen3.5-0.8B; the figurine network, if you trained it (`models/vision/figures.onnx` and `figures.json`, [chapter 7](07-recognition-and-identities.md#the-network-that-knows-the-figurines)); the voice sentences prepared ahead of time (`models/voice-cache/`) |
 | `llama.cpp/` | llama.cpp sources and the built `llama-server` |
-| `var/config/` | `settings.json`, `rules.json`, `identities.json` |
-| `var/calibration/` | camera calibration, empty-house reference, locked camera settings |
+| `var/config/` | `settings.json`, `rules.json`, `identities.json`, `knowledge.json` (what the house learned by voice), `clock.json` |
+| `var/calibration/` | camera calibration, empty-house reference (also in more lights, in `empties/`), locked camera settings |
 | `var/photos/` | photos of the characters |
 | `var/domotiq.db` | SQLite: events (7 days), positions (24 hours), change log, bin |
 | `var/dataset/`, `var/recordings/` | captures and sequences recorded from the calibration page |
+| `var/journal/` | the entries of **Image training**: the new presences, the names given and the blobs the network turned down, with their crops |
+| `var/collect/` | the continuous collection of pictures for the network, when it is on |
+| `var/voice/` | the sentences the voice has already synthesized, 3000 at most |
 | `var/firmware/` | the last firmware build |
 
 `var/` is what the house remembers. It belongs to that board and is excluded from the repository.
@@ -91,7 +94,7 @@ Everything is inside `/home/arduino/domotiq`:
 
 | Service | What it runs |
 |---|---|
-| `domotiq` | The application (`python -m domotiq`): web app on port 80, rules, voice, audio, the link to the microcontroller, with the vision as a child process. Restarts by itself. It may bind port 80 and set the clock, nothing else. |
+| `domotiq` | The application (`python -m domotiq`): web app on port 80, rules, voice, audio, the link to the microcontroller, with the vision as a child process. Restarts by itself, also when it stays stuck for two minutes. It may bind port 80 and set the clock, nothing else. |
 | `domotiq-tts` | Piper's HTTP server on `127.0.0.1:5010`, with the voices in `models/piper`. |
 | `domotiq-llm` | `llama-server` with Qwen2.5-0.5B-Instruct on `127.0.0.1:8081`, always loaded so free questions get a fast answer, at a lower CPU priority than vision and voice. The instructions it has read are saved in `/var/lib/domotiq-llm` and come back in a few seconds at the next starts instead of about 10 minutes ([chapter 8](08-voice.md)). Not enabled with `--no-llm`. |
 | `domotiq-chat` | A second `llama-server`, with Qwen3.5-0.8B on `127.0.0.1:8082`, for the free answers to questions about the world, when the visitor chooses to wait for them ([chapter 8](08-voice.md)). Same low priority as `domotiq-llm`. Not enabled with `--no-llm`. |

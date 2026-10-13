@@ -165,11 +165,11 @@ PATTERNS: list[tuple[str, list[str]]] = [
     ("volume", [r"\bnon ti sento\b", r"\bi can t hear you\b", r"\b(alza|abbassa) (il |la )?(volume|musica)\b", r"\bvolume (su|giu|up|down)\b", r"\bpiu (forte|piano)\b",
                 r"\ba basso volume\b",
                 r"\b(louder|quieter|softer)\b", r"\b(turn|volume) (it )?(up|down)\b"]),
-    # "fai presto", "let's body": "fai festa" and "let's party" as the recognizer heard them at the bench
+    # "fai presto", "let's body": "fai festa" and "let's party" as the recognizer may hear them
     ("party", [r"\b(festa|feste|party|balliamo|ballare|musica|let s dance|dance)\b", r"\b(festeggia|celebr)\w*\b",
                r"\b(fai|facciamo|famo) presto\b", r"\blet s (body|bodies|potty)\b"]),
-    # "barbe più", "bar ben più", "barrow": "barbecue" as the recognizer heard it on the houses ("accendi il barbe più"
-    # lit a light)
+    # "barbe più", "bar ben più", "barrow": "barbecue" as the recognizer may hear it ("accendi il barbe più" must not
+    # light a light)
     ("grill", [r"\b(barbecue|grigliata|griglia|grill|bbq|grigliare|salsicce|braciole|sausages)\b",
                r"\bbarb[aeiy]\w* (piu|ecc)\b", r"\bbar (ben|be|bi) piu\b", r"\bbar bici\b", r"\bbar(row|low)\b"]),
     ("scene", [r"\bscenari[oa]\b", r"\bmodalita\b", r"\bscene\b", r"\bmode\b", r"\bcinema\b", r"\brelax\b",
@@ -180,7 +180,7 @@ PATTERNS: list[tuple[str, list[str]]] = [
                r"\bguardiamo un film\b", r"\bwatch a (film|movie)\b", r"\b(romantic|romantica|atmosfera)\b",
                r"\bserie tv\b", r"\bla tv\b", r"\bwatch tv\b", r"\brilassiam\w*\b", r"\brelax\w*\b"]),
     # the air conditioning and the heating: the house has neither, and shows them with a wave of light, as the
-    # thermostat does ("accendi il condizionatore" turned on the lights before)
+    # thermostat does ("accendi il condizionatore" must not turn on the lights)
     ("climate", [r"\b(condizionator[ei]|climatizzator[ei]|aria condizionata|riscaldament[oi]|termosifon\w*|stuf[ae]|"
                  r"air conditioning|air conditioners?|aircon|heating|heaters?)\b",
                  r"\b(accend\w*|spegn\w*|speng\w*|spent[oaie]|spend\w*|metti|attiv\w*|disattiv\w*|turn on|turn off|"
@@ -696,8 +696,8 @@ def parse(text: str, names: Iterable[str] = ()) -> Intent | None:
             args["scene"] = scene
         elif intent == "climate":
             args["mode"] = "warm" if re.search(r"riscald|termosif|stuf[ae]|heat", t) else "cool"
-            # every form of switching off: "spegni", "puoi spegnere", "spengilo", "climatizzatore spento" (12 October:
-            # "spegnere" and "spento" turned it on), and "spegni" as the recognizer hears it, "spendi" and "segni"
+            # every form of switching off: "spegni", "puoi spegnere", "spengilo", "climatizzatore spento" ("spegnere"
+            # and "spento" must not turn it on), and "spegni" as the recognizer hears it, "spendi" and "segni"
             off = re.search(r"\b(spegn\w*|speng\w*|spent[oaie]|spend\w*|segni|disattiv\w*|ferm\w*|basta|stop|"
                             r"turn (it )?off|switch (it )?off|off)\b", t)
             on = re.search(r"\b(accend\w*|accenn\w*|acces[oaie]|attiv\w*|metti|turn (it )?on|switch (it )?on|on)\b", t)

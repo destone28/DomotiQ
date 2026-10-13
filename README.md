@@ -13,7 +13,7 @@ Italian version: [README.it.md](https://github.com/destone28/DomotiQ/blob/main/R
 # What it does
 
 - Tracks people, animals, the car and objects with computer vision: position in millimetres, room, counts, identity and history.
-- Scenes (normal, relax, cinema, night, away), lights per room and effects drawn by the microcontroller. Lights that follow people are there, but off by default because their glow confuses the webcam.
+- Scenes (normal, relax, cinema, night, away), chosen by voice or by a rule, lights per room and effects drawn by the microcontroller. Lights that follow people are there, but off by default because their glow confuses the webcam.
 - When/If/Then rules that anyone can change from the web app, with a log of who changed what.
 - Built-in constraints: the utility room is off limits after 5 seconds, the bathroom takes one person at a time.
 - A virtual climate: a thermostat you can warm with a finger, and a bathroom whose humidity rises when someone "showers" (blow on the sensor).
@@ -99,10 +99,10 @@ The house runs in simulation on any PC, with virtual figurines you put on the pl
 
 ```
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-PYTHONPATH=src .venv/bin/python -m domotiq.app --simulate
+PYTHONPATH=src .venv/bin/python -m domotiq --simulate
 ```
 
-Then open http://localhost:8080 in a browser.
+Then open http://localhost:8080 in a browser; virtual figurines are added from the page http://localhost:8080/#/sim.
 
 # Repository
 
@@ -111,7 +111,7 @@ Then open http://localhost:8080 in a browser.
 - data/house.json: the map of the house, shared by vision, rules and web app.
 - data/stories.json: the pieces the house combines into stories, memories and answers, in Italian and English.
 - hardware/stl: the numbered print files.
-- scripts: installation, hotspot, copy from the PC to the board, training of the figurine network, screenshots.
+- scripts: installation, hotspot, copy from the PC to the board, the voice sentences prepared ahead of time, training of the figurine network, screenshots.
 - tests: tests of the core, the voice, the vision (on synthetic frames) and the web API.
 - docs: guides in English and Italian, images, the list of tools and licences.
 

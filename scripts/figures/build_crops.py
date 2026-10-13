@@ -4,12 +4,12 @@
 """Labelled crops of the figurines from the recordings of the house (Calibration -> Record).
 
 Every frame of a recording has the blobs the house saw (bbox in pixels, middle in mm) and the tracks it followed
-(with the character's identity and, since 7 October, the bbox of the blob the track was matched to). The blob of a
-named track is a crop of that character; a blob that is no track's, no hand, of a figurine's size, in a frame where
-the house was following characters, is "niente" (light, shadow, a module). Recordings without the bbox of the
-tracks are left out: matched by the place on the map, which is fixed and seen from above, their labels were wrong
-(a piece of furniture taken for Mister Brown, Viola taken for "niente"). Figurines in the bathroom are blurred in the
-recordings and are left out too. Crops are square around the blob, with a margin, resized to SIZE.
+(with the character's identity and, in newer recordings, the bbox of the blob the track was matched to). The blob
+of a named track is a crop of that character; a blob that is no track's, no hand, of a figurine's size, in a frame
+where the house was following characters, is "niente" (light, shadow, a module). Recordings without the bbox of the
+tracks are left out: matched by the place on the map, which is fixed and seen from above, their labels are often
+wrong (a piece of furniture taken for a character, a character taken for "niente"). Figurines in the bathroom are
+blurred in the recordings and are left out too. Crops are square around the blob, with a margin, resized to SIZE.
 
     python scripts/figures/build_crops.py <recordings dir> <identities.json> <out dir> [--journal <journal dir>]
 

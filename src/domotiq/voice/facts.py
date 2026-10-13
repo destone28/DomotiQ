@@ -22,12 +22,10 @@
   up and agrees with any name; when no fact has that topic the house says
   that it does not know.
 
-Measured with Qwen2.5-0.5B on 164 questions about six characters: the
-keywords answer 99% of the questions phrased the usual ways, the model finds
-about a third of the facts asked with no keyword at all, and one answer in
-164 is a wrong fact. Asking the model to pick the fact by its number
-(18-48%) or to write the answer (43-62%, with facts it made up) did much
-worse.
+With Qwen2.5-0.5B the keywords answer nearly every question phrased the
+usual ways, the model finds part of the facts asked with no keyword at all,
+and a wrong fact is rare. Asking the model to pick the fact by its number,
+or to write the answer itself (it then makes facts up), does much worse.
 """
 
 from __future__ import annotations

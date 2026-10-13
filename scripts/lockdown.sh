@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Emilio Destratis – destratis.it
 # SPDX-License-Identifier: MIT
 #
-# Before a house leaves the lab: SSH accepts only keys, no passwords.
+# Lock SSH down: it accepts only keys, no passwords.
 #
 #   bash scripts/lockdown.sh          on the board, after scripts/add-pc.sh from every PC that needs access
 #   bash scripts/lockdown.sh --undo   passwords allowed again

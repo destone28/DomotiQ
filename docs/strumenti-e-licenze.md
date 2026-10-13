@@ -13,6 +13,7 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Le versioni es
 |---|---|---|---|
 | Arduino UNO Q, immagine Debian 13 | 20251210-442, poi aggiornata | varie (Debian) | sistema operativo |
 | arduino-app-cli | 0.7.0 → aggiornato | GPL-3.0 (strumento di sistema, non incluso) | prima configurazione, aggiornamenti |
+| arduino-cli | 1.5.1, di sistema | GPL-3.0 (strumento di sistema, non incluso) | compila il firmware, installa core e librerie |
 | arduino-router | di sistema | MPL-2.0 | ponte Linux ↔ MCU |
 | NetworkManager, dnsmasq, avahi | di sistema | GPL-2.0+ / LGPL | hotspot, DNS, nomi `.local` |
 | ALSA (libasound2 1.2.16 da trixie-backports) | 1.2.16.1 | LGPL-2.1+ | audio |
@@ -34,7 +35,7 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Le versioni es
 | OpenCV (headless) | Apache-2.0 | visione |
 | msgpack | Apache-2.0 | protocollo del router |
 | Vosk | Apache-2.0 | riconoscimento vocale |
-| ONNX Runtime | MIT | categoria degli oggetti |
+| ONNX Runtime | MIT | categoria degli oggetti, rete delle statuine |
 | (nessun SciPy) | — | l'assegnamento ungherese del tracciamento è scritto nel progetto |
 
 ## Programmi esterni
@@ -42,7 +43,7 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Le versioni es
 |---|---|---|
 | Piper (`piper1-gpl`) 1.8.0 | GPL-3.0 | sintesi vocale; ambiente separato, server HTTP locale, non incluso nel codice |
 | Flask | BSD-3-Clause | serve al server HTTP di Piper (nel suo ambiente) |
-| llama.cpp (`llama-server`), commit 74a7c897 | MIT | modello linguistico; compilato sulla scheda con `scripts/llama/arm-nodot.patch` (MIT, istruzioni per il Cortex-A53) |
+| llama.cpp (`llama-server`), commit 74a7c897 | MIT | i due modelli linguistici (servizi `domotiq-llm` e `domotiq-chat`); compilato sulla scheda con `scripts/llama/arm-nodot.patch` (MIT, istruzioni per il Cortex-A53) |
 
 ## Modelli e voci
 | Modello | Licenza | Uso |
@@ -69,9 +70,10 @@ Elenco di tutto ciò che il progetto usa, con versione e licenza. Le versioni es
 | httpx | BSD-3-Clause | test delle API |
 | Pillow | MIT-CMU (HPND) | pulizia dei metadati delle immagini |
 | uv | MIT / Apache-2.0 | ambiente Python sul PC |
-| PyTorch 2.14 (CPU) | BSD-3-Clause | addestramento della rete delle statuine (`scripts/figures/train.py`), solo sul PC |
+| PyTorch 2.14 | BSD-3-Clause | addestramento della rete delle statuine (`scripts/figures/train.py`), su CPU o su una scheda NVIDIA, solo sul PC |
 | onnx 1.23 | Apache-2.0 | esportazione della rete delle statuine in ONNX, solo sul PC |
 | piper-tts 1.8.0 e le voci Piper it_IT-serena, it_IT-paola, it_IT-riccardo, en_US-ljspeech, en_US-ryan, en_GB-alan | GPL-3.0 (piper-tts); licenze delle singole voci, alcune escludono l'uso commerciale (es. it_IT-paola, derivata da "lessac") | solo sul PC, per leggere le frasi di prova di `scripts/stt_bench.py`; non distribuite e non installate sulla scheda |
+| Chromium (o Google Chrome) | BSD-3-Clause (Chromium) | schermate della webapp per le guide (`scripts/screenshots.py`) |
 | FreeCAD | LGPL-2.1+ | CAD del diorama |
 
 ## Valutati e scartati

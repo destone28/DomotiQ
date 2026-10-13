@@ -13,7 +13,7 @@ English version: [README.md](https://github.com/destone28/DomotiQ/blob/main/READ
 # Cosa fa
 
 - Segue persone, animali, l'auto e gli oggetti con la visione artificiale: posizione in millimetri, stanza, conteggi, identità e storico.
-- Scenari (normale, relax, cinema, notte, via), luci per stanza ed effetti disegnati dal microcontrollore. Le luci che seguono le persone ci sono, ma sono spente di serie perché il loro bagliore confonde la webcam.
+- Scenari (normale, relax, cinema, notte, via), che si scelgono a voce o con una regola, luci per stanza ed effetti disegnati dal microcontrollore. Le luci che seguono le persone ci sono, ma sono spente di serie perché il loro bagliore confonde la webcam.
 - Regole Quando/Se/Allora che chiunque può cambiare dalla webapp, con il registro di chi ha cambiato cosa.
 - Vincoli di partenza: locale tecnico vietato dopo 5 secondi, bagno per una persona alla volta.
 - Un clima virtuale: un termostato che si scalda con un dito e un bagno la cui umidità sale quando qualcuno "fa la doccia" (basta soffiare sul sensore).
@@ -99,10 +99,10 @@ La casa gira in simulazione su qualsiasi PC, con personaggi virtuali da mettere 
 
 ```
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-PYTHONPATH=src .venv/bin/python -m domotiq.app --simulate
+PYTHONPATH=src .venv/bin/python -m domotiq --simulate
 ```
 
-Poi apri http://localhost:8080 nel browser.
+Poi apri http://localhost:8080 nel browser; i personaggi virtuali si aggiungono dalla pagina http://localhost:8080/#/sim.
 
 # Il repository
 
@@ -111,7 +111,7 @@ Poi apri http://localhost:8080 nel browser.
 - data/house.json: la mappa della casa, condivisa da visione, regole e webapp.
 - data/stories.json: i pezzi che la casa combina in storie, ricordi e risposte, in italiano e in inglese.
 - hardware/stl: i file di stampa numerati.
-- scripts: installazione, hotspot, copia dal PC alla scheda, addestramento della rete delle statuine, schermate.
+- scripts: installazione, hotspot, copia dal PC alla scheda, frasi della voce preparate in anticipo, addestramento della rete delle statuine, schermate.
 - tests: test del nucleo, della voce, della visione (su immagini sintetiche) e delle API web.
 - docs: guide in italiano e in inglese, immagini, l'elenco di strumenti e licenze.
 

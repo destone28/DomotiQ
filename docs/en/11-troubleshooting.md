@@ -113,7 +113,7 @@ The installer (which needs internet) reloads the firmware when needed; without i
 **Solution.** Unplug the power and check the cables: hold the two connectors of the same cable side by side, turned the same way; on a proper Qwiic cable the wire colours are in the same order on both. With wires all of one colour use a continuity tester: the leftmost pin of one connector must beep with the leftmost pin of the other. If the cables are right, with the house on unplug the cables from the Hub one at a time: the alert goes away within 5 seconds of removing the faulty one. The line above the modules in *Diagnostics* and `scripts/bench_mcu.py` show the state of SCL and SDA.
 
 ### The house says the thermostat or the sensor is not answering
-**Cause.** No reading from that Thermo (channel 6 for the sideboard, channel 4 for the bathroom).
+**Cause.** No reading from that Thermo (channel 6 for the sideboard, channel 4 for the bathroom). The house says so with "The thermostat is not answering." or "The sensor is not answering.".
 
 **Solution.** Check the module in *Diagnostics* and its cable.
 
@@ -127,10 +127,10 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### Lights are dimmer than expected, and get dimmer with more rooms on
 **Cause.** The firmware protects the 3.3 V line of the Qwiic connector: brightness is capped at 30 % and all lights are scaled down when the estimated current goes above 450 mA.
 
-**Solution.** This is intended. The two values are fixed and are not in the settings: the connector is rated 1 A and the regulator of the board is shared (see [chapter 4](04-wiring.md#power-of-the-pixels)).
+**Solution.** This is intended. The two values are not in the web app: they are in `var/config/settings.json` (`max_brightness`, `current_budget_ma`) and they are cautious because the connector is rated 1 A and the regulator of the board is shared (see [chapter 4](04-wiring.md#power-of-the-pixels)).
 
 ### A light switched on from the phone went off by itself
-**Cause.** Manual lights last two minutes, then the room goes back to the house (follow-me lights, scene, rules).
+**Cause.** Manual lights last two minutes, then the room goes back to the house (scene and rules).
 
 **Solution.** Normal behaviour; use a rule for a light that must stay.
 
@@ -165,6 +165,11 @@ The installer (which needs internet) reloads the firmware when needed; without i
 **Cause.** The corners or the empty house are missing.
 
 **Solution.** Calibrate ([chapter 5](05-testing.md#9-camera-calibration)).
+
+### Banner *The house recognizes nothing until the light is set*
+**Cause.** The corners are there, but the light of the camera has not been set, or setting it failed. **Diagnostics → Webcam** shows *light not set*.
+
+**Solution.** Take the figurines away and do **Calibration → Set the light and save the empty house**, without touching the house for 15 seconds.
 
 ### Banner *The empty house was saved in the dark*
 **Cause.** The empty house in use was saved with the hall in the dark, with an earlier version of the software (the web app no longer allows it): with the light on everything looks different from it.
@@ -212,11 +217,11 @@ The installer (which needs internet) reloads the firmware when needed; without i
 **Solution.** Mount the totem and run the cables along the walls, then with the house empty **More → Calibration → Save the empty house only**.
 
 ### The house sees characters that are not there, even with the house empty
-**Cause.** When the light changes (the sun in the room, the coloured lights of the house) furniture, grilles and lawns no longer look like the empty house, and the network of the figurines, trained under other lights or on another house, is not sure they are "nothing". The colours then give them the name of the most alike character.
+**Cause.** When the light changes (the sun in the room, the coloured lights of the house) furniture, grilles and lawns no longer look like the empty house, and the network of the figurines, trained under lights other than those of your hall, is not sure they are "nothing". The colours then give them the name of the most alike character.
 
 **Solution.** A new presence is announced only when the network has seen a figurine in it, twice in a row: this way almost all these presences stay silent. If it still happens:
 - with the house empty, in the everyday light, **More → Calibration → Add the light of now**, once for every light of the room (morning, evening, lamp on);
-- switch on **Continuous collection of pictures for the network**, mark the false presences "nothing" in **Image training**, and train the network again with these pictures and the photos of the empty house ([chapter 7](07-recognition-and-identities.md#the-network-that-knows-the-figurines)).
+- switch on **Continuous collection of pictures for the network**, tap **Nothing there** on the false presences in **Image training**, and train the network again with these pictures and the photos of the empty house ([chapter 7](07-recognition-and-identities.md#the-network-that-knows-the-figurines)).
 
 ### A deleted character still shows up
 **Cause.** The name stays where it tells something that happened: the past events and the entries of **Image training**, marked *(deleted)*. The network of the figurines keeps knowing it until it is trained again, and **Image training** still shows what it says.
@@ -253,6 +258,11 @@ The installer (which needs internet) reloads the firmware when needed; without i
 
 **Solution.** Answer the question on a phone or by voice. Different colours avoid it.
 
+### During a party the plan does not follow the figurines
+**Cause.** On purpose: with the coloured lights of the party what the camera sees says nothing about what is in the house, so the characters stay where they are until the party is over (**Diagnostics → Webcam** shows *paused for the party*).
+
+**Solution.** Nothing to do: when the party is over and the lights stand still, the house looks again and finds the characters where you moved them.
+
 ### A figurine lost its name after being held in the hand
 **Cause.** It was held for more than 60 seconds, so the house stopped following it.
 
@@ -281,9 +291,9 @@ The installer (which needs internet) reloads the firmware when needed; without i
 **Solution.** Normal; the house prepares its frequent sentences at start-up.
 
 ### The house answers a few seconds late
-**Cause.** With the natural voice every new sentence must be synthesized, and on the board a sentence of three and a half seconds takes about 4.5 seconds. Fixed sentences and those already said start at once.
+**Cause.** Every new sentence must be synthesized by the voice of the house (Piper), and on the board a sentence of three and a half seconds takes about 4.5 seconds. Fixed sentences and those already said start at once.
 
-**Solution.** This is normal with the natural voice, and the house does what it can to shorten the wait: the frequent sentences are already in memory and start at once, a short new sentence takes a couple of seconds, and a long answer starts from the first sentence while the house prepares the others. The keyword gets its "Yes?" at once.
+**Solution.** This is normal, and the house does what it can to shorten the wait: the frequent sentences are already in memory and start at once, a short new sentence takes a couple of seconds, and a long answer starts from the first sentence while the house prepares the others. The keyword gets its "Yes?" at once.
 
 ### The house does not hear anything
 **Cause.** The lavalier is not in the microphone input of the US205, or it is too far from the speaker's mouth.
@@ -293,7 +303,7 @@ The installer (which needs internet) reloads the firmware when needed; without i
 ### "I didn't get that." for sentences that should work
 **Cause.** A misheard sentence, or the language model is not available.
 
-**Solution.** Check that the house language is the one being spoken (Language LED on = English). **Diagnostics → Voice** shows *LLM* with a green dot when the language model answers; otherwise `systemctl status domotiq-llm`. Installed with `--no-llm`, the house understands only its fixed phrases.
+**Solution.** After "I didn't get that." the house suggests a request to try ("Try asking me what time it is."), a different one each time, among those the speech recognizer hears best: if the house understands that one, it hears you well, and the problem is the sentence before. Check that the house language is the one being spoken (Language LED on = English). **Diagnostics → Voice** shows *LLM* with a green dot when the language model answers; otherwise `systemctl status domotiq-llm`. Installed with `--no-llm`, the house understands only its fixed phrases.
 
 ### A name is never recognized by voice
 **Cause.** The speech recognition model does not know the words of the name.
@@ -311,6 +321,11 @@ The installer (which needs internet) reloads the firmware when needed; without i
 **Cause.** The board is still connected to your Wi-Fi network, or the hotspot did not start.
 
 **Solution.** `bash scripts/hotspot.sh status`, then `bash scripts/hotspot.sh on`; `bash scripts/hotspot.sh boot` makes it start at every boot. It is a 2.4 GHz network.
+
+### *Password saved, but the hotspot was not changed*
+**Cause.** The hotspot is not set up on the board yet (the installation did not get to the end), or the house runs on a PC, which has no hotspot.
+
+**Solution.** On the board run `install.sh` again: it creates the hotspot with the password just saved. On a PC in simulation this is normal.
 
 ### *Lost the connection with the house: retrying…*
 **Cause.** The phone left the Wi-Fi range, or the board is restarting.

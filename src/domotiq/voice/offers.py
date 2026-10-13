@@ -320,7 +320,7 @@ def _mixed(examples: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
 
 EXAMPLES = _mixed(_EXAMPLES)
 MIN_CONFIDENCE = 0.5       # below this the form was a guess: not understood
-SURE = 0.9                 # a yes less sure than this is asked again: the wrong ones seen in testing were below it
+SURE = 0.9                 # a yes less sure than this is asked again: the wrong ones tend to be below it
 GRAMMAR_GBNF = 'root ::= "yes" | "no" | "other"'
 
 

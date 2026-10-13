@@ -142,10 +142,10 @@ class Controls:
 
 
 # The C270 does not report what its automatic modes chose: while they are on, the exposure and the white
-# balance it gives back are the last manual values (the white balance even 0), and locking those left the
+# balance it gives back are the last manual values (the white balance even 0), and locking those leaves the
 # picture almost black. So the values are found on the pictures: the brightness and the colours the
-# automatic modes reach are measured, then reproduced in manual mode. Under some lights (the warm, greenish
-# ones of the lab) no colour temperature of the webcam gives neutral colours, while its automatic mode does:
+# automatic modes reach are measured, then reproduced in manual mode. Under some lights (warm, greenish
+# ones) no colour temperature of the webcam gives neutral colours, while its automatic mode does:
 # what the temperature cannot correct, a fixed gain on each colour channel does, in software.
 EXPOSURES = (3, 5, 8, 10, 15, 20, 30, 39, 50, 78, 100, 156, 200, 312, 400, 625)   # 0.1 ms
 GAINS = (0, 16, 32, 64, 96, 128, 192, 255)

@@ -2,7 +2,7 @@
 
 The **source code** in this repository (`src/`, `firmware/`, `scripts/`, `tests/`) is released under the **MIT License**: see [LICENSE](LICENSE).
 
-Everything else — documentation and guides (`docs/`, `README.md`, `README.it.md`), images and diagrams, the 3D printing files in `hardware/stl/`, and the house data, phrases and default rules in `data/` — is released under the **Creative Commons Attribution 4.0 International** license (CC BY 4.0): <https://creativecommons.org/licenses/by/4.0/>
+Everything else — documentation and guides (`docs/`, `README.md`, `README.it.md`), images and diagrams, the 3D printing files in `hardware/stl/`, and the house data and story pieces in `data/` — is released under the **Creative Commons Attribution 4.0 International** license (CC BY 4.0): <https://creativecommons.org/licenses/by/4.0/>
 
 ## Attribution
 
@@ -20,7 +20,7 @@ The device uses software, models, voices and fonts by others, each under its own
 
 Il **codice sorgente** di questo repository (`src/`, `firmware/`, `scripts/`, `tests/`) è distribuito sotto **licenza MIT**: vedi [LICENSE](LICENSE).
 
-Tutto il resto — documentazione e guide (`docs/`, `README.md`, `README.it.md`), immagini e schemi, i file di stampa 3D in `hardware/stl/`, i dati della casa, le frasi e le regole di partenza in `data/` — è distribuito sotto **Creative Commons Attribuzione 4.0 Internazionale** (CC BY 4.0): <https://creativecommons.org/licenses/by/4.0/deed.it>
+Tutto il resto — documentazione e guide (`docs/`, `README.md`, `README.it.md`), immagini e schemi, i file di stampa 3D in `hardware/stl/`, i dati della casa e i pezzi delle storie in `data/` — è distribuito sotto **Creative Commons Attribuzione 4.0 Internazionale** (CC BY 4.0): <https://creativecommons.org/licenses/by/4.0/deed.it>
 
 ## Attribuzione
 

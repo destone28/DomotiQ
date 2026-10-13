@@ -108,7 +108,7 @@ The examples below are understood directly by the rule-based parser. It tolerate
 | Scenes | Scenario cinema · Scenario relax · Modalità via · Buonanotte · Buongiorno | Cinema mode · Relax scene · Away mode · Good night · Good morning |
 | Party | Fai festa · Balliamo | Let's dance · Party |
 | Barbecue | Accendi il barbecue · Spegni il barbecue | Light the barbecue · Turn off the barbecue |
-| Air conditioning and heating | Accendi il condizionatore · Accendi il riscaldamento · Spegni il climatizzatore · Spegni i climatizzatori | Turn on the air conditioning · Turn off the heating |
+| Air conditioning and heating | Accendi il condizionatore · Accendi il clima · Accendi il riscaldamento · Spegni il climatizzatore · Spegni i climatizzatori | Turn on the air conditioning · Turn off the heating |
 | The car | Dov'è la macchina? | Where is the car? |
 | The whole house | Com'è la casa? · Cosa succede? | How is the house? · What's happening? |
 | Help | Cosa sai fare? | What can you do? |
@@ -120,7 +120,7 @@ The examples below are understood directly by the rule-based parser. It tolerate
 | New character | Aggiungi un personaggio | Add a character |
 | A story | Raccontami una storia · Una storia su Marco e Giulia · Una storia sulla cucina · Un'altra storia | Tell me a story · A story about Marco and Giulia · A story about the kitchen · Another story |
 | The day | Cosa ha fatto Marco oggi? · Dov'è stato Luca? · Chi è stato in cucina oggi? · Quante feste abbiamo fatto oggi? | What did Marco do today? · Where has Luca been? · Who has been in the kitchen today? · How many parties today? |
-| A character | Ricorda che Marco fa il medico · Il colore preferito di Marco è il rosso · Cosa sai di Marco? · Raccontami qualcosa di Marco · Cosa piace a Giulia? · Chi è Giulia? | Remember that Marco is a doctor · Marco's favourite colour is red · What do you know about Marco? · Tell me about Marco · What does Giulia like? · Who is Giulia? |
+| A character | Ricorda che Marco fa il medico · Il colore preferito di Marco è il rosso · Il lavoro di Marco è il medico · Cosa sai di Marco? · Raccontami qualcosa di Marco · Cosa piace a Giulia? · Chi è Giulia? | Remember that Marco is a doctor · Marco's favourite colour is red · What do you know about Marco? · Tell me about Marco · What does Giulia like? · Who is Giulia? |
 | Two characters together | Mister Brown e Rossellina stanno insieme · Marco e Giulia sono vicini | Marco and Giulia are together |
 | The characters | Chi sono i personaggi che conosci? · Chi conosci? | Who do you know? · Which characters do you know? |
 | Saying who a presence is | L'ospite in soggiorno è Rosaria · Quello in cucina si chiama Marco | The guest in the living room is Rosaria |
@@ -196,7 +196,7 @@ Questions about life in the house (bills, shopping, chores…) stay with the sto
 
 **What it does with them.** Three answers the house acts on:
 
-- **The favourite colour** ("Marco, what's your favourite colour?"): "turn on Marco's favourite colour" lights the room Marco is in, or the one said ("...in the kitchen"), in that colour. If Marco has not told it yet and is in the house, the house asks at once and the answer lights the room. With the follow-me lights on (for now they are off by default, see [chapter 9](09-rules.md#priorities-and-light-layers)) and **Light in the favourite colour of who comes in** on in **Settings** (off by default), in the Normal scene the light of a room also takes the favourite colour of whoever is in, the last one to come in among those who told it.
+- **The favourite colour** ("Marco, what's your favourite colour?"): "turn on Marco's favourite colour" lights the room Marco is in, or the one said ("...in the kitchen"), in that colour. If Marco has not told it yet and is in the house, the house asks at once and the answer lights the room. The follow-me lights are off by default (see [chapter 9](09-rules.md#priorities-and-light-layers)); if you switch them on and also set `"follow_favourite": true` in the `"lights"` section of `var/config/settings.json`, in the Normal scene the light of a room takes the favourite colour of whoever is in, the last one to come in among those who told it.
 - **Loves dancing** ("Marco, do you like dancing?"): in chatty mode, when Marco is in the living room with somebody else, the house offers a party ("Marco, you love dancing: shall we party?").
 - **Loves barbecues** ("Marco, do you like barbecues?"): when Marco is in the garden, the house offers the barbecue ("Marco, you love barbecues: shall I light it?").
 
@@ -209,7 +209,7 @@ When the house cannot answer, it does not just say "I don't know".
   - The answer becomes a fact of the character, written by the subject of the question. Examples: "le piace il gelato" → "ama il gelato", "rock" → "listens to rock", "Napoli" → "viene da Napoli".
   - The house says what it understood ("Thanks! I'll remember: Marco loves ice cream.") and uses it for any question on the same subject, in other words too: "what does Marco love?" and "what does Marco like?" get the same answer.
   - An answer that has no place among the facts ("does Marco have a driving licence?" → "yes") is kept as it is: the next time "I was told yes."
-- **About the world** ("what's the weather tomorrow?") it asks the same way, and to the next question that is the same or alike it answers "I was told that it rains tomorrow.". What is about today or tomorrow holds for a day.
+- **About the world** ("what's the weather tomorrow?") it asks whether you want to wait while it thinks or tell it yourself (see *Questions about the world* below); without the free answers model (a `--no-llm` installation) it only asks "Do you know?". What it is told it remembers, and to the next question that is the same or alike it answers "I was told that it rains tomorrow.". What is about today or tomorrow holds for a day.
 - **About itself** (its rooms, its furniture, "who built you?", "why is the kitchen yellow?") it imagines a plausible explanation and says it is what it thinks: "I think it's because whoever built me wanted it that way.". The same question always gets the same answer.
 
 **Questions about the world.** A question that is not about the house, its characters or what the house can do ("How do you make pizza?", "Why is the sky blue?") has a way of its own. The house says at once that it has to think and asks: "I need to think about it. Would you rather wait a few seconds, or tell me yourself?".
@@ -259,7 +259,7 @@ The exception is an answer that becomes a fact of a character ([What the house k
 
 Piper (`piper1-gpl`, GPL-3.0) runs as a separate program in the `domotiq-tts` service, and the house sends it sentences over HTTP on the loopback interface. The voices are `it_IT-serena-medium` (CC BY 4.0) and `en_US-ljspeech-medium` (public domain). Numbers and units are spoken properly ("24.3 °C" becomes "24 virgola 3 gradi" in Italian and "24 point 3 degrees" in English).
 
-The frequent sentences ("Who is it?", "Let me see…", "Let's dance!"…) are made ready at start-up and kept in memory, so they play at once even when the processor is busy. **Every sentence synthesized is also saved on disk**, in `var/voice/` (one WAV file per sentence, named after the voice and the text): after a restart the house reads it back in a moment instead of asking Piper again, so the frequent sentences are ready at once and Piper only works on those never said before. At most 3000 sentences are kept; beyond that, the ones not said for the longest time are deleted. If the voice changes, the sentences are synthesized again.
+The frequent sentences ("Who is it?", "Let me see…", "Let's dance!"…) are made ready at start-up and kept in memory, so they play at once even when the processor is busy. **Every sentence synthesized is also saved on disk**, in `var/voice/` (one WAV file per sentence, named after the voice and the text): after a restart the house reads it back in a moment instead of asking Piper again, so the frequent sentences are ready at once and Piper only works on those never said before. At most 3000 sentences are kept; beyond that, the ones not said for the longest time are deleted. The file name depends on the voice too: if you replace a Piper voice, the sentences are synthesized again.
 
 **The fixed sentences** (a few hundred, those with no name or number: the doorbell, the questions, the confirmations, the prepared answers) **can be prepared ahead of time** with `scripts/voice_cache.py`, which takes them from the code of the house itself and writes them to `models/voice-cache/`. The house reads that folder too, so a new house says them at once from its first start. The script runs on the board, with its own Piper, or on a PC with the same version of Piper and the same voices; `release.sh` copies the folder from the PC to the board (see [chapter 2](02-install.md)). It takes about a minute on the PC and quite a few minutes on the board.
 

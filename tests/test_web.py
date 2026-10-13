@@ -64,8 +64,8 @@ def test_rules_crud_with_audit(web):
 
 
 def test_the_rules_off_at_the_start_are_switched_on_from_the_list(web):
-    """The switch of the list was a box of no size outside a label: a tap never reached it, and the rules that start
-    off (the party, the grill in company) could not be switched on."""
+    """The box of a switch in the list covers it, in a label or not: a tap reaches it, and the rules that start off
+    (the party, the grill in company) can be switched on."""
     ctx, c = web
     for rid in ("r-crowded-party", "r-crowded-garden"):
         assert c.post(f"/api/rules/{rid}/enabled", json={"enabled": True}).json()["enabled"] is True
@@ -335,8 +335,8 @@ def test_what_the_house_learned_is_corrected_and_forgotten(web):
 
 
 def test_a_deleted_character_leaves_the_presences_the_questions_and_the_journal(web):
-    """Deleted from the list of characters, it stayed elsewhere: proposed by an open question, on a presence for a
-    moment, and among what the journal teaches the network."""
+    """A character deleted from the list goes everywhere: from an open question that proposed it, from a presence at
+    once, and from what the journal teaches the network."""
     ctx, c = web
     from domotiq.app import _wire
     _wire(ctx)
@@ -378,8 +378,8 @@ def test_a_character_is_added_by_name_before_the_house_sees_it(web):
 
 
 def test_a_character_learns_its_look_again(web):
-    """The characters of a house copied onto another one built with its own figurines: their colours were those of
-    the first house, and the second recognized nobody or the wrong one."""
+    """A character learns its look again: colours, poses and size are forgotten, the facts stay (as when the
+    characters of a house are copied onto another one built with its own figurines)."""
     ctx, c = web
     viola = ctx.identities.add("Viola", "person", signature=[0.5] * 12, nickname="Tester")
     ctx.identities.update(viola.id, poses=[{"sig": [0.4] * 12, "area": 300.0}], size=310.0)

@@ -6,7 +6,7 @@
 #
 #   bash scripts/hotspot.sh setup N PASSWORD CHANNEL   create or update the profile of house N
 #   bash scripts/hotspot.sh on        switch to the hotspot now (Wi-Fi client connections drop)
-#   bash scripts/hotspot.sh off       back to the Wi-Fi of the lab
+#   bash scripts/hotspot.sh off       back to the other Wi-Fi networks of the board (client)
 #   bash scripts/hotspot.sh boot      the hotspot starts by itself at every boot
 #   bash scripts/hotspot.sh status
 #

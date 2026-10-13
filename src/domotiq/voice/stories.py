@@ -881,7 +881,7 @@ class StoryTeller:
 
     def knows(self, question: str) -> bool:
         """The question is about the life of the house: the database answers it, not the model of the commands
-        (which took "Luca ha pagato le bollette?" for "where is Luca")."""
+        (which would take "Luca ha pagato le bollette?" for "where is Luca")."""
         return life_topic(question) is not None
 
     async def answer(self, question: str, names: list[str] | None = None, memory: bool = False) -> bool:

@@ -2,7 +2,7 @@
 
 House: `casa1` · Wi-Fi `DomotiQ-Casa1` · web app `http://10.42.1.1/`
 
-The Wi-Fi password is `domotica2026`, unless you chose another one at installation; the web app shows it under **More → Settings → Wi-Fi of the house**.
+The Wi-Fi password is the one of the installation (`domotica2026` if you followed [chapter 2](02-install.md); without `--wifi` the installer picks one at random and writes it in the summary). The web app shows it under **More → Settings → Wi-Fi of the house**.
 
 ## Power
 
@@ -14,7 +14,7 @@ The Wi-Fi password is `domotica2026`, unless you chose another one at installati
 
 1. **Light**: turn on the light of the house (the strip over the diorama, if there is one) before the board, and leave it always on.
 2. **Power on**: plug in the board's power supply and wait for the lights to stop breathing.
-3. **Empty house**: only the first time in a new place, or after moving furniture or modules. Take away all the figurines and do **More → Calibration → Set the light and save the empty house**. If the house still sees figurines, or it is too dark, it does not save and says why.
+3. **Empty house**: only the first time in a new place, or after moving furniture or modules. Take away all the figurines and do **More → Calibration → Set the light and save the empty house**. If it is too dark it does not save and says so; if it still sees figurines it names them and asks whether to save anyway.
    Right after, still with the house empty: **Photograph in every light of the house** (one minute), then switch on one at a time the lights of the hall (lamps, LEDs, windows) and for each one **Add the light of now**. Then the house recognises by itself the lights it has already seen.
 4. **Figurines**: put them down **by hand, one at a time**, taking your hand away each time. The house announces them by name. If it asks "who is it?", answer.
 5. **Check**: in **Characters** every figurine has its name and room. In **Diagnostics** there are no warnings (webcam, light, empty house saved in the dark).
@@ -50,6 +50,7 @@ On the phone choose the network `DomotiQ-Casa1`, type the Wi-Fi password and ope
 | The house asks about somebody who is not there | Answer "there's nobody" or tap **Nothing there**: the house forgets it. If it is already on the plan, tap it and choose **Not really there: remove**. If it keeps coming back in the same spot, look for a module, an LED or a cable to fix down, then **Save the empty house only** with the house empty. |
 | A red alarm notice | **Switch off** turns the alarm off like a burglar alarm (switch it on again from the **House** page); the **✕** closes it on every phone and it comes back only if the alarm happens again. An amber notice is a warning. |
 | The house is silent | **Controls**: Talkativeness *Normal*, Volume up. Speaker knob at maximum. |
+| "I didn't get that." | Try the request the house suggests right after: a different one each time, among those it hears best. Check the house language too (Language LED on = English). |
 | "I don't know the time: what time is it now?" | Answer aloud, with no Talk: "It's half past three". Or open the web app on a phone. |
 | Lights breathe dimly and nothing reacts | The software is (re)starting: wait a minute. Then **Settings → Restart the app**, then **Reboot the board**. |
 | A red status dot at the top | **Diagnostics** shows which part. |
@@ -62,7 +63,8 @@ On the phone choose the network `DomotiQ-Casa1`, type the Wi-Fi password and ope
 
 - **Calibration**: take figurines and car out → tap the 4 corners of the base (front left, front right, back right, back left; front = driveway) → **Use these corners**: the house sets the light and saves the empty house by itself (about 15 seconds, with a spinner; do not touch the house) → check that the drawn walls sit on the real ones. Calibrate before using the live view: until then the blur only guesses where the bathroom is.
 - **Diagnostics**: modules, I2C scan, **Audio test**, **Microphone test (3 s)**, logs.
-- **Settings**: brightness and durations, Wi-Fi password, **Use this phone's time**, backup, bin, restart, reboot, power off.
+- **Image training**: one picture at a time, one tap to answer (**Right**, **Nothing there** or the right character; **Skip** if you are not sure, **Back** to change an answer). The answers go into the next training of the network.
+- **Settings**: bathroom blur, picture collection, party and barbecue durations, climate thresholds, voice and keyword, Wi-Fi password, **Use this phone's time**, backup, bin, restart the app, reboot and power off the board.
 - **Controls → Make the house say**; **Controls → Ask a question** (the house asks a character something and keeps it).
 - **Settings → Voice → Wake up with a keyword**: once the word is said (for example *Casa*), the LEDs blink at once and, if you do not go on, the house answers "Yes?" and listens as with Talk. You can also say it all in one go: "Casa, turn on the kitchen light".
 - **Alarm**: box at the bottom of the **House** page, **Switch on** / **Switch off**.

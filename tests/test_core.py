@@ -97,6 +97,20 @@ def test_shower():
     assert sh.update(90, 52.0) == "stop"
 
 
+def test_a_climate_threshold_changed_in_the_web_app_counts_at_once(env):
+    """The thresholds are read at every reading of the thermostat: no restart needed after changing them."""
+    env.settings.set("climate", {**env.settings.get("climate"), "hot_delta": 5.0, "hot_rate": 99.0})
+    for i in range(60):
+        env.house.on_thermo(0, 24.0, 40.0, now=i * 2.0)
+    for i in range(20):                                       # +1.3 °C: not hot with a threshold of 5
+        env.house.on_thermo(0, 24.0 + 0.07 * i, 40.0, now=120.0 + i * 2.0)
+    assert env.house.climate != "hot"
+    env.settings.set("climate", {**env.settings.get("climate"), "hot_delta": 1.0})
+    for i in range(5):
+        env.house.on_thermo(0, 25.3, 40.0, now=160.0 + i * 2.0)
+    assert env.house.climate == "hot"
+
+
 # ------------------------------------------------------------------ house events
 def test_room_events_and_counts(env):
     seen = []
@@ -153,8 +167,8 @@ def test_follow_lights_with_delay(env):
 
 
 def test_at_a_start_the_lights_wait_for_the_vision(env):
-    """12 October: lit for the first figurine found at a start, a light of its favourite colour cast a glow that looked
-    like other characters while the vision was still looking."""
+    """At a start the lights that follow the characters wait for the vision: the glow of a favourite colour could look
+    like other characters while the vision is still looking."""
     env.house.settings.set("lights.follow", True)
     env.house.follow_after_start()
     env.house.update_tracks([T("t1", 80, 100, category="person")], now=100)
@@ -307,7 +321,7 @@ def test_intruder_rule_only_while_away(env):
 
 
 def test_every_scene_looks_different_with_nobody_home(env):
-    """Normal, cinema, relax, night and away: before, with no figurine in the house, four of them were all dark."""
+    """Normal, cinema, relax, night and away: each scene looks different, also with no figurine in the house."""
     def lit():
         return {k: (v["effect"], v["color"]) for k, v in env.lights.state().items() if v["effect"] != "off"}
     looks = {}
@@ -399,7 +413,7 @@ Simple mixer control 'Auto Gain Control',0
 
 
 def test_the_levels_of_the_card_are_recognised():
-    """10 October: amixer of the US205 as the house leaves it, and what may change it."""
+    """amixer of the US205 as the house leaves it, and what may change it."""
     from domotiq.audio.output import levels_ok
     assert levels_ok(US205_OK, 100)
     assert not levels_ok(US205_OK.replace("Playback 37 [100%] [0.00dB] [on]", "Playback 14 [38%] [-23.00dB] [on]", 1))
@@ -410,7 +424,7 @@ def test_the_levels_of_the_card_are_recognised():
 
 
 def test_levels_changed_by_somebody_else_are_set_again(monkeypatch):
-    """The stream took sound and nothing was heard: the levels are read back and set again, off the mixer thread."""
+    """The stream takes sound and nothing is heard: the levels are read back and set again, off the mixer thread."""
     import subprocess
 
     from domotiq.audio import output
@@ -428,8 +442,8 @@ def test_levels_changed_by_somebody_else_are_set_again(monkeypatch):
 
 
 def test_the_stream_is_opened_again_when_the_webcam_is_opened():
-    """10 October: the webcam reset on the same USB hub just after the stream was opened, and the sound card went on
-    taking sound without playing it. Once the webcam is open the stream is closed, and the loop opens it again."""
+    """A webcam on the same USB hub may reset just after the stream is opened, and the sound card go on taking sound
+    without playing it. Once the webcam is open the stream is closed, and the loop opens it again."""
     import subprocess
 
     from domotiq.audio.output import Audio
@@ -452,7 +466,8 @@ def test_phone_sets_the_clock_only_when_unknown():
 
 
 def test_the_time_set_holds_until_the_board_stops(tmp_path, monkeypatch):
-    """After an update the application starts again and asked "Non so che ore sono": the board had not stopped."""
+    """The time set holds while the board runs: after an update only the application starts again, and the time is
+    not asked again."""
     from domotiq import clock as clock_mod
     monkeypatch.setattr(clock_mod.HouseClock, "ntp_synced", staticmethod(lambda: False))
     boot = tmp_path / "boot_id"

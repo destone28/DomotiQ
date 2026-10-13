@@ -273,7 +273,7 @@ class Voice:
     # ================================================================ speaking
     async def speak(self, text: str, lang: str | None = None) -> None:
         """A text, one sentence after the other: each is synthesized while the one before is said (with the natural
-        voice a sentence takes longer to synthesize than to say on the board: 4.6 s for 3.5 s on 10 October)."""
+        voice a sentence takes longer to synthesize than to say on the board)."""
         lang = lang or self.lang
         self.in_flight += 1
         await self.ctx.actions.thinking(False)             # it knows what to say: the buttons stop breathing

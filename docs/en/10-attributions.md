@@ -9,7 +9,7 @@ DomotiQ stands on the work of many open projects. This chapter lists every third
 | Part | Licence |
 |---|---|
 | Source code: `src/`, `firmware/`, `scripts/`, `tests/` | MIT License, see [LICENSE](../../LICENSE) |
-| Everything else: documentation and guides (`docs/`, the READMEs), images and diagrams, the 3D printing files in `hardware/stl/`, the house data, phrases and default rules in `data/` | Creative Commons Attribution 4.0 International ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)), see [LICENSE-DOCS.md](../../LICENSE-DOCS.md) |
+| Everything else: documentation and guides (`docs/`, the READMEs), images and diagrams, the 3D printing files in `hardware/stl/`, the house data and the story pieces in `data/` | Creative Commons Attribution 4.0 International ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)), see [LICENSE-DOCS.md](../../LICENSE-DOCS.md) |
 
 Anyone who reuses, adapts or redistributes the project, also commercially, must give the attribution above, link to the licence and indicate if changes were made.
 
@@ -21,6 +21,7 @@ The figurines and the car are third-party models and are not in this repository;
 |---|---|---|---|
 | [Debian](https://www.debian.org) image of the Arduino UNO Q | 20251210-442, then updated | various (Debian) | operating system |
 | [arduino-app-cli](https://github.com/arduino/arduino-app-cli) | 0.7.0, then updated | GPL-3.0 (system tool, not included) | first setup, system updates, board name |
+| [arduino-cli](https://github.com/arduino/arduino-cli) | 1.5.1 (from the system) | GPL-3.0 (system tool, not included) | builds the microcontroller firmware and installs its core and libraries |
 | [arduino-router](https://github.com/arduino/arduino-router) | from the system | MPL-2.0 | bridge between Linux and the microcontroller |
 | [NetworkManager](https://networkmanager.dev), [dnsmasq](https://thekelleys.org.uk/dnsmasq/doc.html), [Avahi](https://avahi.org) | from the system | GPL-2.0+ / LGPL | hotspot, DNS, `.local` names |
 | [ALSA](https://www.alsa-project.org) (`libasound2` from trixie-backports) | 1.2.16.1 | LGPL-2.1+ | audio |
@@ -31,6 +32,7 @@ The figurines and the car are third-party models and are not in this repository;
 |---|---|---|---|
 | [Arduino core for Zephyr](https://github.com/arduino/ArduinoCore-zephyr) (`arduino:zephyr`) | 1.0.0 | Apache-2.0 | base of the sketch |
 | [Arduino_RouterBridge](https://github.com/arduino-libraries/Arduino_RouterBridge) | 0.4.3 | MPL-2.0 | calls and notifications to and from Linux |
+| Arduino_LED_Matrix (bundled with the core) | 0.1.3 | Apache-2.0, like the core | the LED matrix of the board, light of the utility room |
 
 ## Python on the board
 
@@ -46,7 +48,7 @@ The main packages of the application:
 | [OpenCV](https://opencv.org) ([opencv-python-headless](https://github.com/opencv/opencv-python)) | Apache-2.0 | computer vision |
 | [msgpack](https://github.com/msgpack/msgpack-python) | Apache-2.0 | protocol of the router |
 | [Vosk](https://alphacephei.com/vosk/) | Apache-2.0 | speech recognition |
-| [ONNX Runtime](https://github.com/microsoft/onnxruntime) | MIT | object category from photos |
+| [ONNX Runtime](https://github.com/microsoft/onnxruntime) | MIT | object category from photos, the figurine network |
 
 There is no SciPy: the Hungarian assignment used by the tracking is written in the project.
 
@@ -73,7 +75,7 @@ These run as separate programs, in their own processes; the code of DomotiQ does
 |---|---|---|---|
 | [Piper](https://github.com/OHF-Voice/piper1-gpl) (`piper1-gpl`, package `piper-tts`) | 1.8.0 | GPL-3.0 | speech synthesis, in its own environment, as a local HTTP server |
 | [Flask](https://flask.palletsprojects.com) | not pinned | BSD-3-Clause | used by Piper's HTTP server, in Piper's environment |
-| [llama.cpp](https://github.com/ggml-org/llama.cpp) (`llama-server`) | commit 74a7c897 | MIT | runs the language model; built on the board |
+| [llama.cpp](https://github.com/ggml-org/llama.cpp) (`llama-server`) | commit 74a7c897 | MIT | runs the two language models; built on the board with the instructions for its processor in `scripts/llama/arm-nodot.patch` (the project's, MIT) |
 
 Piper is GPL-3.0. DomotiQ runs it as an external program and talks to it over HTTP, which is aggregation, not a derivative work, so the code of DomotiQ stays under the MIT License.
 
@@ -84,9 +86,11 @@ Piper is GPL-3.0. DomotiQ runs it as an external program and talks to it over HT
 | [vosk-model-small-it-0.22](https://alphacephei.com/vosk/models) | Apache-2.0 | Italian speech recognition |
 | [vosk-model-small-en-us-0.15](https://alphacephei.com/vosk/models) | Apache-2.0 | English speech recognition |
 | [Qwen2.5-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF), GGUF, quantized Q4_K_M | Apache-2.0 | understanding free sentences (chooses an intent) |
+| [Qwen3.5-0.8B](https://huggingface.co/bartowski/Qwen_Qwen3.5-0.8B-GGUF), GGUF, quantized Q4_0 | Apache-2.0 | free answers to questions about the world, when the visitor chooses to wait for them (service `domotiq-chat`) |
 | [YOLOX-Nano](https://github.com/Megvii-BaseDetection/YOLOX), ONNX, release 0.1.1rc0 | Apache-2.0; trained on the [COCO](https://cocodataset.org) dataset | proposing the category of a new character from a photo |
 | Piper voice [it_IT-serena-medium](https://huggingface.co/rhasspy/piper-voices), revision ea046e84 | CC BY 4.0 (dataset serena-synthetic-it-27h) | Italian voice |
 | Piper voice [en_US-ljspeech-medium](https://huggingface.co/rhasspy/piper-voices) | public domain ([LJ Speech](https://keithito.com/LJ-Speech-Dataset/)) | English voice |
+| Figurine network (`models/vision/figures.onnx`) | yours: you train it on the recordings of your house, with the project's programs (`scripts/figures/`, MIT); not in the repository | second opinion on the blobs: which character, or "nothing" |
 
 ## Fonts
 
@@ -107,6 +111,10 @@ Used on the PC, not installed on the board:
 | [HTTPX](https://www.python-httpx.org) | BSD-3-Clause | tests of the web API |
 | [Pillow](https://python-pillow.org) | MIT-CMU (HPND) | cleaning image metadata |
 | [uv](https://github.com/astral-sh/uv) | MIT or Apache-2.0 | Python environment on the PC |
+| [PyTorch](https://pytorch.org) 2.14 | BSD-3-Clause | training the figurine network (`scripts/figures/train.py`), on the CPU or on an NVIDIA card |
+| [onnx](https://github.com/onnx/onnx) 1.23 | Apache-2.0 | exporting the figurine network to ONNX |
+| [piper-tts](https://github.com/OHF-Voice/piper1-gpl) 1.8.0 and the Piper voices it_IT-serena, it_IT-paola, it_IT-riccardo, en_US-ljspeech, en_US-ryan, en_GB-alan | GPL-3.0 (piper-tts); licences of each voice, some exclude commercial use (for example it_IT-paola, derived from "lessac") | reading the test sentences of `scripts/stt_bench.py`; not distributed and not installed on the board |
+| [Chromium](https://www.chromium.org) (or Google Chrome) | BSD-3-Clause (Chromium) | the screenshots of the web app for the guides (`scripts/screenshots.py`) |
 | [FreeCAD](https://www.freecad.org) | LGPL-2.1+ | CAD of the diorama |
 
 ## Considered and not used

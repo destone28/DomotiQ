@@ -61,7 +61,7 @@ Molti eventi e condizioni hanno un campo **Chi** con due scelte: il tipo (*chiun
 | **il barbecue** | Stato: inizia, pronto | la ventola parte, oppure la grigliata è pronta (la ventola ha finito). |
 | **la festa** | Stato: inizia, finita | una festa comincia o finisce. |
 
-**Il clima virtuale.** Il Thermo nella credenza è un termostato che si scalda con un dito. Il suo riferimento è la media degli ultimi 5 minuti. Passa a **caldo** quando la temperatura sale di 1 °C sopra il riferimento, o sale più in fretta di 0,1 °C al secondo, o quando l'umidità fa un balzo di 10 punti (qualcuno ci soffia sopra, il che è più rapido di un dito); a **freddo** quando scende di 1 °C sotto il riferimento; di nuovo a **normale** quando torna entro 0,5 °C. Le soglie sono in **Altro → Impostazioni**, nel riquadro **Luci · Festa · Barbecue · Clima**.
+**Il clima virtuale.** Il Thermo nella credenza è un termostato che si scalda con un dito. Il suo riferimento è la media degli ultimi 5 minuti. Passa a **caldo** quando la temperatura sale di 1 °C sopra il riferimento, o sale più in fretta di 0,1 °C al secondo, o quando l'umidità fa un balzo di 10 punti (qualcuno ci soffia sopra, il che è più rapido di un dito); a **freddo** quando scende di 1 °C sotto il riferimento; di nuovo a **normale** quando torna entro 0,5 °C. La soglia del caldo e l'aumento di umidità della doccia (sotto) si cambiano in **Altro → Impostazioni**, nel riquadro **Festa · Barbecue · Clima**, e valgono subito; le altre soglie stanno nella sezione `"climate"` di `var/config/settings.json`.
 
 ## Se: le condizioni
 
@@ -92,6 +92,8 @@ Molti eventi e condizioni hanno un campo **Chi** con due scelte: il tipo (*chiun
 | **fai festa** | | avvia una festa (se non ce n'è una in corso o in pausa) |
 | **accendi il barbecue** | | fa girare la ventola del barbecue per la durata impostata |
 | **aspetta** | Secondi | fa una pausa prima dell'azione successiva (fino a 10 minuti) |
+
+Il formato delle regole accetta anche l'azione `{"type": "relay", "on": true, "duration_s": 20}`, che l'editor non mostra: fa girare la ventola come il barbecue (con gli stessi limiti di durata), ma senza annunciarlo e senza la grigliata pronta.
 
 I testi possono contenere questi campi tra graffe, riempiti a partire dall'evento:
 
@@ -133,20 +135,21 @@ Ogni luce ha una pila di livelli. Il livello attivo più alto decide cosa mostra
 | scenario | 30 |
 | regole | la priorità della regola (1–98), 50 di serie |
 | luci accese o spente da **Comandi** o a voce | 55 |
+| l'onda del climatizzatore o del riscaldamento chiesta a voce | 60 |
 | regole di allarme | 95 |
 | il lampeggio della lingua (verde o rosso per un secondo) | 99 |
 
 Durante una festa il microcontrollore gestisce da solo lo spettacolo di luci, a tempo con la musica; quando la festa finisce la casa ridisegna ogni luce a partire dai suoi livelli.
 
-**Luci che seguono le persone.** Per ora sono spente di serie, e la webapp non ha un interruttore per accenderle: il loro bagliore sui muri e sul pavimento confonde la webcam.
+**Luci che seguono le persone.** Sono spente di serie, e la webapp non ha un interruttore per accenderle: il loro bagliore sui muri e sul pavimento confonde la webcam. Per accenderle, in `var/config/settings.json` metti `"follow": true` nella sezione `"lights"` e riavvia `domotiq`.
 
-Quando sono accese, una stanza con almeno una persona riceve una luce bianca calda (`#fff2e0`) al 60 % (del massimo della casa), un solo colore per tutti e non il colore preferito di chi entra; si spegne 3 secondi dopo che l'ultima persona è uscita. Gli animali non accendono le luci. In garage conta anche l'auto: la luce resta accesa mentre l'auto arriva e finché non è parcheggiata da 10 secondi. Il giardino e il vialetto non hanno luce; la luce del locale tecnico è la matrice LED della UNO Q. Colore, luminosità e ritardo sono nelle impostazioni, insieme a **Luce del colore preferito di chi entra**, spenta di serie.
+Quando sono accese, una stanza con almeno una persona riceve una luce bianca calda (`#fff2e0`) al 60 % (del massimo della casa), un solo colore per tutti; si spegne 3 secondi dopo che l'ultima persona è uscita. Gli animali non accendono le luci. In garage conta anche l'auto: la luce resta accesa mentre l'auto arriva e finché non è parcheggiata da 10 secondi. Il giardino e il vialetto non hanno luce; la luce del locale tecnico è la matrice LED della UNO Q. Colore, luminosità e ritardo stanno nella stessa sezione (`follow_color`, `follow_brightness`, `follow_off_delay_s`), insieme a `follow_favourite`, spento di serie, che nello scenario Normale dà alla stanza il colore preferito di chi entra.
 
 ## Scenari
 
 | Scenario | Luci |
 |---|---|
-| **Normale** | le luci seguono le persone, per ora spente di serie (vedi sopra); quando sono accese, all'avvio aspettano 15 secondi dopo la prima presenza vista, mentre la webcam cerca le statuine |
+| **Normale** | le luci seguono le persone, spente di serie (vedi sopra); quando sono accese, all'avvio aspettano 15 secondi dopo la prima presenza vista, mentre la webcam cerca le statuine |
 | **Cinema** | in soggiorno il bagliore azzurro e tremolante di uno schermo (*Scintille*), tutte le altre stanze spente, anche dove c'è gente |
 | **Relax** | in soggiorno un caminetto (*Fuoco*), in camera una luce arancione che respira; con le luci che seguono le persone accese, dove c'è gente luci calde e tenui |
 | **Notte** | tutto spento tranne una lucina arancione in bagno; con le luci che seguono le persone accese, chi si alza trova una luce di cortesia arancione molto tenue |
@@ -172,7 +175,7 @@ Gli scenari si scelgono a voce ("Scenario cinema", "Good night") o con una regol
 | **Festa in soggiorno** | più di 3 persone in soggiorno per 3 s | avvia una festa | disattivata |
 | **Grigliata in compagnia** | più di 1 persona in giardino per 10 s | accende il barbecue | disattivata |
 
-Chi conta: le regole di partenza che riguardano le persone usano il tipo *persona*, quindi gli animali non fanno mai scattare l'allarme del locale tecnico o del bagno. La luce del garage per l'auto viene dalle luci che seguono le persone (per ora spente di serie), non da una regola.
+Chi conta: le regole di partenza che riguardano le persone usano il tipo *persona*, quindi gli animali non fanno mai scattare l'allarme del locale tecnico o del bagno. La luce del garage per l'auto viene dalle luci che seguono le persone (spente di serie), non da una regola.
 
 ## Chi può cambiare le regole
 

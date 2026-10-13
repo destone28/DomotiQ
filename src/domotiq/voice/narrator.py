@@ -22,7 +22,7 @@ name found again, the edge of the bed): only a real move is news. A move
 from one room to another always is; coming into sight, going out of it or
 getting on a piece of furniture in the same room is not, when it was said
 less than ten minutes before (a figurine at the edge of the picture comes
-and goes, and "scendi dalla fioriera" was said every minute).
+and goes, and would be told to get off the same furniture every minute).
 """
 
 from __future__ import annotations

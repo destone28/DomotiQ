@@ -17,8 +17,8 @@ A presence that was there at the start of the recording needs a few seconds to b
 house): the first START_S of every recording are not counted.
 
 What the house told then is no truth: played again from nothing, the vision has not the names confirmed by hand,
-the looks learned and the places of that evening, so names differ where colours are alike (Rossana and Rossellina,
-Mister Blu and Viola) even with no network. The counts compare one version with another on the same frames; to see
+the looks learned and the places of that time, so names differ between characters coloured alike even with no
+network. The counts compare one version with another on the same frames; to see
 what the network refused, --journal writes the journal of the vision (the crops) into a folder.
 """
 

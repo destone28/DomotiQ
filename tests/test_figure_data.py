@@ -25,7 +25,7 @@ def _db(path: Path) -> None:
     db.execute("CREATE TABLE positions (ts REAL, track TEXT, identity TEXT, x REAL, y REAL, room TEXT)")
     db.execute("CREATE TABLE events (id INTEGER PRIMARY KEY, ts REAL, type TEXT, level TEXT, data TEXT)")
     for k in range(20):
-        # a phantom in the kitchen, dismissed at 1020 (recorded with its track since 7 October)
+        # a phantom in the kitchen, dismissed at 1020 (the event names its track)
         db.execute("INSERT INTO positions VALUES (?,?,?,?,?,?)", (1000.0 + k, "t-ghost", None, 100.0, 100.0, "kitchen"))
         # pink lying on the bed, called Rossana by the house until it was named Rossellina at 1010 (no track
         # recorded: an older event), then carried to the living room at 1015

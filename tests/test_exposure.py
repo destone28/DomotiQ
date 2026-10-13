@@ -15,7 +15,7 @@ from domotiq.vision.exposure import (BAND, CAP, CAP_ADAPT, DIGITAL, EXPOSURES, G
 
 def scene(c: float, k: float):
     """Rooms whose light is c times the empty house at gain 32, answering the gain as light ∝ gain^k around the
-    measured curve (k bends it: 1 is the curve of casa1)."""
+    measured curve (k bends it: 1 is the measured curve itself)."""
     def light(gain: int, exposure: int) -> float:
         g = gain_light(gain) ** k
         return c * g * exposure_light(exposure)
@@ -61,14 +61,13 @@ def test_the_light_is_followed_into_the_band_or_to_a_limit(k, start):
 
 
 def test_the_flicker_of_the_light_makes_no_seesaw():
-    """The light moves by itself by a couple of percent (measured 0.9-2.9% in a still minute): once in the band,
-    nothing is touched."""
+    """The light moves by itself by a few percent: once in the band, nothing is touched."""
     seen, reg = follow(scene(1.0, 1.0), looks=200, noise=0.03)
     assert reg.status(100.0 + 200 * MEASURE_S)["steps_hour"] == 0
 
 
 def test_a_slow_evening_is_followed_with_few_steps():
-    """Daylight went down 14% in a quarter of an hour on casa1: a few steps, one way."""
+    """Daylight going down slowly (14% in a quarter of an hour): a few steps, one way."""
     reg = GainRegulator(32)
     t, steps, light = 0.0, 0, scene(1.0, 1.0)
     while t < 900:
@@ -83,8 +82,8 @@ def test_a_slow_evening_is_followed_with_few_steps():
 
 
 def test_too_bright_at_the_lowest_gain_one_real_step_of_the_exposure():
-    """A room much brighter than casa1 (in the sun): the gain reaches its floor, then the exposure goes one real
-    step down and the gain makes up for it; the step says its factor is a guess."""
+    """A room much brighter than the measured curve (in the sun): the gain reaches its floor, then the exposure goes
+    one real step down and the gain makes up for it; the step says its factor is a guess."""
     seen, reg = follow(scene(8.0, 1.0), looks=60)
     assert reg.exposure < EXPOSURES[0]
     assert abs(math.log(seen[-1])) <= math.log(1 + BAND) or reg.at_limit
@@ -96,8 +95,8 @@ def test_in_the_dark_it_stops_at_the_highest_gain():
 
 
 def test_a_hall_darker_than_the_gain_can_make_up_takes_the_digital_light_at_the_highest_gain():
-    """10 October: brightness 22 of 50 at gain 255 and exposure 625. Beyond it the webcam multiplies its pictures
-    (x1.7 to x2.9): taken only with the gain at its highest, and given back first when the hall gets lighter."""
+    """Darker than gain 255 and exposure 625 can make up, the webcam multiplies its pictures (x1.7 to x2.9): taken
+    only with the gain at its highest, and given back first when the hall gets lighter."""
     seen, reg = follow(scene(0.15, 1.0), looks=80)
     assert reg.exposure in DIGITAL and reg.gain == GAIN_MAX
     assert abs(math.log(seen[-1])) <= math.log(1 + 0.3)              # back near the empty house
@@ -126,8 +125,8 @@ def test_one_look_every_half_second_of_time_however_many_frames():
 
 
 def test_a_step_that_landed_in_the_band_is_no_reason_to_hold_later():
-    """casa1, 9 October: a step down, then the evening took the light 7% below the empty house, the other way. That is
-    no seesaw: the step had landed in the band. It was held for minutes, as if one unit of gain were too much."""
+    """A step that landed in the band, then the light going slowly the other way, is no seesaw: the next step is
+    taken, not held as if one unit of gain were too much."""
     reg = GainRegulator(154)
     step = reg.consider(1.12, 0.0)
     assert step is not None and step.gain < 154

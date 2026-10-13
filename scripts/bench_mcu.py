@@ -7,8 +7,8 @@
     venv/bin/python scripts/bench_mcu.py --relay      # also switches the barbecue fan on for 2 s
     sudo systemctl start domotiq
 
-Every step prints what it expects to see, so it can be followed alone at the
-bench: each room lights red, green, blue and white in turn, the three LEDs
+Every step prints what it expects to see, so one person alone can follow
+it: each room lights red, green, blue and white in turn, the three LEDs
 of the buttons light one after the other, then the script prints every
 button press and temperature the sketch reports.
 """

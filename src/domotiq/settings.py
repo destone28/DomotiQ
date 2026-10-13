@@ -39,7 +39,7 @@ DEFAULTS: dict[str, Any] = {
     "lights": {
         "max_brightness": 30,        # cap applied by the firmware, 0-100
         "current_budget_ma": 450,    # firmware power limiter
-        "follow": False,             # off for now: the glow of the lights confused the webcam (12 October)
+        "follow": False,             # off by default: the glow of the lights can confuse the webcam
         "follow_color": "#fff2e0",   # one warm white, the colour of no character
         "follow_favourite": False,   # in the normal scene, the light of a room takes the favourite colour of who is in
         "follow_brightness": 60,

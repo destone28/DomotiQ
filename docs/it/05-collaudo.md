@@ -27,8 +27,8 @@ Apri l'indirizzo della casa in un browser. In alto a destra, accanto al nome del
 Apri **Altro → Diagnostica**.
 
 - La scheda **Modulino** mostra un pallino verde e `v1`, la versione del protocollo del firmware. Un pallino rosso vuol dire che Linux non riesce a parlare con il microcontrollore.
-- Sotto, ogni modulo ha un pallino verde o rosso: Hub, Latch Relay, i cinque Pixels (garage, camera, cucina, soggiorno, bagno), i due Thermo (bagno, credenza) e Buttons.
-- **Scansione I2C** elenca gli indirizzi che rispondono su ogni canale dell'Hub. Oltre all'Hub (0x70–0x77) e al Latch Relay (0x02, 0x15 o 0x10), che stanno sul bus principale e rispondono su tutti i canali, ci si aspetta:
+- Sotto, *Bus I2C libero* dice che le due linee del bus sono a posto (altrimenti compare quale linea è bloccata: vedi la [risoluzione dei problemi](11-risoluzione-problemi.md#tutti-i-moduli-sono-rossi-e-cè-lavviso-il-bus-dei-modulino-è-bloccato)), e ogni modulo ha un pallino verde o rosso: Hub, Latch Relay, i cinque Pixels (garage, camera, cucina, soggiorno, bagno), i due Thermo (bagno, credenza) e Buttons.
+- **Scansione I2C** elenca gli indirizzi che rispondono. La prima riga, *bus principale*, mostra quello che sta prima dell'Hub: il Latch Relay (0x02, 0x15 o 0x10) e l'Hub stesso (tra 0x70 e 0x77). Le righe dei canali mostrano solo quello che c'è dietro ogni canale dell'Hub, e ci si aspetta:
 
   | Canale | Atteso |
   |---|---|
@@ -79,10 +79,11 @@ Apri **Altro → Calibrazione**.
 2. **Tocca i 4 angoli della base, nell'ordine indicato**: davanti a sinistra, davanti a destra, dietro a destra, dietro a sinistra. Il davanti è il bordo del vialetto; la sinistra è il lato di cucina e giardino. Un'etichetta indica l'angolo successivo; ↶ toglie l'ultimo. Tocca **Usa questi angoli**. Se i quattro punti non formano un contorno plausibile della base, la casa li rifiuta: toccali di nuovo, in ordine.
 3. **Controlla la sovrapposizione.** Con *Sovrapposizione* attiva, l'immagine mostra il contorno della base, le stanze, le porte in verde, le pareti disegnate alla loro altezza reale e le zone escluse scurite (applique, chioma dell'albero, palo). Le pareti disegnate devono coincidere con quelle nell'immagine. Se non coincidono, tocca di nuovo gli angoli.
 4. **La luce e la casa vuota.** Subito dopo gli angoli la casa regola da sola la luce della webcam e salva la casa vuota; una finestra con una rotellina mostra che sta lavorando, e i pulsanti restano bloccati fino al messaggio *Casa vuota salvata*. Non toccare la casa in quei 15 secondi. Per qualche secondo la webcam regola da sola esposizione e bilanciamento del bianco, e la casa misura la luminosità e i colori che ottiene. Poi cerca i valori manuali che danno la stessa immagine, un quarto più scura (così il pavimento sotto le luci colorate della casa non si satura), e li blocca. Con alcune luci, come certe lampade calde e verdastre, nessuna temperatura della webcam dà colori neutri: quello che resta lo corregge la casa con un guadagno fisso su ogni colore. Alla fine salva la casa vuota, cioè la mediana di 20 fotogrammi. In tutto ci vogliono circa 15 secondi, e la casa deve essere vuota.
+5. **La casa vuota con le altre luci.** Sempre a casa vuota, tocca **Fotografa con tutte le luci della casa**: per circa un minuto la casa si fotografa con ognuna delle sue luci, e tu non devi toccarla. Poi accendi una alla volta le luci della sala che la casa non comanda (lampade, LED, la luce della finestra) e per ognuna tocca **Aggiungi la luce di adesso**. Sotto i pulsanti la pagina dice quante case vuote per le luci ha salvato e quale è in uso. Quando la luce cambia, la casa confronta con la foto più simile (vedi il [capitolo 7](07-riconoscimento-e-identita.md#la-luce-della-sala)).
 
 In seguito:
 
-- **Salva solo la casa vuota** prende un nuovo riferimento senza toccare le impostazioni della webcam, per esempio dopo aver spostato un arredo.
+- **Salva solo la casa vuota** prende un nuovo riferimento senza toccare le impostazioni della webcam, per esempio dopo aver spostato un arredo; in quel caso tocca anche **Cancella (dopo aver spostato gli arredi)** e rifai il passo 5.
 - **Regola la luce e salva la casa vuota** serve quando la luce della sala cambia molto. I cambiamenti lenti vengono seguiti automaticamente sul pavimento libero.
 - Se la webcam viene urtata, la webapp mostra *La webcam si è spostata: rifare la calibrazione*: ripeti tutta la procedura.
 
@@ -107,8 +108,8 @@ Poi chiedi qualcosa che le frasi fisse non coprono, per esempio "Quanta gente c'
 
 - Premi **Citofono**, di' il nome del personaggio registrato e, entro 60 secondi, porta quella statuina dal vialetto in soggiorno passando dalla porta d'ingresso: prende quel nome.
 - Metti due personaggi di tipo persona in bagno: dopo 2 secondi il bagno lampeggia di arancione e la casa dice "Il bagno è occupato! Aspetta il tuo turno."
-- Lascia un personaggio di tipo persona nel locale tecnico per più di 5 secondi: luci rosse di allarme in soggiorno e in garage, "Attenzione: il locale tecnico è riservato!", e una fascia rossa sui telefoni finché non esce.
-- Fai entrare l'auto dal portone del garage: "Bentornato a casa!". Lasciala ferma nell'area di parcheggio per 3 secondi: conta come parcheggiata, e la scheda **Auto** della schermata **Casa** lo dice. Con le luci che seguono le persone accese (sono spente di serie) si accende anche la luce del garage, che si spegne 10 secondi dopo il parcheggio.
+- Con l'allarme inserito, com'è di serie, lascia un personaggio di tipo persona nel locale tecnico per più di 5 secondi: luci rosse di allarme in soggiorno e in garage, "Attenzione: il locale tecnico è riservato!", e una fascia rossa sui telefoni finché non esce. **Disinserisci** sulla fascia spegne l'allarme; si reinserisce dal riquadro **Allarme** della schermata **Casa**.
+- Fai entrare l'auto dal portone del garage: "Bentornato a casa!". Lasciala ferma nell'area di parcheggio per 3 secondi: conta come parcheggiata, e la scheda **Auto** della schermata **Casa** lo dice. La luce del garage resta com'è: la accendono le luci che seguono le persone, spente di serie ([capitolo 9](09-regole.md#priorità-e-livelli-delle-luci)).
 - **Comandi → Festa!**: "Si balla!", 20 secondi di musica e luci, "Festa finita!".
 
 ## 13. Hotspot e telefoni
@@ -123,6 +124,6 @@ La UNO Q non ha una batteria per l'orologio e, senza internet, non può rimetter
 
 ## Provare senza statuine
 
-La casa intera gira anche su un PC, in simulazione e senza nessun hardware: si avvia con `--simulate` (vedi il [capitolo 6](06-webapp.md#provare-la-webapp-su-un-pc)). Al posto della webcam ci sono statuine virtuali: toccando **Elemento non riconosciuto** e poi un punto della piantina se ne mette una lì. Luci, voce e regole reagiscono come con le statuine vere. Finché la simulazione è attiva la casa ignora la webcam; per tornare alla casa vera basta riavviarla normalmente, senza `--simulate`.
+La casa intera gira anche su un PC, in simulazione e senza nessun hardware: si avvia con `--simulate` (vedi il [capitolo 6](06-webapp.md#provare-la-webapp-su-un-pc)). Al posto della webcam ci sono statuine virtuali: toccando **Elemento non riconosciuto** e poi un punto della piantina se ne mette una lì. La pagina della simulazione, che non è nel menu, si apre con `#/sim` dopo l'indirizzo (`http://localhost:8080/#/sim`): lì trascini le statuine, ne aggiungi di nuove o un personaggio registrato, muovi i sensori virtuali e premi i tasti virtuali. Luci, voce e regole reagiscono come con le statuine vere. Finché la simulazione è attiva la casa ignora la webcam; per tornare alla casa vera basta riavviarla normalmente, senza `--simulate`.
 
 Avanti: [la webapp](06-webapp.md).

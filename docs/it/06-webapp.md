@@ -12,7 +12,7 @@ La casa serve la propria webapp direttamente dalla scheda. Non ha bisogno di int
 
 ## Chi può fare cosa
 
-Chiunque sia collegato al Wi-Fi della casa può fare tutto, senza PIN né accessi: guardare, comandare, cambiare regole e personaggi, rispondere alle domande della casa, calibrare la webcam, leggere la diagnostica, cambiare le impostazioni, scaricare un backup, riavviare o spegnere la scheda. Le azioni che non si possono annullare (ripristino di un backup, regole di partenza, riavvio, spegnimento, nuova password del Wi-Fi) chiedono prima *Sei sicuro?*.
+Chiunque sia collegato al Wi-Fi della casa può fare tutto, senza PIN né accessi: guardare, comandare, cambiare regole e personaggi, rispondere alle domande della casa, calibrare la webcam, leggere la diagnostica, cambiare le impostazioni, scaricare un backup, riavviare o spegnere la scheda. Le azioni che non si possono annullare (ripristino di un backup, regole di partenza, riavvio, spegnimento, nuova password del Wi-Fi) chiedono prima una conferma.
 
 È voluto: questa è una casa per giocare. Ogni modifica viene registrata con l'ora, il telefono e un soprannome facoltativo (**Altro → Eventi → Modifiche**), e regole e personaggi eliminati restano nel cestino per 24 ore (**Altro → Impostazioni → Cestino**; vedi [Regole](09-regole.md#chi-può-cambiare-le-regole)).
 
@@ -23,13 +23,14 @@ Chiunque sia collegato al Wi-Fi della casa può fare tutto, senza PIN né access
 - **Ogni pagina comincia allo stesso modo**: il titolo, una riga che dice a cosa serve e, a destra del titolo, la sua azione principale (**+ Aggiungi**, **+ Nuova regola**).
 - **Notifiche in cima**, un colore per tipo:
   - **rosso**: un allarme in corso (qualcuno nel locale tecnico), con chi e dove, il pulsante **Disinserisci** che spegne l'allarme come un antifurto, e la **✕**; sulla piantina la stanza lampeggia in rosso;
-  - **ambra**: un avviso (troppe persone in bagno, la webcam spostata, la luce della webcam da regolare, il bus dei Modulino bloccato), con la **✕**; sulla piantina la stanza è contornata d'ambra;
+  - **ambra**: un avviso (troppe persone in bagno, la webcam spostata, la luce della webcam da regolare, la casa vuota salvata al buio, la webcam che vede quasi buio o tutta la casa diversa, il bus dei Modulino bloccato), con la **✕**; sulla piantina la stanza è contornata d'ambra (vedi la [risoluzione dei problemi](11-risoluzione-problemi.md#webcam-e-riconoscimento));
   - **grigio**: la connessione con la casa persa (*Connessione con la casa persa: riprovo…*); la webapp si ricollega da sola;
-  - **scheda bianca con il bordo verde acqua**: una domanda della casa (*La casa chiede*). Le domande compaiono una alla volta, sempre la più recente, con quante ne restano dopo (*altre 2 dopo questa*): risposta o chiusa quella, compare la precedente. Un nome che si sta scrivendo resta anche se nel frattempo la pagina si aggiorna.
+  - **scheda bianca con il bordo verde acqua**: una domanda della casa (*La casa chiede*). Le domande compaiono una alla volta, sempre la più recente, con quante ne restano dopo (*un'altra dopo questa*, *altre 2 dopo questa*): risposta o chiusa quella, compare la precedente. Un nome che si sta scrivendo resta anche se nel frattempo la pagina si aggiorna;
+  - **Registrazione a voce da completare**: una registrazione partita dal citofono o a voce in cui la casa vede più di una cosa nuova; **Scegli** apre la pagina della registrazione, dove tocchi sulla piantina quella giusta.
 
   La **✕** chiude la notifica su tutti i telefoni: un allarme o un avviso torna solo se finisce e si ripresenta; una domanda chiusa sparisce ovunque e la casa smette di ascoltare. I file della webapp si caricano sotto una versione che cambia a ogni aggiornamento: dopo un aggiornamento della casa ogni telefono si ricarica da solo e prende la versione nuova.
-- **Domande della casa**: quando la casa non è sicura chiede, per esempio "In soggiorno c'è Sofia o Leo?", con un pulsante per ogni risposta e, quando i nomi proposti sono più di uno, **Tutti e due** (o **Tutti**): due statuine a contatto sono una sola macchia per la webcam. Può rispondere qualsiasi telefono; vale la prima risposta e la domanda sparisce ovunque. La casa fa la domanda anche ad alta voce e ascolta la risposta da sola, senza il tasto Parla. Quando chiede chi è un nuovo arrivato ci sono anche **Non c'è niente**, un campo per scrivere un nome nuovo, il tipo e il pulsante **Aggiungi** (vedi il [capitolo 7](07-riconoscimento-e-identita.md#un-nuovo-arrivato)).
-- **Sottotitoli**: tutto quello che la casa dice compare come sottotitolo in fondo a ogni telefono, anche quando la casa è impostata su *Silenziosa*.
+- **Domande della casa**: quando la casa non è sicura chiede, per esempio "In soggiorno c'è Sofia o Leo?", con un pulsante per ogni risposta e, quando i nomi proposti sono più di uno, **Tutti e due** (o **Tutti**): due statuine a contatto sono una sola macchia per la webcam. Può rispondere qualsiasi telefono; vale la prima risposta e la domanda sparisce ovunque. La casa fa la domanda anche ad alta voce e ascolta la risposta da sola, senza il tasto Parla. Quando chiede chi è una statuina ci sono anche **Non c'è niente** e l'elenco *Uno già noto…* con il pulsante **Questo**, per scegliere un personaggio che la casa conosce ma non ha proposto; per un nuovo arrivato, anche un campo per scrivere un nome nuovo, il tipo e il pulsante **Aggiungi** (vedi il [capitolo 7](07-riconoscimento-e-identita.md#un-nuovo-arrivato)).
+- **Sottotitoli**: tutto quello che la casa dice compare come sottotitolo in fondo a ogni telefono, anche quando la casa è impostata su *Silenziosa*. Mentre la casa ascolta senza il tasto Parla (un nome, la risposta a una domanda) compare anche *🎙️ La casa ti ascolta…*.
 - **Messaggi brevi**: compaiono in basso, con lo stesso colore delle notifiche (un personaggio registrato, la grigliata pronta, la notifica di una regola, l'allarme inserito o disinserito) e si chiudono con un tocco. Quelli di allarme fanno anche vibrare il telefono, dove il browser lo permette.
 - **Orologio**: quando la casa non conosce l'ora, il primo telefono che apre la webapp la imposta (*Ora della casa impostata da questo telefono*). Quando la conosce, gli altri telefoni non la toccano più (uno con l'orologio sbagliato la sposterebbe per tutti): la si corregge da **Altro → Impostazioni → Usa l'ora di questo telefono**, oppure a voce.
 - **Soprannome**: la prima volta che modifichi una regola o registri un personaggio, la webapp chiede *Come ti chiami? (facoltativo, compare nel registro)*. Puoi cambiarlo in **Altro → Il tuo soprannome**. Ogni telefono ha anche un identificativo automatico.
@@ -47,14 +48,14 @@ Chiunque sia collegato al Wi-Fi della casa può fare tutto, senza PIN né access
 - Ogni personaggio con la sagoma del suo tipo (persona, cane, gatto, animale, auto, oggetto), nel suo colore e con il suo nome; un **?** segna un personaggio su cui la casa non è sicura.
 - L'auto, le fiamme sul barbecue quando è acceso, le stanze in allarme in rosso e quelle con un avviso in ambra.
 
-**Com'è la casa.** Schede con le persone presenti, **Termostato** (temperatura in °C, *Umidità* in percentuale, *Climatizzatore acceso* o *Riscaldamento acceso*), **Bagno** (temperatura in °C, *Umidità*, *Doccia in corso*), **Auto** (*appena arrivata*, *parcheggiata*, *appena uscita*, *non c'è*), **Scenario**, e **Festa** e **Barbecue** quando sono in corso.
+**Com'è la casa.** Le schede: quante **persone** ci sono in casa, **Termostato** (temperatura in °C, *Umidità* in percentuale, *Climatizzatore acceso* o *Riscaldamento acceso*), **Bagno** (temperatura in °C, *Umidità*, *Doccia in corso*), **Auto** (*appena arrivata*, *parcheggiata*, *appena uscita*, *non c'è*), **Scenario**, e **Festa · Barbecue**, che mostra quale dei due è in corso oppure *Niente in corso*.
 
-**Chi c'è.** L'elenco di tutto ciò che la casa vede, con nome (oppure *Ospite* per una persona sconosciuta, *Sconosciuto* per qualsiasi altra cosa), tipo e stanza. Tocca un personaggio, sulla piantina o nell'elenco, per aprire la sua scheda: foto o sagoma, tipo, stanza e, quando c'è un dubbio, *Non sono sicura di chi sia*. **Chi è?** (per uno sconosciuto) o **È un altro: cambia** (per uno riconosciuto male) apre l'elenco di tutti i personaggi e gli oggetti che la casa conosce, con la stanza in cui si trovano adesso, e sotto un nome nuovo con il suo tipo. Scegliendone uno già noto il nome si sposta lì da dov'era, perché un nome non sta mai in due posti, e la casa impara quell'aspetto del personaggio anche se la luce lo cambia molto; con un nome nuovo il personaggio viene registrato con i colori che la casa vede. Se la casa vede qualcosa che non c'è (un riflesso, una luce, un modulo appoggiato), **Non c'è davvero: togli**, dopo una conferma, lo toglie subito dalla casa: la casa lo tratta come un errore della webcam, dimentica quel punto e lì per un po' non fa nascere niente.
+**Chi c'è.** L'elenco di tutto ciò che la casa vede (*Nessuno in casa* quando è vuoto), con nome (oppure *Ospite* per una persona sconosciuta, *Sconosciuto* per qualsiasi altra cosa), tipo e stanza. Tocca un personaggio, sulla piantina o nell'elenco, per aprire la sua scheda: foto o sagoma, tipo, stanza e, quando c'è un dubbio, *Non sono sicura di chi sia*. **Chi è?** (per uno sconosciuto) o **È un altro: cambia** (per uno riconosciuto male) apre l'elenco di tutti i personaggi e gli oggetti che la casa conosce, con la stanza in cui si trovano adesso, e sotto un nome nuovo con il suo tipo. Scegliendone uno già noto il nome si sposta lì da dov'era, perché un nome non sta mai in due posti, e la casa impara quell'aspetto del personaggio anche se la luce lo cambia molto; con un nome nuovo il personaggio viene registrato con i colori che la casa vede. Se la casa vede qualcosa che non c'è (un riflesso, una luce, un modulo appoggiato), **Non c'è davvero: togli**, dopo una conferma, lo toglie subito dalla casa: la casa lo tratta come un errore della webcam, dimentica quel punto e lì per un po' non fa nascere niente.
 
 **Elemento non riconosciuto.** Sotto la piantina: tocca il pulsante, poi il punto della piantina in cui si trova qualcosa che la casa non segue (una statuina che non ha visto posare, o che ha preso per la casa vuota). Intorno a quel punto la casa riprende la casa vuota com'era salvata, così quello che c'è torna visibile, e lo segue da quel momento; poi chiede chi è, con lo stesso elenco. Se lì non vede niente di diverso dalla casa vuota lo dice: basta spostare un poco l'elemento e riprovare. Con la simulazione attiva il tocco mette lì una statuina virtuale.
 
 **Allarme.** In fondo alla pagina, il riquadro dell'allarme, che si inserisce e si disinserisce come un antifurto:
-- **Inserito** (scudo verde): le regole d'allarme (locale tecnico vietato, bagno per uno e quelle che crei tu con *Avviso*) funzionano;
+- **Inserito** (scudo verde): le regole d'allarme (locale tecnico vietato, bagno per uno e quelle che segni tu con **È un allarme**) funzionano;
 - **Disinserito** (scudo grigio): quelle regole stanno zitte, niente sirena né avvisi; tutto il resto (luci, voce, altre regole) va avanti come sempre;
 - **Allarme in corso** (bordo rosso): una regola d'allarme sta suonando.
 
@@ -72,14 +73,18 @@ Quando la webcam manca per più di qualche secondo la schermata dice *La webcam 
 
 <img src="../images/screens/it/commands.png" alt="Comandi" width="260">
 
-- **Festa!**: 20 secondi di musica da ballare composta dal codice stesso della casa, con uno spettacolo di luci su tutti i Pixels. Prima della festa successiva c'è una pausa di 30 secondi.
+- **Festa!**: 20 secondi di musica da ballare composta dal codice stesso della casa, con uno spettacolo di luci su tutti i Pixels. Mentre la festa è in corso il pulsante resta spento; prima della festa successiva c'è una pausa di 30 secondi.
 - **Barbecue** / **Spegni barbecue**: avvia o ferma la ventola del barbecue.
 - **Luci**: scegli una stanza o *Tutte le stanze*; ogni scelta arriva subito alla casa, senza altri tasti. Un colore tra dieci accende la luce, **A** la restituisce alla casa, il cerchio barrato la spegne; l'effetto (*Fisso*, *Respiro*, *Lampeggio*, *Onda*, *Arcobaleno*, *Scintille*, *Fuoco*) e la luminosità cambiano la luce già accesa. Scegliendo una stanza si vede com'è la sua luce in quel momento. Una luce accesa da qui dura due minuti, spenta resta al buio per un minuto, poi la stanza torna alla casa.
-- **Voce della casa**: **Lingua della casa** (Italiano, English), **Loquacità** (Silenziosa, Normale, Chiacchierona), **Volume**, **Suona il campanello** (avvia la conversazione del citofono come se si fosse premuto il tasto del totem). Sotto **Loquacità** una riga spiega i tre livelli: *Silenziosa: la casa non parla mai, le sue risposte compaiono solo come scritte sui telefoni. Normale: risponde, dà gli avvisi e racconta chi entra, esce o cambia stanza. Chiacchierona: come Normale, e in più fa proposte, commenti e domande ai personaggi.*
 - **Domande ai personaggi**: **Fai una domanda** fa fare alla casa, subito, una domanda a un personaggio scelto a caso tra quelli in casa, preferendo quello che di lui non sa ancora (il colore preferito, se ama ballare o le grigliate, il piatto preferito, da dove viene...). La risposta si ascolta senza Parla e resta tra le sue informazioni; poi la casa la usa: la luce del suo colore preferito con "accendi la luce preferita di Marco", una festa se ama ballare, il barbecue se ama le grigliate (vedi il [capitolo 8](08-voce.md#cosa-sa-dei-personaggi)). Lo stesso pulsante, per un personaggio preciso, è nella sua scheda in **Personaggi**. Funziona anche fuori dalla modalità chiacchierona, ma non in quella silenziosa.
-- **Fai dire alla casa**: scrivi una frase e tocca **Fai parlare**: la casa la pronuncia.
+- **Voce della casa**:
+  - **Lingua della casa** (Italiano, English);
+  - **Loquacità** (Silenziosa, Normale, Chiacchierona). Sotto, una riga spiega i tre livelli: *Silenziosa: la casa non parla mai, le sue risposte compaiono solo come scritte sui telefoni. Normale: risponde, dà gli avvisi e racconta chi entra, esce o cambia stanza. Chiacchierona: come Normale, e in più fa proposte, commenti e domande ai personaggi.*;
+  - **Volume**;
+  - **Suona il campanello**, che avvia la conversazione del citofono come se si fosse premuto il tasto del totem;
+  - **Fai dire alla casa**: scrivi una frase e tocca **Fai parlare**: la casa la pronuncia.
 
-Quando un comando non si può eseguire in quel momento (una festa è già in corso, o in pausa), un messaggio dice *Già in corso o in pausa, riprova tra poco*.
+Quando un comando non si può eseguire in quel momento (una festa o un barbecue già in corso, o in pausa), un messaggio dice *Già in corso o in pausa, riprova tra poco*.
 
 ## Eventi
 
@@ -95,6 +100,8 @@ Quattro schede:
 La casa conserva gli eventi per 7 giorni e le posizioni per 24 ore.
 
 ## Altro
+
+<img src="../images/screens/it/more.png" alt="Altro" width="260">
 
 Tutte le altre pagine, in tre gruppi, più il tuo soprannome:
 
@@ -117,9 +124,9 @@ Le risposte che la casa si è sentita dire, ha immaginato o ha pensato quando no
 - se è stata *detta da qualcuno*, *immaginata dalla casa* o *pensata dalla casa*, e quando;
 - se riguarda oggi o domani: *vale fino a domani*.
 
-**Modifica** apre la risposta.
-- **Salva.** Si possono correggere la risposta e la domanda sentita male ("come si fa la vita" invece di "come si fa la pizza"): da quel momento la casa dice quella corretta, come se gliel'avesse insegnata qualcuno.
-- **Dimentica.** La cancella.
+**Modifica** apre la risposta (*Correggi la risposta*), con la **Domanda** e la **Risposta**.
+- **Salva.** Si possono correggere la risposta e la domanda sentita male ("come si fa la vita" invece di "come si fa la pizza"): da quel momento la casa dice quella corretta, come se gliel'avesse insegnata qualcuno. Si può fare anche a voce: subito dopo una risposta sbagliata, di' «sbagliato» o «te lo dico io».
+- **Dimentica.** La cancella, dopo una conferma.
 
 Ogni modifica va nel registro delle modifiche.
 
@@ -127,36 +134,36 @@ Ogni modifica va nel registro delle modifiche.
 
 <img src="../images/screens/it/identities.png" alt="Personaggi e oggetti" width="260">
 
-L'elenco dei personaggi, degli animali, delle auto e degli oggetti registrati, con foto o sagoma, tipo, e dove si trovano adesso (*Ora: Cucina*, oppure *Non lo vedo*). **+ Aggiungi** avvia la registrazione guidata; toccandone uno si apre la sua scheda, dove puoi cambiare **Nome**, **Tipo**, **Pronuncia inglese (facoltativa)** e **Chi è (per le storie)** (una cosa per riga, come la si direbbe dopo il nome: *fa il medico*, *ama il jazz*, *ha paura dei ragni*; la casa le usa nelle storie e nelle risposte, vedi il [capitolo 8](08-voce.md#storie-ricordi-e-domande-libere)), oppure eliminarlo con **Elimina** (resta nel cestino per 24 ore). Un personaggio eliminato sparisce subito anche dalle presenze in casa, dalle domande aperte e dalle etichette di **Addestramento immagini**; una regola che lo nominava resta, segnata con ⚠️ *personaggio eliminato*. **Impara di nuovo l'aspetto** fa dimenticare alla casa colori, pose e misura del personaggio, che li impara di nuovo la prima volta che qualcuno dice chi è: serve quando la statuina è un'altra, per esempio un personaggio ridipinto o sostituito. Vedi il [capitolo 7](07-riconoscimento-e-identita.md).
+L'elenco dei personaggi, degli animali, delle auto e degli oggetti registrati, con foto o sagoma, tipo, e dove si trovano adesso (*Ora: Cucina*, oppure *Non lo vedo*). **+ Aggiungi** avvia la registrazione guidata; toccandone uno si apre la sua scheda, dove puoi cambiare **Nome**, **Tipo**, **Pronuncia inglese (facoltativa)** e **Chi è (per le storie)** (una cosa per riga, come la si direbbe dopo il nome: *fa il medico*, *ama il jazz*, *ha paura dei ragni*; la casa le usa nelle storie e nelle risposte, vedi il [capitolo 8](08-voce.md#storie-ricordi-e-domande-libere)), oppure eliminarlo con **Elimina** (resta nel cestino per 24 ore). Per una persona o un animale c'è anche **Fai una domanda a …**, che fa la domanda proprio a quel personaggio (vedi **Comandi**). Un personaggio eliminato sparisce subito anche dalle presenze in casa, dalle domande aperte e dalle etichette di **Addestramento immagini**; una regola che lo nominava resta, segnata con ⚠️ *personaggio eliminato*. **Impara di nuovo l'aspetto** fa dimenticare alla casa colori, pose e misura del personaggio, che li impara di nuovo la prima volta che qualcuno dice chi è: serve quando la statuina è un'altra, per esempio un personaggio ridipinto o sostituito. Vedi il [capitolo 7](07-riconoscimento-e-identita.md).
 
 ### Calibrazione
 
 <img src="../images/screens/it/calibration.png" alt="Calibrazione" width="260">
 
-I quattro angoli della base (dopo **Usa questi angoli** la casa regola da sola la luce e salva la casa vuota), il controllo della sovrapposizione, **Regola la luce e salva la casa vuota** e **Salva solo la casa vuota**, poi **Fotografa con tutte le luci della casa** e **Aggiungi la luce di adesso**, che salvano la casa vuota sotto luci diverse (vedi il [capitolo 7](07-riconoscimento-e-identita.md#la-luce-della-sala)). La casa vuota non si salva se la sala è troppo buia, né se la casa vede ancora delle statuine: le nomina e chiede se salvare comunque (per qualcosa che non è una statuina). Mentre la casa lavora, una finestra con una rotellina dice cosa sta facendo e i pulsanti restano bloccati, così un'operazione non parte due volte; alla fine compare il risultato (vedi il [capitolo 5](05-collaudo.md#9-calibrazione-della-webcam)). In fondo ci sono gli strumenti per i dataset: **Cattura**, **Raffica (10)**, **Registra una sequenza (60 s)** e **Scarica il dataset** (vedi il [capitolo 7](07-riconoscimento-e-identita.md#dataset-e-registrazioni)).
+I quattro angoli della base (dopo **Usa questi angoli** la casa regola da sola la luce e salva la casa vuota), il controllo della sovrapposizione, **Regola la luce e salva la casa vuota** e **Salva solo la casa vuota**, poi **Fotografa con tutte le luci della casa** e **Aggiungi la luce di adesso**, che salvano la casa vuota sotto luci diverse (vedi il [capitolo 7](07-riconoscimento-e-identita.md#la-luce-della-sala)). Sotto, una riga dice quante case vuote per le luci sono salvate e quale è in uso; **Cancella (dopo aver spostato gli arredi)** le toglie tutte, dopo una conferma. La casa vuota non si salva se la sala è troppo buia, né se la casa vede ancora delle statuine: le nomina e chiede se salvare comunque (per qualcosa che non è una statuina). Mentre la casa lavora, una finestra con una rotellina dice cosa sta facendo e i pulsanti restano bloccati, così un'operazione non parte due volte; alla fine compare il risultato (vedi il [capitolo 5](05-collaudo.md#9-calibrazione-della-webcam)). In fondo ci sono gli strumenti per i dataset: **Cattura**, **Raffica (10)**, **Registra una sequenza (60 s)** e **Scarica il dataset** (vedi il [capitolo 7](07-riconoscimento-e-identita.md#dataset-e-registrazioni)).
 
 ### Diagnostica
 
 Si aggiorna ogni pochi secondi:
 
-- **Scheda**: nome host e versione, tempo di attività, carico e temperatura della CPU, memoria, disco libero, numero di client Wi-Fi, orologio e provenienza dell'ora, dispositivo audio, voce (riconoscimento vocale e modello linguistico), webcam (dispositivo, fotogrammi al secondo, tempo di elaborazione di un'immagine e come si divide tra segmentazione, riconoscimento e resto, *da calibrare*, *spostata, rifare la calibrazione*).
-- **Modulino**: lo stato del collegamento con il microcontrollore, la versione del protocollo del firmware, e un pallino verde o rosso per ogni modulo.
-- Pulsanti: **Scansione I2C** (gli indirizzi che rispondono su ogni canale dell'Hub), **Prova audio**, **Prova microfono (3 s)**, **Scarica i registri** (mostra le ultime 500 righe del log dell'applicazione e le salva in un file).
+- **Scheda**: nome host e versione, tempo di attività (della scheda e dell'app), carico e temperatura della CPU, memoria, disco libero, numero di dispositivi collegati al Wi-Fi e di telefoni con la webapp aperta, orologio e provenienza dell'ora, dispositivo audio, voce (riconoscimento vocale, modello linguistico e storie), webcam (dispositivo, fotogrammi al secondo, tempo di elaborazione di un'immagine e come si divide tra segmentazione, riconoscimento e resto, quanti adattamenti alla luce ha fatto, *da calibrare*, *luce da regolare*, *spostata, rifare la calibrazione*), e **Luce della webcam** (guadagno ed esposizione, ritocchi dell'ultima ora ed eventuale pausa; vedi la [risoluzione dei problemi](11-risoluzione-problemi.md#la-luce-della-webcam-cambia-da-sola-o-resta-al-limite)).
+- **Modulino**: lo stato del collegamento con il microcontrollore, la versione del protocollo del firmware, lo stato del bus (*Bus I2C libero*, oppure quale linea è bloccata), e un pallino verde o rosso per ogni modulo.
+- Pulsanti: **Scansione I2C** (gli indirizzi che rispondono sul bus principale e su ogni canale dell'Hub), **Prova audio**, **Prova microfono (3 s)**, **Scarica i registri** (mostra le ultime 500 righe del log dell'applicazione e le salva in un file).
 
 ### Addestramento immagini
 
-Serve ad addestrare la rete neurale a riconoscere meglio presenze e assenze nella casa. Mostra le immagini ancora da valutare una alla volta, grandi, dalla più recente (tra le ultime 600): ogni presenza nuova annunciata, ogni nome dato e ogni macchia scartata dalla rete delle statuine, con quante ne restano (*Da valutare: 12*). Per ognuna basta un tocco: **✓ Giusto** (con scritto cosa conferma, per esempio *Giusto: Marco*), **Non c'è niente**, oppure, sotto *Oppure è:*, il pulsante del personaggio giusto. La risposta si salva da sola e compare subito la successiva. **Salta (non sono sicuro)** passa alla successiva senza rispondere: quell'immagine resta da valutare la prossima volta. **↶ Indietro** riporta all'immagine precedente, con la risposta data, per cambiarla. Un secondo tocco arrivato subito dopo il primo non risponde anche all'immagine successiva. Le immagini già valutate non si vedono più. Un nome di un personaggio poi eliminato resta nella voce, segnato *(eliminato)*, ma non ha più **Giusto**: si può solo correggere. Le risposte diventano esempi verificati per il prossimo addestramento della rete (vedi il [capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine)). Le immagini rispettano la sfocatura di quello che sta fuori dalla casa e, se attiva, del bagno.
+Serve ad addestrare la rete neurale a riconoscere meglio presenze e assenze nella casa. Mostra le immagini ancora da valutare una alla volta, grandi, dalla più recente (tra le ultime 600): ogni presenza nuova annunciata, ogni nome dato e ogni macchia scartata dalla rete delle statuine, con quante ne restano (*Da valutare: 12*). Sotto l'immagine c'è che cos'è (*Nuova presenza: Marco*, *Nuovo nome: Marco*, *Scartata dalla rete*), quando, e cosa ha detto la rete (*la rete: Marco 87%*). Per ognuna basta un tocco: **✓ Giusto** (con scritto cosa conferma, per esempio *Giusto: Marco*), **Non c'è niente**, oppure, sotto *Oppure è:*, il pulsante del personaggio giusto. La risposta si salva da sola e compare subito la successiva. **Salta (non sono sicuro)** passa alla successiva senza rispondere: quell'immagine resta da valutare la prossima volta. **↶ Indietro** riporta all'immagine precedente, con la risposta data, per cambiarla. Un secondo tocco arrivato subito dopo il primo non risponde anche all'immagine successiva. Le immagini già valutate non si vedono più; quando non ne resta nessuna, la pagina dice *Fatto, non resta niente da valutare*. Un nome di un personaggio poi eliminato resta nella voce, segnato *(eliminato)*, ma non ha più **Giusto**: si può solo correggere. Le risposte diventano esempi verificati per il prossimo addestramento della rete (vedi il [capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine)). Le immagini rispettano la sfocatura di quello che sta fuori dalla casa e, se attiva, del bagno.
 
 ### Impostazioni
 
 <img src="../images/screens/it/settings.png" alt="Impostazioni" width="260">
 
-- **Casa**: il nome della casa in italiano e in inglese; **Bagno sfocato nella diretta**, acceso di serie; **Raccolta continua di immagini per la rete**, spenta di serie, e *Spazio per la raccolta (MB)* (vedi il [capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine)).
+- **Casa**: il nome della casa in italiano e in inglese; **Bagno sfocato nella diretta**, acceso di serie; **Raccolta continua di immagini per la rete**, spenta di serie, e *Spazio per la raccolta (MB)*: la casa tiene un'immagine ogni 5 secondi, due al secondo quando succede qualcosa, e oltre lo spazio scelto cancella le più vecchie (vedi il [capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine)).
 - **Festa · Barbecue · Clima**: la *Durata (s)* della festa (10–60), *Durata della ventola (s)* (5–120), *Caldo: aumento sul riferimento (°C)*, *Doccia: aumento di umidità (%)*. Poi **Salva**. Le luci che seguono le persone sono spente di serie e le loro regolazioni non compaiono (vedi il [capitolo 9](09-regole.md#priorità-e-livelli-delle-luci)); luminosità massima e limite di corrente dei Pixels sono valori fissi (vedi il [capitolo 4](04-collegamenti.md#alimentazione-dei-pixels)).
-- **Voce**: **Saluta i telefoni nuovi**, **Domande ai personaggi (modalità chiacchierona)** e *Una domanda ogni (s)* (vedi il [capitolo 8](08-voce.md#parlare-senza-premere-parla)); **Attivazione con la parola chiave** e *Parola di attivazione* (per esempio *Casa*): detta la parola, la casa fa quello che fa il tasto Parla (vedi il [capitolo 8](08-voce.md#la-parola-di-attivazione)). Salvando, sotto compare come la casa sentirà la parola (*Robot 3* diventa *robot tre*; *Domotiq*, che il riconoscimento vocale non conosce, si sente come «domotica»). Se ci sono parole che il riconoscimento non riesce a sentire in nessun modo, compaiono anche quelle.
+- **Voce**: **Saluta i telefoni nuovi**, **Domande ai personaggi (modalità chiacchierona)** e *Una domanda ogni (s)* (almeno 45; vedi il [capitolo 8](08-voce.md#parlare-senza-premere-parla)); **Attivazione con la parola chiave** e *Parola di attivazione* (per esempio *Casa*): detta la parola, la casa fa quello che fa il tasto Parla (vedi il [capitolo 8](08-voce.md#la-parola-di-attivazione)). Con questa opzione il microfono resta acceso quando la casa è libera, e l'audio non viene salvato. Poi **Salva**. Ognuno dei due **Salva** salva insieme le schede **Casa**, **Festa · Barbecue · Clima** e **Voce**. Salvando, sotto compare come la casa sentirà la parola (*Robot 3* diventa *robot tre*; *Domotiq*, che il riconoscimento vocale non conosce, si sente come «domotica»). Se ci sono parole che il riconoscimento non riesce a sentire in nessun modo, compaiono anche quelle.
 - **Ora**: l'ora del telefono e **Usa l'ora di questo telefono**, che imposta l'orologio della casa.
-- **Wi-Fi della casa**: il nome della rete e la *Password del Wi-Fi* (da 8 a 63 caratteri). **Salva**, dopo *Sei sicuro?*, la scrive nell'hotspot; se l'hotspot è acceso riparte dopo un paio di secondi e tutti i telefoni, compreso il tuo, vanno ricollegati con la password nuova. Annotala: serve a ogni telefono che entra nella rete.
-- **Backup**: **Scarica il backup** (uno zip con regole, personaggi con le loro foto e impostazioni; mai la rete, il nome della casa o la calibrazione della webcam), **Ripristina da un backup** (sostituisce regole, personaggi e impostazioni), **Regole di partenza** (sostituisce tutte le regole con quelle con cui la casa è partita).
+- **Wi-Fi della casa**: il nome della rete e la *Password del Wi-Fi* (da 8 a 63 caratteri). **Salva**, dopo una conferma, la scrive nell'hotspot; se l'hotspot è acceso riparte dopo un paio di secondi e tutti i telefoni, compreso il tuo, vanno ricollegati con la password nuova. Se l'hotspot non è ancora configurato sulla scheda, la password viene salvata ma l'hotspot non cambia, e un messaggio lo dice (*Password salvata, ma l'hotspot non è stato cambiato*). Annotala: serve a ogni telefono che entra nella rete.
+- **Backup**: **Scarica il backup** (uno zip con regole, personaggi con le loro foto e impostazioni; senza Wi-Fi, nome della casa e impostazioni della webcam, e mai la calibrazione), **Ripristina da un backup** (scegli il file zip; dopo *Sei sicuro?* sostituisce regole, personaggi e impostazioni), **Regole di partenza** (sostituisce tutte le regole con quelle con cui la casa è partita).
 - **Cestino**: regole e personaggi eliminati nelle ultime 24 ore, ognuno con **Ripristina**.
 - **Sistema**: **Riavvia l'app**, **Riavvia la scheda**, **Spegni la scheda**, ognuno dopo *Sei sicuro?*.
 
@@ -180,23 +187,48 @@ PYTHONPATH=src .venv/bin/python -m domotiq --simulate
 
 Poi apri `http://localhost:8080/`. La casa tiene i suoi dati in `var/` dentro la cartella del repository.
 
+Al posto della webcam ci sono statuine virtuali. La pagina della simulazione non è nel menu: aprila con `http://localhost:8080/#/sim`. Lì trovi:
+
+- **Simulazione attiva**, accesa quando la casa parte con `--simulate`, e **Luci e voce vere in silenzio**;
+- la piantina, su cui trascini i personaggi (trascinane uno fuori dalla casa per toglierlo);
+- **Aggiungi**: una statuina di un tipo (persona, cane, gatto, auto, oggetto), oppure **Aggiungi un personaggio registrato**;
+- **Sensori virtuali**: temperatura e umidità del termostato e del bagno;
+- **Tasti del citofono**: **Parla** (da tenere premuto), **Citofono** e **Lingua**.
+
 ## Per i maker: le API
+
+Le richieste che cambiano qualcosa possono dire chi le fa con le intestazioni `X-Device` (l'identificativo del telefono) e `X-Nickname` (il soprannome, codificato come in un URL): finiscono nel registro delle modifiche.
 
 | Metodo e percorso | Uso |
 |---|---|
 | `GET /api/state` | lo stato completo |
 | `WS /ws` | lo stato completo alla connessione, poi ogni cambiamento, le domande e i sottotitoli |
-| `GET /api/stream` | diretta (MJPEG) |
-| `GET/POST/PUT/DELETE /api/rules` | regole |
-| `GET/PUT/DELETE /api/identities` | personaggi |
+| `GET /api/stream`, `GET /api/snapshot.jpg` | diretta (MJPEG) e un'immagine sola |
+| `GET /api/events`, `GET /api/audit`, `GET /api/history/{id}` | eventi, registro delle modifiche, stanze di un personaggio nelle ultime 24 ore |
+| `GET/POST /api/rules`, `PUT/DELETE /api/rules/{id}` | regole |
+| `POST /api/rules/{id}/enabled`, `POST /api/rules/defaults` | attivare o disattivare una regola (`{"enabled": false}`), regole di partenza |
+| `GET/POST /api/identities`, `PUT/DELETE /api/identities/{id}` | personaggi (`POST` con `{"name": ..., "category": ...}` ne crea uno che la casa non ha ancora visto) |
+| `POST /api/identities/{id}/forget-look` | *Impara di nuovo l'aspetto* |
+| `POST /api/tracks/adopt` | *Elemento non riconosciuto*: `{"x": ..., "y": ...}` in mm sulla piantina, oppure `{"u": ..., "v": ...}` da 0 a 1 nell'immagine |
+| `POST /api/tracks/{id}/identity`, `POST /api/tracks/{id}/dismiss` | chi è una presenza (`{"identity": id}`, oppure `{"name": ..., "category": ...}`), *Non c'è davvero: togli* |
+| `POST /api/confirm/{id}` | risposta a una domanda della casa: `{"value": ...}` con l'id di un personaggio, oppure `{"together": [...]}` per *tutti e due*, `{"nothing": true}` per *non c'è niente*, `{"known": id}` per uno già noto, `{"name": ..., "category": ...}` per un nome nuovo |
+| `POST /api/confirm/{id}/close`, `POST /api/alerts/{key}/dismiss` | chiudere una domanda o un avviso su tutti i telefoni |
 | `GET /api/knowledge`, `PUT/DELETE /api/knowledge/{id}` | quello che la casa ha imparato: elenco, correzione (`{"answer": ..., "question": ...}`), cancellazione |
-| `POST /api/commands/{name}` | party, grill, grill_stop, scene, light, lights_off, lights_auto, language, verbosity, volume, follow, intercom, say, alarm (`{"armed": false}` disinserisce l'allarme) |
-| `POST /api/confirm/{id}` | risposta a una domanda della casa (`{"value": ...}`; `{"together": [...]}` per *tutti e due*, `{"nothing": true}` per *non c'è niente*) |
+| `POST /api/commands/{name}` | party, grill, grill_stop, scene, light, lights_off, lights_auto, language, verbosity, volume, follow (`{"on": true}` accende le luci che seguono le persone), intercom, say, alarm (`{"armed": false}` disinserisce l'allarme) |
+| `POST /api/voice/text` | una frase trattata come se fosse stata detta con Parla (`{"text": ...}`) |
+| `POST /api/voice/ask` | *Fai una domanda* (`{"identity": id}` per un personaggio preciso) |
+| `GET /api/journal`, `POST /api/journal/{id}` | *Addestramento immagini*: le voci, e la risposta (`{"label": nome}`, oppure `{"label": "niente"}`) |
 | `POST /api/time` | ora da un telefono (solo se la casa non la conosce) |
 | `POST /api/clock` | ora dalle impostazioni |
 | `GET/PUT /api/settings` | impostazioni |
-| `GET /api/diagnostics` | diagnostica |
-| `POST /api/vision/{name}` | calibrazione: corners, adjust, empty, capture, record |
-| `GET /api/events` | eventi |
+| `POST /api/network` | password del Wi-Fi (`{"password": ...}`) |
+| `GET /api/trash`, `POST /api/trash/{id}/restore` | cestino |
+| `GET /api/backup.zip`, `POST /api/restore` | backup e ripristino |
+| `POST /api/vision/{name}` | calibrazione e dataset: corners, adjust, empty, capture, record |
+| `GET/POST/DELETE /api/empties`, `POST /api/empties/sweep` | la casa vuota con le altre luci |
+| `GET /api/dataset.zip` | il dataset |
+| `GET /api/diagnostics`, `POST /api/diagnostics/{scan,sound,mic}`, `GET /api/logs` | diagnostica, scansione I2C, prova audio e microfono, registri |
+| `POST /api/system/{restart,reboot,shutdown}` | riavvio dell'app, riavvio e spegnimento della scheda |
+| `GET /api/sim`, `/api/sim/...` | la simulazione, per un PC avviato con `--simulate` |
 
 Avanti: [riconoscimento e identità](07-riconoscimento-e-identita.md).

@@ -324,7 +324,7 @@ class House:
         gcfg = self.settings.get("garage")
         favourite = cfg.get("follow_favourite", True) and "follow_color" not in scene
         # at a start the lights wait for the vision to find the figurines: the glow of a light lit for the first one
-        # found, of its favourite colour, looked like other characters and hid figurines (12 October)
+        # found, in its favourite colour, could look like other characters and hide figurines
         settling = self._start_hold and (self._seen_since is None or now - self._seen_since < FOLLOW_START_S)
         for lid, light in self.layout.lights.items():
             wanted = follow and not settling and self.count(light.room, PERSON) > 0
@@ -404,6 +404,8 @@ class House:
         key = "thermostat" if index == 0 else "bathroom"
         self.sensors[key] = {"t": round(temp, 2), "rh": round(rh, 1), "ts": now}
         self._pub("sensor", sensor=key, t=temp, rh=rh)
+        # the thresholds as they are now: changed in the web app, they count at once
+        self.thermostat.cfg = self.bathroom_humidity.cfg = self.settings.get("climate")
         if key == "thermostat":
             state = self.thermostat.update(now, temp, rh)
             if state:

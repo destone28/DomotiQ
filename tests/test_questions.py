@@ -92,7 +92,8 @@ def test_a_newcomer_is_asked_about_and_named_aloud_without_talk(ctx):
 
 
 def test_no_new_car_is_asked_about_inside_a_room(ctx):
-    """After a start the house asked "Mi sembra di vedere un'auto nuova in camera": no car is ever in a room."""
+    """No car is ever in a room: a newcomer the size of a car inside a room is asked about as an object, never as a
+    new car."""
     async def scenario():
         hear(ctx, [""])
         newcomer(ctx, category="car", room="bedroom")

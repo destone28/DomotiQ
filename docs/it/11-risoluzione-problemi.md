@@ -127,10 +127,10 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### Le luci sono più deboli del previsto, e si abbassano quando se ne accendono di più
 **Causa.** Il firmware protegge la linea a 3,3 V del connettore Qwiic: la luminosità è limitata al 30 % e tutte le luci vengono ridotte quando la corrente stimata supera i 450 mA.
 
-**Soluzione.** È voluto. I due valori sono fissi e non stanno nelle impostazioni: il connettore è dimensionato per 1 A e il regolatore della scheda è condiviso (vedi il [capitolo 4](04-collegamenti.md#alimentazione-dei-pixels)).
+**Soluzione.** È voluto. I due valori non sono nella webapp: stanno in `var/config/settings.json` (`max_brightness`, `current_budget_ma`) e sono prudenti perché il connettore è dimensionato per 1 A e il regolatore della scheda è condiviso (vedi il [capitolo 4](04-collegamenti.md#alimentazione-dei-pixels)).
 
 ### Una luce accesa dal telefono si è spenta da sola
-**Causa.** Le luci manuali durano due minuti, poi la stanza torna alla casa (luci che seguono le persone, scenario, regole).
+**Causa.** Le luci manuali durano due minuti, poi la stanza torna alla casa (scenario e regole).
 
 **Soluzione.** È il comportamento normale; per una luce che deve restare accesa, usa una regola.
 
@@ -165,6 +165,11 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 **Causa.** Mancano gli angoli o la casa vuota.
 
 **Soluzione.** Calibra ([capitolo 5](05-collaudo.md#9-calibrazione-della-webcam)).
+
+### Avviso *La casa non riconosce niente finché non regoli la luce*
+**Causa.** Gli angoli ci sono, ma la luce della webcam non è stata regolata, oppure la regolazione non è andata a buon fine. In *Diagnostica*, alla riga *Webcam*, compare *luce da regolare*.
+
+**Soluzione.** Togli le statuine e fai **Calibrazione → Regola la luce e salva la casa vuota**, senza toccare la casa per 15 secondi.
 
 ### Avviso *La casa vuota è stata salvata al buio*
 **Causa.** La casa vuota in uso è stata salvata con la sala al buio, con una versione precedente del software (ora la webapp non lo permette): con la luce accesa tutto sembra diverso da quella.
@@ -212,11 +217,11 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 **Soluzione.** Monta il totem e fissa i cavi lungo le pareti, poi a casa vuota **Altro → Calibrazione → Salva solo la casa vuota**.
 
 ### La casa vede personaggi che non ci sono, anche a casa vuota
-**Causa.** Quando cambia la luce (il sole nella stanza, le luci colorate della casa) mobili, griglie e prati non somigliano più alla casa vuota, e la rete delle statuine, addestrata con altre luci o su un'altra casa, non è sicura che siano "niente". I colori poi danno loro il nome del personaggio più simile.
+**Causa.** Quando cambia la luce (il sole nella stanza, le luci colorate della casa) mobili, griglie e prati non somigliano più alla casa vuota, e la rete delle statuine, addestrata con luci diverse da quelle della tua sala, non è sicura che siano "niente". I colori poi danno loro il nome del personaggio più simile.
 
 **Soluzione.** Una presenza nuova viene annunciata solo quando la rete vi ha visto una statuina, due volte di fila: così quasi tutte queste presenze restano in silenzio. Se succede ancora:
 - a casa vuota, con la luce di tutti i giorni, **Altro → Calibrazione → Aggiungi la luce di adesso**, una volta per ogni luce della stanza (mattina, sera, lampada accesa);
-- accendi **Raccolta continua di immagini per la rete**, in **Addestramento immagini** segna "niente" le presenze false, e addestra di nuovo la rete con queste immagini e con le foto della casa vuota ([capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine)).
+- accendi **Raccolta continua di immagini per la rete**, in **Addestramento immagini** tocca **Non c'è niente** sulle presenze false, e addestra di nuovo la rete con queste immagini e con le foto della casa vuota ([capitolo 7](07-riconoscimento-e-identita.md#la-rete-che-conosce-le-statuine)).
 
 ### Un personaggio eliminato compare ancora
 **Causa.** Il nome resta dove racconta qualcosa che è successo: gli eventi passati e le voci di **Addestramento immagini**, segnate *(eliminato)*. La rete delle statuine continua a conoscerlo finché non viene addestrata di nuovo, e **Addestramento immagini** mostra ancora quello che dice.
@@ -253,6 +258,11 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 
 **Soluzione.** Rispondi alla domanda su un telefono o a voce. Con colori diversi non succede.
 
+### Durante la festa la piantina non segue le statuine
+**Causa.** È voluto: con le luci colorate della festa quello che vede la webcam non dice niente su cosa c'è nella casa, quindi i personaggi restano dove sono finché la festa non finisce (in *Diagnostica*, alla riga *Webcam*, compare *in pausa per la festa*).
+
+**Soluzione.** Non serve fare niente: a festa finita, appena le luci si fermano, la casa guarda di nuovo e trova i personaggi dove li hai spostati.
+
 ### Una statuina ha perso il suo nome dopo essere stata tenuta in mano
 **Causa.** È stata tenuta in mano per più di 60 secondi, quindi la casa ha smesso di seguirla.
 
@@ -281,9 +291,9 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 **Soluzione.** È normale; all'avvio la casa prepara le sue frasi frequenti.
 
 ### La casa risponde con qualche secondo di ritardo
-**Causa.** Con la voce naturale ogni frase nuova va sintetizzata, e sulla scheda una frase di tre secondi e mezzo richiede circa 4,5 secondi. Le frasi fisse e quelle già dette partono subito.
+**Causa.** Ogni frase nuova va sintetizzata dalla voce della casa (Piper), e sulla scheda una frase di tre secondi e mezzo richiede circa 4,5 secondi. Le frasi fisse e quelle già dette partono subito.
 
-**Soluzione.** È normale con la voce naturale, e la casa fa il possibile per accorciare l'attesa: le frasi frequenti sono già pronte in memoria e partono subito, una frase breve nuova si prepara in un paio di secondi, e una risposta lunga parte dalla prima frase mentre la casa prepara le altre. La parola di attivazione riceve il suo "Dimmi!" subito.
+**Soluzione.** È normale, e la casa fa il possibile per accorciare l'attesa: le frasi frequenti sono già pronte in memoria e partono subito, una frase breve nuova si prepara in un paio di secondi, e una risposta lunga parte dalla prima frase mentre la casa prepara le altre. La parola di attivazione riceve il suo "Dimmi!" subito.
 
 ### La casa non sente niente
 **Causa.** Il lavalier non è nell'ingresso microfono della US205, oppure è troppo lontano dalla bocca di chi parla.
@@ -293,7 +303,7 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 ### "Non ho capito." per frasi che dovrebbero funzionare
 **Causa.** Una frase capita male, oppure il modello linguistico non è disponibile.
 
-**Soluzione.** Controlla che la lingua della casa sia quella in cui si sta parlando (LED di Lingua acceso = inglese). In **Diagnostica**, alla riga *Voce*, compare *LLM* con un pallino verde quando il modello linguistico risponde; altrimenti `systemctl status domotiq-llm`. Se la casa è stata installata con `--no-llm`, capisce solo le sue frasi fisse.
+**Soluzione.** Dopo "Non ho capito." la casa propone una richiesta da provare ("Prova a chiedermi che ore sono."), ogni volta un'altra, scelta tra quelle che il riconoscimento vocale sente meglio: se la casa capisce quella, ti sente bene, e il problema è la frase di prima. Controlla che la lingua della casa sia quella in cui si sta parlando (LED di Lingua acceso = inglese). In **Diagnostica**, alla riga *Voce*, compare *LLM* con un pallino verde quando il modello linguistico risponde; altrimenti `systemctl status domotiq-llm`. Se la casa è stata installata con `--no-llm`, capisce solo le sue frasi fisse.
 
 ### Un nome non viene mai riconosciuto a voce
 **Causa.** Il modello di riconoscimento vocale non conosce le parole del nome.
@@ -311,6 +321,11 @@ L'installer (che ha bisogno di internet) ricarica il firmware quando serve; senz
 **Causa.** La scheda è ancora collegata alla tua rete Wi-Fi, oppure l'hotspot non è partito.
 
 **Soluzione.** `bash scripts/hotspot.sh status`, poi `bash scripts/hotspot.sh on`; `bash scripts/hotspot.sh boot` lo fa partire a ogni avvio. È una rete a 2,4 GHz.
+
+### *Password salvata, ma l'hotspot non è stato cambiato*
+**Causa.** Sulla scheda l'hotspot non è ancora configurato (l'installazione non è arrivata fino in fondo), oppure la casa gira su un PC, che non ha l'hotspot.
+
+**Soluzione.** Sulla scheda rilancia `install.sh`: crea l'hotspot con la password appena salvata. Su un PC in simulazione è normale.
 
 ### *Connessione con la casa persa: riprovo…*
 **Causa.** Il telefono è uscito dalla copertura del Wi-Fi, oppure la scheda si sta riavviando.
